@@ -28,12 +28,17 @@
 int Cuda_dual_CG( reax_system const * const, control_params const * const,
         simulation_data * const, storage * const,
         sparse_matrix const * const, rvec2 const * const, real,
-        rvec2 * const, mpi_datatypes * const, FILE * );
+        rvec2 * const, mpi_datatypes * const );
 
 int Cuda_CG( reax_system const * const, control_params const * const,
         simulation_data * const, storage * const,
         sparse_matrix const * const, real const * const, real,
         real * const, mpi_datatypes * const );
+
+int Cuda_dual_BiCGStab( reax_system const * const, control_params const * const,
+        simulation_data * const, storage * const,
+        sparse_matrix const * const, rvec2 const * const, real,
+        rvec2 * const, mpi_datatypes * const );
 
 int Cuda_BiCGStab( reax_system const * const, control_params const * const,
         simulation_data * const, storage * const,

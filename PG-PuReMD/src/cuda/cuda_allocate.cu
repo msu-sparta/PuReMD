@@ -503,6 +503,17 @@ void Cuda_Allocate_Workspace_Part2( reax_system *system, control_params *control
         cuda_malloc( (void **) &workspace->p, sizeof(real) * total_cap, TRUE, "p" );
         cuda_malloc( (void **) &workspace->r_hat, sizeof(real) * total_cap, TRUE, "r_hat" );
         cuda_malloc( (void **) &workspace->q_hat, sizeof(real) * total_cap, TRUE, "q_hat" );
+#if defined(DUAL_SOLVER)
+        cuda_malloc( (void **) &workspace->y2, sizeof(rvec2) * total_cap, TRUE, "y" );
+        cuda_malloc( (void **) &workspace->g2, sizeof(rvec2) * total_cap, TRUE, "g" );
+        cuda_malloc( (void **) &workspace->z2, sizeof(rvec2) * total_cap, TRUE, "z" );
+        cuda_malloc( (void **) &workspace->r2, sizeof(rvec2) * total_cap, TRUE, "r" );
+        cuda_malloc( (void **) &workspace->d2, sizeof(rvec2) * total_cap, TRUE, "d" );
+        cuda_malloc( (void **) &workspace->q2, sizeof(rvec2) * total_cap, TRUE, "q" );
+        cuda_malloc( (void **) &workspace->p2, sizeof(rvec2) * total_cap, TRUE, "p" );
+        cuda_malloc( (void **) &workspace->r_hat2, sizeof(rvec2) * total_cap, TRUE, "r_hat" );
+        cuda_malloc( (void **) &workspace->q_hat2, sizeof(rvec2) * total_cap, TRUE, "q_hat" );
+#endif
         break;
 
     case PIPECG_S:
@@ -640,6 +651,17 @@ void Cuda_Deallocate_Workspace_Part2( control_params *control, storage *workspac
             cuda_free( workspace->p, "p" );
             cuda_free( workspace->r_hat, "r_hat" );
             cuda_free( workspace->q_hat, "q_hat" );
+#if defined(DUAL_SOLVER)
+            cuda_free( workspace->y2, "y2" );
+            cuda_free( workspace->g2, "g2" );
+            cuda_free( workspace->z2, "z2" );
+            cuda_free( workspace->r2, "r2" );
+            cuda_free( workspace->d2, "d2" );
+            cuda_free( workspace->q2, "q2" );
+            cuda_free( workspace->p2, "p2" );
+            cuda_free( workspace->r_hat2, "r_hat2" );
+            cuda_free( workspace->q_hat2, "q_hat2" );
+#endif
             break;
 
         case PIPECG_S:

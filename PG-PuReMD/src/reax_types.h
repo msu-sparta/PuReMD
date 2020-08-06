@@ -2127,18 +2127,28 @@ struct storage
     real *u;
     real *w;
 
-    /* dual-CG storage */
-    rvec2 *d2;
-    rvec2 *p2;
-    rvec2 *q2;
-    rvec2 *r2;
+    /* dual GMRES, dual BiCGStab storage */
+    rvec2 *g2;
+    rvec2 *y2;
 
-    /* dual-PIPECG storage */
+    /* dual GMRES, dual BiCGStab, dual PIPECG, dual PIPECR storage */
+    rvec2 *z2;
+
+    /* dual CG, dual BiCGStab, dual PIPECG, dual PIPECR storage */
+    rvec2 *r2;
+    rvec2 *d2;
+    rvec2 *q2;
+    rvec2 *p2;
+
+    /* dual BiCGStab storage */
+    rvec2 *r_hat2;
+    rvec2 *q_hat2;
+
+    /* dual PIPECG, dual PIPECR storage */
     rvec2 *m2;
     rvec2 *n2;
     rvec2 *u2;
     rvec2 *w2;
-    rvec2 *z2;
 
     /* Taper */
     real Tap[8];

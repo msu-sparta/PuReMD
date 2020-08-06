@@ -623,9 +623,9 @@ void QEq( reax_system const * const system, control_params const * const control
 
     case CG_S:
 #if defined(DUAL_SOLVER)
-        iters = Cuda_dual_CG( system, control, data, workspace, &workspace->d_workspace->H,
-                workspace->d_workspace->b, control->cm_solver_q_err, workspace->d_workspace->x, mpi_data,
-                out_control->log );
+        iters = Cuda_dual_CG( system, control, data, workspace,
+                &workspace->d_workspace->H, workspace->d_workspace->b,
+                control->cm_solver_q_err, workspace->d_workspace->x, mpi_data );
 #else
         iters = Cuda_CG( system, control, data, workspace, &workspace->d_workspace->H,
                 workspace->d_workspace->b_s, control->cm_solver_q_err, workspace->d_workspace->s, mpi_data );
@@ -639,11 +639,9 @@ void QEq( reax_system const * const system, control_params const * const control
 
     case BiCGStab_S:
 #if defined(DUAL_SOLVER)
-        fprintf( stderr, "[ERROR] Dual BiCGStab solver for QEq not yet implemented. Terminating...\n" );
-        exit( INVALID_INPUT );
-//        iters = Cuda_dual_BiCGStab( system, control, data, workspace, &workspace->d_workspace->H,
-//                workspace->d_workspace->b, control->cm_solver_q_err, workspace->d_workspace->x, mpi_data,
-//                out_control->log );
+        iters = Cuda_dual_BiCGStab( system, control, data, workspace,
+                &workspace->d_workspace->H, workspace->d_workspace->b,
+                control->cm_solver_q_err, workspace->d_workspace->x, mpi_data );
 #else
         iters = Cuda_BiCGStab( system, control, data, workspace, &workspace->d_workspace->H,
                 workspace->d_workspace->b_s, control->cm_solver_q_err, workspace->d_workspace->s, mpi_data );

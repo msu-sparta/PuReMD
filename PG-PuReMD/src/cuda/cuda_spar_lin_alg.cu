@@ -176,6 +176,67 @@ CUDA_GLOBAL void k_sparse_matvec_half_csr( int *row_ptr_start,
 
 
 /* sparse matrix, dense vector multiplication Ax = b,
+ * where warps of 32 threads collaborate to multiply each row
+ *
+ * A: symmetric (upper triangular portion only stored) matrix,
+ *    stored in CSR format
+ * x: dense vector, size equal to num. columns in A
+ * b (output): dense vector, size equal to num. columns in A
+ * N: number of rows in A */
+CUDA_GLOBAL void k_sparse_matvec_half_opt_csr( int *row_ptr_start,
+        int *row_ptr_end, int *col_ind, real *vals,
+        const real * const x, real * const b, int N )
+{
+    int pj, si, ei, thread_id, warp_id, lane_id, offset;
+    real sum;
+
+    thread_id = blockDim.x * blockIdx.x + threadIdx.x;
+    warp_id = thread_id >> 5;
+
+    if ( warp_id >= N )
+    {
+        return;
+    }
+
+    lane_id = thread_id & 0x0000001F; 
+    si = row_ptr_start[warp_id];
+    ei = row_ptr_end[warp_id];
+
+    /* A symmetric, upper triangular portion stored
+     * => diagonal only contributes once */
+    if ( lane_id == 0 )
+    {
+        sum = vals[si] * x[warp_id];
+    }
+    else
+    {
+        sum = 0.0;
+    }
+
+    /* partial sums per thread */
+    for ( pj = si + lane_id + 1; pj < ei; pj += warpSize )
+    {
+        sum += vals[pj] * x[col_ind[pj]];
+        /* symmetric contribution to row j */
+        atomicAdd( (double *) &b[col_ind[pj]], (double) (vals[pj] * x[warp_id]) );
+    }
+
+    /* warp-level reduction of partial sums
+     * using registers within a warp */
+    for ( offset = warpSize >> 1; offset > 0; offset >>= 1 )
+    {
+        sum += __shfl_down_sync( FULL_MASK, sum, offset );
+    }
+
+    /* local contribution to row i for this warp */
+    if ( lane_id == 0 )
+    {
+        atomicAdd( (double *) &b[warp_id], (double) sum );
+    }
+}
+
+
+/* sparse matrix, dense vector multiplication Ax = b,
  * where one GPU thread multiplies a row
  *
  * A: symmetric matrix,
@@ -213,8 +274,7 @@ CUDA_GLOBAL void k_sparse_matvec_full_csr( int *row_ptr_start,
 
 
 /* sparse matrix, dense vector multiplication Ax = b,
- * where warps of 32 threads
- * collaborate to multiply each row
+ * where warps of 32 threads collaborate to multiply each row
  *
  * A: symmetric matrix,
  *    stored in CSR format
@@ -225,8 +285,7 @@ CUDA_GLOBAL void k_sparse_matvec_full_opt_csr( int *row_ptr_start,
         int *row_ptr_end, int *col_ind, real *vals,
         const real * const x, real * const b, int n )
 {
-    int pj, thread_id, warp_id, lane_id, offset;
-    int si, ei;
+    int pj, si, ei, thread_id, warp_id, lane_id, offset;
     real sum;
 
     thread_id = blockDim.x * blockIdx.x + threadIdx.x;
@@ -307,6 +366,73 @@ CUDA_GLOBAL void k_dual_sparse_matvec_half_csr( int *row_ptr_start,
     /* local contribution to row i for this thread */
     atomicAdd( (double *) &b[i][0], (double) sum[0] );
     atomicAdd( (double *) &b[i][1], (double) sum[1] );
+}
+
+
+/* sparse matrix, dense vector multiplication Ax = b,
+ * where warps of 32 threads collaborate to multiply each row
+ *
+ * A: symmetric (upper triangular portion only stored) matrix,
+ *    stored in CSR format
+ * X: 2 dense vectors, size equal to num. columns in A
+ * B (output): 2 dense vectors, size equal to num. columns in A
+ * N: number of rows in A */
+CUDA_GLOBAL void k_dual_sparse_matvec_half_opt_csr( int *row_ptr_start,
+        int *row_ptr_end, int *col_ind, real *vals,
+        const rvec2 * const x, rvec2 * const b, int N )
+{
+    int pj, si, ei, thread_id, warp_id, lane_id, offset;
+    rvec2 sum;
+
+    thread_id = blockDim.x * blockIdx.x + threadIdx.x;
+    warp_id = thread_id >> 5;
+
+    if ( warp_id >= N )
+    {
+        return;
+    }
+
+    lane_id = thread_id & 0x0000001F; 
+    si = row_ptr_start[warp_id];
+    ei = row_ptr_end[warp_id];
+
+    /* A symmetric, upper triangular portion stored
+     * => diagonal only contributes once */
+    if ( lane_id == 0 )
+    {
+        sum[0] = vals[si] * x[warp_id][0];
+        sum[1] = vals[si] * x[warp_id][1];
+    }
+    else
+    {
+        sum[0] = 0.0;
+        sum[1] = 0.0;
+    }
+
+    /* partial sums per thread */
+    for ( pj = si + lane_id + 1; pj < ei; pj += warpSize )
+    {
+        sum[0] += vals[pj] * x[col_ind[pj]][0];
+        sum[1] += vals[pj] * x[col_ind[pj]][1];
+        /* symmetric contribution to row j */
+        atomicAdd( (double *) &b[col_ind[pj]][0], (double) (vals[pj] * x[warp_id][0]) );
+        atomicAdd( (double *) &b[col_ind[pj]][1], (double) (vals[pj] * x[warp_id][1]) );
+    }
+
+    /* warp-level reduction of partial sums
+     * using registers within a warp */
+    for ( offset = warpSize >> 1; offset > 0; offset >>= 1 )
+    {
+        sum[0] += __shfl_down_sync( FULL_MASK, sum[0], offset );
+        sum[1] += __shfl_down_sync( FULL_MASK, sum[1], offset );
+    }
+
+    /* local contribution to row i for this warp */
+    if ( lane_id == 0 )
+    {
+        atomicAdd( (double *) &b[warp_id][0], (double) sum[0] );
+        atomicAdd( (double *) &b[warp_id][1], (double) sum[1] );
+    }
 }
 
 
@@ -487,19 +613,16 @@ static void Dual_Sparse_MatVec_local( control_params const * const control,
         cuda_memset( b, 0, sizeof(rvec2) * n, "Dual_Sparse_MatVec_local::b" );
 
         /* 1 thread per row implementation */
-        k_dual_sparse_matvec_half_csr <<< control->blocks, control->block_size >>>
-            ( A->start, A->end, A->j, A->val, x, b, A->n );
+//        k_dual_sparse_matvec_half_csr <<< control->blocks, control->block_size >>>
+//            ( A->start, A->end, A->j, A->val, x, b, A->n );
 
-        //TODO: implement half-format dual SpMV
-//        blocks = (A->n * 32) / DEF_BLOCK_SIZE
-//            + ((A->n * 32) % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+        blocks = A->n * 32 / DEF_BLOCK_SIZE
+            + (A->n * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
         
-        /* multiple threads per row implementation,
-         * with shared memory to accumulate partial row sums */
-//        k_dual_sparse_matvec_half_opt_csr <<< blocks, DEF_BLOCK_SIZE >>>
-//             ( A->start, A->end, A->j, A->val, x, b, A->n );
-        cudaDeviceSynchronize( );
-        cudaCheckError( );
+        /* 32 threads per row implementation
+         * using registers to accumulate partial row sums */
+        k_dual_sparse_matvec_half_opt_csr <<< blocks, DEF_BLOCK_SIZE >>>
+             ( A->start, A->end, A->j, A->val, x, b, A->n );
     }
     else if ( A->format == SYM_FULL_MATRIX )
     {
@@ -514,9 +637,9 @@ static void Dual_Sparse_MatVec_local( control_params const * const control,
          * using registers to accumulate partial row sums */
         k_dual_sparse_matvec_full_opt_csr <<< blocks, DEF_BLOCK_SIZE >>>
                 ( A->start, A->end, A->j, A->val, x, b, A->n );
-        cudaDeviceSynchronize( );
-        cudaCheckError( );
     }
+    cudaDeviceSynchronize( );
+    cudaCheckError( );
 }
 
 
@@ -670,16 +793,16 @@ static void Sparse_MatVec_local( control_params const * const control,
         cuda_memset( b, 0, sizeof(real) * n, "Sparse_MatVec_local::b" );
 
         /* 1 thread per row implementation */
-        k_sparse_matvec_half_csr <<< control->blocks, control->block_size >>>
-            ( A->start, A->end, A->j, A->val, x, b, A->n );
+//        k_sparse_matvec_half_csr <<< control->blocks, control->block_size >>>
+//            ( A->start, A->end, A->j, A->val, x, b, A->n );
 
-//        blocks = (A->n * 32 / DEF_BLOCK_SIZE)
-//            + ((A->n * 32 % DEF_BLOCK_SIZE) == 0 ? 0 : 1);
+        blocks = (A->n * 32 / DEF_BLOCK_SIZE)
+            + (A->n * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
-        /* 32 threads per row implementation,
-         * with shared memory to accumulate partial row sums */
-//        k_sparse_matvec_half_opt_csr <<< blocks, DEF_BLOCK_SIZE >>>
-//             ( A->start, A->end, A->j, A->val, x, b, A->n );
+        /* 32 threads per row implementation
+         * using registers to accumulate partial row sums */
+        k_sparse_matvec_half_opt_csr <<< blocks, DEF_BLOCK_SIZE >>>
+             ( A->start, A->end, A->j, A->val, x, b, A->n );
     }
     else if ( A->format == SYM_FULL_MATRIX )
     {
@@ -790,11 +913,13 @@ static void Sparse_MatVec( reax_system const * const system,
 }
 
 
+/* Preconditioned Conjugate Gradient Method
+ * Note: this version is for the dual QEq solver */
 int Cuda_dual_CG( reax_system const * const system,
         control_params const * const control,
         simulation_data * const data, storage * const workspace,
         sparse_matrix const * const H, rvec2 const * const b, real tol,
-        rvec2 * const x, mpi_datatypes * const mpi_data, FILE *fout )
+        rvec2 * const x, mpi_datatypes * const mpi_data )
 {
     unsigned int i, matvecs;
     int ret;
@@ -1079,14 +1204,312 @@ int Cuda_CG( reax_system const * const system, control_params const * const cont
 #endif
     }
 
-    if ( i >= control->cm_solver_max_iters
-            && system->my_rank == MASTER_NODE )
+    if ( i >= control->cm_solver_max_iters )
     {
-        fprintf( stderr, "[WARNING] CG convergence failed (%d iters)\n", i );
+        fprintf( stderr, "[WARNING] p%d: CG convergence failed (%d iters)\n",
+                system->my_rank, i );
         fprintf( stderr, "    [INFO] Rel. residual error: %e\n", r_norm / b_norm );
     }
 
     return i;
+}
+
+
+/* Bi-conjugate gradient stabalized method with left preconditioning for
+ * solving nonsymmetric linear systems
+ * Note: this version is for the dual QEq solver
+ *
+ * system: 
+ * workspace: struct containing storage for workspace for the linear solver
+ * control: struct containing parameters governing the simulation and numeric methods
+ * data: struct containing simulation data (e.g., atom info)
+ * H: sparse, symmetric matrix in CSR format
+ * b: right-hand side of the linear system
+ * tol: tolerence compared against the relative residual for determining convergence
+ * x: inital guess
+ * mpi_data: 
+ *
+ * Reference: Netlib (in MATLAB)
+ *  http://www.netlib.org/templates/matlab/bicgstab.m
+ * */
+int Cuda_dual_BiCGStab( reax_system const * const system, control_params const * const control,
+        simulation_data * const data, storage * const workspace,
+        sparse_matrix const * const H, rvec2 const * const b, real tol,
+        rvec2 * const x, mpi_datatypes * const mpi_data )
+{
+    unsigned int i, matvecs;
+    int ret;
+    rvec2 tmp, alpha, beta, omega, sigma, rho, rho_old, r_norm, b_norm;
+    real redux[4];
+#if defined(LOG_PERFORMANCE)
+    real time;
+
+    time = Get_Time( );
+#endif
+
+    Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
+            H, x, system->N, workspace->d_workspace->d2 );
+
+    Vector_Sum_rvec2( workspace->d_workspace->r2, 1.0, 1.0, b,
+            -1.0, -1.0, workspace->d_workspace->d2, system->n );
+    Dot_local_rvec2( control, workspace, b,
+            b, system->n, &redux[0], &redux[1] );
+    Dot_local_rvec2( control, workspace, workspace->d_workspace->r2,
+            workspace->d_workspace->r2, system->n, &redux[2], &redux[3] );
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
+    ret = MPI_Allreduce( MPI_IN_PLACE, redux, 4, MPI_DOUBLE,
+            MPI_SUM, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
+
+    b_norm[0] = SQRT( redux[0] );
+    b_norm[1] = SQRT( redux[1] );
+    r_norm[0] = SQRT( redux[2] );
+    r_norm[1] = SQRT( redux[3] );
+    if ( b_norm[0] == 0.0 )
+    {
+        b_norm[0] = 1.0;
+    }
+    if ( b_norm[1] == 0.0 )
+    {
+        b_norm[1] = 1.0;
+    }
+    Vector_Copy_rvec2( workspace->d_workspace->r_hat2,
+            workspace->d_workspace->r2, system->n );
+    omega[0] = 1.0;
+    omega[1] = 1.0;
+    rho[0] = 1.0;
+    rho[1] = 1.0;
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
+    for ( i = 0; i < control->cm_solver_max_iters; ++i )
+    {
+        if ( r_norm[0] / b_norm[0] <= tol || r_norm[1] / b_norm[1] <= tol )
+        {
+            break;
+        }
+
+        Dot_local_rvec2( control, workspace, workspace->d_workspace->r_hat2,
+                workspace->d_workspace->r2, system->n, &redux[0], &redux[1] );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
+        ret = MPI_Allreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE,
+                MPI_SUM, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
+
+        rho[0] = redux[0];
+        rho[1] = redux[1];
+        if ( rho[0] == 0.0 || rho[1] == 0.0 )
+        {
+            break;
+        }
+        if ( i > 0 )
+        {
+            beta[0] = (rho[0] / rho_old[0]) * (alpha[0] / omega[0]);
+            beta[1] = (rho[1] / rho_old[1]) * (alpha[1] / omega[1]);
+            Vector_Sum_rvec2( workspace->d_workspace->q2,
+                    1.0, 1.0, workspace->d_workspace->p2,
+                    -1.0 * omega[0], -1.0 * omega[1], workspace->d_workspace->z2, system->n );
+            Vector_Sum_rvec2( workspace->d_workspace->p2,
+                    1.0, 1.0, workspace->d_workspace->r2,
+                    beta[0], beta[1], workspace->d_workspace->q2, system->n );
+        }
+        else
+        {
+            Vector_Copy_rvec2( workspace->d_workspace->p2,
+                    workspace->d_workspace->r2, system->n );
+        }
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
+        dual_jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->p2,
+                workspace->d_workspace->d2, system->n );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
+
+        Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
+                H, workspace->d_workspace->d2, system->N, workspace->d_workspace->z2 );
+
+        Dot_local_rvec2( control, workspace, workspace->d_workspace->r_hat2,
+                workspace->d_workspace->z2, system->n, &redux[0], &redux[1] );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
+        ret = MPI_Allreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE,
+                MPI_SUM, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
+
+        tmp[0] = redux[0];
+        tmp[1] = redux[1];
+        alpha[0] = rho[0] / tmp[0];
+        alpha[1] = rho[1] / tmp[1];
+        Vector_Sum_rvec2( workspace->d_workspace->q2,
+                1.0, 1.0, workspace->d_workspace->r2,
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->z2, system->n );
+        Dot_local_rvec2( control, workspace, workspace->d_workspace->q2,
+                workspace->d_workspace->q2, system->n, &redux[0], &redux[1] );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
+        ret = MPI_Allreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE,
+                MPI_SUM, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
+
+        tmp[0] = redux[0];
+        tmp[1] = redux[1];
+        /* early convergence check */
+        if ( tmp[0] < tol || tmp[1] < tol )
+        {
+            Vector_Add_rvec2( x, alpha[0], alpha[1], workspace->d_workspace->d2, system->n );
+            break;
+        }
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
+        dual_jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->q2,
+                workspace->d_workspace->q_hat2, system->n );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
+#endif
+
+        Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
+                H, workspace->d_workspace->q_hat2, system->N, workspace->d_workspace->y2 );
+
+        Dot_local_rvec2( control, workspace, workspace->d_workspace->y2,
+                workspace->d_workspace->q2, system->n, &redux[0], &redux[1] );
+        Dot_local_rvec2( control, workspace, workspace->d_workspace->y2,
+                workspace->d_workspace->y2, system->n, &redux[2], &redux[3] );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
+        ret = MPI_Allreduce( MPI_IN_PLACE, redux, 4, MPI_DOUBLE,
+                MPI_SUM, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
+
+        sigma[0] = redux[0];
+        sigma[1] = redux[1];
+        tmp[0] = redux[2];
+        tmp[1] = redux[3];
+        omega[0] = sigma[0] / tmp[0];
+        omega[1] = sigma[1] / tmp[1];
+        Vector_Sum_rvec2( workspace->d_workspace->g2,
+                alpha[0], alpha[1], workspace->d_workspace->d2,
+                omega[0], omega[1], workspace->d_workspace->q_hat2, system->n );
+        Vector_Add_rvec2( x, 1.0, 1.0, workspace->d_workspace->g2, system->n );
+        Vector_Sum_rvec2( workspace->d_workspace->r2,
+                1.0, 1.0, workspace->d_workspace->q2,
+                -1.0 * omega[0], -1.0 * omega[1], workspace->d_workspace->y2, system->n );
+        Dot_local_rvec2( control, workspace, workspace->d_workspace->r2,
+                workspace->d_workspace->r2, system->n, &redux[0], &redux[1] );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
+        ret = MPI_Allreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE,
+                MPI_SUM, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
+
+        r_norm[0] = SQRT( redux[0] );
+        r_norm[1] = SQRT( redux[1] );
+        if ( omega[0] == 0.0 || omega[1] == 0.0 )
+        {
+            break;
+        }
+        rho_old[0] = rho[0];
+        rho_old[1] = rho[1];
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+    }
+
+    if ( r_norm[0] / b_norm[0] <= tol
+            && r_norm[1] / b_norm[1] > tol )
+    {
+        Vector_Copy_From_rvec2( workspace->d_workspace->t,
+                workspace->d_workspace->x, 1, system->n );
+
+        matvecs = Cuda_BiCGStab( system, control, data, workspace, H,
+                workspace->d_workspace->b_t, tol,
+                workspace->d_workspace->t, mpi_data );
+
+        Vector_Copy_To_rvec2( workspace->d_workspace->x,
+                workspace->d_workspace->t, 1, system->n );
+    }
+    else if ( r_norm[1] / b_norm[1] <= tol
+            && r_norm[0] / b_norm[0] > tol )
+    {
+        Vector_Copy_From_rvec2( workspace->d_workspace->s,
+                workspace->d_workspace->x, 0, system->n );
+
+        matvecs = Cuda_BiCGStab( system, control, data, workspace, H,
+                workspace->d_workspace->b_s, tol,
+                workspace->d_workspace->s, mpi_data );
+
+        Vector_Copy_To_rvec2( workspace->d_workspace->x,
+                workspace->d_workspace->s, 0, system->n );
+    }
+    else
+    {
+        matvecs = 0;
+    }
+
+    if ( i >= control->cm_solver_max_iters )
+    {
+        fprintf( stderr, "[WARNING] p%d: dual BiCGStab convergence failed (%d iters)\n",
+                system->my_rank, i );
+        fprintf( stderr, "    [INFO] Rel. residual error for s solve: %e\n", r_norm[0] / b_norm[0] );
+        fprintf( stderr, "    [INFO] Rel. residual error for t solve: %e\n", r_norm[1] / b_norm[1] );
+    }
+
+    return (i + 1) + matvecs;
 }
 
 
@@ -1320,10 +1743,10 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
 #endif
     }
 
-    if ( i >= control->cm_solver_max_iters
-            && system->my_rank == MASTER_NODE )
+    if ( i >= control->cm_solver_max_iters )
     {
-        fprintf( stderr, "[WARNING] CG convergence failed (%d iters)\n", i );
+        fprintf( stderr, "[WARNING] p%d: BiCGStab convergence failed (%d iters)\n",
+                system->my_rank, i );
         fprintf( stderr, "    [INFO] Rel. residual error: %e\n", r_norm / b_norm );
     }
 

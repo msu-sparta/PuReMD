@@ -11,6 +11,9 @@ void Vector_MakeZero( real * const, unsigned int );
 void Vector_Copy( real * const, real const * const,
         unsigned int );
 
+void Vector_Copy_rvec2( rvec2 * const, rvec2 const * const,
+        unsigned int );
+
 void Vector_Copy_From_rvec2( real * const, rvec2 const * const,
         int, int );
 

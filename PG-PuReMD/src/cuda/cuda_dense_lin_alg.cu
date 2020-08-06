@@ -52,6 +52,31 @@ CUDA_GLOBAL void k_vector_copy( real * const dest, real const * const v,
 }
 
 
+/* copy the entries from one vector to another
+ *
+ * inputs:
+ *  v: dense vector to copy
+ *  k: number of entries in v
+ * output:
+ *  dest: vector copied into
+ */
+CUDA_GLOBAL void k_vector_copy_rvec2( rvec2 * const dest, rvec2 const * const v,
+        unsigned int k )
+{
+    unsigned int i;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= k )
+    {
+        return;
+    }
+
+    dest[i][0] = v[i][0];
+    dest[i][1] = v[i][1];
+}
+
+
 CUDA_GLOBAL void k_vector_copy_from_rvec2( real * const dst, rvec2 const * const src,
         int index, int n )
 {
@@ -317,6 +342,29 @@ void Vector_Copy( real * const dest, real const * const v,
         + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
     k_vector_copy <<< blocks, DEF_BLOCK_SIZE >>>
+        ( dest, v, k );
+    cudaDeviceSynchronize( );
+    cudaCheckError( );
+}
+
+
+/* copy the entries from one vector to another
+ *
+ * inputs:
+ *  v: dense vector to copy
+ *  k: number of entries in v
+ * output:
+ *  dest: vector copied into
+ */
+void Vector_Copy_rvec2( rvec2 * const dest, rvec2 const * const v,
+        unsigned int k )
+{
+    int blocks;
+
+    blocks = (k / DEF_BLOCK_SIZE)
+        + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+
+    k_vector_copy_rvec2 <<< blocks, DEF_BLOCK_SIZE >>>
         ( dest, v, k );
     cudaDeviceSynchronize( );
     cudaCheckError( );
