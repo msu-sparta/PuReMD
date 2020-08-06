@@ -259,6 +259,163 @@ CUDA_GLOBAL void k_init_distance( reax_atom *my_atoms, reax_list far_nbr_list, i
 }
 
 
+/* Compute the charge matrix entries and store the matrix in half format
+ * using the far neighbors list (stored in full format) and according to
+ * the full shell communication method */
+CUDA_GLOBAL void k_init_cm_half_fs( reax_atom *my_atoms, single_body_parameters *sbp, 
+        two_body_parameters *tbp, storage workspace, control_params *control, 
+        reax_list far_nbr_list, int num_atom_types,
+        int *max_cm_entries, int *realloc_cm_entries )
+{
+    int i, j, pj;
+    int start_i, end_i;
+    int type_i, type_j;
+    int cm_top;
+    int num_cm_entries;
+    real r_ij;
+    single_body_parameters *sbp_i;
+    two_body_parameters *twbp;
+    reax_atom *atom_i, *atom_j;
+    sparse_matrix *H;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= workspace.H.n_max )
+    {
+        return;
+    }
+
+    H = &workspace.H;
+    cm_top = H->start[i];
+
+    if ( i < H->n )
+    {
+        atom_i = &my_atoms[i];
+        type_i = atom_i->type;
+        start_i = Start_Index( i, &far_nbr_list );
+        end_i = End_Index( i, &far_nbr_list );
+        sbp_i = &sbp[type_i];
+
+        /* diagonal entry in the matrix */
+        H->j[cm_top] = i;
+        H->val[cm_top] = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap, control,
+                i, i, 0.0, 0.0, DIAGONAL );
+        ++cm_top;
+
+        for ( pj = start_i; pj < end_i; ++pj )
+        {
+            if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut )
+            {
+                j = far_nbr_list.far_nbr_list.nbr[pj];
+                atom_j = &my_atoms[j];
+                type_j = atom_j->type;
+
+                /* if j is a local OR ghost atom in the upper triangular region of the matrix */
+                if ( atom_i->orig_id < atom_j->orig_id )
+                {
+                    twbp = &tbp[ index_tbp(type_i, type_j, num_atom_types) ];
+                    r_ij = far_nbr_list.far_nbr_list.d[pj];
+
+                    H->j[cm_top] = j;
+                    H->val[cm_top] = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap,
+                            control, i, H->j[cm_top], r_ij, twbp->gamma, OFF_DIAGONAL );
+                    ++cm_top;
+                }
+            }
+        }
+    }
+
+    __syncthreads( );
+
+    H->end[i] = cm_top;
+    num_cm_entries = cm_top - H->start[i];
+
+    /* reallocation checks */
+    if ( num_cm_entries > max_cm_entries[i] )
+    {
+        *realloc_cm_entries = TRUE;
+    }
+}
+
+
+/* Compute the tabulated charge matrix entries and store the matrix in half format
+ * using the far neighbors list (stored in full format) and according to
+ * the full shell communication method */
+CUDA_GLOBAL void k_init_cm_half_fs_tab( reax_atom *my_atoms, single_body_parameters *sbp, 
+        storage workspace, control_params *control, 
+        reax_list far_nbr_list, LR_lookup_table *t_LR, int num_atom_types,
+        int *max_cm_entries, int *realloc_cm_entries )
+{
+    int i, j, pj;
+    int start_i, end_i;
+    int type_i, type_j;
+    int cm_top;
+    int num_cm_entries;
+    real r_ij;
+    single_body_parameters *sbp_i;
+    reax_atom *atom_i, *atom_j;
+    sparse_matrix *H;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= workspace.H.n_max )
+    {
+        return;
+    }
+
+    H = &workspace.H;
+    cm_top = H->start[i];
+
+    if ( i < H->n )
+    {
+        atom_i = &my_atoms[i];
+        type_i = atom_i->type;
+        start_i = Start_Index( i, &far_nbr_list );
+        end_i = End_Index( i, &far_nbr_list );
+        sbp_i = &sbp[type_i];
+
+        /* diagonal entry in the matrix */
+        H->j[cm_top] = i;
+        H->val[cm_top] = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap, control,
+                i, i, 0.0, 0.0, DIAGONAL );
+        ++cm_top;
+
+        for ( pj = start_i; pj < end_i; ++pj )
+        {
+            j = far_nbr_list.far_nbr_list.nbr[pj];
+
+            if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut )
+            {
+                atom_j = &my_atoms[j];
+                type_j = atom_j->type;
+
+                /* if j is a local OR ghost atom in the upper triangular region of the matrix */
+                if ( atom_i->orig_id < atom_j->orig_id )
+                {
+                    r_ij = far_nbr_list.far_nbr_list.d[pj];
+
+                    H->j[cm_top] = j;
+                    H->val[cm_top] = Init_Charge_Matrix_Entry_Tab( t_LR, r_ij,
+                            type_i, type_j, num_atom_types );
+                    ++cm_top;
+                }
+            }
+        }
+    }
+
+    __syncthreads( );
+
+    H->end[i] = cm_top;
+    num_cm_entries = cm_top - H->start[i];
+
+    /* reallocation checks */
+    if ( num_cm_entries > max_cm_entries[i] )
+    {
+        *realloc_cm_entries = TRUE;
+    }
+}
+
+
 /* Compute the charge matrix entries and store the matrix in full format
  * using the far neighbors list (stored in full format) and according to
  * the full shell communication method */
@@ -302,7 +459,6 @@ CUDA_GLOBAL void k_init_cm_full_fs( reax_atom *my_atoms, single_body_parameters 
                 i, i, 0.0, 0.0, DIAGONAL );
         ++cm_top;
 
-        /* update i-j distance - check if j is within cutoff */
         for ( pj = start_i; pj < end_i; ++pj )
         {
             j = far_nbr_list.far_nbr_list.nbr[pj];
@@ -340,7 +496,7 @@ CUDA_GLOBAL void k_init_cm_full_fs( reax_atom *my_atoms, single_body_parameters 
  * using the far neighbors list (stored in full format) and according to
  * the full shell communication method */
 CUDA_GLOBAL void k_init_cm_full_fs_tab( reax_atom *my_atoms, single_body_parameters *sbp, 
-        two_body_parameters *tbp, storage workspace, control_params *control, 
+        storage workspace, control_params *control, 
         reax_list far_nbr_list, LR_lookup_table *t_LR, int num_atom_types,
         int *max_cm_entries, int *realloc_cm_entries )
 {
@@ -378,7 +534,6 @@ CUDA_GLOBAL void k_init_cm_full_fs_tab( reax_atom *my_atoms, single_body_paramet
                 i, i, 0.0, 0.0, DIAGONAL );
         ++cm_top;
 
-        /* update i-j distance - check if j is within cutoff */
         for ( pj = start_i; pj < end_i; ++pj )
         {
             j = far_nbr_list.far_nbr_list.nbr[pj];
@@ -605,6 +760,50 @@ CUDA_GLOBAL void k_init_bonds( reax_atom *my_atoms, single_body_parameters *sbp,
     {
         *realloc_hbonds = TRUE;
     }
+}
+
+
+CUDA_GLOBAL void k_estimate_storages_cm_half( reax_atom *my_atoms,
+        control_params *control, reax_list far_nbr_list, int cm_n, int cm_n_max,
+        int *cm_entries, int *max_cm_entries )
+{
+    int i, j, pj; 
+    int start_i, end_i;
+    int num_cm_entries;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= cm_n_max )
+    {
+        return;
+    }
+
+    num_cm_entries = 0;
+
+    if ( i < cm_n )
+    {
+        start_i = Start_Index( i, &far_nbr_list );
+        end_i = End_Index( i, &far_nbr_list );
+
+        /* diagonal entry */
+        ++num_cm_entries;
+
+        for ( pj = start_i; pj < end_i; ++pj )
+        { 
+            j = far_nbr_list.far_nbr_list.nbr[pj];
+
+            if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut
+                    && (j < cm_n || my_atoms[i].orig_id < my_atoms[j].orig_id) )
+            {
+                ++num_cm_entries;
+            }
+        }
+    }
+
+    __syncthreads( );
+
+    cm_entries[i] = num_cm_entries;
+    max_cm_entries[i] = MAX( (int) CEIL(num_cm_entries * SAFE_ZONE), MIN_CM_ENTRIES );
 }
 
 
@@ -1198,11 +1397,11 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
 
         if ( workspace->d_workspace->H.format == SYM_HALF_MATRIX )
         {
-//            k_estimate_storages_cm_half <<< blocks, DEF_BLOCK_SIZE >>>
-//                ( (control_params *) control->d_control_params,
-//                  *(lists[FAR_NBRS]), workspace->d_workspace->H.n,
-//                  workspace->d_workspace->H.n_max,
-//                  system->d_cm_entries, system->d_max_cm_entries );
+            k_estimate_storages_cm_half <<< blocks, DEF_BLOCK_SIZE >>>
+                ( system->d_my_atoms, (control_params *) control->d_control_params,
+                  *(lists[FAR_NBRS]), workspace->d_workspace->H.n,
+                  workspace->d_workspace->H.n_max,
+                  system->d_cm_entries, system->d_max_cm_entries );
         }
         else
         {
@@ -1328,13 +1527,22 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
     {
         if ( workspace->d_workspace->H.format == SYM_HALF_MATRIX )
         {
-//            k_init_cm_half_fs <<< blocks, DEF_BLOCK_SIZE >>>
-//                ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
-//                  *(workspace->d_workspace), (control_params *) control->d_control_params,
-//                  *(lists[FAR_NBRS]), workspace->d_LR, system->n, system->N, system->reax_param.num_atom_types,
-//                  system->d_max_cm_entries, system->d_realloc_cm_entries );
-//            cudaDeviceSynchronize( );
-//            cudaCheckError( );
+            if ( control->tabulate <= 0 )
+            {
+                k_init_cm_half_fs <<< blocks, DEF_BLOCK_SIZE >>>
+                    ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
+                      *(workspace->d_workspace), (control_params *) control->d_control_params,
+                      *(lists[FAR_NBRS]), system->reax_param.num_atom_types,
+                      system->d_max_cm_entries, system->d_realloc_cm_entries );
+            }
+            else
+            {
+                k_init_cm_half_fs_tab <<< blocks, DEF_BLOCK_SIZE >>>
+                    ( system->d_my_atoms, system->reax_param.d_sbp,
+                      *(workspace->d_workspace), (control_params *) control->d_control_params,
+                      *(lists[FAR_NBRS]), workspace->d_LR, system->reax_param.num_atom_types,
+                      system->d_max_cm_entries, system->d_realloc_cm_entries );
+            }
         }
         else
         {
@@ -1349,14 +1557,14 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
             else
             {
                 k_init_cm_full_fs_tab <<< blocks, DEF_BLOCK_SIZE >>>
-                    ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
+                    ( system->d_my_atoms, system->reax_param.d_sbp,
                       *(workspace->d_workspace), (control_params *) control->d_control_params,
                       *(lists[FAR_NBRS]), workspace->d_LR, system->reax_param.num_atom_types,
                       system->d_max_cm_entries, system->d_realloc_cm_entries );
             }
-            cudaDeviceSynchronize( );
-            cudaCheckError( );
         }
+        cudaDeviceSynchronize( );
+        cudaCheckError( );
     }
 
 #if defined(LOG_PERFORMANCE)

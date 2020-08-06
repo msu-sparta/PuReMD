@@ -137,7 +137,7 @@ CUDA_GLOBAL void k_jacobi_apply( real const * const Hdia_inv, real const * const
 /* sparse matrix, dense vector multiplication Ax = b,
  * where one GPU thread multiplies a row
  *
- * A: symmetric (lower triangular portion only stored), square matrix,
+ * A: symmetric (upper triangular portion only stored) matrix,
  *    stored in CSR format
  * x: dense vector, size equal to num. columns in A
  * b (output): dense vector, size equal to num. columns in A
@@ -158,27 +158,27 @@ CUDA_GLOBAL void k_sparse_matvec_half_csr( int *row_ptr_start,
 
     si = row_ptr_start[i];
     ei = row_ptr_end[i];
-    sum = 0.0;
 
-    for ( pj = si; pj < ei; ++pj )
+    /* A symmetric, upper triangular portion stored
+     * => diagonal only contributes once */
+    sum = vals[si] * x[i];
+
+    for ( pj = si + 1; pj < ei; ++pj )
     {
         sum += vals[pj] * x[col_ind[pj]];
-        /* symmetric contribution (A is symmetric, lower half stored) */
-        atomicAdd( (double*) &b[col_ind[pj]], (double) (vals[pj] * x[i]) );
+        /* symmetric contribution to row j */
+        atomicAdd( (double *) &b[col_ind[pj]], (double) (vals[pj] * x[i]) );
     }
 
-    /* diagonal entry */
-    sum += vals[ei] * x[i];
-
     /* local contribution to row i for this thread */
-    atomicAdd( (double*) &b[i], (double) sum );
+    atomicAdd( (double *) &b[i], (double) sum );
 }
 
 
 /* sparse matrix, dense vector multiplication Ax = b,
  * where one GPU thread multiplies a row
  *
- * A: symmetric (lower triangular portion only stored), square matrix,
+ * A: symmetric matrix,
  *    stored in CSR format
  * x: dense vector, size equal to num. columns in A
  * b (output): dense vector, size equal to num. columns in A
@@ -216,7 +216,7 @@ CUDA_GLOBAL void k_sparse_matvec_full_csr( int *row_ptr_start,
  * where warps of 32 threads
  * collaborate to multiply each row
  *
- * A: symmetric, full, square matrix,
+ * A: symmetric matrix,
  *    stored in CSR format
  * x: dense vector, size equal to num. columns in A
  * b (output): dense vector, size equal to num. columns in A
@@ -268,7 +268,7 @@ CUDA_GLOBAL void k_sparse_matvec_full_opt_csr( int *row_ptr_start,
 /* sparse matrix, dense vector multiplication Ax = b,
  * where one GPU thread multiplies a row
  *
- * A: symmetric (lower triangular portion only stored), square matrix,
+ * A: symmetric (upper triangular portion only stored) matrix,
  *    stored in CSR format
  * X: 2 dense vectors, size equal to num. columns in A
  * B (output): 2 dense vectors, size equal to num. columns in A
@@ -289,25 +289,24 @@ CUDA_GLOBAL void k_dual_sparse_matvec_half_csr( int *row_ptr_start,
 
     si = row_ptr_start[i];
     ei = row_ptr_end[i];
-    sum[0] = 0.0;
-    sum[1] = 0.0;
 
-    for ( pj = si; pj < ei; ++pj )
+    /* A symmetric, upper triangular portion stored
+     * => diagonal only contributes once */
+    sum[0] = vals[si] * x[i][0];
+    sum[1] = vals[si] * x[i][1];
+
+    for ( pj = si + 1; pj < ei; ++pj )
     {
         sum[0] += vals[pj] * x[col_ind[pj]][0];
         sum[1] += vals[pj] * x[col_ind[pj]][1];
-        /* symmetric contribution (A is symmetric, lower half stored) */
-        atomicAdd( (double*) &b[col_ind[pj]][0], (double) (vals[pj] * x[i][0]) );
-        atomicAdd( (double*) &b[col_ind[pj]][1], (double) (vals[pj] * x[i][1]) );
+        /* symmetric contribution to row j */
+        atomicAdd( (double *) &b[col_ind[pj]][0], (double) (vals[pj] * x[i][0]) );
+        atomicAdd( (double *) &b[col_ind[pj]][1], (double) (vals[pj] * x[i][1]) );
     }
 
-    /* diagonal entry */
-    sum[0] += vals[ei] * x[i][0];
-    sum[1] += vals[ei] * x[i][1];
-
     /* local contribution to row i for this thread */
-    atomicAdd( (double*) &b[i][0], (double) sum[0] );
-    atomicAdd( (double*) &b[i][1], (double) sum[1] );
+    atomicAdd( (double *) &b[i][0], (double) sum[0] );
+    atomicAdd( (double *) &b[i][1], (double) sum[1] );
 }
 
 
@@ -345,7 +344,7 @@ CUDA_GLOBAL void k_dual_sparse_matvec_full_csr( sparse_matrix A,
  * where warps of 32 threads
  * collaborate to multiply each row
  *
- * A: symmetric, full, square matrix,
+ * A: symmetric matrix,
  *    stored in CSR format
  * X: 2 dense vectors, size equal to num. columns in A
  * B (output): 2 dense vectors, size equal to num. columns in A
@@ -574,7 +573,7 @@ static void Dual_Sparse_MatVec_Comm_Part2( const reax_system * const system,
  * control:
  * data:
  * workspace: storage container for workspace structures
- * A: symmetric (lower triangular portion only stored), square matrix,
+ * A: symmetric matrix,
  *    stored in CSR format
  * X: dense vector, size equal to num. columns in A
  * n: number of rows in X
@@ -677,12 +676,10 @@ static void Sparse_MatVec_local( control_params const * const control,
 //        blocks = (A->n * 32 / DEF_BLOCK_SIZE)
 //            + ((A->n * 32 % DEF_BLOCK_SIZE) == 0 ? 0 : 1);
 
-        /* multiple threads per row implementation,
+        /* 32 threads per row implementation,
          * with shared memory to accumulate partial row sums */
 //        k_sparse_matvec_half_opt_csr <<< blocks, DEF_BLOCK_SIZE >>>
 //             ( A->start, A->end, A->j, A->val, x, b, A->n );
-        cudaDeviceSynchronize( );
-        cudaCheckError( );
     }
     else if ( A->format == SYM_FULL_MATRIX )
     {
@@ -693,13 +690,13 @@ static void Sparse_MatVec_local( control_params const * const control,
         blocks = ((A->n * 32) / DEF_BLOCK_SIZE)
             + (((A->n * 32) % DEF_BLOCK_SIZE) == 0 ? 0 : 1);
 
-        /* multiple threads per row implementation
+        /* 32 threads per row implementation
          * using registers to accumulate partial row sums */
         k_sparse_matvec_full_opt_csr <<< blocks, DEF_BLOCK_SIZE >>>
              ( A->start, A->end, A->j, A->val, x, b, A->n );
-        cudaDeviceSynchronize( );
-        cudaCheckError( );
     }
+    cudaDeviceSynchronize( );
+    cudaCheckError( );
 }
 
 
@@ -754,7 +751,7 @@ static void Sparse_MatVec_Comm_Part2( const reax_system * const system,
  * control:
  * data:
  * workspace: storage container for workspace structures
- * A: symmetric (lower triangular portion only stored), square matrix,
+ * A: symmetric matrix,
  *    stored in CSR format
  * x: dense vector
  * n: number of entries in x
@@ -1100,7 +1097,7 @@ int Cuda_CG( reax_system const * const system, control_params const * const cont
  * workspace: struct containing storage for workspace for the linear solver
  * control: struct containing parameters governing the simulation and numeric methods
  * data: struct containing simulation data (e.g., atom info)
- * H: sparse, symmetric matrix, lower half stored in CSR format
+ * H: sparse, symmetric matrix in CSR format
  * b: right-hand side of the linear system
  * tol: tolerence compared against the relative residual for determining convergence
  * x: inital guess

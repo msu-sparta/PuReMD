@@ -188,16 +188,16 @@ static inline real Init_Charge_Matrix_Entry( const reax_system * const system,
                 /* i == j: periodic self-interaction term
                  * i != j: general interaction term */
                 ret = ((i == j) ? 0.5 : 1.0) * Tap * EV_to_KCALpMOL / dr3gamij_3;
-            break;
+                break;
 
             case DIAGONAL:
                 ret = system->reax_param.sbp[system->my_atoms[i].type].eta;
-            break;
+                break;
 
             default:
                 fprintf( stderr, "[ERROR] Invalid matrix position. Terminating...\n" );
                 exit( INVALID_INPUT );
-            break;
+                break;
         }
         break;
 

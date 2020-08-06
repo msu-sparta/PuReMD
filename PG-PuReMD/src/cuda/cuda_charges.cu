@@ -622,7 +622,6 @@ void QEq( reax_system const * const system, control_params const * const control
         break;
 
     case CG_S:
-        workspace->d_workspace->H.format = SYM_FULL_MATRIX;
 #if defined(DUAL_SOLVER)
         iters = Cuda_dual_CG( system, control, data, workspace, &workspace->d_workspace->H,
                 workspace->d_workspace->b, control->cm_solver_q_err, workspace->d_workspace->x, mpi_data,
