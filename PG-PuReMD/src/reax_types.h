@@ -232,15 +232,6 @@
  * retries occur when memory allocation checks determine more memory is needed */
 #define MAX_RETRIES (5)
 
-/* NaN IEEE 754 representation for C99 in math.h
- * Note: function choice must match REAL typedef below */
-#if defined(NAN)
-  #define IS_NAN_REAL(a) (isnan(a))
-#else
-  #warning "No support for NaN"
-  #define IS_NAN_REAL(a) (0)
-#endif
-
 /**************** RESOURCE CONSTANTS **********************/
 #if defined(HAVE_CUDA)
   /* BLOCK SIZES for kernels */

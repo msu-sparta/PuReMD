@@ -295,6 +295,8 @@ int simulate( const void * const handle )
 
         Output_Results( system, control, data, lists, out_control, mpi_data );
 
+        Check_Energy( data );
+
         ++data->step;
         retries = 0;
         while ( data->step <= control->nsteps && retries < MAX_RETRIES )
@@ -326,15 +328,17 @@ int simulate( const void * const handle )
                 if ( out_control->restart_freq
                         && (data->step - data->prev_steps) % out_control->restart_freq == 0 )
                 {
-                    if( out_control->restart_format == WRITE_ASCII )
+                    if ( out_control->restart_format == WRITE_ASCII )
                     {
                         Write_Restart_File( system, control, data, out_control, mpi_data );
                     }
-                    else if( out_control->restart_format == WRITE_BINARY )
+                    else if ( out_control->restart_format == WRITE_BINARY )
                     {
                         Write_Binary_Restart_File( system, control, data, out_control, mpi_data );
                     }
                 }
+
+                Check_Energy( data );
 
                 ++data->step;
                 retries = 0;
@@ -395,7 +399,7 @@ int simulate( const void * const handle )
         {
             ret = SUCCESS;
 
-            if ( control->T_mode && retries == 0 )
+            if ( control->T_mode > 0 && retries == 0 )
             {
                 Temperature_Control( control, data );
             }

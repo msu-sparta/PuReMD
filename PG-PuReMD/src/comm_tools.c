@@ -573,7 +573,7 @@ static void Sort_Position_Updates( reax_system * const system, int start, int en
 
     for ( p = 2 * dim; p < 2 * dim + 2; ++p )
     {
-        out = (rvec*) out_bufs[p].out_atoms;
+        out = (rvec *) out_bufs[p].out_atoms;
 
         for ( i = 0; i < out_bufs[p].cnt; ++i )
         {
@@ -589,7 +589,7 @@ static void Unpack_Position_Updates( reax_system * const system, int end,
     int i;
     const int start = nbr->atoms_str;
     real dx;
-    rvec * const src = (rvec*) mpi_buffer;
+    rvec * const src = (rvec *) mpi_buffer;
 
     if ( nbr->prdc[dim] )
     {

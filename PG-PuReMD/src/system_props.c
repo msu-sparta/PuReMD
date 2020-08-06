@@ -325,21 +325,21 @@ void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
 
 void Check_Energy( simulation_data* data )
 {
-    if ( IS_NAN_REAL(data->my_en.e_pol) )
+    if ( !isfinite(data->my_en.e_pol) )
     {
-        fprintf( stderr, "[ERROR] NaN detected for polarization energy. Terminating...\n" );
+        fprintf( stderr, "[ERROR] NaN or infinite detected for polarization energy. Terminating...\n" );
         exit( NUMERIC_BREAKDOWN );
     }
 
-    if ( IS_NAN_REAL(data->my_en.e_pot) )
+    if ( !isfinite(data->my_en.e_pot) )
     {
-        fprintf( stderr, "[ERROR] NaN detected for potential energy. Terminating...\n" );
+        fprintf( stderr, "[ERROR] NaN or infinite detected for potential energy. Terminating...\n" );
         exit( NUMERIC_BREAKDOWN );
     }
 
-    if ( IS_NAN_REAL(data->my_en.e_tot) )
+    if ( !isfinite(data->my_en.e_tot) )
     {
-        fprintf( stderr, "[ERROR] NaN detected for total energy. Terminating...\n" );
+        fprintf( stderr, "[ERROR] NaN or infinite detected for total energy. Terminating...\n" );
         exit( NUMERIC_BREAKDOWN );
     }
 }

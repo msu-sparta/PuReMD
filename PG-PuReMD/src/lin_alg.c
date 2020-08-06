@@ -243,7 +243,7 @@ static void dual_Sparse_MatVec_local( sparse_matrix const * const A,
             si = A->start[i];
 
             /* diagonal only contributes once */
-            if( i < A->n )
+            if ( i < A->n )
             {
                 b[i][0] += A->val[si] * x[i][0];
                 b[i][1] += A->val[si] * x[i][1];
@@ -2305,9 +2305,7 @@ int dual_CG( reax_system const * const system, control_params const * const cont
         real tol, rvec2 * const x, mpi_datatypes * const  mpi_data )
 {
     int i, j, ret;
-    rvec2 tmp, alpha, beta;
-    rvec2 norm, b_norm;
-    rvec2 sig_old, sig_new;
+    rvec2 tmp, alpha, beta, norm, b_norm, sig_old, sig_new;
     real redux[6];
 #if defined(LOG_PERFORMANCE)
     real time;
