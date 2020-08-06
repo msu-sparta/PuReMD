@@ -525,7 +525,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
 
 
 /* one thread per atom implementation */
-CUDA_GLOBAL void k_tabulated_vdW_coulomb_energy( reax_atom *my_atoms, 
+CUDA_GLOBAL void k_vdW_coulomb_energy_tab( reax_atom *my_atoms, 
         global_parameters gp, control_params *control, 
         storage workspace, reax_list far_nbr_list, 
         LR_lookup_table *t_LR, int n, int num_atom_types, 
@@ -693,53 +693,47 @@ void Cuda_NonBonded_Energy( reax_system *system, control_params *control,
         storage *workspace, simulation_data *data, reax_list **lists,
         output_controls *out_control )
 {
-//    int blocks;
     int update_energy;
     real *spad;
     rvec *spad_rvec;
 
-//    blocks = (system->n * VDW_KER_THREADS_PER_ATOM / DEF_BLOCK_SIZE) 
-//        + ((system->n * VDW_KER_THREADS_PER_ATOM % DEF_BLOCK_SIZE == 0) ? 0 : 1);
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
 
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
             (sizeof(real) * 2 + sizeof(rvec)) * system->n + sizeof(rvec) * control->blocks,
             "Cuda_NonBonded_Energy::workspace->scratch" );
-//    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-//            (sizeof(real) * 2 + sizeof(rvec)) * system->n + sizeof(rvec) * blocks,
-//            "Cuda_NonBonded_Energy::workspace->scratch" );
     spad = (real *) workspace->scratch;
 
     if ( control->tabulate == 0 )
     {
         k_vdW_coulomb_energy <<< control->blocks, control->block_size >>>
             ( system->d_my_atoms, system->reax_param.d_tbp, 
-              system->reax_param.d_gp, (control_params *)control->d_control_params, 
+              system->reax_param.d_gp, (control_params *) control->d_control_params, 
               *(workspace->d_workspace), *(lists[FAR_NBRS]), 
               system->n, system->reax_param.num_atom_types, 
-              spad, &spad[system->n], (rvec *)(&spad[2 * system->n]) );
+              spad, &spad[system->n], (rvec *) (&spad[2 * system->n]) );
 //        k_vdW_coulomb_energy_opt <<< blocks, DEF_BLOCK_SIZE,
 //                             (2 * sizeof(real) + sizeof(rvec)) * DEF_BLOCK_SIZE >>>
 //            ( system->d_my_atoms, system->reax_param.d_tbp, 
-//              system->reax_param.d_gp, (control_params *)control->d_control_params, 
+//              system->reax_param.d_gp, (control_params *) control->d_control_params, 
 //              *(workspace->d_workspace), *(lists[FAR_NBRS]), 
 //              system->n, system->reax_param.num_atom_types, 
-//              spad, &spad[system->n], (rvec *)(&spad[2 * system->n]) );
+//              spad, &spad[system->n], (rvec *) (&spad[2 * system->n]) );
         cudaDeviceSynchronize( );
         cudaCheckError( );
     }
     else
     {
-        k_tabulated_vdW_coulomb_energy <<< control->blocks, control->block_size >>>
+        k_vdW_coulomb_energy_tab <<< control->blocks, control->block_size >>>
             ( system->d_my_atoms, system->reax_param.d_gp, 
-              (control_params *)control->d_control_params, 
+              (control_params *) control->d_control_params, 
               *(workspace->d_workspace), *(lists[FAR_NBRS]), 
               workspace->d_LR, system->n,
               system->reax_param.num_atom_types, 
               data->step, data->prev_steps, 
               out_control->energy_update_freq,
-              spad, &spad[system->n], (rvec *)(&spad[2 * system->n]));
+              spad, &spad[system->n], (rvec *) (&spad[2 * system->n]));
         cudaDeviceSynchronize( );
         cudaCheckError( );
     }
@@ -747,28 +741,35 @@ void Cuda_NonBonded_Energy( reax_system *system, control_params *control,
     if ( update_energy == TRUE )
     {
         /* reduction for vdw */
-        Cuda_Reduction_Sum( spad, &((simulation_data *)data->d_simulation_data)->my_en.e_vdW,
+        Cuda_Reduction_Sum( spad,
+                &((simulation_data *)data->d_simulation_data)->my_en.e_vdW,
                 system->n );
 
         /* reduction for ele */
-        Cuda_Reduction_Sum( &spad[system->n], &((simulation_data *)data->d_simulation_data)->my_en.e_ele,
+        Cuda_Reduction_Sum( &spad[system->n],
+                &((simulation_data *)data->d_simulation_data)->my_en.e_ele,
                 system->n );
     }
 
-    /* reduction for ext_press */
-    spad_rvec = (rvec *) (&spad[2 * system->n]);
-    k_reduction_rvec <<< control->blocks, control->block_size,
-                     sizeof(rvec) * control->block_size >>>
-        ( spad_rvec, &spad_rvec[system->n], system->n );
-    cudaDeviceSynchronize( );
-    cudaCheckError( );
+    if ( control->virial == 1 )
+    {
+        spad_rvec = (rvec *) (&spad[2 * system->n]);
 
-    k_reduction_rvec <<< 1, control->blocks_pow_2,
-                     sizeof(rvec) * control->blocks_pow_2 >>>
-        ( &spad_rvec[system->n],
-          &((simulation_data *)data->d_simulation_data)->my_ext_press, control->blocks );
-    cudaDeviceSynchronize( );
-    cudaCheckError( );
+        /* reduction for ext_press */
+        k_reduction_rvec <<< control->blocks, control->block_size,
+                         sizeof(rvec) * (control->block_size / 32) >>>
+            ( spad_rvec, &spad_rvec[system->n], system->n );
+        cudaDeviceSynchronize( );
+        cudaCheckError( );
+
+        k_reduction_rvec <<< 1, control->blocks_pow_2,
+                         sizeof(rvec) * (control->blocks_pow_2 / 32) >>>
+            ( &spad_rvec[system->n],
+              &((simulation_data *)data->d_simulation_data)->my_ext_press,
+              control->blocks );
+        cudaDeviceSynchronize( );
+        cudaCheckError( );
+    }
 
     if ( update_energy == TRUE )
     {

@@ -454,7 +454,7 @@ CUDA_GLOBAL void Cuda_Torsion_Angles_Part1( reax_atom *my_atoms, global_paramete
                                     rvec_Scale( force, CEtors7 + CEconj4, p_ijk->dcos_dk );
                                     atomic_rvecAdd( pbond_ij->ta_f, force );
                                     rvec_iMultiply( ext_press, pbond_ij->rel_box, force );
-                                    rvec_Add( data_ext_press [j], ext_press );
+                                    rvec_Add( data_ext_press[j], ext_press );
 
                                     rvec_ScaledAdd( workspace.f[j], 
                                             CEtors7 + CEconj4, p_ijk->dcos_dj );
@@ -471,18 +471,18 @@ CUDA_GLOBAL void Cuda_Torsion_Angles_Part1( reax_atom *my_atoms, global_paramete
                                     rvec_Scale( force, CEtors8 + CEconj5, p_jkl->dcos_dj );
                                     atomic_rvecAdd( pbond_jk->ta_f, force );
                                     rvec_iMultiply( ext_press, pbond_jk->rel_box, force );
-                                    rvec_Add( data_ext_press [j], ext_press );
+                                    rvec_Add( data_ext_press[j], ext_press );
 
                                     rvec_Scale( force, CEtors8 + CEconj5, p_jkl->dcos_dk );
                                     rvec_Add( pbond_kl->ta_f, force );
                                     rvec_iMultiply( ext_press, rel_box_jl, force );
-                                    rvec_Add( data_ext_press [j], ext_press );
+                                    rvec_Add( data_ext_press[j], ext_press );
 
                                     /* dcos_omega */                      
                                     rvec_Scale( force, CEtors9 + CEconj6, dcos_omega_di );
                                     atomic_rvecAdd( pbond_ij->ta_f, force );
                                     rvec_iMultiply( ext_press, pbond_ij->rel_box, force );
-                                    rvec_Add( data_ext_press [j], ext_press );
+                                    rvec_Add( data_ext_press[j], ext_press );
 
                                     rvec_ScaledAdd( workspace.f[j], 
                                             CEtors9 + CEconj6, dcos_omega_dj );
@@ -490,12 +490,12 @@ CUDA_GLOBAL void Cuda_Torsion_Angles_Part1( reax_atom *my_atoms, global_paramete
                                     rvec_Scale( force, CEtors9 + CEconj6, dcos_omega_dk );
                                     rvec_Add( pbond_jk->ta_f, force );
                                     rvec_iMultiply( ext_press, pbond_jk->rel_box, force );
-                                    rvec_Add( data_ext_press [j], ext_press );
+                                    rvec_Add( data_ext_press[j], ext_press );
 
                                     rvec_Scale( force, CEtors9 + CEconj6, dcos_omega_dl );
                                     rvec_Add( pbond_kl->ta_f, force );
                                     rvec_iMultiply( ext_press, rel_box_jl, force );
-                                    rvec_Add( data_ext_press [j], ext_press );
+                                    rvec_Add( data_ext_press[j], ext_press );
                                 }
 
 #if defined(TEST_ENERGY)

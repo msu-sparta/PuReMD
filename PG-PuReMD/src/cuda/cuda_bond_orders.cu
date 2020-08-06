@@ -773,12 +773,12 @@ void Cuda_Total_Forces( reax_system *system, control_params *control,
     if ( control->virial != 0 )
     {
         /* reduction for ext_press */
-        k_reduction_rvec <<< blocks, DEF_BLOCK_SIZE, sizeof(rvec) * DEF_BLOCK_SIZE >>> 
+        k_reduction_rvec <<< blocks, DEF_BLOCK_SIZE, sizeof(rvec) * (DEF_BLOCK_SIZE / 32) >>> 
             ( spad_rvec, &spad_rvec[system->N], system->N );
         cudaDeviceSynchronize( ); 
         cudaCheckError( ); 
 
-        k_reduction_rvec <<< 1, control->blocks_pow_2_n, sizeof(rvec) * control->blocks_pow_2_n>>>
+        k_reduction_rvec <<< 1, ((blocks + 31) / 32) * 32, sizeof(rvec) * ((blocks + 31) / 32) >>>
             ( &spad_rvec[system->N], &((simulation_data *)data->d_simulation_data)->my_ext_press, blocks );
         cudaDeviceSynchronize( ); 
         cudaCheckError( ); 

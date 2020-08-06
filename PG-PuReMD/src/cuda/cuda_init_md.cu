@@ -198,8 +198,12 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
 
     Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
 
+    /* first call to Cuda_Estimate_Storages requires setting these manually before allocation */
+    workspace->d_workspace->H.n = system->n;
+    workspace->d_workspace->H.n_max = system->local_cap;
+    workspace->d_workspace->H.format = SYM_FULL_MATRIX;
+
     /* estimate storage for bonds, hbonds, and sparse matrix */
-    workspace->d_workspace->H.n_max = system->local_cap; // first call requires setting this manually before allocation
     Cuda_Estimate_Storages( system, control, workspace, lists,
             TRUE, TRUE, TRUE, data->step - data->prev_steps );
 

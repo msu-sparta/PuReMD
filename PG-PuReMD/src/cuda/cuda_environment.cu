@@ -3,16 +3,16 @@
 #include "cuda_utils.h"
 
 
-static void compute_blocks( int *blocks, int *block_size, int count )
+static void compute_blocks( int *blocks, int *block_size, int threads )
 {
     *block_size = DEF_BLOCK_SIZE; // threads per block
-    *blocks = (int) CEIL( (double) count / DEF_BLOCK_SIZE ); // blocks per grid
+    *blocks = (threads + (DEF_BLOCK_SIZE - 1)) / DEF_BLOCK_SIZE; // blocks per grid
 }
 
 
-static void compute_nearest_pow_2( int blocks, int *result )
+static void compute_nearest_multiple_32( int blocks, int *result )
 {
-  *result = (int) EXP2( CEIL( LOG2((double) blocks) ) );
+    *result = ((blocks + 31) / 32) * 32;
 }
 
 
@@ -50,10 +50,10 @@ extern "C" void Cuda_Init_Block_Sizes( reax_system *system,
         control_params *control )
 {
     compute_blocks( &control->blocks, &control->block_size, system->n );
-    compute_nearest_pow_2( control->blocks, &control->blocks_pow_2 );
+    compute_nearest_multiple_32( control->blocks, &control->blocks_pow_2 );
 
     compute_blocks( &control->blocks_n, &control->block_size_n, system->N );
-    compute_nearest_pow_2( control->blocks_n, &control->blocks_pow_2_n );
+    compute_nearest_multiple_32( control->blocks_n, &control->blocks_pow_2_n );
 }
 
 

@@ -69,7 +69,7 @@ CUDA_GLOBAL void k_vector_copy_from_rvec2( real * const dst, rvec2 const * const
 
 
 CUDA_GLOBAL void k_vector_copy_to_rvec2( rvec2 * const dst, real const * const src,
-        int index, int n)
+        int index, int n )
 {
     int i;
 
@@ -631,17 +631,19 @@ void Dot_local_rvec2( control_params const * const control,
             sizeof(rvec2) * (k + blocks + 1), "Dot_local_rvec2::workspace->scratch" );
     spad = (rvec2 *) workspace->scratch;
 
-    Vector_Mult_rvec2( &spad[0], v1, v2, k );
+    Vector_Mult_rvec2( spad, v1, v2, k );
 
     /* local reduction (sum) on device */
-//    Cuda_Reduction_Sum( &spad[0], &spad[k], k );
+//    Cuda_Reduction_Sum( spad, &spad[k], k );
 
-    k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE, sizeof(rvec2) * DEF_BLOCK_SIZE >>>
-        ( &spad[0], &spad[k], k );
+    k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE,
+                      sizeof(rvec2) * DEF_BLOCK_SIZE >>>
+        ( spad, &spad[k], k );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
-    k_reduction_rvec2 <<< 1, control->blocks_pow_2, sizeof(rvec2) * control->blocks_pow_2 >>>
+    k_reduction_rvec2 <<< 1, ((blocks + 31) / 32) * 32,
+                      sizeof(rvec2) * ((blocks + 31) / 32) >>>
         ( &spad[k], &spad[k + blocks], blocks );
     cudaDeviceSynchronize( );
     cudaCheckError( );

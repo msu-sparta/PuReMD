@@ -492,24 +492,26 @@ static void Calculate_Charges_QEq( reax_system const * const system,
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-            sizeof(rvec2) * 2 * system->n,
+            sizeof(rvec2) * (blocks + 1),
             "Calculate_Charges_QEq::workspace->scratch" );
     spad_rvec2 = (rvec2 *) workspace->scratch;
-    cuda_memset( spad_rvec2, 0, sizeof(rvec2) * 2 * system->n,
-            "Calculate_Charges_QEq::spad_rvec2," );
+    cuda_memset( spad_rvec2, 0, sizeof(rvec2) * (blocks + 1),
+            "Calculate_Charges_QEq::spad_rvec2" );
 
     /* compute local sums of pseudo-charges in s and t on device */
-    k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE, sizeof(rvec2) * DEF_BLOCK_SIZE >>>
+    k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE,
+                      sizeof(rvec2) * (DEF_BLOCK_SIZE / 32) >>>
         ( workspace->d_workspace->x, spad_rvec2, system->n );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
-    k_reduction_rvec2 <<< 1, control->blocks_pow_2, sizeof(rvec2) * control->blocks_pow_2 >>>
-        ( spad_rvec2, &spad_rvec2[system->n], blocks );
+    k_reduction_rvec2 <<< 1, ((blocks + 31) / 32) * 32,
+                      sizeof(rvec2) * ((blocks + 31) / 32) >>>
+        ( spad_rvec2, &spad_rvec2[blocks], blocks );
     cudaDeviceSynchronize( );
     cudaCheckError( );
 
-    copy_host_device( &my_sum, &spad_rvec2[system->n],
+    copy_host_device( &my_sum, &spad_rvec2[blocks],
             sizeof(rvec2), cudaMemcpyDeviceToHost, "Calculate_Charges_QEq::my_sum," );
 #else
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,

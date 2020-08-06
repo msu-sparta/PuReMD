@@ -198,7 +198,7 @@ CUDA_GLOBAL void k_reduction_rvec( rvec *input, rvec *results, size_t n )
         rvec_Copy( data, input[i] );
 
         /* warp-level sum using registers within a warp */
-        for ( offset = warpSize >> 1; offset > 0; offset /= 2 )
+        for ( offset = warpSize >> 1; offset > 0; offset >>= 1 )
         {
             data[0] += __shfl_down_sync( mask, data[0], offset );
             data[1] += __shfl_down_sync( mask, data[1], offset );
@@ -249,7 +249,7 @@ CUDA_GLOBAL void k_reduction_rvec2( rvec2 *input, rvec2 *results, size_t n )
         data[1] = input[i][1];
 
         /* warp-level sum using registers within a warp */
-        for ( offset = warpSize >> 1; offset > 0; offset /= 2 )
+        for ( offset = warpSize >> 1; offset > 0; offset >>= 1 )
         {
             data[0] += __shfl_down_sync( mask, data[0], offset );
             data[1] += __shfl_down_sync( mask, data[1], offset );

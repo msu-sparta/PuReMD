@@ -85,7 +85,7 @@ CUDA_GLOBAL void Cuda_Bonds( reax_atom *my_atoms, global_parameters gp,
             ebond = -twbp->De_s * bo_ij->BO_s * exp_be12
                 - twbp->De_p * bo_ij->BO_pi
                 - twbp->De_pp * bo_ij->BO_pi2;
-            e_bond[ i ] += ebond;
+            e_bond[i] += ebond;
 
             /* calculate derivatives of bond orders */
             bo_ij->Cdbo += CEbo;
@@ -111,8 +111,8 @@ CUDA_GLOBAL void Cuda_Bonds( reax_atom *my_atoms, global_parameters gp,
             /* Stabilisation terminal triple bond */
             if ( bo_ij->BO >= 1.00 )
             {
-                if ( gp37 == 2 ||
-                        ( (Cuda_strncmp( sbp_i->name, "C", sizeof(sbp_i->name) ) == 0
+                if ( gp37 == 2
+                        || ( (Cuda_strncmp( sbp_i->name, "C", sizeof(sbp_i->name) ) == 0
                             && Cuda_strncmp( sbp_j->name, "O", sizeof(sbp_j->name) ) == 0)
                         || (Cuda_strncmp( sbp_i->name, "O", sizeof(sbp_i->name) ) == 0
                             && Cuda_strncmp( sbp_j->name, "C", sizeof(sbp_j->name) ) == 0) ) )
