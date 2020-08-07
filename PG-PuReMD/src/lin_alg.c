@@ -964,7 +964,7 @@ real sparse_approx_inverse( reax_system const * const system,
     t_start = Get_Time( );
     Dist( system, mpi_data, row_nnz, REAL_PTR_TYPE, MPI_INT );
     t_comm += Get_Time( ) - t_start;
-    fprintf( stdout,"SAI after Dist call\n");
+    fprintf( stdout,"SAI after Dist call\n" );
     fflush( stdout );
 
     out_bufs = mpi_data->out_nt_buffers;
@@ -992,7 +992,7 @@ real sparse_approx_inverse( reax_system const * const system,
                 j_recv[d] = (int *) malloc( sizeof(int) * cnt );
                 val_recv[d] = (real *) malloc( sizeof(real) * cnt );
 
-                fprintf( stdout,"Dist communication receive phase direction %d will receive %d\n", d, cnt);
+                fprintf( stdout, "Dist communication receive phase direction %d will receive %d\n", d, cnt );
                 fflush( stdout );
                 t_start = Get_Time( );
                 ret = MPI_Irecv( j_recv + d, cnt, MPI_INT, nbr->receive_rank,
@@ -1023,7 +1023,7 @@ real sparse_approx_inverse( reax_system const * const system,
                 }
                //     row_nnz[ out_bufs[d].index[i] ];
             }
-            fprintf( stdout,"Dist communication    send phase direction %d should  send %d\n", d, cnt);
+            fprintf( stdout,"Dist communication    send phase direction %d should  send %d\n", d, cnt );
             fflush( stdout );
 
             if ( cnt )
@@ -1050,18 +1050,18 @@ real sparse_approx_inverse( reax_system const * const system,
                 ret = MPI_Send( j_send, cnt, MPI_INT, nbr->rank,
                         d, mpi_data->comm_mesh3D );
                 Check_MPI_Error( ret, __FILE__, __LINE__ );
-                fprintf( stdout,"Dist communication send phase direction %d cnt = %d\n", d, cnt);
+                fprintf( stdout,"Dist communication send phase direction %d cnt = %d\n", d, cnt );
                 fflush( stdout );
                 ret = MPI_Send( val_send, cnt, MPI_DOUBLE, nbr->rank,
                         d, mpi_data->comm_mesh3D );
                 Check_MPI_Error( ret, __FILE__, __LINE__ );
-                fprintf( stdout,"Dist communication send phase direction %d cnt = %d\n", d, cnt);
+                fprintf( stdout,"Dist communication send phase direction %d cnt = %d\n", d, cnt );
                 fflush( stdout );
                 t_comm += Get_Time( ) - t_start;
             }
         }
     }
-    fprintf( stdout," Dist communication for sending row info before waitany\n");
+    fprintf( stdout," Dist communication for sending row info before waitany\n" );
     fflush( stdout );
     ///////////////////////
     for ( d = 0; d < count; ++d )
@@ -1097,7 +1097,7 @@ real sparse_approx_inverse( reax_system const * const system,
         }
     }
     //////////////////////
-    fprintf( stdout," wow wow wow, Dist communication for sending row info worked\n");
+    fprintf( stdout, "Dist communication for sending row info worked\n" );
     fflush( stdout );
     //TODO: size?
     X = (int *) malloc( sizeof(int) * (system->bigN + 1) );
@@ -1180,7 +1180,7 @@ real sparse_approx_inverse( reax_system const * const system,
             local_pos = A_spar_patt->j[ A_spar_patt->start[i] + d_j ];
             if ( local_pos < 0 || local_pos >= system->N )
             {
-                fprintf( stderr, "THE LOCAL POSITION OF THE ATOM IS NOT VALID, STOP THE EXECUTION\n");
+                fprintf( stderr, "THE LOCAL POSITION OF THE ATOM IS NOT VALID, STOP THE EXECUTION\n" );
                 fflush( stderr );
 
             }

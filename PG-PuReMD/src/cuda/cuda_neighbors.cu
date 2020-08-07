@@ -587,7 +587,6 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
           system->d_my_grid, *(lists[FAR_NBRS]),
           system->n, system->N,
           system->d_far_nbrs, system->d_max_far_nbrs, system->d_realloc_far_nbrs );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     /* multiple threads per atom implementation */
@@ -598,7 +597,6 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
 //        sizeof(int) * 2 * NBRS_BLOCK_SIZE >>>
 //            ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
 //              *(lists[FAR_NBRS]), system->n, system->N );
-//    cudaDeviceSynchronize( );
 //    cudaCheckError( );
 
     /* check reallocation flag on device */
@@ -635,7 +633,6 @@ void Cuda_Estimate_Num_Neighbors( reax_system *system, simulation_data *data )
         ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
           system->n, system->N, system->total_cap,
           system->d_far_nbrs, system->d_max_far_nbrs );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     Cuda_Reduction_Sum( system->d_max_far_nbrs, system->d_total_far_nbrs,

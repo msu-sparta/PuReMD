@@ -63,7 +63,6 @@ static void jacobi( reax_system const * const system,
     k_jacobi <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
           *(workspace->d_workspace), system->n );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -133,7 +132,6 @@ void Sort_Matrix_Rows( sparse_matrix * const A, reax_system const * const system
         cub::DeviceRadixSort::SortPairs( d_temp_storage, temp_storage_bytes,
                 &d_j_temp[start[i]], &A->j[start[i]],
                 &d_val_temp[start[i]], &A->val[start[i]], num_entries );
-        cudaDeviceSynchronize( );
         cudaCheckError( );
     }
 
@@ -245,7 +243,6 @@ static void Spline_Extrapolate_Charges_QEq( reax_system const * const system,
         ( system->d_my_atoms, system->reax_param.d_sbp, 
           (control_params *)control->d_control_params,
           *(workspace->d_workspace), system->n );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -421,7 +418,6 @@ static void Extrapolate_Charges_QEq_Part2( reax_system const * const system,
 
     k_extrapolate_charges_qeq_part2 <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, *(workspace->d_workspace), u, spad, system->n );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     copy_host_device( q, spad, sizeof(real) * system->n, 
@@ -463,7 +459,6 @@ static void Update_Ghost_Atom_Charges( reax_system const * const system,
 
     k_update_ghost_atom_charges <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, spad, system->n, system->N );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -502,13 +497,11 @@ static void Calculate_Charges_QEq( reax_system const * const system,
     k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE,
                       sizeof(rvec2) * (DEF_BLOCK_SIZE / 32) >>>
         ( workspace->d_workspace->x, spad_rvec2, system->n );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     k_reduction_rvec2 <<< 1, ((blocks + 31) / 32) * 32,
                       sizeof(rvec2) * ((blocks + 31) / 32) >>>
         ( spad_rvec2, &spad_rvec2[blocks], blocks );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     copy_host_device( &my_sum, &spad_rvec2[blocks],

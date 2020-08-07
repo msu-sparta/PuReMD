@@ -147,7 +147,9 @@ void Write_Restart_File( reax_system *system, control_params *control,
                  system->big_box.box[1][2],
                  system->big_box.box[2][0], system->big_box.box[2][1],
                  system->big_box.box[2][2]);
-        fflush(fres);
+#if defined(DEBUG)
+        fflush( fres );
+#endif
 
         buffer_req = system->bigN * RESTART_LINE_LEN + 1;
     }
@@ -312,7 +314,8 @@ void Read_Binary_Restart_File( const char * const res_file, reax_system *system,
                    " name = %8s, x = (%f, %f, %f), v = (%f, %f, %f)\n",
                     top, p_atom->orig_id, p_atom->type, p_atom->name,
                     p_atom->x[0], p_atom->x[1], p_atom->x[2],
-                    p_atom->v[0], p_atom->v[1], p_atom->v[2] ); fflush( stderr );
+                    p_atom->v[0], p_atom->v[1], p_atom->v[2] );
+            fflush( stderr );
 #endif
 
             top++;

@@ -767,7 +767,6 @@ void Cuda_Total_Forces( reax_system *system, control_params *control,
           (control_params *) control->d_control_params, 
           (simulation_data *)data->d_simulation_data, 
           spad_rvec, system->N );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     if ( control->virial != 0 )
@@ -775,19 +774,16 @@ void Cuda_Total_Forces( reax_system *system, control_params *control,
         /* reduction for ext_press */
         k_reduction_rvec <<< blocks, DEF_BLOCK_SIZE, sizeof(rvec) * (DEF_BLOCK_SIZE / 32) >>> 
             ( spad_rvec, &spad_rvec[system->N], system->N );
-        cudaDeviceSynchronize( ); 
         cudaCheckError( ); 
 
         k_reduction_rvec <<< 1, ((blocks + 31) / 32) * 32, sizeof(rvec) * ((blocks + 31) / 32) >>>
             ( &spad_rvec[system->N], &((simulation_data *)data->d_simulation_data)->my_ext_press, blocks );
-        cudaDeviceSynchronize( ); 
         cudaCheckError( ); 
     }
 
     /* post processing for the atomic forces */
     k_total_forces_part2  <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, *(lists[BONDS]), *(workspace->d_workspace), system->N );
-    cudaDeviceSynchronize( ); 
     cudaCheckError( ); 
 }
 
@@ -801,6 +797,5 @@ void Cuda_Total_Forces_PURE( reax_system *system, storage *workspace )
 
     k_total_forces_pure <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->n, *(workspace->d_workspace) );
-    cudaDeviceSynchronize( ); 
     cudaCheckError( ); 
 }

@@ -182,7 +182,8 @@ void vdW_Coulomb_Energy( reax_system const * const system,
 #if defined(DEBUG_FOCUS)
                 fprintf( stderr, "%6d%6d%24.12f%24.12f%24.12f%24.12f\n",
                         i + 1, j + 1, 
-                        e_base, de_base, e_core, de_core ); fflush( stderr );
+                        e_base, de_base, e_core, de_core );
+                fflush( stderr );
 #endif
 
                 /* Coulomb Calculations */
@@ -198,7 +199,8 @@ void vdW_Coulomb_Energy( reax_system const * const system,
 
 #if defined(DEBUG_FOCUS)
                 fprintf( stderr, "%6d%6d%24.12f%24.12f\n",
-                        i + 1, j + 1, e_clb, de_clb ); fflush( stderr );
+                        i + 1, j + 1, e_clb, de_clb );
+                fflush( stderr );
 #endif
 
                 if ( control->virial == 0 )

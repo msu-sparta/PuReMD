@@ -576,13 +576,11 @@ static void Cuda_Compute_Momentum( reax_system *system, control_params *control,
     k_center_of_mass_blocks_xcm <<< control->blocks, control->block_size,
                                 sizeof(rvec) * (control->block_size / 32) >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad, system->n );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
     
     k_reduction_rvec <<< 1, control->blocks_pow_2,
                      sizeof(rvec) * (control->blocks_pow_2 / 32) >>>
             ( spad, &spad[control->blocks], control->blocks );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     copy_host_device( xcm, &spad[control->blocks], sizeof(rvec),
@@ -595,13 +593,11 @@ static void Cuda_Compute_Momentum( reax_system *system, control_params *control,
     k_center_of_mass_blocks_vcm <<< control->blocks, control->block_size,
                                 sizeof(rvec) * (control->block_size / 32) >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad, system->n );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
     
     k_reduction_rvec <<< 1, control->blocks_pow_2,
                      sizeof(rvec) * (control->blocks_pow_2 / 32) >>>
         ( spad, &spad[control->blocks], control->blocks );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     copy_host_device( vcm, &spad[control->blocks], sizeof(rvec),
@@ -614,13 +610,11 @@ static void Cuda_Compute_Momentum( reax_system *system, control_params *control,
     k_center_of_mass_blocks_amcm <<< control->blocks, control->block_size,
                                  sizeof(rvec) * (control->block_size / 32) >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad, system->n );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
     
     k_reduction_rvec <<< 1, control->blocks_pow_2,
                      sizeof(rvec) * (control->blocks_pow_2 / 32) >>>
         ( spad, &spad[control->blocks], control->blocks );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     copy_host_device( amcm, &spad[control->blocks], sizeof(rvec),
@@ -644,28 +638,24 @@ static void Cuda_Compute_Inertial_Tensor( reax_system *system, control_params *c
                                 sizeof(real) * 2 * (control->block_size / 32) >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad,
           my_xcm[0], my_xcm[1], my_xcm[2], system->n );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     k_compute_inertial_tensor_xz_yy <<< control->blocks, control->block_size,
                                 sizeof(real) * 2 * (control->block_size / 32) >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad,
           my_xcm[0], my_xcm[1], my_xcm[2], system->n );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     k_compute_inertial_tensor_yz_zz <<< control->blocks, control->block_size,
                                 sizeof(real) * 2 * (control->block_size / 32) >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad,
           my_xcm[0], my_xcm[1], my_xcm[2], system->n );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     /* reduction of block-level partial sums for inertial tensor */
     k_compute_inertial_tensor_blocks <<< 1, control->blocks_pow_2,
                               sizeof(real) * 6 * control->blocks_pow_2 >>>
         ( spad, &spad[6 * control->blocks], control->blocks );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     copy_host_device( t, &spad[6 * control->blocks],
@@ -710,7 +700,6 @@ extern "C" void Cuda_Compute_Kinetic_Energy( reax_system *system,
     k_compute_kinetic_energy <<< control->blocks, control->block_size,
                              sizeof(real) * (control->block_size / 32) >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, block_energy, system->n );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     /* note: above kernel sums the kinetic energy contribution within blocks,
@@ -751,7 +740,6 @@ void Cuda_Compute_Total_Mass( reax_system *system, control_params *control,
     k_compute_total_mass <<< control->blocks, control->block_size,
                          sizeof(real) * (control->block_size / 32) >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad_real, system->n );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     /* note: above kernel sums the mass contribution within blocks,
@@ -905,14 +893,12 @@ void Cuda_Compute_Pressure( reax_system* system, control_params *control,
         k_reduction_rvec <<< control->blocks, control->block_size,
                          sizeof(rvec) * (control->block_size / 32) >>>
             ( rvec_spad, &rvec_spad[system->n],  system->n );
-        cudaDeviceSynchronize( );
         cudaCheckError( );
 
         k_reduction_rvec <<< 1, control->blocks_pow_2,
                          sizeof(rvec) * (control->blocks_pow_2 / 32) >>>
             ( &rvec_spad[system->n], &rvec_spad[system->n + control->blocks],
               control->blocks );
-        cudaDeviceSynchronize( );
         cudaCheckError( );
 
         copy_host_device( &int_press, &rvec_spad[system->n + control->blocks],

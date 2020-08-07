@@ -158,7 +158,9 @@ void Analyze_Fragments( reax_system *system, control_params *control,
         }
     }
     fprintf( fout, "\n" );
+#if defined(DEBUG)
     fflush( fout );
+#endif
 }
 
 

@@ -320,7 +320,6 @@ void Vector_MakeZero( real * const v, unsigned int k )
 
     k_vector_makezero <<< blocks, DEF_BLOCK_SIZE >>>
         ( v, k );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -343,7 +342,6 @@ void Vector_Copy( real * const dest, real const * const v,
 
     k_vector_copy <<< blocks, DEF_BLOCK_SIZE >>>
         ( dest, v, k );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -366,7 +364,6 @@ void Vector_Copy_rvec2( rvec2 * const dest, rvec2 const * const v,
 
     k_vector_copy_rvec2 <<< blocks, DEF_BLOCK_SIZE >>>
         ( dest, v, k );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -381,7 +378,6 @@ void Vector_Copy_From_rvec2( real * const dst, rvec2 const * const src,
 
     k_vector_copy_from_rvec2 <<< blocks, DEF_BLOCK_SIZE >>>
         ( dst, src, index, k );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -396,7 +392,6 @@ void Vector_Copy_To_rvec2( rvec2 * const dst, real const * const src,
 
     k_vector_copy_to_rvec2 <<< blocks, DEF_BLOCK_SIZE >>>
         ( dst, src, index, k );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -420,7 +415,6 @@ void Vector_Scale( real * const dest, real c, real const * const v,
 
     k_vector_scale <<< blocks, DEF_BLOCK_SIZE >>>
         ( dest, c, v, k );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -445,7 +439,6 @@ void Vector_Sum( real * const dest, real c, real const * const v,
 
     k_vector_sum <<< blocks, DEF_BLOCK_SIZE >>>
         ( dest, c, v, d, y, k );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -460,7 +453,6 @@ void Vector_Sum_rvec2( rvec2 * const dest, real c0, real c1, rvec2 const * const
 
     k_vector_sum_rvec2 <<< blocks, DEF_BLOCK_SIZE >>> 
         ( dest, c0, c1, v, d0, d1, y, k );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -485,7 +477,6 @@ void Vector_Add( real * const dest, real c, real const * const v,
 
     k_vector_add <<< blocks, DEF_BLOCK_SIZE >>>
         ( dest, c, v, k );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -510,7 +501,6 @@ void Vector_Add_rvec2( rvec2 * const dest, real c0, real c1, rvec2 const * const
 
     k_vector_add_rvec2 <<< blocks, DEF_BLOCK_SIZE >>>
         ( dest, c0, c1, v, k );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -533,7 +523,6 @@ void Vector_Mult( real * const dest, real const * const v1,
 
     k_vector_mult <<< blocks, DEF_BLOCK_SIZE >>>
         ( dest, v1, v2, k );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -556,7 +545,6 @@ void Vector_Mult_rvec2( rvec2 * const dest, rvec2 const * const v1,
 
     k_vector_mult_rvec2 <<< blocks, DEF_BLOCK_SIZE >>>
         ( dest, v1, v2, k );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -687,13 +675,11 @@ void Dot_local_rvec2( control_params const * const control,
     k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE,
                       sizeof(rvec2) * DEF_BLOCK_SIZE >>>
         ( spad, &spad[k], k );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     k_reduction_rvec2 <<< 1, ((blocks + 31) / 32) * 32,
                       sizeof(rvec2) * ((blocks + 31) / 32) >>>
         ( &spad[k], &spad[k + blocks], blocks );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     //TODO: keep result of reduction on devie and pass directly to CUDA-aware MPI

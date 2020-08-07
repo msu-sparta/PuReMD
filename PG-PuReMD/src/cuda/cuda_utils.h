@@ -22,26 +22,33 @@ void Cuda_Print_Mem_Usage( );
 #define cudaCheckError() __cudaCheckError( __FILE__, __LINE__ )
 static inline void __cudaCheckError( const char *file, const int line )
 {
+#if defined(DEBUG)
     cudaError err;
+
+#if defined(DEBUG_FOCUS)
+    /* Block until tasks in stream are complete in order to enable
+     * more pinpointed error checking. However, this will affect performance. */
+    err = cudaDeviceSynchronize( );
+    if ( cudaSuccess != err )
+    {
+        fprintf( stderr, "[ERROR] runtime error encountered with cudaDeviceSynchronize( ) at: %s:%d\n", file, line );
+        fprintf( stderr, "    [INFO] CUDA API error code: %d\n", err );
+        fprintf( stderr, "    [INFO] CUDA API error name: %s\n", cudaGetErrorName( err ) );
+        fprintf( stderr, "    [INFO] CUDA API error text: %s\n", cudaGetErrorString( err ) );
+        exit( RUNTIME_ERROR );
+    }
+#endif
 
     err = cudaGetLastError();
     if ( cudaSuccess != err )
     {
         fprintf( stderr, "[ERROR] runtime error encountered: %s:%d\n", file, line );
         fprintf( stderr, "    [INFO] CUDA API error code: %d\n", err );
+        fprintf( stderr, "    [INFO] CUDA API error name: %s\n", cudaGetErrorName( err ) );
+        fprintf( stderr, "    [INFO] CUDA API error text: %s\n", cudaGetErrorString( err ) );
         exit( RUNTIME_ERROR );
     }
-
-#if defined(DEBUG_FOCUS)
-    /* More careful checking. However, this will affect performance. */
-    err = cudaDeviceSynchronize( );
-    if( cudaSuccess != err )
-    {
-       exit( RUNTIME_ERROR );
-    }
 #endif
-
-    return;
 }
 
 

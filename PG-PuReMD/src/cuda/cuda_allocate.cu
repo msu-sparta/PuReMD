@@ -85,7 +85,6 @@ void Cuda_Allocate_Grid( reax_system *system )
 //
 //    k_init_nbrs <<< blocks, block_size >>>
 //        ( nbrs_x, host->max_nbrs );
-//    cudaDeviceSynchronize( );
 //    cudaCheckError( );
 //
 //    cuda_malloc( (void **)& device->cells, sizeof(grid_cell) * total,
@@ -406,9 +405,15 @@ void Cuda_Allocate_Workspace_Part2( reax_system *system, control_params *control
         storage *workspace, int total_cap )
 {
     int total_real, total_rvec;
+#if defined(DUAL_SOLVER)
+    int total_rvec2;
+#endif
 
     total_real = sizeof(real) * total_cap;
     total_rvec = sizeof(rvec) * total_cap;
+#if defined(DUAL_SOLVER)
+    total_rvec2 = sizeof(rvec2) * total_cap;
+#endif
 
     /* bond order related storage  */
     cuda_malloc( (void **) &workspace->total_bond_order, total_real, TRUE, "total_bo" );
@@ -431,22 +436,22 @@ void Cuda_Allocate_Workspace_Part2( reax_system *system, control_params *control
     /* charge matrix storage */
     if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
-        cuda_malloc( (void **) &workspace->Hdia_inv, sizeof(real) * total_cap, TRUE, "Hdia_inv" );
+        cuda_malloc( (void **) &workspace->Hdia_inv, total_real, TRUE, "Hdia_inv" );
     }
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
             || control->cm_solver_pre_comp_type == ILUTP_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
-        cuda_malloc( (void **) &workspace->droptol, sizeof(real) * total_cap, TRUE, "droptol" );
+        cuda_malloc( (void **) &workspace->droptol, total_real, TRUE, "droptol" );
     }
-    cuda_malloc( (void **) &workspace->b_s, sizeof(real) * total_cap, TRUE, "b_s" );
-    cuda_malloc( (void **) &workspace->b_t, sizeof(real) * total_cap, TRUE, "b_t" );
-    cuda_malloc( (void **) &workspace->s, sizeof(real) * total_cap, TRUE, "s" );
-    cuda_malloc( (void **) &workspace->t, sizeof(real) * total_cap, TRUE, "t" );
+    cuda_malloc( (void **) &workspace->b_s, total_real, TRUE, "b_s" );
+    cuda_malloc( (void **) &workspace->b_t, total_real, TRUE, "b_t" );
+    cuda_malloc( (void **) &workspace->s, total_real, TRUE, "s" );
+    cuda_malloc( (void **) &workspace->t, total_real, TRUE, "t" );
 #if defined(DUAL_SOLVER)
-    cuda_malloc( (void **) &workspace->b, sizeof(rvec2) * total_cap, TRUE, "b" );
-    cuda_malloc( (void **) &workspace->x, sizeof(rvec2) * total_cap, TRUE, "x" );
+    cuda_malloc( (void **) &workspace->b, total_rvec2, TRUE, "b" );
+    cuda_malloc( (void **) &workspace->x, total_rvec2, TRUE, "x" );
 #endif
 
     switch ( control->cm_solver_type )
@@ -454,9 +459,9 @@ void Cuda_Allocate_Workspace_Part2( reax_system *system, control_params *control
     case GMRES_S:
     case GMRES_H_S:
         cuda_malloc( (void **) &workspace->b_prc,
-                sizeof(real) * total_cap, TRUE, "b_prc" );
+                total_real, TRUE, "b_prc" );
         cuda_malloc( (void **) &workspace->b_prm,
-                sizeof(real) * total_cap, TRUE, "b_prm" );
+                total_real, TRUE, "b_prm" );
         cuda_malloc( (void **) &workspace->y,
                 (control->cm_solver_restart + 1) * sizeof(real), TRUE, "y" );
         cuda_malloc( (void **) &workspace->z,
@@ -474,45 +479,45 @@ void Cuda_Allocate_Workspace_Part2( reax_system *system, control_params *control
         break;
 
     case SDM_S:
-        cuda_malloc( (void **) &workspace->r, sizeof(real) * total_cap, TRUE, "r" );
-        cuda_malloc( (void **) &workspace->d, sizeof(real) * total_cap, TRUE, "d" );
-        cuda_malloc( (void **) &workspace->q, sizeof(real) * total_cap, TRUE, "q" );
-        cuda_malloc( (void **) &workspace->p, sizeof(real) * total_cap, TRUE, "p" );
+        cuda_malloc( (void **) &workspace->r, total_real, TRUE, "r" );
+        cuda_malloc( (void **) &workspace->d, total_real, TRUE, "d" );
+        cuda_malloc( (void **) &workspace->q, total_real, TRUE, "q" );
+        cuda_malloc( (void **) &workspace->p, total_real, TRUE, "p" );
         break;
 
     case CG_S:
-        cuda_malloc( (void **) &workspace->r, sizeof(real) * total_cap, TRUE, "r" );
-        cuda_malloc( (void **) &workspace->d, sizeof(real) * total_cap, TRUE, "d" );
-        cuda_malloc( (void **) &workspace->q, sizeof(real) * total_cap, TRUE, "q" );
-        cuda_malloc( (void **) &workspace->p, sizeof(real) * total_cap, TRUE, "p" );
+        cuda_malloc( (void **) &workspace->r, total_real, TRUE, "r" );
+        cuda_malloc( (void **) &workspace->d, total_real, TRUE, "d" );
+        cuda_malloc( (void **) &workspace->q, total_real, TRUE, "q" );
+        cuda_malloc( (void **) &workspace->p, total_real, TRUE, "p" );
 #if defined(DUAL_SOLVER)
-        cuda_malloc( (void **) &workspace->r2, sizeof(rvec2) * total_cap, TRUE, "r2" );
-        cuda_malloc( (void **) &workspace->d2, sizeof(rvec2) * total_cap, TRUE, "d2" );
-        cuda_malloc( (void **) &workspace->q2, sizeof(rvec2) * total_cap, TRUE, "q2" );
-        cuda_malloc( (void **) &workspace->p2, sizeof(rvec2) * total_cap, TRUE, "p2" );
+        cuda_malloc( (void **) &workspace->r2, total_rvec2, TRUE, "r2" );
+        cuda_malloc( (void **) &workspace->d2, total_rvec2, TRUE, "d2" );
+        cuda_malloc( (void **) &workspace->q2, total_rvec2, TRUE, "q2" );
+        cuda_malloc( (void **) &workspace->p2, total_rvec2, TRUE, "p2" );
 #endif
         break;
 
     case BiCGStab_S:
-        cuda_malloc( (void **) &workspace->y, sizeof(real) * total_cap, TRUE, "y" );
-        cuda_malloc( (void **) &workspace->g, sizeof(real) * total_cap, TRUE, "g" );
-        cuda_malloc( (void **) &workspace->z, sizeof(real) * total_cap, TRUE, "z" );
-        cuda_malloc( (void **) &workspace->r, sizeof(real) * total_cap, TRUE, "r" );
-        cuda_malloc( (void **) &workspace->d, sizeof(real) * total_cap, TRUE, "d" );
-        cuda_malloc( (void **) &workspace->q, sizeof(real) * total_cap, TRUE, "q" );
-        cuda_malloc( (void **) &workspace->p, sizeof(real) * total_cap, TRUE, "p" );
-        cuda_malloc( (void **) &workspace->r_hat, sizeof(real) * total_cap, TRUE, "r_hat" );
-        cuda_malloc( (void **) &workspace->q_hat, sizeof(real) * total_cap, TRUE, "q_hat" );
+        cuda_malloc( (void **) &workspace->y, total_real, TRUE, "y" );
+        cuda_malloc( (void **) &workspace->g, total_real, TRUE, "g" );
+        cuda_malloc( (void **) &workspace->z, total_real, TRUE, "z" );
+        cuda_malloc( (void **) &workspace->r, total_real, TRUE, "r" );
+        cuda_malloc( (void **) &workspace->d, total_real, TRUE, "d" );
+        cuda_malloc( (void **) &workspace->q, total_real, TRUE, "q" );
+        cuda_malloc( (void **) &workspace->p, total_real, TRUE, "p" );
+        cuda_malloc( (void **) &workspace->r_hat, total_real, TRUE, "r_hat" );
+        cuda_malloc( (void **) &workspace->q_hat, total_real, TRUE, "q_hat" );
 #if defined(DUAL_SOLVER)
-        cuda_malloc( (void **) &workspace->y2, sizeof(rvec2) * total_cap, TRUE, "y" );
-        cuda_malloc( (void **) &workspace->g2, sizeof(rvec2) * total_cap, TRUE, "g" );
-        cuda_malloc( (void **) &workspace->z2, sizeof(rvec2) * total_cap, TRUE, "z" );
-        cuda_malloc( (void **) &workspace->r2, sizeof(rvec2) * total_cap, TRUE, "r" );
-        cuda_malloc( (void **) &workspace->d2, sizeof(rvec2) * total_cap, TRUE, "d" );
-        cuda_malloc( (void **) &workspace->q2, sizeof(rvec2) * total_cap, TRUE, "q" );
-        cuda_malloc( (void **) &workspace->p2, sizeof(rvec2) * total_cap, TRUE, "p" );
-        cuda_malloc( (void **) &workspace->r_hat2, sizeof(rvec2) * total_cap, TRUE, "r_hat" );
-        cuda_malloc( (void **) &workspace->q_hat2, sizeof(rvec2) * total_cap, TRUE, "q_hat" );
+        cuda_malloc( (void **) &workspace->y2, total_rvec2, TRUE, "y" );
+        cuda_malloc( (void **) &workspace->g2, total_rvec2, TRUE, "g" );
+        cuda_malloc( (void **) &workspace->z2, total_rvec2, TRUE, "z" );
+        cuda_malloc( (void **) &workspace->r2, total_rvec2, TRUE, "r" );
+        cuda_malloc( (void **) &workspace->d2, total_rvec2, TRUE, "d" );
+        cuda_malloc( (void **) &workspace->q2, total_rvec2, TRUE, "q" );
+        cuda_malloc( (void **) &workspace->p2, total_rvec2, TRUE, "p" );
+        cuda_malloc( (void **) &workspace->r_hat2, total_rvec2, TRUE, "r_hat" );
+        cuda_malloc( (void **) &workspace->q_hat2, total_rvec2, TRUE, "q_hat" );
 #endif
         break;
 

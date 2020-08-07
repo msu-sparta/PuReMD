@@ -1203,7 +1203,6 @@ static int Cuda_Estimate_Storage_Three_Body( reax_system *system, control_params
     Cuda_Estimate_Valence_Angles <<< control->blocks_n, control->block_size_n >>>
         ( system->d_my_atoms, (control_params *)control->d_control_params, 
           *(lists[BONDS]), system->n, system->N, thbody );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     Cuda_Reduction_Sum( thbody, system->d_total_thbodies, system->total_bonds );
@@ -1252,7 +1251,6 @@ static void Print_Forces( reax_system *system )
 
     k_print_forces <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, workspace->d_workspace->f, system->n );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -1266,7 +1264,6 @@ static void Print_HBonds( reax_system *system, int step )
 
     k_print_hbonds <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, *(lists[HBONDS]), system->n, system->my_rank, step );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 #endif
@@ -1288,7 +1285,6 @@ void Cuda_Init_Neighbor_Indices( reax_system *system, reax_list *far_nbr_list )
     /* init end_indices */
     k_init_end_index <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_far_nbrs, far_nbr_list->index, far_nbr_list->end_index, far_nbr_list->n );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -1312,7 +1308,6 @@ void Cuda_Init_HBond_Indices( reax_system *system, storage *workspace,
     /* init Hindices */
     k_init_hindex <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->total_cap );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     /* init indices and end_indices */
@@ -1321,7 +1316,6 @@ void Cuda_Init_HBond_Indices( reax_system *system, storage *workspace,
     k_init_hbond_indices <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, system->d_hbonds, temp, 
           hbond_list->index, hbond_list->end_index, system->total_cap );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -1342,7 +1336,6 @@ void Cuda_Init_Bond_Indices( reax_system *system, reax_list * bond_list )
     /* init end_indices */
     k_init_end_index <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_bonds, bond_list->index, bond_list->end_index, system->total_cap );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -1365,7 +1358,6 @@ void Cuda_Init_Sparse_Matrix_Indices( reax_system *system, sparse_matrix *H )
     /* init end_indices */
     k_init_end_index <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_cm_entries, H->start, H->end, H->n_max );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -1411,7 +1403,6 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
                   workspace->d_workspace->H.n_max,
                   system->d_cm_entries, system->d_max_cm_entries );
         }
-        cudaDeviceSynchronize( );
         cudaCheckError( );
 
         Cuda_Reduction_Sum( system->d_max_cm_entries,
@@ -1432,7 +1423,6 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
               system->n, system->N, system->total_cap,
               system->d_bonds, system->d_max_bonds,
               system->d_hbonds, system->d_max_hbonds );
-        cudaDeviceSynchronize( );
         cudaCheckError( );
     }
 
@@ -1475,7 +1465,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace,
         reax_list **lists, output_controls *out_control ) 
 {
-    int renbr, blocks, ret, ret_bonds, ret_hbonds, ret_cm;
+    int renbr, blocks, ret, realloc_bonds, realloc_hbonds, realloc_cm;
     static int dist_done = FALSE, cm_done = FALSE, bonds_done = FALSE;
 #if defined(LOG_PERFORMANCE)
     double time;
@@ -1492,7 +1482,6 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
 //       (((system->N - system->n) % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 //    k_init_bond_mark <<< blocks, DEF_BLOCK_SIZE >>>
 //       ( system->n, (system->N - system->n), workspace->d_workspace->bond_mark );
-//    cudaDeviceSynchronize( );
 //    cudaCheckError( );
 
     /* reset reallocation flags on device */
@@ -1507,7 +1496,6 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
     {
         k_init_distance <<< control->blocks_n, control->block_size_n >>>
             ( system->d_my_atoms, *(lists[FAR_NBRS]), system->N );
-        cudaDeviceSynchronize( );
         cudaCheckError( );
 
         dist_done = TRUE;
@@ -1563,7 +1551,6 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
                       system->d_max_cm_entries, system->d_realloc_cm_entries );
             }
         }
-        cudaDeviceSynchronize( );
         cudaCheckError( );
     }
 
@@ -1581,7 +1568,6 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
               workspace->d_LR, system->n, system->N, system->reax_param.num_atom_types,
               system->d_max_bonds, system->d_realloc_bonds,
               system->d_max_hbonds, system->d_realloc_hbonds );
-        cudaDeviceSynchronize( );
         cudaCheckError( );
     }
 
@@ -1590,21 +1576,21 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
 #endif
 
     /* check reallocation flags on device */
-    copy_host_device( &ret_cm, system->d_realloc_cm_entries, sizeof(int), 
+    copy_host_device( &realloc_cm, system->d_realloc_cm_entries, sizeof(int), 
             cudaMemcpyDeviceToHost, "Cuda_Init_Forces::d_realloc_cm_entries" );
-    copy_host_device( &ret_bonds, system->d_realloc_bonds, sizeof(int), 
+    copy_host_device( &realloc_bonds, system->d_realloc_bonds, sizeof(int), 
             cudaMemcpyDeviceToHost, "Cuda_Init_Forces::d_realloc_bonds" );
-    copy_host_device( &ret_hbonds, system->d_realloc_hbonds, sizeof(int), 
+    copy_host_device( &realloc_hbonds, system->d_realloc_hbonds, sizeof(int), 
             cudaMemcpyDeviceToHost, "Cuda_Init_Forces::d_realloc_hbonds" );
 
-    ret = (ret_cm == FALSE && ret_bonds == FALSE && ret_hbonds == FALSE)
+    ret = (realloc_cm == FALSE && realloc_bonds == FALSE && realloc_hbonds == FALSE)
         ? SUCCESS : FAILURE;
 
-    if ( ret_cm == FALSE )
+    if ( realloc_cm == FALSE )
     {
         cm_done = TRUE;
     }
-    if ( ret_bonds == FALSE && ret_hbonds == FALSE )
+    if ( realloc_bonds == FALSE && realloc_hbonds == FALSE )
     {
         bonds_done = TRUE;
     }
@@ -1613,7 +1599,6 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
     {
         k_update_sym_dbond_indices <<< control->blocks_n, control->block_size_n >>> 
             ( *(lists[BONDS]), system->N );
-        cudaDeviceSynchronize( );
         cudaCheckError( );
 
         if ( control->hbond_cut > 0.0 && system->numH > 0 )
@@ -1624,13 +1609,11 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
             /* make hbond_list symmetric */
             k_update_sym_hbond_indices <<< blocks, DEF_BLOCK_SIZE >>>
                 ( system->d_my_atoms, *(lists[HBONDS]), system->N );
-            cudaDeviceSynchronize( );
             cudaCheckError( );
         }
 
         /* update bond_mark */
 //        k_bond_mark <<< control->blocks_n, control->block_size_n >>>
-//        cudaDeviceSynchronize( );
 //        cudaCheckError( );
 
         dist_done = FALSE;
@@ -1640,11 +1623,13 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
     else
     {
         Cuda_Estimate_Storages( system, control, workspace, lists,
-               ret_bonds, ret_hbonds, ret_cm, data->step - data->prev_steps );
+               realloc_bonds, realloc_hbonds, realloc_cm,
+               data->step - data->prev_steps );
 
-        workspace->d_workspace->realloc.bonds = ret_bonds;
-        workspace->d_workspace->realloc.hbonds = ret_hbonds;
-        workspace->d_workspace->realloc.cm = ret_cm;
+        /* schedule reallocations after updating allocation sizes */
+        workspace->d_workspace->realloc.bonds = realloc_bonds;
+        workspace->d_workspace->realloc.hbonds = realloc_hbonds;
+        workspace->d_workspace->realloc.cm = realloc_cm;
     }
 
     return ret;
@@ -1692,7 +1677,6 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
         Cuda_BO_Part1 <<< control->blocks_n, control->block_size_n >>>
             ( system->d_my_atoms, system->reax_param.d_sbp, 
               *(workspace->d_workspace), system->N );
-        cudaDeviceSynchronize( );
         cudaCheckError( );
 
         Cuda_BO_Part2 <<< control->blocks_n, control->block_size_n >>>
@@ -1700,18 +1684,15 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
               system->reax_param.d_tbp, *(workspace->d_workspace), 
               *(lists[BONDS]),
               system->reax_param.num_atom_types, system->N );
-        cudaDeviceSynchronize( );
         cudaCheckError( );
 
         Cuda_BO_Part3 <<< control->blocks_n, control->block_size_n >>>
             ( *(workspace->d_workspace), *(lists[BONDS]), system->N );
-        cudaDeviceSynchronize( );
         cudaCheckError( );
 
         Cuda_BO_Part4 <<< control->blocks_n, control->block_size_n >>>
             ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp, 
              *(workspace->d_workspace), system->N );
-        cudaDeviceSynchronize( );
         cudaCheckError( );
 
         /* 2. Bond Energy Interactions */
@@ -1722,7 +1703,6 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
             ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp, system->reax_param.d_tbp,
               *(workspace->d_workspace), *(lists[BONDS]), 
               system->n, system->reax_param.num_atom_types, spad );
-        cudaDeviceSynchronize( );
         cudaCheckError( );
 
         /* reduction for E_BE */
@@ -1741,12 +1721,10 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
               system->reax_param.d_sbp, system->reax_param.d_tbp, *(workspace->d_workspace),
               *(lists[BONDS]), system->n, system->reax_param.num_atom_types,
               spad, &spad[system->n], &spad[2 * system->n] );
-        cudaDeviceSynchronize( );
         cudaCheckError( );
 
         Cuda_Atom_Energy_Part2 <<< control->blocks, control->block_size >>>
             ( *(lists[BONDS]), *(workspace->d_workspace), system->n );
-        cudaDeviceSynchronize( );
         cudaCheckError( );
 
         if ( update_energy == TRUE )
@@ -1795,7 +1773,6 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
               *(workspace->d_workspace), *(lists[BONDS]), *(lists[THREE_BODIES]),
               system->n, system->N, system->reax_param.num_atom_types, 
               spad, &spad[system->N], &spad[2 * system->N], (rvec *) (&spad[3 * system->N]) );
-        cudaDeviceSynchronize( );
         cudaCheckError( );
 
         if ( update_energy == TRUE )
@@ -1824,7 +1801,6 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
             k_reduction_rvec <<< control->blocks_n, control->block_size_n,
                              sizeof(rvec) * (control->block_size_n / 32) >>>
                 ( rvec_spad, &rvec_spad[system->N], system->N );
-            cudaDeviceSynchronize( );
             cudaCheckError( );
 
             k_reduction_rvec <<< 1, control->blocks_pow_2_n,
@@ -1832,7 +1808,6 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
                 ( &rvec_spad[system->N],
                   &((simulation_data *)data->d_simulation_data)->my_ext_press,
                   control->blocks_n );
-            cudaDeviceSynchronize ();
             cudaCheckError( );
 //            Cuda_Reduction_Sum( rvec_spad,
 //                    &((simulation_data *)data->d_simulation_data)->my_ext_press,
@@ -1842,7 +1817,6 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
         Cuda_Valence_Angles_Part2 <<< control->blocks_n, control->block_size_n >>>
             ( system->d_my_atoms, (control_params *) control->d_control_params,
               *(workspace->d_workspace), *(lists[BONDS]), system->N );
-        cudaDeviceSynchronize( );
         cudaCheckError( );
 
         /* 5. Torsion Angles Interactions */
@@ -1855,7 +1829,6 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
               *(lists[THREE_BODIES]), *(workspace->d_workspace), system->n,
               system->reax_param.num_atom_types, 
               spad, &spad[system->n], (rvec *) (&spad[2 * system->n]) );
-        cudaDeviceSynchronize( );
         cudaCheckError( );
 
         if ( update_energy == TRUE )
@@ -1879,7 +1852,6 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
             k_reduction_rvec <<< control->blocks, control->block_size,
                              sizeof(rvec) * (control->block_size / 32) >>>
                 ( rvec_spad, &rvec_spad[system->n], system->n );
-            cudaDeviceSynchronize( );
             cudaCheckError( );
 
             k_reduction_rvec <<< 1, control->blocks_pow_2,
@@ -1887,7 +1859,6 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
                     ( &rvec_spad[system->n],
                       &((simulation_data *)data->d_simulation_data)->my_ext_press,
                       control->blocks );
-            cudaDeviceSynchronize( );
             cudaCheckError( );
 //            Cuda_Reduction_Sum( rvec_spad,
 //                    &((simulation_data *)data->d_simulation_data)->my_ext_press,
@@ -1897,7 +1868,6 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
         Cuda_Torsion_Angles_Part2 <<< control->blocks_n, control->block_size_n >>>
                 ( system->d_my_atoms, *(workspace->d_workspace), *(lists[BONDS]),
                   system->N );
-        cudaDeviceSynchronize( );
         cudaCheckError( );
 
         /* 6. Hydrogen Bonds Interactions */
@@ -1920,7 +1890,6 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
                       *(lists[FAR_NBRS]), *(lists[BONDS]), *(lists[HBONDS]),
                       system->n, system->reax_param.num_atom_types,
                       spad, (rvec *) (&spad[system->n]), system->my_rank );
-            cudaDeviceSynchronize( );
             cudaCheckError( );
 
             if ( update_energy == TRUE )
@@ -1939,7 +1908,6 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
                 k_reduction_rvec <<< control->blocks, control->block_size,
                                  sizeof(rvec) * (control->block_size / 32) >>>
                     ( rvec_spad, &rvec_spad[system->n], system->n );
-                cudaDeviceSynchronize( );
                 cudaCheckError( );
 
                 k_reduction_rvec <<< 1, control->blocks_pow_2,
@@ -1947,7 +1915,6 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
                     ( &rvec_spad[system->n],
                       &((simulation_data *)data->d_simulation_data)->my_ext_press,
                       control->blocks );
-                cudaDeviceSynchronize( );
                 cudaCheckError( );
 //                Cuda_Reduction_Sum( rvec_spad,
 //                        &((simulation_data *)data->d_simulation_data)->my_ext_press,
@@ -1957,7 +1924,6 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
             Cuda_Hydrogen_Bonds_Part2 <<< control->blocks, control->block_size >>>
                 ( system->d_my_atoms, *(workspace->d_workspace),
                   *(lists[BONDS]), system->n );
-            cudaDeviceSynchronize( );
             cudaCheckError( );
 
 //            hnbrs_blocks = (system->n * HB_POST_PROC_KER_THREADS_PER_ATOM / HB_POST_PROC_BLOCK_SIZE) +
@@ -1968,7 +1934,6 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
 //            Cuda_Hydrogen_Bonds_Part3_opt <<< hnbrs_blocks, HB_POST_PROC_BLOCK_SIZE, 
 //                    HB_POST_PROC_BLOCK_SIZE * sizeof(rvec) >>>
 //                ( system->d_my_atoms, *(workspace->d_workspace), *(lists[HBONDS]), system->n );
-            cudaDeviceSynchronize( );
             cudaCheckError( );
         }
 

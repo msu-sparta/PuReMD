@@ -532,7 +532,6 @@ void dual_jacobi_apply( real const * const Hdia_inv, rvec2 const * const y,
 
     k_dual_jacobi_apply <<< blocks, DEF_BLOCK_SIZE >>>
         ( Hdia_inv, y, x, n );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -547,7 +546,6 @@ void jacobi_apply( real const * const Hdia_inv, real const * const y,
 
     k_jacobi_apply <<< blocks, DEF_BLOCK_SIZE >>>
         ( Hdia_inv, y, x, n );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -638,7 +636,6 @@ static void Dual_Sparse_MatVec_local( control_params const * const control,
         k_dual_sparse_matvec_full_opt_csr <<< blocks, DEF_BLOCK_SIZE >>>
                 ( A->start, A->end, A->j, A->val, x, b, A->n );
     }
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -818,7 +815,6 @@ static void Sparse_MatVec_local( control_params const * const control,
         k_sparse_matvec_full_opt_csr <<< blocks, DEF_BLOCK_SIZE >>>
              ( A->start, A->end, A->j, A->val, x, b, A->n );
     }
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 

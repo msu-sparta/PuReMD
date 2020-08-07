@@ -62,7 +62,6 @@ void Cuda_Reset_Workspace( reax_system *system, storage *workspace )
 
     k_reset_workspace <<< blocks, DEF_BLOCK_SIZE >>>
         ( *(workspace->d_workspace), system->total_cap );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -79,7 +78,6 @@ void Cuda_Reset_Atoms_HBond_Indices( reax_system* system, control_params *contro
 
     k_reset_hindex <<< control->blocks_n, control->block_size_n >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, hindex, system->N );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     Cuda_Reduction_Sum( hindex, system->d_numH, system->N );

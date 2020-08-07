@@ -81,8 +81,8 @@ void Init_Output_Files( reax_system *system, control_params *control,
             fprintf( out_control->out, "%-6s%24s%24s%24s%13s%16s%13s\n",
                      "step", "total energy", "potential", "kinetic",
                      "T(K)", "V(A^3)", "P(GPa)" );
-#endif
             fflush( out_control->out );
+#endif
 
             /* potential file */
             sprintf( temp, "%s.pot", control->sim_name );
@@ -101,8 +101,8 @@ void Init_Output_Files( reax_system *system, control_params *control,
                      "step", "ebond", "eatom", "elp",
                      "eang", "ecoa", "ehb", "etor", "econj",
                      "evdw", "ecoul", "epol" );
-#endif
             fflush( out_control->pot );
+#endif
 
 #if defined(LOG_PERFORMANCE)
             /* log file */
@@ -114,7 +114,9 @@ void Init_Output_Files( reax_system *system, control_params *control,
                      "step", "total", "comm", "nbrs", "init", "bonded", "nonb",
                      "charges", "siters", "retries" );
 
+#if defined(DEBUG)
             fflush( out_control->log );
+#endif
 #endif
         }
 
@@ -130,7 +132,9 @@ void Init_Output_Files( reax_system *system, control_params *control,
             fprintf( out_control->prs, "%8s%13s%13s%13s%13s%13s%13s%13s\n",
                     "step", "Pint/norm[x]", "Pint/norm[y]", "Pint/norm[z]",
                     "Pext/Ptot[x]", "Pext/Ptot[y]", "Pext/Ptot[z]", "Pkin/V" );
+#if defined(DEBUG)
             fflush( out_control->prs );
+#endif
         }
 
         /* electric dipole moment analysis file */
@@ -143,7 +147,9 @@ void Init_Output_Files( reax_system *system, control_params *control,
 
             fprintf( out_control->dpl, "%6s%20s%30s",
                      "step", "molecule count", "avg dipole moment norm" );
+#if defined(DEBUG)
             fflush( out_control->dpl );
+#endif
         }
 
         /* diffusion coef analysis file */
@@ -155,7 +161,9 @@ void Init_Output_Files( reax_system *system, control_params *control,
 
             fprintf( out_control->drft, "%7s%20s%20s\n",
                      "step", "type count", "avg disp^2" );
+#if defined(DEBUG)
             fflush( out_control->drft );
+#endif
         }
     }
 
@@ -1295,10 +1303,10 @@ void Output_Results( reax_system *system, control_params *control,
                         data->sys_en.e_hb,
                         data->sys_en.e_tor, data->sys_en.e_con,
                         data->sys_en.e_vdW, data->sys_en.e_ele, data->sys_en.e_pol);
-#endif //DEBUG
 
                 fflush( out_control->out );
                 fflush( out_control->pot );
+#endif //DEBUG
 
 #if defined(LOG_PERFORMANCE)
                 t_elapsed = Get_Elapsed_Time( data->timing.total );
@@ -1346,7 +1354,9 @@ void Output_Results( reax_system *system, control_params *control,
 //                        data->timing.cm_solver_orthog * denom,
 //                        data->timing.cm_solver_tri_solve * denom );
 
+#if defined(DEBUG)
                 fflush( out_control->log );
+#endif
 #endif //LOG_PERFORMANCE
 
                 if ( control->virial )
@@ -1365,7 +1375,9 @@ void Output_Results( reax_system *system, control_params *control,
                              data->tot_press[0], data->tot_press[1], data->tot_press[2],
                              system->big_box.V );
 
+#if defined(DEBUG)
                     fflush( out_control->prs );
+#endif
                 }
             }
 

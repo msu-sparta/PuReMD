@@ -532,7 +532,9 @@ void Write_PDB_File( reax_system * const system, reax_list * const bond_list,
                  system->big_box.box_norms[2],
                  RAD2DEG(alpha), RAD2DEG(beta), RAD2DEG(gamma), " ", 0 );
         fprintf( out_control->log, "Box written\n" );
+#if defined(DEBUG)
         fflush( out_control->log );
+#endif
     }
 
     /* write atom lines to buffer */

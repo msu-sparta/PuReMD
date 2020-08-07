@@ -191,7 +191,6 @@ void Velocity_Verlet_Part1( reax_system *system, real dt )
 
     k_velocity_verlet_part1 <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, dt, system->n );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -205,7 +204,6 @@ void Velocity_Verlet_Part2( reax_system *system, real dt )
 
     k_velocity_verlet_part2 <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, dt, system->n );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -219,7 +217,6 @@ void Velocity_Verlet_Nose_Hoover_NVT_Part1( reax_system *system, real dt )
 
     k_velocity_verlet_nose_hoover_nvt <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, dt, system->n );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -234,7 +231,6 @@ void Velocity_Verlet_Nose_Hoover_NVT_Part2( reax_system *system, storage *worksp
     k_velocity_verlet_nose_hoover_nvt <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, workspace->v_const,
           system->reax_param.d_sbp, dt, v_xi, system->n );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -251,7 +247,6 @@ real Velocity_Verlet_Nose_Hoover_NVT_Part3( reax_system *system, storage *worksp
     k_velocity_verlet_nose_hoover_nvt_part3 <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, workspace->v_const, system->reax_param.d_sbp,
           dt, v_xi_old, d_my_ekin, system->n );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 
     Cuda_Reduction_Sum( d_my_ekin, d_total_my_ekin, system->n );
@@ -273,7 +268,6 @@ static void Cuda_Scale_Velocities_Berendsen_NVT( reax_system *system, real lambd
 
     k_scale_velocites_berendsen_nvt <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, lambda, system->n );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 
@@ -287,7 +281,6 @@ void Cuda_Scale_Velocities_NPT( reax_system *system, real lambda, rvec mu )
 
     k_scale_velocities_npt <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, lambda, mu[0], mu[1], mu[2], system->n );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
 

@@ -35,6 +35,5 @@ extern "C" void Cuda_Remove_CoM_Velocities( reax_system *system,
 {
     k_remove_center_of_mass_velocities <<< control->blocks, control->block_size >>>
         ( system->d_my_atoms, (simulation_data *)data->d_simulation_data, system->n );
-    cudaDeviceSynchronize( );
     cudaCheckError( );
 }
