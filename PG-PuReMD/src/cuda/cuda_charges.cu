@@ -473,15 +473,11 @@ static void Calculate_Charges_QEq( reax_system const * const system,
     rvec2 my_sum, all_sum;
 #if defined(DUAL_SOLVER)
     int blocks;
-    rvec2 *spad_rvec2;
+    rvec2 *spad;
 #else
     real *spad;
 #endif
 
-    check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
-            sizeof(real) * system->n, TRUE, SAFE_ZONE,
-            "Calculate_Charges_QEq::workspace->host_scratch" );
-    q = (real *) workspace->host_scratch;
 #if defined(DUAL_SOLVER)
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
@@ -489,22 +485,22 @@ static void Calculate_Charges_QEq( reax_system const * const system,
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
             sizeof(rvec2) * (blocks + 1),
             "Calculate_Charges_QEq::workspace->scratch" );
-    spad_rvec2 = (rvec2 *) workspace->scratch;
-    cuda_memset( spad_rvec2, 0, sizeof(rvec2) * (blocks + 1),
-            "Calculate_Charges_QEq::spad_rvec2" );
+    spad = (rvec2 *) workspace->scratch;
+    cuda_memset( spad, 0, sizeof(rvec2) * (blocks + 1),
+            "Calculate_Charges_QEq::spad" );
 
     /* compute local sums of pseudo-charges in s and t on device */
     k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE,
                       sizeof(rvec2) * (DEF_BLOCK_SIZE / 32) >>>
-        ( workspace->d_workspace->x, spad_rvec2, system->n );
+        ( workspace->d_workspace->x, spad, system->n );
     cudaCheckError( );
 
     k_reduction_rvec2 <<< 1, ((blocks + 31) / 32) * 32,
                       sizeof(rvec2) * ((blocks + 31) / 32) >>>
-        ( spad_rvec2, &spad_rvec2[blocks], blocks );
+        ( spad, &spad[blocks], blocks );
     cudaCheckError( );
 
-    copy_host_device( &my_sum, &spad_rvec2[blocks],
+    copy_host_device( &my_sum, &spad[blocks],
             sizeof(rvec2), cudaMemcpyDeviceToHost, "Calculate_Charges_QEq::my_sum," );
 #else
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
@@ -526,6 +522,11 @@ static void Calculate_Charges_QEq( reax_system const * const system,
     Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     u = all_sum[0] / all_sum[1];
+
+    check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
+            sizeof(real) * system->n, TRUE, SAFE_ZONE,
+            "Calculate_Charges_QEq::workspace->host_scratch" );
+    q = (real *) workspace->host_scratch;
 
     /* derive atomic charges from pseudo-charges
      * and set up extrapolation for next time step */

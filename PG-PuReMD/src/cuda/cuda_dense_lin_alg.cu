@@ -673,7 +673,7 @@ void Dot_local_rvec2( control_params const * const control,
 //    Cuda_Reduction_Sum( spad, &spad[k], k );
 
     k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE,
-                      sizeof(rvec2) * DEF_BLOCK_SIZE >>>
+                      sizeof(rvec2) * (DEF_BLOCK_SIZE / 32) >>>
         ( spad, &spad[k], k );
     cudaCheckError( );
 

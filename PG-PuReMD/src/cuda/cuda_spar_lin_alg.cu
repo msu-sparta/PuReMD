@@ -113,8 +113,8 @@ CUDA_GLOBAL void k_dual_jacobi_apply( real const * const Hdia_inv, rvec2 const *
         return;
     }
 
-    x[i][0] = y[i][0] * Hdia_inv[i];
-    x[i][1] = y[i][1] * Hdia_inv[i];
+    x[i][0] = Hdia_inv[i] * y[i][0];
+    x[i][1] = Hdia_inv[i] * y[i][1];
 }
 
 
