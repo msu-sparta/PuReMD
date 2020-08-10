@@ -147,13 +147,14 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
         control->virial = 1;
 
         fprintf( stderr, "[ERROR] Anisotropic NPT ensemble not yet implemented\n" );
-        MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
+        MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
         break;
 
     default:
         fprintf( stderr, "[ERROR] p%d: Init_Simulation_Data: ensemble not recognized\n",
               system->my_rank );
-        MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
+        MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
+        break;
     }
 }
 

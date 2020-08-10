@@ -38,11 +38,24 @@ extern "C" void Cuda_Setup_Environment( int rank, int nprocs, int gpus_per_node 
 
     /* assign the GPU for each process */
     //TODO: handle condition where # CPU procs > # GPUs
-    cudaSetDevice( rank % gpus_per_node );
+    flag = cudaSetDevice( rank % gpus_per_node );
 
+    if ( flag == cudaErrorInvalidDevice )
+    {
+        fprintf( stderr, "[ERROR] invalid CUDA device ID set (%d). Terminating...\n",
+              rank % gpus_per_node );
+        exit( CANNOT_INITIALIZE );
+    }
+    else if ( flag == cudaErrorDeviceAlreadyInUse )
+    {
+        fprintf( stderr, "[ERROR] CUDA device with specified ID already in use (%d). Terminating...\n",
+                rank % gpus_per_node );
+        exit( CANNOT_INITIALIZE );
+    }
+
+    //TODO: revisit additional device configurations
 //    cudaDeviceSetLimit( cudaLimitStackSize, 8192 );
 //    cudaDeviceSetCacheConfig( cudaFuncCachePreferL1 );
-//    cudaCheckError( );
 }
 
 

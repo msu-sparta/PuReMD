@@ -1429,9 +1429,10 @@ struct control_params
     real vlist_cut;
     /* bond interaction cutoff, in Angstroms */
     real bond_cut;
-    /* non-bonded interaction cutoff, in Angstroms */
+    /* upper taper radius (non-bonded interaction cutoff),
+     * as supplied by force field parameters, in Angstroms */
     real nonb_cut;
-    /* ???, as supplied by force field parameters, in Angstroms */
+    /* lower taper radius, as supplied by force field parameters, in Angstroms */
     real nonb_low;
     /* hydrogen bond interaction cutoff, in Angstroms */
     real hbond_cut;

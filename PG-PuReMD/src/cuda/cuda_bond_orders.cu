@@ -237,6 +237,7 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
             /* temp storage */
             rvec_Add( nbr_k->tf_f, tf_f );
         }
+
         /* 1st, dBO */
         rvec_ScaledAdd( workspace->f[i], coef.C1dbo, bo_ij->dBOp );
         /* 2nd, dBO */
@@ -260,7 +261,6 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
         rvec_ScaledAdd( workspace->f[i], coef.C2dbopi2, bo_ij->dBOp );
         /* 3rd, dBO_pi2 */
         rvec_ScaledAdd( workspace->f[i], coef.C3dbopi2, workspace->dDeltap_self[i] );
-
     }
     else
     {

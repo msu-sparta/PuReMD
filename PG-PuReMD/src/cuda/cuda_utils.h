@@ -22,10 +22,9 @@ void Cuda_Print_Mem_Usage( );
 #define cudaCheckError() __cudaCheckError( __FILE__, __LINE__ )
 static inline void __cudaCheckError( const char *file, const int line )
 {
-#if defined(DEBUG)
     cudaError err;
 
-#if defined(DEBUG_FOCUS)
+#if defined(DEBUG)
     /* Block until tasks in stream are complete in order to enable
      * more pinpointed error checking. However, this will affect performance. */
     err = cudaDeviceSynchronize( );
@@ -39,16 +38,19 @@ static inline void __cudaCheckError( const char *file, const int line )
     }
 #endif
 
-    err = cudaGetLastError();
+    err = cudaPeekAtLastError( );
     if ( cudaSuccess != err )
     {
         fprintf( stderr, "[ERROR] runtime error encountered: %s:%d\n", file, line );
         fprintf( stderr, "    [INFO] CUDA API error code: %d\n", err );
         fprintf( stderr, "    [INFO] CUDA API error name: %s\n", cudaGetErrorName( err ) );
         fprintf( stderr, "    [INFO] CUDA API error text: %s\n", cudaGetErrorString( err ) );
+#if !defined(DEBUG)
+        fprintf( stderr, "    [WARNING] CUDA error info may not be precise due to async nature of CUDA kernels!"
+               " Rebuild in debug mode to get more accurate accounts of errors (--enable-debug=yes with configure script).\n" );
+#endif
         exit( RUNTIME_ERROR );
     }
-#endif
 }
 
 

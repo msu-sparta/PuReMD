@@ -312,19 +312,23 @@ int Cuda_Velocity_Verlet_NVE( reax_system *system, control_params *control,
         verlet_part1_done = TRUE;
     }
 
+    Cuda_Reallocate_Part2( system, control, data, workspace, lists, mpi_data );
+
     if ( cuda_copy == FALSE )
     {
         Cuda_Copy_Atoms_Host_to_Device( system );
-        Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
+
+        if ( renbr == TRUE )
+        {
+            Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
+        }
 
         cuda_copy = TRUE;
     }
 
-    Cuda_Reallocate_Part2( system, control, data, workspace, lists, mpi_data );
-
     Cuda_Reset( system, control, data, workspace, lists );
 
-    if ( renbr && gen_nbr_list == FALSE )
+    if ( renbr == TRUE && gen_nbr_list == FALSE )
     {
         ret = Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
 
@@ -403,7 +407,11 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
     if ( cuda_copy == FALSE )
     {
         Cuda_Copy_Atoms_Host_to_Device( system );
-        Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
+
+        if ( renbr == TRUE )
+        {
+            Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
+        }
 
         cuda_copy = TRUE;
     }
@@ -500,7 +508,6 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
 
     if ( verlet_part1_done == FALSE )
     {
-        /* velocity verlet, 1st part */
         Velocity_Verlet_Part1( system, dt );
 
         Cuda_Reallocate_Part1( system, control, data, workspace, lists, mpi_data );
@@ -523,7 +530,11 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
     if ( cuda_copy == FALSE )
     {
         Cuda_Copy_Atoms_Host_to_Device( system );
-        Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
+
+        if ( renbr == TRUE )
+        {
+            Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
+        }
 
         cuda_copy = TRUE;
     }
@@ -625,7 +636,11 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
     if ( cuda_copy == FALSE )
     {
         Cuda_Copy_Atoms_Host_to_Device( system );
-        Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
+
+        if ( renbr == TRUE )
+        {
+            Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
+        }
 
         cuda_copy = TRUE;
     }
