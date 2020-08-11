@@ -164,7 +164,8 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     dTap = dTap * r_ij + workspace->Tap[1];
 
                     /* vdWaals Calculations */
-                    if ( system->reax_param.gp.vdw_type == 1 || system->reax_param.gp.vdw_type == 3 )
+                    if ( system->reax_param.gp.vdw_type == 1
+                            || system->reax_param.gp.vdw_type == 3 )
                     {
                         /* shielding */
                         powr_vdW1 = POW( r_ij, p_vdW1 );
@@ -221,8 +222,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
 #endif
 
                     /* Coulomb Calculations */
-                    dr3gamij_1 = r_ij * r_ij * r_ij
-                        + POW( twbp->gamma, -3.0 );
+                    dr3gamij_1 = r_ij * r_ij * r_ij + POW( twbp->gamma, -3.0 );
                     dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
                     e_clb = C_ELE * (system->atoms[i].q * system->atoms[j].q) / dr3gamij_3;
                     e_ele = self_coef * (e_clb * Tap);

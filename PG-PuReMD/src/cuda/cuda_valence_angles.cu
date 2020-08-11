@@ -114,7 +114,7 @@ CUDA_GLOBAL void Cuda_Valence_Angles_Part1( reax_atom *my_atoms,
     else
     {
         vlpadj = workspace.nlp[j];
-        dSBO2 = (prod_SBO - 1.0) * (1.0 - p_val8 * workspace.dDelta_lp[j]);
+        dSBO2 = (prod_SBO - 1.0) * (1.0 + p_val8 * workspace.dDelta_lp[j]);
     }
 
     SBO = SBOp + (1.0 - prod_SBO) * (-workspace.Delta_boc[j] - p_val8 * vlpadj);

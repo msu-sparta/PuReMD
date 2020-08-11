@@ -64,7 +64,7 @@ void Calculate_dCos_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
     sqr_d_ji = SQR( d_ji );
     sqr_d_jk = SQR( d_jk );
     inv_dists = 1.0 / (d_ji * d_jk);
-    inv_dists3 = POW( inv_dists, 3 );
+    inv_dists3 = POW( inv_dists, 3.0 );
     dot_dvecs = rvec_Dot( dvec_ji, dvec_jk );
     Cdot_inv3 = dot_dvecs * inv_dists3;
 
@@ -73,7 +73,7 @@ void Calculate_dCos_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
         (*dcos_theta_di)[t] = dvec_jk[t] * inv_dists
             - Cdot_inv3 * sqr_d_jk * dvec_ji[t];
 
-        (*dcos_theta_dj)[t] = -(dvec_jk[t] + dvec_ji[t]) * inv_dists
+        (*dcos_theta_dj)[t] = -1.0 * (dvec_jk[t] + dvec_ji[t]) * inv_dists
             + Cdot_inv3 * ( sqr_d_jk * dvec_ji[t] + sqr_d_ji * dvec_jk[t] );
 
         (*dcos_theta_dk)[t] = dvec_ji[t] * inv_dists
@@ -377,13 +377,13 @@ void Valence_Angles( reax_system *system, control_params *control,
                             f8_Dj = p_val5 - (p_val5 - 1.0) * (2.0 + expval6) / trm8;
                             Cf8j = ( (1.0 - p_val5) / SQR(trm8) )
                                 * (p_val6 * expval6 * trm8
-                                - (2.0 + expval6) * ( p_val6 * expval6 - p_val7 * expval7 ));
+                                        - (2.0 + expval6) * ( p_val6 * expval6 - p_val7 * expval7 ));
 
                             theta_0 = 180.0 - theta_00 * (1.0 - EXP(-p_val10 * (2.0 - SBO2)));
                             theta_0 = DEG2RAD( theta_0 );
 
                             expval2theta = p_val1 * EXP(-p_val2 * SQR(theta_0 - theta));
-                            if ( p_val1 >= 0 )
+                            if ( p_val1 >= 0.0 )
                             {
                                 expval12theta = p_val1 - expval2theta;
                             }
@@ -477,15 +477,15 @@ void Valence_Angles( reax_system *system, control_params *control,
 #if defined(_OPENMP)
 //                            #pragma omp atomic
 #endif
-                            bo_ij->Cdbo += (CEval1 + CEpen2 + (CEcoa1 - CEcoa4));
+                            bo_ij->Cdbo += CEval1 + CEpen2 + (CEcoa1 - CEcoa4);
 #if defined(_OPENMP)
 //                            #pragma omp atomic
 #endif
-                            bo_jk->Cdbo += (CEval2 + CEpen3 + (CEcoa2 - CEcoa5));
+                            bo_jk->Cdbo += CEval2 + CEpen3 + (CEcoa2 - CEcoa5);
 #if defined(_OPENMP)
 //                            #pragma omp atomic
 #endif
-                            workspace->CdDelta[j] += ((CEval3 + CEval7) + CEpen1 + CEcoa3);
+                            workspace->CdDelta[j] += (CEval3 + CEval7) + CEpen1 + CEcoa3;
 #if defined(_OPENMP)
 //                            #pragma omp atomic
 #endif

@@ -206,7 +206,7 @@ void vdW_Coulomb_Energy( reax_system const * const system,
                 if ( control->virial == 0 )
                 {
                     rvec_ScaledAdd( workspace->f[i],
-                            -(CEvd + CEclmb) / r_ij, far_nbr_list->far_nbr_list.dvec[pj] );
+                            -1.0 * (CEvd + CEclmb) / r_ij, far_nbr_list->far_nbr_list.dvec[pj] );
                     rvec_ScaledAdd( workspace->f[j],
                             (CEvd + CEclmb) / r_ij, far_nbr_list->far_nbr_list.dvec[pj] );
                 }
