@@ -284,13 +284,13 @@ int Tokenize( char* s, char*** tok, size_t token_len )
     int count = 0;
     char test[MAX_LINE];
     char *sep = "\t \n!=";
-    char *word, *saveptr;
+    char *word;
 
     strncpy( test, s, sizeof(test) - 1 );
     test[sizeof(test) - 1] = '\0';
 
-    for ( word = strtok_r(test, sep, &saveptr); word != NULL;
-            word = strtok_r(NULL, sep, &saveptr) )
+    for ( word = strtok(test, sep); word != NULL;
+            word = strtok(NULL, sep) )
     {
         strncpy( (*tok)[count], word, token_len - 1 );
         (*tok)[count][token_len - 1] = '\0';
