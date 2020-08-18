@@ -176,19 +176,19 @@
 #define HB_THRESHOLD (1.0e-2)
 
 /* minimum capacity (entries) in various interaction lists */
-#define MIN_CAP (50)
+#define MIN_CAP (64)
 /* minimum number of interactions per entry in the far neighbor list */
-#define MIN_NBRS (100)
+#define MIN_NBRS (96)
 /* minimum number of non-zero entries per row in the charge matrix */
-#define MIN_CM_ENTRIES (100)
+#define MIN_CM_ENTRIES (96)
 /* minimum number of interactions per entry in the bond list */
-#define MIN_BONDS (15)
+#define MIN_BONDS (32)
 /* minimum number of interactions per entry in the hydrogen bond list */
-#define MIN_HBONDS (25)
+#define MIN_HBONDS (32)
 /* minimum capacity (entries) in 3-body interaction list */
-#define MIN_3BODIES (1000)
+#define MIN_3BODIES (1024)
 /* minimum number of atoms per grid cell */
-#define MIN_GCELL_POPL (50)
+#define MIN_GCELL_POPL (64)
 /* ??? */
 #define MIN_SEND (100)
 /* over-allocation factor for various data structures */

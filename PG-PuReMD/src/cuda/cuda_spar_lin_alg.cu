@@ -187,8 +187,8 @@ CUDA_GLOBAL void k_sparse_matvec_half_opt_csr( int *row_ptr_start,
         int *row_ptr_end, int *col_ind, real *vals,
         const real * const x, real * const b, int N )
 {
-    int pj, si, ei, thread_id, warp_id, lane_id, offset;
-    real sum;
+    int pj, si, ei, thread_id, warp_id, lane_id, offset, itr, col_ind_l;
+    real vals_l, sum;
 
     thread_id = blockDim.x * blockIdx.x + threadIdx.x;
     warp_id = thread_id >> 5;
@@ -201,24 +201,31 @@ CUDA_GLOBAL void k_sparse_matvec_half_opt_csr( int *row_ptr_start,
     lane_id = thread_id & 0x0000001F; 
     si = row_ptr_start[warp_id];
     ei = row_ptr_end[warp_id];
-
-    /* A symmetric, upper triangular portion stored
-     * => diagonal only contributes once */
-    if ( lane_id == 0 )
-    {
-        sum = vals[si] * x[warp_id];
-    }
-    else
-    {
-        sum = 0.0;
-    }
+    sum = 0.0;
 
     /* partial sums per thread */
-    for ( pj = si + lane_id + 1; pj < ei; pj += warpSize )
+    for ( itr = 0, pj = si + lane_id; itr < (ei - si + 0x0000001F) >> 5; ++itr )
     {
-        sum += vals[pj] * x[col_ind[pj]];
-        /* symmetric contribution to row j */
-        atomicAdd( (double *) &b[col_ind[pj]], (double) (vals[pj] * x[warp_id]) );
+        /* coaleseced 128-bit aligned reads from global memory */
+        vals_l = vals[pj];
+        col_ind_l = col_ind[pj];
+
+        /* only threads with value non-zero positions accumulate the result */
+        if ( pj < ei )
+        {
+            /* gather on x from global memory and compute partial sum for this non-zero entry */
+            sum += vals_l * x[col_ind_l];
+
+            /* A symmetric, upper triangular portion stored
+             * => diagonal only contributes once */
+            if ( pj > si )
+            {
+                /* symmetric contribution to row j */
+                atomicAdd( (double *) &b[col_ind[pj]], (double) (vals_l * x[warp_id]) );
+            }
+        }
+
+        pj += warpSize;
     }
 
     /* warp-level reduction of partial sums
@@ -285,8 +292,8 @@ CUDA_GLOBAL void k_sparse_matvec_full_opt_csr( int *row_ptr_start,
         int *row_ptr_end, int *col_ind, real *vals,
         const real * const x, real * const b, int n )
 {
-    int pj, si, ei, thread_id, warp_id, lane_id, offset;
-    real sum;
+    int pj, si, ei, thread_id, warp_id, lane_id, offset, itr, col_ind_l;
+    real vals_l, sum;
 
     thread_id = blockDim.x * blockIdx.x + threadIdx.x;
     warp_id = thread_id >> 5;
@@ -302,9 +309,20 @@ CUDA_GLOBAL void k_sparse_matvec_full_opt_csr( int *row_ptr_start,
     sum = 0.0;
 
     /* partial sums per thread */
-    for ( pj = si + lane_id; pj < ei; pj += warpSize )
+    for ( itr = 0, pj = si + lane_id; itr < (ei - si + 0x0000001F) >> 5; ++itr )
     {
-        sum += vals[pj] * x[col_ind[pj]];
+        /* coaleseced 128-bit aligned reads from global memory */
+        vals_l = vals[pj];
+        col_ind_l = col_ind[pj];
+
+        /* only threads with value non-zero positions accumulate the result */
+        if ( pj < ei )
+        {
+            /* gather on x from global memory and compute partial sum for this non-zero entry */
+            sum += vals_l * x[col_ind_l];
+        }
+
+        pj += warpSize;
     }
 
     /* warp-level reduction of partial sums
