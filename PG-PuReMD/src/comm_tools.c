@@ -297,10 +297,7 @@ void Update_Comm( reax_system * const system )
 static void Pack_MPI_Atom( mpi_atom * const matm, const reax_atom * const ratm, int i )
 {
     matm->orig_id = ratm->orig_id;
-    matm->imprt_id = i;
     matm->type = ratm->type;
-    matm->num_bonds = ratm->num_bonds;
-    matm->num_hbonds = ratm->num_hbonds;
     strncpy( matm->name, ratm->name, sizeof(matm->name) - 1 );
     matm->name[sizeof(matm->name) - 1] = '\0';
     rvec_Copy( matm->x, ratm->x );
@@ -314,10 +311,7 @@ static void Pack_MPI_Atom( mpi_atom * const matm, const reax_atom * const ratm, 
 static void Unpack_MPI_Atom( reax_atom * const ratm, const mpi_atom * const matm )
 {
     ratm->orig_id = matm->orig_id;
-    ratm->imprt_id = matm->imprt_id;
     ratm->type = matm->type;
-    ratm->num_bonds = matm->num_bonds;
-    ratm->num_hbonds = matm->num_hbonds;
     strncpy( ratm->name, matm->name, sizeof(ratm->name) - 1 );
     ratm->name[sizeof(ratm->name) - 1] = '\0';
     rvec_Copy( ratm->x, matm->x );
@@ -438,10 +432,7 @@ static void Pack_Boundary_Atom( boundary_atom * const matm,
         reax_atom const * const ratm, int i )
 {
     matm->orig_id = ratm->orig_id;
-    matm->imprt_id = i;
     matm->type = ratm->type;
-    matm->num_bonds = ratm->num_bonds;
-    matm->num_hbonds = ratm->num_hbonds;
     rvec_Copy( matm->x, ratm->x );
 }
 
@@ -450,11 +441,7 @@ static void Unpack_Boundary_Atom( reax_atom * const ratm,
         const boundary_atom * const matm )
 {
     ratm->orig_id = matm->orig_id;
-    ratm->imprt_id = matm->imprt_id;
     ratm->type = matm->type;
-    ratm->num_bonds = matm->num_bonds;
-    ratm->num_hbonds = matm->num_hbonds;
-//    ratm->renumber = offset + matm->imprt_id;
     rvec_Copy( ratm->x, matm->x );
 }
 

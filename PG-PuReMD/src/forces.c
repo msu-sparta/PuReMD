@@ -2093,17 +2093,6 @@ void Estimate_Storages( reax_system * const system, control_params * const contr
     system->total_cm_entries = MAX( system->total_cm_entries, MIN_CAP * MIN_CM_ENTRIES );
     system->total_thbodies = MAX( system->total_thbodies * SAFE_ZONE, MIN_3BODIES );
 
-    /* duplicate info in atom structs in case of
-     * ownership transfer across processor boundaries */
-    for ( i = 0; i < system->n; ++i )
-    {
-        system->my_atoms[i].num_bonds = system->bonds[i];
-    }
-    for ( i = 0; i < system->N; ++i )
-    {
-        system->my_atoms[i].num_hbonds = system->hbonds[i];
-    }
-
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "[INFO] p%d @ estimate storages: total_cm_entries = %d, total_thbodies = %d\n",
             system->my_rank, system->total_cm_entries, system->total_thbodies );

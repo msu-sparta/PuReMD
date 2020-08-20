@@ -443,46 +443,37 @@ void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
     /* mpi_atom */
     block[0] = 1;
     block[1] = 1;
-    block[2] = 1;
-    block[3] = 1;
-    block[4] = 1;
-    block[5] = sizeof(m_sample[0].name) / sizeof(char);
-    block[6] = 3;
-    block[7] = 3;
-    block[8] = 3;
-    block[9] = 4;
-    block[10] = 4;
+    block[2] = sizeof(m_sample[0].name) / sizeof(char);
+    block[3] = 3;
+    block[4] = 3;
+    block[5] = 3;
+    block[6] = 4;
+    block[7] = 4;
 
     MPI_Get_address( &m_sample[0], &base );
     MPI_Get_address( &m_sample[0].orig_id, &disp[0] );
-    MPI_Get_address( &m_sample[0].imprt_id, &disp[1] );
-    MPI_Get_address( &m_sample[0].type, &disp[2] );
-    MPI_Get_address( &m_sample[0].num_bonds, &disp[3] );
-    MPI_Get_address( &m_sample[0].num_hbonds, &disp[4] );
-    MPI_Get_address( &m_sample[0].name, &disp[5] );
-    MPI_Get_address( &m_sample[0].x, &disp[6] );
-    MPI_Get_address( &m_sample[0].v, &disp[7] );
-    MPI_Get_address( &m_sample[0].f_old, &disp[8] );
-    MPI_Get_address( &m_sample[0].s, &disp[9] );
-    MPI_Get_address( &m_sample[0].t, &disp[10] );
-    for ( i = 0; i < 11; ++i )
+    MPI_Get_address( &m_sample[0].type, &disp[1] );
+    MPI_Get_address( &m_sample[0].name, &disp[2] );
+    MPI_Get_address( &m_sample[0].x, &disp[3] );
+    MPI_Get_address( &m_sample[0].v, &disp[4] );
+    MPI_Get_address( &m_sample[0].f_old, &disp[5] );
+    MPI_Get_address( &m_sample[0].s, &disp[6] );
+    MPI_Get_address( &m_sample[0].t, &disp[7] );
+    for ( i = 0; i < 8; ++i )
     {
         disp[i] = MPI_Aint_diff( disp[i], base );
     }
 
     type[0] = MPI_INT;
     type[1] = MPI_INT;
-    type[2] = MPI_INT;
-    type[3] = MPI_INT;
-    type[4] = MPI_INT;
-    type[5] = MPI_CHAR;
+    type[2] = MPI_CHAR;
+    type[3] = MPI_DOUBLE;
+    type[4] = MPI_DOUBLE;
+    type[5] = MPI_DOUBLE;
     type[6] = MPI_DOUBLE;
     type[7] = MPI_DOUBLE;
-    type[8] = MPI_DOUBLE;
-    type[9] = MPI_DOUBLE;
-    type[10] = MPI_DOUBLE;
 
-    ret = MPI_Type_create_struct( 11, block, disp, type, &temp_type );
+    ret = MPI_Type_create_struct( 8, block, disp, type, &temp_type );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
     /* account for struct padding after members */
     ret = MPI_Type_create_resized( temp_type, 0, sizeof(mpi_atom),
@@ -496,31 +487,22 @@ void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
     /* boundary_atom */
     block[0] = 1;
     block[1] = 1;
-    block[2] = 1;
-    block[3] = 1;
-    block[4] = 1;
-    block[5] = 3;
+    block[2] = 3;
 
     MPI_Get_address( &b_sample[0], &base );
     MPI_Get_address( &b_sample[0].orig_id, &disp[0] );
-    MPI_Get_address( &b_sample[0].imprt_id, &disp[1] );
-    MPI_Get_address( &b_sample[0].type, &disp[2] );
-    MPI_Get_address( &b_sample[0].num_bonds, &disp[3] );
-    MPI_Get_address( &b_sample[0].num_hbonds, &disp[4] );
-    MPI_Get_address( &b_sample[0].x, &disp[5] );
-    for ( i = 0; i < 6; ++i )
+    MPI_Get_address( &b_sample[0].type, &disp[1] );
+    MPI_Get_address( &b_sample[0].x, &disp[2] );
+    for ( i = 0; i < 3; ++i )
     {
         disp[i] = MPI_Aint_diff( disp[i], base );
     }
 
     type[0] = MPI_INT;
     type[1] = MPI_INT;
-    type[2] = MPI_INT;
-    type[3] = MPI_INT;
-    type[4] = MPI_INT;
-    type[5] = MPI_DOUBLE;
+    type[2] = MPI_DOUBLE;
 
-    ret = MPI_Type_create_struct( 6, block, disp, type, &temp_type );
+    ret = MPI_Type_create_struct( 3, block, disp, type, &temp_type );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
     /* account for struct padding after members */
     ret = MPI_Type_create_resized( temp_type, 0, sizeof(boundary_atom),

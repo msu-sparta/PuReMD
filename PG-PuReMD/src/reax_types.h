@@ -633,16 +633,10 @@ struct mpi_atom
 {
     /* atom serial number as given in the geo file */
     int orig_id;
-    /* local atom ID on neighbor processor ??? */
-    int imprt_id;
     /* non-negative integer used to indicate atom type,
      * as identified by short element string in force field file (single
      * body parameters section) */
     int type;
-    /* num. bonds associated with atom */
-    int num_bonds;
-    /* num. hydrogren bonds associated with atom */
-    int num_hbonds;
     /* atom name as given in the geo file */
     char name[MAX_ATOM_NAME_LEN];
     /* atomic position, 3D */
@@ -665,16 +659,10 @@ struct boundary_atom
 {
     /* atom serial number as given in the geo file */
     int orig_id;
-    /* local atom ID on neighbor processor ??? */
-    int imprt_id;
     /* non-negative integer used to indicate atom type,
      * as identified by short element string in force field file (single
      * body parameters section) */
     int type;
-    /* num. bonds associated with atom */
-    int num_bonds;
-    /* num. hydrogren bonds associated with atom */
-    int num_hbonds;
     /* atomic position, 3D */
     rvec x;
 };
@@ -1058,13 +1046,11 @@ struct reax_interaction
 };
 
 
-/**/
+/* struct containing atom-specific information */
 struct reax_atom
 {
     /* atom serial number as given in the geo file */
     int orig_id;
-    /* local atom ID on neighbor processor ??? */
-    int imprt_id;
     /* non-negative integer used to indicate atom type,
      * as identified by short element string in force field file (single
      * body parameters section) */
@@ -1090,12 +1076,6 @@ struct reax_atom
     /* unique non-negative integer index of atom if it is a hydrogen atom,
      * -1 otherwise */
     int Hindex;
-    /* num. bonds associated with atom */
-    int num_bonds;
-    /* num. hydrogren bonds associated with atom */
-    int num_hbonds;
-    /* ??? */
-    int renumber;
 #if defined(NEUTRAL_TERRITORY)
     /**/
     int nt_dir;

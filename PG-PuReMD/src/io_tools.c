@@ -742,9 +742,9 @@ void Print_My_Ext_Atoms( reax_system *system )
 
     for ( i = 0; i < system->N; ++i )
     {
-        fprintf( fh, "p%-2d %-5d imprt%-5d %2d %24.15e%24.15e%24.15e\n",
+        fprintf( fh, "p%-2d %-5d %2d %24.15e%24.15e%24.15e\n",
                  system->my_rank, system->my_atoms[i].orig_id,
-                 system->my_atoms[i].imprt_id, system->my_atoms[i].type,
+                 system->my_atoms[i].type,
                  system->my_atoms[i].x[0],
                  system->my_atoms[i].x[1],
                  system->my_atoms[i].x[2] );
@@ -851,12 +851,12 @@ void Print_Symmetric_Sparse( reax_system *system, sparse_matrix *A, char *fname 
             aj = &system->my_atoms[A->j[j]];
 
             fprintf( f, "%d %d %.15e\n",
-                    ai->renumber, aj->renumber, A->val[j] );
+                    ai->orig_id, aj->orig_id, A->val[j] );
 
-            if ( A->j[j] < system->n && ai->renumber != aj->renumber )
+            if ( A->j[j] < system->n && ai->orig_id != aj->orig_id )
             {
                 fprintf( f, "%d %d %.15e\n",
-                         aj->renumber, ai->renumber, A->val[j] );
+                         aj->orig_id, ai->orig_id, A->val[j] );
             }
         }
     }
@@ -884,7 +884,7 @@ void Print_Linear_System( reax_system *system, control_params *control,
     {
         ai = &system->my_atoms[i];
         fprintf( out, "%6d%2d%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e\n",
-                 ai->renumber, ai->type, ai->x[0], ai->x[1], ai->x[2],
+                 ai->orig_id, ai->type, ai->x[0], ai->x[1], ai->x[2],
                  workspace->s[i], workspace->b_s[i],
                  workspace->t[i], workspace->b_t[i] );
     }
