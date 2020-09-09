@@ -806,7 +806,7 @@ CUDA_GLOBAL void k_estimate_storages_cm_half( reax_atom *my_atoms,
     /* round up to the nearest multiple of 32 to ensure that reads along
      * rows can be coalesced for 1 warp per row SpMV implementation */
     max_cm_entries[i] = MAX( ((int) CEIL( num_cm_entries * SAFE_ZONE )
-                + 0x0000001F) & 0x111111E0, MIN_CM_ENTRIES );
+                + 0x0000001F) & 0xFFFFFFE0, MIN_CM_ENTRIES );
 }
 
 
@@ -850,7 +850,7 @@ CUDA_GLOBAL void k_estimate_storages_cm_full( control_params *control,
     /* round up to the nearest multiple of 32 to ensure that reads along
      * rows can be coalesced for 1 warp per row SpMV implementation */
     max_cm_entries[i] = MAX( ((int) CEIL( num_cm_entries * SAFE_ZONE )
-                + 0x0000001F) & 0x111111E0, MIN_CM_ENTRIES );
+                + 0x0000001F) & 0xFFFFFFE0, MIN_CM_ENTRIES );
 }
 
 
