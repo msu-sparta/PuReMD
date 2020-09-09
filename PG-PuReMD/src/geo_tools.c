@@ -133,7 +133,10 @@ void Read_Geo_File( const char * const geo_file, reax_system * const system,
             rvec_MakeZero( atom->s );
             rvec_MakeZero( atom->t );
 
+            atom->imprt_id = -1;
             atom->Hindex = -1;
+            atom->num_bonds = 0;
+            atom->num_hbonds = 0;
 
             top++;
         }
@@ -401,7 +404,10 @@ void Read_PDB_File( const char * const pdb_file, reax_system * const system,
                 rvec_MakeZero( atom->s );
                 rvec_MakeZero( atom->t );
 
+                atom->imprt_id = -1;
                 atom->Hindex = -1;
+                atom->num_bonds = 0;
+                atom->num_hbonds = 0;
 
                 top++;
             }

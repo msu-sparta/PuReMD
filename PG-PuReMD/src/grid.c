@@ -672,6 +672,7 @@ void Reorder_My_Atoms( reax_system * const system, storage * const workspace )
             old_id = gc->atoms[l];
             old_atom = &system->my_atoms[old_id];
             memcpy( &new_atoms[top], old_atom, sizeof(reax_atom) );
+            new_atoms[top].imprt_id = -1;
             ++top;
         }
         g->end[ index_grid_3d(x, y, z, g) ] = top;

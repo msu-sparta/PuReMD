@@ -151,7 +151,7 @@ CUDA_GLOBAL void k_init_hindex( reax_atom *my_atoms, int N )
 CUDA_GLOBAL void k_init_hbond_indices( reax_atom * atoms, single_body_parameters *sbp,
         int *hbonds, int *max_hbonds, int *indices, int *end_indices, int N )
 {
-    int i, hindex;
+    int i, hindex, my_hbonds;
 
     i = blockIdx.x * blockDim.x  + threadIdx.x;
 
@@ -165,14 +165,17 @@ CUDA_GLOBAL void k_init_hbond_indices( reax_atom * atoms, single_body_parameters
     if ( sbp[ atoms[i].type ].p_hbond == H_ATOM
             || sbp[ atoms[i].type ].p_hbond == H_BONDING_ATOM )
     {
+        my_hbonds = hbonds[i];
         indices[hindex] = max_hbonds[i];
         end_indices[hindex] = indices[hindex] + hbonds[i];
     }
     else
     {
+        my_hbonds = 0;
         indices[hindex] = 0;
         end_indices[hindex] = 0;
     }
+    atoms[i].num_hbonds = my_hbonds;
 }
 
 
@@ -741,6 +744,11 @@ CUDA_GLOBAL void k_init_bonds( reax_atom *my_atoms, single_body_parameters *sbp,
 
     num_bonds = btop_i - Start_Index( i, &bond_list );
     num_hbonds = ihb_top - Start_Index( atom_i->Hindex, &hbond_list );
+
+    /* copy (h)bond info to atom structure
+     * (needed for atom ownership transfer via MPI) */
+    my_atoms[i].num_bonds = num_bonds;
+    my_atoms[i].num_hbonds = num_hbonds;
 
     /* reallocation checks */
     if ( num_bonds > max_bonds[i] )
@@ -1466,7 +1474,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
     int renbr, blocks, ret, realloc_bonds, realloc_hbonds, realloc_cm;
     static int dist_done = FALSE, cm_done = FALSE, bonds_done = FALSE;
 #if defined(LOG_PERFORMANCE)
-    real time;
+    double time;
     
     time = Get_Time( );
 #endif
