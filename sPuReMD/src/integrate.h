@@ -41,6 +41,8 @@ void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system*, control_params*,
 void Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system*, control_params*,
         simulation_data*, static_storage*, reax_list**, output_controls* );
 
+void minimize_energy(reax_system*, control_params*, simulation_data*, 
+				static_storage*, reax_list**, output_controls*, rvec*, rvec*);
 #if defined(ANISOTROPIC)
 void Velocity_Verlet_Nose_Hoover_NVT( reax_system*, control_params*,
         simulation_data*, static_storage*, reax_list**, output_controls* );

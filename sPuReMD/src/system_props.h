@@ -35,6 +35,8 @@ void Compute_Kinetic_Energy( reax_system*, simulation_data* );
 
 void Compute_Total_Energy( simulation_data* );
 
+void Compute_Potential_Energy( simulation_data* );
+
 void Check_Energy( simulation_data* );
 
 void Compute_Pressure_Isotropic( reax_system*, control_params*, simulation_data*, output_controls* );

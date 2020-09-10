@@ -28,11 +28,17 @@
 
 
 // CUSTOM_BOXGEO: BOXGEO box_x box_y box_z  angle1 angle2 angle3
-#define CUSTOM_BOXGEO_FORMAT " %s %lf %lf %lf %lf %lf %lf"
+#define CUSTOM_BOXGEO_FORMAT "%s %lf %lf %lf %lf %lf %lf"
 // CUSTOM ATOM: serial element name x y z
 #define CUSTOM_ATOM_FORMAT " %d %s %s %lf %lf %lf"
-
-/* PDB format :
+//RESTRAINT FORMATS
+//BOND RESTRAINT: BOND RESTRAINT At1 At2 R12 F1 F2 dR12/dIter start end
+#define BOND_RESTRAINT_FORMAT "%s %s %d %d %lf %lf %lf %lf %d %d"
+//ANGLE RESTRAINT: ANGLE RESTRAINT At1 At2 At3 Angle F1 F2 dAngle/dIter start end
+#define ANGLE_RESTRAINT_FORMAT "%s %s %d %d %d %lf %lf %lf %lf %d %d"
+//TORSION RESTRAINT: TORSION RESTRAINT At1 At2 At3 At4 Angle F1 F2 dAngle/dIter start end
+#define TORSION_RESTRAINT_FORMAT "%s %s %d %d %d %d %lf %lf %lf %lf %d %d"
+/*
 http://www.rcsb.org/pdb/file_formats/pdb/pdbguide2.2/guide2.2_frame.html
 
 COLUMNS        DATA  TYPE    FIELD        DEFINITION
@@ -615,8 +621,11 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
     char s_a[12], s_b[12], s_c[12], s_alpha[12], s_beta[12], s_gamma[12];
     char *endptr;
     int i, atom_cnt, token_cnt, bgf_serial, ratom, crystx_found;
-
-    endptr = NULL;
+	int bond_rest_cnt, ang_rest_cnt, tors_rest_cnt;
+    char filler1[10];
+	char filler2[10];
+	
+	endptr = NULL;
     ratom = 0;
     crystx_found = FALSE;
 
@@ -628,6 +637,9 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
     /* count number of atoms in the BGF file */
     system->N = 0;
     line[0] = 0;
+	system->bond_rest_cnt = 0;
+	system->ang_rest_cnt = 0;
+	system->tors_rest_cnt = 0;
 
     while ( fgets( line, MAX_LINE, bgf ) )
     {
@@ -640,13 +652,30 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             ++system->N;
         }
 
-        line[0] = 0;
+		/*TODO: need to search for "X RESTRAINT" not just "X" */
+		else if (  strncmp (tokens[0], "BOND", 4) == 0) 
+		{
+			++system->bond_rest_cnt;
+		}
+
+		else if (  strncmp (tokens[0], "ANGLE", 5) == 0) 
+		{
+			++system->ang_rest_cnt;
+		}
+
+		else if (  strncmp (tokens[0], "TORSION", 7) == 0) 
+		{
+			++system->tors_rest_cnt;
+		}
+		
+		line[0] = 0;
     }
+	fprintf(stderr,"%d %d %d %d",system->N, system->bond_rest_cnt,system->ang_rest_cnt,system->tors_rest_cnt);
     if ( ferror( bgf ) )
     {
         fprintf( stderr, "[ERROR] Unable to read BGF file. Terminating...\n" );
         exit( INVALID_INPUT );
-    }
+	}
 
     sfclose( bgf, "Read_BGF::bgf" );
 
@@ -662,6 +691,9 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
     bgf = sfopen( bgf_file, "r" );
     atom_cnt = 0;
     token_cnt = 0;
+	bond_rest_cnt = 0;
+	ang_rest_cnt = 0;
+	tors_rest_cnt = 0;
 
     while ( fgets( line, MAX_LINE, bgf ) )
     {
@@ -779,7 +811,70 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
                 }
             }
         }
+		/*TODO: need to search for "X RESTRAINT" not just "X" */
+		else if (  strncmp (tokens[0], "BOND", 4) == 0) 
+		{
+			// assign def. value to non-mand. parameters (MD only params)
+			system->bond_restraints[bond_rest_cnt].change = 0.0;
+			system->bond_restraints[bond_rest_cnt].start = 0;
+			system->bond_restraints[bond_rest_cnt].end = 0;
+            sscanf( backup, BOND_RESTRAINT_FORMAT,
+					filler1,
+					filler2,
+                    &(system->bond_restraints[bond_rest_cnt].atom_inds[0]),
+                    &(system->bond_restraints[bond_rest_cnt].atom_inds[1]),
+                    &(system->bond_restraints[bond_rest_cnt].t_dist),
+                    &(system->bond_restraints[bond_rest_cnt].f_1),
+                    &(system->bond_restraints[bond_rest_cnt].f_2),
+                    &(system->bond_restraints[bond_rest_cnt].change),
+                    &(system->bond_restraints[bond_rest_cnt].start),
+                    &(system->bond_restraints[bond_rest_cnt].end));
+			bond_rest_cnt++;
+		}
 
+		else if (  strncmp (tokens[0], "ANGLE", 5) == 0) 
+		{
+			// assign def. value to non-mand. parameters (MD only params)
+			system->angle_restraints[ang_rest_cnt].change = 0.0;
+			system->angle_restraints[ang_rest_cnt].start = 0;
+			system->angle_restraints[ang_rest_cnt].end = 0;
+             sscanf( backup, ANGLE_RESTRAINT_FORMAT,
+					filler1,
+					filler2,
+                    &(system->angle_restraints[ang_rest_cnt].atom_inds[0]),
+                    &(system->angle_restraints[ang_rest_cnt].atom_inds[1]),
+                    &(system->angle_restraints[ang_rest_cnt].atom_inds[2]),
+                    &(system->angle_restraints[ang_rest_cnt].t_ang),
+                    &(system->angle_restraints[ang_rest_cnt].f_1),
+                    &(system->angle_restraints[ang_rest_cnt].f_2),
+                    &(system->angle_restraints[ang_rest_cnt].change),
+                    &(system->angle_restraints[ang_rest_cnt].start),
+                    &(system->angle_restraints[ang_rest_cnt].end));
+			ang_rest_cnt++;
+		}
+
+		else if (  strncmp (tokens[0], "TORSION", 7) == 0) 
+		{
+			// assign def. value to non-mand. parameters (MD only params)
+			system->torsion_restraints[tors_rest_cnt].change = 0.0;
+			system->torsion_restraints[tors_rest_cnt].start = 0;
+			system->torsion_restraints[tors_rest_cnt].end = 0;
+              sscanf( backup, TORSION_RESTRAINT_FORMAT,
+					filler1,
+					filler2,
+                    &(system->torsion_restraints[tors_rest_cnt].atom_inds[0]),
+                    &(system->torsion_restraints[tors_rest_cnt].atom_inds[1]),
+                    &(system->torsion_restraints[tors_rest_cnt].atom_inds[2]),
+                    &(system->torsion_restraints[tors_rest_cnt].atom_inds[3]),
+                    &(system->torsion_restraints[tors_rest_cnt].t_ang),
+                    &(system->torsion_restraints[tors_rest_cnt].f_1),
+                    &(system->torsion_restraints[tors_rest_cnt].f_2),
+                    &(system->torsion_restraints[tors_rest_cnt].change),
+                    &(system->torsion_restraints[tors_rest_cnt].start),
+                    &(system->torsion_restraints[tors_rest_cnt].end));
+			tors_rest_cnt++;
+		}
+		
         /* clear previous input line */
         line[0] = '\0';
 

@@ -30,8 +30,189 @@
 #include "reset_tools.h"
 #include "system_props.h"
 #include "vector.h"
+#include "stdlib.h"
+#include "stdio.h"
+
+real dot_product(int N,rvec *v1, rvec *v2) {
+	int i;
+	real res = 0;
+	for (i = 0; i < N; i++) {
+		res = res + rvec_Dot(v1[i],v2[i]);
+	}
+	return res;
+}
+
+void copy(int N, rvec* dst, rvec* src) {
+	int i,j;
+	for (i = 0; i < N; i++) {
+		for (j=0; j < 3; j++) {
+			dst[i][j] = src[i][j];
+		}
+	}
+}
+
+void calculate_energy_and_grads( reax_system *system, control_params *control,
+        simulation_data *data, static_storage *workspace,
+        reax_list **lists, output_controls *out_control, int renbr) {
+	// Assume positions wont change drastically (no need for reneigh.)
+	//for ( i = 0; i < system->N; i++ )
+    //{
+    //    control->update_atom_position( system->atoms[i].x, x[i], system->atoms[i].rel_map, &system->box );
+    //}
+	
+    Reallocate( system, control, workspace, lists, renbr );
+
+    Reset( system, control, data, workspace, lists );
+
+    if ( renbr )
+    {
+        Generate_Neighbor_Lists( system, control, data, workspace,
+                lists, out_control );
+    }
+
+    Compute_Forces( system, control, data, workspace, lists, out_control );
+	
+	Compute_Potential_Energy(data);
+}
+real line_search( reax_system *system, control_params *control,
+        simulation_data *data, static_storage *workspace,
+        reax_list **lists, output_controls *out_control, rvec *s)
+{
+	int i,ctr;
+	// search for best stepsize(use backtracking for now)
+	int max_it = 10;
+	int a1,a2,a3;
+	real alpha = 0.1; // 1.11 * 0.9 = 1 (it will be multip. by 0.9 at least once))
+	real rho = 0.5;
+	real c1 = 0.0001;
+	rvec dx;	
+	real f0 = data->E_Pot;
+	rvec grad0[system->N];
+    rvec cur_grad[system->N];
+	rvec cur_pos[system->N];
+	rvec pos0[system->N];
+	rvec rel_map0[system->N];
+	//return 0.01;
+	for (i = 0; i < system->N; i++) {
+		rvec_Scale(grad0[i], -1, system->atoms[i].f);
+		rvec_Copy(pos0[i], system->atoms[i].x);
+		rvec_Copy(rel_map0[i], system->atoms[i].rel_map);
+	}
+	
+	real dot0 = dot_product(system->N, grad0, s);
+	real cur_dot; 
+	real cur_energy = 999999999; // so that init cond. is True
+	ctr = 0;
+	while (cur_energy > f0 + c1 * dot0 && ctr < max_it) {
+		alpha = alpha *rho;
+		for ( i = 0; i < system->N; i++ )
+   		{
+        	rvec_Scale(dx, alpha, s[i]);
+			//printf(" %f, %f, %f", dx[0],dx[1],dx[2]);
+			
+			rvec_Copy(system->atoms[i].x,pos0[i]);
+			rvec_Copy(system->atoms[i].rel_map,rel_map0[i]);
+        	control->update_atom_position( system->atoms[i].x, dx, system->atoms[i].rel_map, &system->box );
+    	}
+	
+		calculate_energy_and_grads( system, control,
+        	data, workspace,
+       		lists, out_control,
+			FALSE);
+		cur_energy = data->E_Pot;
+		fprintf(stderr,"\n%f, %f, %f", f0, cur_energy, c1 * dot0);	
+		ctr++;
+	}
+
+	for ( i = 0; i < system->N; i++ )
+   	{
+		rvec_Copy(system->atoms[i].x,pos0[i]);
+		rvec_Copy(system->atoms[i].rel_map,rel_map0[i]);
+	}
+	return alpha;
+}
 
 
+
+/* Velocity Verlet integrator for microcanonical ensemble. */
+void minimize_energy( reax_system *system, control_params *control,
+        simulation_data *data, static_storage *workspace,
+        reax_list **lists, output_controls *out_control, rvec* x_prev, rvec *s_prev)
+{
+	/*
+	 * Notes: reneighboring is expensive, limit the max gradient(force) 
+	
+	*/
+    int i,j, renbr;
+    real inv_m, dt, dt_sqr;
+    rvec dx;
+    rvec s[system->N]; // search direction
+	real beta;
+	rvec x_cur[system->N];
+	rvec x_diff[system->N];
+	real step_size;
+    dt = control->dt;
+    dt_sqr = SQR(dt);
+    renbr = ((data->step - data->prev_steps) % control->reneighbor) == 0 ? TRUE : FALSE;
+	//fprintf(stderr, "test");
+	for ( i = 0; i < system->N; i++ )
+    {
+		rvec_clip(system->atoms[i].f, -0.5,0.5);
+		rvec_Copy(x_cur[i], system->atoms[i].f);
+		rvec_Scale(x_cur[i], -1, x_cur[i]);
+    }
+	//printf("%d", data->step);
+	if (data->step == 1) {
+		copy(system->N, x_prev, x_cur);
+		copy(system->N, s_prev, x_cur);
+		Compute_Potential_Energy(data);
+	}
+	//printf("%f %f %f", x_cur[0][0], x_prev[0][0], s_prev[0][0]);
+	// compute B_n(Polak-Ribiere)
+	// calculate diff
+	for ( i = 0; i < system->N; i++ )
+    {
+		rvec_ScaledSum(x_diff[i], 1, x_cur[i], -1, x_prev[i]);
+
+    }
+	beta = dot_product(system->N,x_cur, x_diff) / dot_product(system->N,x_prev, x_prev);
+	//printf("beta %f",beta);
+	beta = beta > 0.0 ? beta : 0.0;
+	// conj. direction
+	for ( i = 0; i < system->N; i++ )			
+    {
+		rvec_ScaledSum(s[i], 1, x_cur[i], beta, s_prev[i]); 
+    }
+		
+	
+	fprintf(stderr,"before step size");
+	step_size =  line_search( system, control,
+        data, workspace,
+        lists, out_control, s); 
+	fprintf(stderr,"step_size: %f", step_size);
+	for ( i = 0; i < system->N; i++ )
+    {
+        rvec_Scale(dx, step_size, s[i]);
+		//printf(" %f, %f, %f", dx[0],dx[1],dx[2]);
+        control->update_atom_position( system->atoms[i].x, dx, system->atoms[i].rel_map, &system->box );
+    }
+	copy(system->N, x_prev, x_cur);
+	copy(system->N, s_prev, x_cur);
+	
+    Reallocate( system, control, workspace, lists, renbr );
+
+    Reset( system, control, data, workspace, lists );
+
+    if (renbr == TRUE )
+    {
+        Generate_Neighbor_Lists( system, control, data, workspace,
+                lists, out_control );
+    }
+
+    Compute_Forces( system, control, data, workspace, lists, out_control );
+
+	Compute_Potential_Energy(data);
+}
 /* Velocity Verlet integrator for microcanonical ensemble. */
 void Velocity_Verlet_NVE( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,

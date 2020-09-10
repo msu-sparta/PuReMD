@@ -37,7 +37,7 @@
 #include "system_props.h"
 #include "tool_box.h"
 #include "vector.h"
-
+#include "integrate.h"
 
 static void Post_Evolve( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
@@ -218,6 +218,13 @@ int simulate( const void * const handle )
                 spmd_handle->out_control, &Evolve,
                 spmd_handle->output_enabled );
 
+		if (spmd_handle->system->bond_rest_cnt > 0) {
+			int i;
+			for(i = 0; i < spmd_handle->system->bond_rest_cnt; i++) {
+				bond_restraint br = spmd_handle->system->bond_restraints[i];
+				fprintf(stderr,"%d %d %f %f %f %f %d %d",br.atom_inds[0], br.atom_inds[1], br.t_dist, br.f_1, br.f_2, br.change, br.start, br.end);
+			}
+		}
         /* compute f_0 */
         //if( control.restart == FALSE ) {
         Reset( spmd_handle->system, spmd_handle->control, spmd_handle->data,
@@ -271,7 +278,8 @@ int simulate( const void * const handle )
                     spmd_handle->lists );
         }
         //}
-
+		rvec s_prev[spmd_handle->system->N];
+		rvec x_prev[spmd_handle->system->N];
         for ( ++spmd_handle->data->step; spmd_handle->data->step <= spmd_handle->control->nsteps; spmd_handle->data->step++ )
         {
             if ( spmd_handle->control->T_mode != 0 )
@@ -279,10 +287,17 @@ int simulate( const void * const handle )
                 Temperature_Control( spmd_handle->control, spmd_handle->data,
                         spmd_handle->out_control );
             }
+			//TEMPO CONTROL
+			if (spmd_handle->control->ensemble != NVE) {
 
-            Evolve( spmd_handle->system, spmd_handle->control, spmd_handle->data,
-                    spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control );
+            minimize_energy( spmd_handle->system, spmd_handle->control, spmd_handle->data,
+                    spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control,x_prev,s_prev );
+			}
+			else {
+				Evolve( spmd_handle->system, spmd_handle->control, spmd_handle->data,
+						spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control );
 
+			}
             Post_Evolve( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                     spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control );
 

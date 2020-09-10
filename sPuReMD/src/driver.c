@@ -30,7 +30,7 @@
 
 static void usage( char * argv[] )
 {
-    fprintf( stderr, "usage: ./%s geometry_file force_field_file control_file\n", argv[0] );
+    fprintf( stderr, "usage:-------- ./%s geometry_file force_field_file control_file\n", argv[0] );
 }
 
 
@@ -47,7 +47,7 @@ int main( int argc, char* argv[] )
 
     handle = setup( argv[1], argv[2], argv[3] );
     ret = SPUREMD_FAILURE;
-
+	fprintf(stderr,"before simulate");
     if ( handle != NULL )
     {
         ret = simulate( handle );

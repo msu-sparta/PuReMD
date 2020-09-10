@@ -75,7 +75,64 @@ void Init_Bonded_Force_Functions( control_params *control )
     control->intr_funcs[9] = NULL;
 }
 
+static void Compute_Bond_Restraint_Forces( reax_system *system, control_params *control,
+        simulation_data *data, static_storage *workspace, reax_list **lists,
+        output_controls *out_control )
+{
+	int i;
+	// bond restraints
+	for (i = 0; i < system->bond_rest_cnt; i++) 
+	{
+		bond_restraint br = system->bond_restraints[i];
+		reax_atom a1, a2;
+		a1 = system->atoms[br.atom_inds[0]];
+		a2 = system->atoms[br.atom_inds[1]];
 
+		
+	}
+}
+
+static void Compute_Angle_Restraint_Forces( reax_system *system, control_params *control,
+        simulation_data *data, static_storage *workspace, reax_list **lists,
+        output_controls *out_control )
+{
+	int i;
+	// angle restraints
+	for (i = 0; i < system->bond_rest_cnt; i++) 
+	{
+		bond_restraint br = system->bond_restraints[i];
+		reax_atom a1, a2, a3;
+		a1 = system->atoms[br.atom_inds[0]];
+		a2 = system->atoms[br.atom_inds[1]];
+		a3 = system->atoms[br.atom_inds[2]];
+		
+	}
+}
+
+static void Compute_Torsion_Restraint_Forces( reax_system *system, control_params *control,
+        simulation_data *data, static_storage *workspace, reax_list **lists,
+        output_controls *out_control )
+{
+	int i;
+	// torsion restraints
+	for (i = 0; i < system->tors_rest_cnt; i++) 
+	{
+		bond_restraint br = system->torsion_restraints[i];
+		reax_atom a1, a2, a3, a4;
+		a1 = system->atoms[br.atom_inds[0]];
+		a2 = system->atoms[br.atom_inds[1]];
+		a3 = system->atoms[br.atom_inds[2]];
+		a4 = system->atoms[br.atom_inds[3]];
+		
+	}
+}
+static void Compute_Restraint_Forces( reax_system *system, control_params *control,
+        simulation_data *data, static_storage *workspace, reax_list **lists,
+        output_controls *out_control )
+{
+		
+
+}
 static void Compute_Bonded_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control )

@@ -51,6 +51,15 @@ void PreAllocate_Space( reax_system *system, control_params *control,
                     "PreAllocate_Space::workspace->restricted_list[i]" );
         }
     }
+
+	/* Allocate space for restraints */
+	/* Allocate +1 in case there is no restraint  */
+    system->bond_restraints = scalloc( system->bond_rest_cnt+1, sizeof(bond_restraint),
+            "PreAllocate_Space::system->bond_restraints" );
+    system->angle_restraints = scalloc( system->ang_rest_cnt+1, sizeof(angle_restraint),
+            "PreAllocate_Space::system->angle_restraints" );
+    system->torsion_restraints = scalloc( system->tors_rest_cnt+1, sizeof(torsion_restraint),
+            "PreAllocate_Space::system->torsion_restraints" );
 }
 
 

@@ -389,6 +389,9 @@ typedef struct reax_atom reax_atom;
 typedef struct simulation_box simulation_box;
 typedef struct grid grid;
 typedef struct reax_system reax_system;
+typedef struct bond_restraint bond_restraint;
+typedef struct angle_restraint angle_restraint;
+typedef struct torsion_restraint torsion_restraint;
 typedef struct control_params control_params;
 typedef struct thermostat thermostat;
 typedef struct isotropic_barostat isotropic_barostat;
@@ -817,6 +820,55 @@ struct grid
     rvec **** nbrs_cp;
 };
 
+struct bond_restraint 
+{
+	/* atom indices */
+	int atom_inds[2]; 
+	/* target distance */
+	real t_dist;
+	/* forces */
+	real f_1;
+	real f_2;
+	/* change per iteration (MD only) */
+	real change;
+	/* start and end steps (MD only" */
+	int start;
+	int end;
+};
+struct angle_restraint 
+
+{
+	/* atom indices */
+	int atom_inds[3]; 
+	/* target distance */
+	real t_ang;
+	/* forces */
+	real f_1;
+	real f_2;
+	/* change per iteration (MD only) */
+	real change;
+	/* start and end steps (MD only" */
+	int start;
+	int end;
+};
+
+struct torsion_restraint 
+{
+	/* atom indices */
+	int atom_inds[4]; 
+	/* target distance */
+	real t_ang;
+	/* forces */
+	real f_1;
+	real f_2;
+	/* change per iteration (MD only) */
+	real change;
+	/* start and end steps (MD only" */
+	int start;
+	int end;
+};
+
+
 
 struct reax_system
 {
@@ -832,6 +884,14 @@ struct reax_system
     simulation_box box;
     /* grid structure used for binning atoms and tracking neighboring bins */
     grid g;
+
+	/* restraints */
+	int bond_rest_cnt;
+	int ang_rest_cnt;
+	int tors_rest_cnt;
+	bond_restraint *bond_restraints;
+	angle_restraint *angle_restraints;
+	torsion_restraint *torsion_restraints;
 };
 
 
@@ -1184,6 +1244,10 @@ struct simulation_data
     real E_Ele;
     /* polarization energy, in kcal / mol */
     real E_Pol;
+	/*Restraint energy values in kcal / mol */
+	real E_Bond_Rest;
+	real E_Ang_Rest;
+	real E_Tors_Rest;
 
     /* number of degrees of freedom */
     real N_f;
