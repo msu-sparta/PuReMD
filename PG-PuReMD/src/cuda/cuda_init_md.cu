@@ -24,8 +24,7 @@
 
 
 static void Cuda_Init_System( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace,
-        mpi_datatypes *mpi_data )
+        simulation_data *data, storage *workspace, mpi_datatypes *mpi_data )
 {
     Setup_New_Grid( system, control, MPI_COMM_WORLD );
 
@@ -110,8 +109,8 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
         control->virial = 0;
         if ( !control->restart || (control->restart && control->random_vel) )
         {
-            data->therm.G_xi = control->Tau_T *
-                               (2.0 * data->sys_en.e_kin - data->N_f * K_B * control->T );
+            data->therm.G_xi = control->Tau_T
+                * (2.0 * data->sys_en.e_kin - data->N_f * K_B * control->T );
             data->therm.v_xi = data->therm.G_xi * control->dt;
             data->therm.v_xi_old = 0;
             data->therm.xi = 0;

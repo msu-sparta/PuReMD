@@ -303,7 +303,7 @@ int simulate( const void * const handle )
         {
             ret = SUCCESS;
 
-            if ( control->T_mode && retries == 0 )
+            if ( control->T_mode > 0 && retries == 0 )
             {
                 Temperature_Control( control, data );
             }

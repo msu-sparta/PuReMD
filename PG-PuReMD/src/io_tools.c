@@ -110,9 +110,17 @@ void Init_Output_Files( reax_system *system, control_params *control,
             out_control->log = sfopen( temp, "w",
                     "Init_Output_Controls::output_control->log" );
 
-            fprintf( out_control->log, "%6s%8s%8s%8s%8s%8s%8s%8s%8s%8s\n",
-                     "step", "total", "comm", "nbrs", "init", "bonded", "nonb",
-                     "charges", "siters", "retries" );
+//            fprintf( out_control->log, "%6s%8s%8s%8s%8s%8s%8s%8s%8s%8s\n",
+//                     "step", "total", "comm", "nbrs", "init", "bonded", "nonb",
+//                     "charges", "siters", "retries" );
+
+            fprintf( out_control->log, "%6s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s\n",
+                     "step", "total", "comm", "nbrs", "init",
+                     "init_dist", "init_cm", "init_bond",
+                     "bonded", "nonb",
+                     "cm", "cm_sort", "cm_iters", "cm_p_comp", "cm_p_app",
+                     "cm_comm", "cm_allr", "cm_spmv", "cm_vec_ops", "cm_orthog", "cm_t_solve",
+                     "retries" );
 
 #if defined(DEBUG)
             fflush( out_control->log );
@@ -1321,38 +1329,39 @@ void Output_Results( reax_system *system, control_params *control,
                     denom = 1.0;
                 }
 
-                fprintf( out_control->log,
-                        "%6d%8.3f%8.3f%8.3f%8.3f%8.3f%8.3f%8.3f%8d%8d\n",
-                        data->step, t_elapsed * denom, data->timing.comm * denom,
-                        data->timing.nbrs * denom, data->timing.init_forces * denom,
-                        data->timing.bonded * denom, data->timing.nonb * denom,
-                        data->timing.cm * denom,
-                        (int) (data->timing.cm_solver_iters * denom),
-                        data->timing.num_retries );
-
 //                fprintf( out_control->log,
-//                        "%6d %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.2f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n",
-//                        data->step,
-//                        t_elapsed * denom,
-//                        data->timing.comm * denom,
-//                        data->timing.nbrs * denom,
-//                        data->timing.init_forces * denom,
-//                        data->timing.init_dist * denom,
-//                        data->timing.init_cm * denom,
-//                        data->timing.init_bond * denom,
-//                        data->timing.bonded * denom,
-//                        (data->timing.nonb + data->timing.cm) * denom,
+//                        "%6d%8.3f%8.3f%8.3f%8.3f%8.3f%8.3f%8.3f%8d%8d\n",
+//                        data->step, t_elapsed * denom, data->timing.comm * denom,
+//                        data->timing.nbrs * denom, data->timing.init_forces * denom,
+//                        data->timing.bonded * denom, data->timing.nonb * denom,
 //                        data->timing.cm * denom,
-//                        data->timing.cm_sort * denom,
-//                        (double) (data->timing.cm_solver_iters * denom),
-//                        data->timing.cm_solver_pre_comp * denom,
-//                        data->timing.cm_solver_pre_app * denom,
-//                        data->timing.cm_solver_comm * denom,
-//                        data->timing.cm_solver_allreduce * denom,
-//                        data->timing.cm_solver_spmv * denom,
-//                        data->timing.cm_solver_vector_ops * denom,
-//                        data->timing.cm_solver_orthog * denom,
-//                        data->timing.cm_solver_tri_solve * denom );
+//                        (int) (data->timing.cm_solver_iters * denom),
+//                        data->timing.num_retries );
+
+                fprintf( out_control->log,
+                        "%6d %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.2f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.2f\n",
+                        data->step,
+                        t_elapsed * denom,
+                        data->timing.comm * denom,
+                        data->timing.nbrs * denom,
+                        data->timing.init_forces * denom,
+                        data->timing.init_dist * denom,
+                        data->timing.init_cm * denom,
+                        data->timing.init_bond * denom,
+                        data->timing.bonded * denom,
+                        (data->timing.nonb + data->timing.cm) * denom,
+                        data->timing.cm * denom,
+                        data->timing.cm_sort * denom,
+                        (double) (data->timing.cm_solver_iters * denom),
+                        data->timing.cm_solver_pre_comp * denom,
+                        data->timing.cm_solver_pre_app * denom,
+                        data->timing.cm_solver_comm * denom,
+                        data->timing.cm_solver_allreduce * denom,
+                        data->timing.cm_solver_spmv * denom,
+                        data->timing.cm_solver_vector_ops * denom,
+                        data->timing.cm_solver_orthog * denom,
+                        data->timing.cm_solver_tri_solve * denom,
+                        data->timing.num_retries * denom );
 
 #if defined(DEBUG)
                 fflush( out_control->log );

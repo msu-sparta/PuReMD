@@ -567,9 +567,13 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
 {
     int blocks, ret, ret_far_nbr;
 #if defined(LOG_PERFORMANCE)
-    double time;
+    float time_elapsed;
+    cudaEvent_t time_event[2];
     
-    time = Get_Time( );
+    for ( int i = 0; i < 2; ++i )
+    {
+        cudaEventCreate( &time_event[i] );
+    }
 #endif
 
     /* reset reallocation flag on device */
@@ -581,6 +585,10 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
     /* one thread per atom implementation */
     blocks = (system->N / NBRS_BLOCK_SIZE) +
         ((system->N % NBRS_BLOCK_SIZE) == 0 ? 0 : 1);
+
+#if defined(LOG_PERFORMANCE)
+    cudaEventRecord( time_event[0] );
+#endif
 
     k_generate_neighbor_lists <<< blocks, NBRS_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->my_ext_box,
@@ -599,6 +607,10 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
 //              *(lists[FAR_NBRS]), system->n, system->N );
 //    cudaCheckError( );
 
+#if defined(LOG_PERFORMANCE)
+    cudaEventRecord( time_event[1] );
+#endif
+
     /* check reallocation flag on device */
     copy_host_device( &ret_far_nbr, system->d_realloc_far_nbrs, sizeof(int), 
             cudaMemcpyDeviceToHost, "Cuda_Generate_Neighbor_Lists::d_realloc_far_nbrs" );
@@ -607,7 +619,18 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
     workspace->d_workspace->realloc.far_nbrs = ret_far_nbr;
 
 #if defined(LOG_PERFORMANCE)
-    Update_Timing_Info( &time, &data->timing.nbrs );
+    if ( cudaEventQuery( time_event[0] ) != cudaSuccess ) 
+    {
+        cudaEventSynchronize( time_event[0] );
+    }
+
+    if ( cudaEventQuery( time_event[1] ) != cudaSuccess ) 
+    {
+        cudaEventSynchronize( time_event[1] );
+    }
+
+    cudaEventElapsedTime( &time_elapsed, time_event[0], time_event[1] ); 
+    data->timing.nbrs += (real) (time_elapsed / 1000.0);
 #endif
 
     return ret;

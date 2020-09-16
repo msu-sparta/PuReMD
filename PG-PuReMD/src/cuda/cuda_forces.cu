@@ -1474,9 +1474,13 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
     int renbr, blocks, ret, realloc_bonds, realloc_hbonds, realloc_cm;
     static int dist_done = FALSE, cm_done = FALSE, bonds_done = FALSE;
 #if defined(LOG_PERFORMANCE)
-    double time;
+    float time_elapsed;
+    cudaEvent_t time_event[4];
     
-    time = Get_Time( );
+    for ( int i = 0; i < 4; ++i )
+    {
+        cudaEventCreate( &time_event[i] );
+    }
 #endif
 
     renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
@@ -1498,6 +1502,10 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
     cuda_memset( system->d_realloc_cm_entries, FALSE, sizeof(int), 
             "Cuda_Init_Forces::d_realloc_cm_entries" );
 
+#if defined(LOG_PERFORMANCE)
+    cudaEventRecord( time_event[0] );
+#endif
+
     if ( renbr == FALSE && dist_done == FALSE )
     {
         k_init_distance <<< control->blocks_n, control->block_size_n >>>
@@ -1508,7 +1516,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
     }
 
 #if defined(LOG_PERFORMANCE)
-    Update_Timing_Info( &time, &data->timing.init_dist );
+    cudaEventRecord( time_event[1] );
 #endif
 
     blocks = workspace->d_workspace->H.n_max / DEF_BLOCK_SIZE
@@ -1561,7 +1569,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
     }
 
 #if defined(LOG_PERFORMANCE)
-    Update_Timing_Info( &time, &data->timing.init_cm );
+    cudaEventRecord( time_event[2] );
 #endif
 
     if ( bonds_done == FALSE )
@@ -1578,7 +1586,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
     }
 
 #if defined(LOG_PERFORMANCE)
-    Update_Timing_Info( &time, &data->timing.init_bond );
+    cudaEventRecord( time_event[3] );
 #endif
 
     /* check reallocation flags on device */
@@ -1588,6 +1596,42 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
             cudaMemcpyDeviceToHost, "Cuda_Init_Forces::d_realloc_bonds" );
     copy_host_device( &realloc_hbonds, system->d_realloc_hbonds, sizeof(int), 
             cudaMemcpyDeviceToHost, "Cuda_Init_Forces::d_realloc_hbonds" );
+
+#if defined(LOG_PERFORMANCE)
+    if ( cudaEventQuery( time_event[0] ) != cudaSuccess ) 
+    {
+        cudaEventSynchronize( time_event[0] );
+    }
+
+    if ( cudaEventQuery( time_event[1] ) != cudaSuccess ) 
+    {
+        cudaEventSynchronize( time_event[1] );
+    }
+
+    cudaEventElapsedTime( &time_elapsed, time_event[0], time_event[1] ); 
+    data->timing.init_dist += (real) (time_elapsed / 1000.0);
+
+    if ( cudaEventQuery( time_event[2] ) != cudaSuccess ) 
+    {
+        cudaEventSynchronize( time_event[2] );
+    }
+
+    cudaEventElapsedTime( &time_elapsed, time_event[1], time_event[2] ); 
+    data->timing.init_cm += (real) (time_elapsed / 1000.0);
+
+    if ( cudaEventQuery( time_event[3] ) != cudaSuccess ) 
+    {
+        cudaEventSynchronize( time_event[3] );
+    }
+
+    cudaEventElapsedTime( &time_elapsed, time_event[2], time_event[3] ); 
+    data->timing.init_bond += (real) (time_elapsed / 1000.0);
+    
+    for ( int i = 0; i < 4; ++i )
+    {
+        cudaEventDestroy( time_event[i] );
+    }
+#endif
 
     ret = (realloc_cm == FALSE && realloc_bonds == FALSE && realloc_hbonds == FALSE)
         ? SUCCESS : FAILURE;
@@ -1996,9 +2040,13 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
     int charge_flag, ret;
     static int init_forces_done = FALSE;
 #if defined(LOG_PERFORMANCE)
-    real time;
-
-    time = Get_Time( );
+    float time_elapsed;
+    cudaEvent_t time_event[6];
+    
+    for ( int i = 0; i < 6; ++i )
+    {
+        cudaEventCreate( &time_event[i] );
+    }
 #endif
 
     ret = SUCCESS;
@@ -2012,6 +2060,10 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
     {
         charge_flag = FALSE;
     }
+
+#if defined(LOG_PERFORMANCE)
+    cudaEventRecord( time_event[0] );
+#endif
 
     if ( init_forces_done == FALSE )
     {
@@ -2033,18 +2085,18 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
     }
 
 #if defined(LOG_PERFORMANCE)
-    Update_Timing_Info( &time, &data->timing.init_forces );
+    cudaEventRecord( time_event[1] );
 #endif
 
     if ( ret == SUCCESS )
     {
         ret = Cuda_Compute_Bonded_Forces( system, control, data,
                 workspace, lists, out_control );
+    }
 
 #if defined(LOG_PERFORMANCE)
-        Update_Timing_Info( &time, &data->timing.bonded );
+    cudaEventRecord( time_event[2] );
 #endif
-    }
 
     if ( ret == SUCCESS )
     {
@@ -2055,24 +2107,79 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
         }
 
 #if defined(LOG_PERFORMANCE)
-        Update_Timing_Info( &time, &data->timing.cm );
+        cudaEventRecord( time_event[3] );
 #endif
 
         Cuda_Compute_NonBonded_Forces( system, control, data, workspace,
                 lists, out_control, mpi_data );
 
 #if defined(LOG_PERFORMANCE)
-        Update_Timing_Info( &time, &data->timing.nonb );
+        cudaEventRecord( time_event[4] );
 #endif
 
         Cuda_Compute_Total_Force( system, control, data, workspace, lists, mpi_data );
 
 #if defined(LOG_PERFORMANCE)
-        Update_Timing_Info( &time, &data->timing.bonded );
+        cudaEventRecord( time_event[5] );
 #endif
 
         init_forces_done = FALSE;
     }
+
+#if defined(LOG_PERFORMANCE)
+    if ( cudaEventQuery( time_event[0] ) != cudaSuccess ) 
+    {
+        cudaEventSynchronize( time_event[0] );
+    }
+
+    if ( cudaEventQuery( time_event[1] ) != cudaSuccess ) 
+    {
+        cudaEventSynchronize( time_event[1] );
+    }
+
+    cudaEventElapsedTime( &time_elapsed, time_event[0], time_event[1] ); 
+    data->timing.init_forces += (real) (time_elapsed / 1000.0);
+
+    if ( cudaEventQuery( time_event[2] ) != cudaSuccess ) 
+    {
+        cudaEventSynchronize( time_event[2] );
+    }
+
+    cudaEventElapsedTime( &time_elapsed, time_event[1], time_event[2] ); 
+    data->timing.bonded += (real) (time_elapsed / 1000.0);
+
+    if ( ret == SUCCESS )
+    {
+        if ( cudaEventQuery( time_event[3] ) != cudaSuccess ) 
+        {
+            cudaEventSynchronize( time_event[3] );
+        }
+
+        cudaEventElapsedTime( &time_elapsed, time_event[2], time_event[3] ); 
+        data->timing.cm += (real) (time_elapsed / 1000.0);
+
+        if ( cudaEventQuery( time_event[4] ) != cudaSuccess ) 
+        {
+            cudaEventSynchronize( time_event[4] );
+        }
+
+        cudaEventElapsedTime( &time_elapsed, time_event[3], time_event[4] ); 
+        data->timing.nonb += (real) (time_elapsed / 1000.0);
+
+        if ( cudaEventQuery( time_event[5] ) != cudaSuccess ) 
+        {
+            cudaEventSynchronize( time_event[5] );
+        }
+
+        cudaEventElapsedTime( &time_elapsed, time_event[4], time_event[5] ); 
+        data->timing.bonded += (real) (time_elapsed / 1000.0);
+    }
+    
+    for ( int i = 0; i < 6; ++i )
+    {
+        cudaEventDestroy( time_event[i] );
+    }
+#endif
 
     return ret;
 }

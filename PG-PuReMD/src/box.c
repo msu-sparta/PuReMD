@@ -287,17 +287,21 @@ void Setup_Boundary_Cutoffs( reax_system * const system, control_params * const 
 void Setup_Environment( reax_system * const system, control_params * const control,
         mpi_datatypes * const mpi_data )
 {
+    int ret;
     ivec periodic = {1, 1, 1};
 #if defined(DEBUG_FOCUS)
     char temp[100];
 #endif
 
     /* initialize communicator - 3D mesh with wrap-arounds = 3D torus */
-    MPI_Cart_create( MPI_COMM_WORLD, 3, control->procs_by_dim, periodic, 1,
+    ret = MPI_Cart_create( MPI_COMM_WORLD, 3, control->procs_by_dim, periodic, 1,
             &mpi_data->comm_mesh3D );
-    MPI_Comm_rank( mpi_data->comm_mesh3D, &system->my_rank );
-    MPI_Cart_coords( mpi_data->comm_mesh3D, system->my_rank, 3,
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    ret = MPI_Comm_rank( mpi_data->comm_mesh3D, &system->my_rank );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    ret = MPI_Cart_coords( mpi_data->comm_mesh3D, system->my_rank, 3,
             system->my_coords );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     Setup_Boundary_Cutoffs( system, control );
     Setup_My_Box( system, control );

@@ -74,7 +74,7 @@ void Write_Binary_Restart_File( reax_system *system, control_params *control,
     /* fill in the buffers */
     for ( i = 0 ; i < system->n; ++i )
     {
-        p_atom = &(system->my_atoms[i]);
+        p_atom = &system->my_atoms[i];
         buffer[i].orig_id = p_atom->orig_id;
         buffer[i].type = p_atom->type;
         strncpy( buffer[i].name, p_atom->name, sizeof(buffer[i].name) - 1 );
@@ -97,7 +97,7 @@ void Write_Binary_Restart_File( reax_system *system, control_params *control,
         {
             if ( i != MASTER_NODE )
             {
-                ret = MPI_Recv( buffer + top, system->bigN - top, mpi_data->restart_atom_type,
+                ret = MPI_Recv( &buffer[top], system->bigN - top, mpi_data->restart_atom_type,
                           i, np * RESTART_ATOMS + i, MPI_COMM_WORLD, &status );
                 Check_MPI_Error( ret, __FILE__, __LINE__ );
                 MPI_Get_count( &status, mpi_data->restart_atom_type, &cnt );

@@ -20,11 +20,11 @@ extern "C" void Cuda_Setup_Environment( int rank, int nprocs, int gpus_per_node 
 {
 
     int deviceCount;
-    cudaError_t flag;
+    cudaError_t ret;
     
-    flag = cudaGetDeviceCount( &deviceCount );
+    ret = cudaGetDeviceCount( &deviceCount );
 
-    if ( flag != cudaSuccess || deviceCount < 1 )
+    if ( ret != cudaSuccess || deviceCount < 1 )
     {
         fprintf( stderr, "[ERROR] no CUDA capable device(s) found. Terminating...\n" );
         exit( CANNOT_INITIALIZE );
@@ -38,15 +38,15 @@ extern "C" void Cuda_Setup_Environment( int rank, int nprocs, int gpus_per_node 
 
     /* assign the GPU for each process */
     //TODO: handle condition where # CPU procs > # GPUs
-    flag = cudaSetDevice( rank % gpus_per_node );
+    ret = cudaSetDevice( rank % gpus_per_node );
 
-    if ( flag == cudaErrorInvalidDevice )
+    if ( ret == cudaErrorInvalidDevice )
     {
         fprintf( stderr, "[ERROR] invalid CUDA device ID set (%d). Terminating...\n",
               rank % gpus_per_node );
         exit( CANNOT_INITIALIZE );
     }
-    else if ( flag == cudaErrorDeviceAlreadyInUse )
+    else if ( ret == cudaErrorDeviceAlreadyInUse )
     {
         fprintf( stderr, "[ERROR] CUDA device with specified ID already in use (%d). Terminating...\n",
                 rank % gpus_per_node );
