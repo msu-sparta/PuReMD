@@ -84,7 +84,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy( reax_atom *my_atoms,
     p_vdW1i = 1.0 / p_vdW1;
     e_vdW = 0.0;
     e_ele = 0.0;
-    rvec_MakeZero( data_ext_press[i] );
+    rvec_MakeZero( ext_press );
 
     start_i = Start_Index( i, &far_nbr_list );
     end_i = End_Index( i, &far_nbr_list );
@@ -293,25 +293,25 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
     rvec temp, ext_press;
     two_body_parameters *twbp;
     int thread_id, warp_id, lane_id, offset;
-    unsigned int mask;
-    real e_vdW_s, e_ele_s;
-    rvec f_s;
+    real e_vdW_l, e_ele_l;
+    rvec f_l;
 
     thread_id = blockIdx.x * blockDim.x + threadIdx.x;
     warp_id = thread_id >> 5;
-    lane_id = thread_id & 0x0000001F; 
-    mask = __ballot_sync( FULL_MASK, warp_id < n );
 
     if ( warp_id >= n )
     {
         return;
     }
 
+    lane_id = thread_id & 0x0000001F; 
     i = warp_id;
-    e_vdW_s = 0.0;
-    e_ele_s = 0.0;
-    rvec_MakeZero( f_s );
-
+    e_vdW_l = 0.0;
+    e_ele_l = 0.0;
+    rvec_MakeZero( f_l );
+    e_vdW = 0.0;
+    e_ele = 0.0;
+    rvec_MakeZero( ext_press );
     p_vdW1 = gp.l[28];
     p_vdW1i = 1.0 / p_vdW1;
 
@@ -368,7 +368,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
                 e_base = twbp->D * (exp1 - 2.0 * exp2);
 
                 e_vdW = self_coef * (e_base * Tap);
-                e_vdW_s += e_vdW;
+                e_vdW_l += e_vdW;
 
                 dfn13 = POW( r_ij, p_vdW1 - 1.0 )
                     * POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0 );
@@ -382,7 +382,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
                 e_base = twbp->D * (exp1 - 2.0 * exp2);
 
                 e_vdW = self_coef * (e_base * Tap);
-                e_vdW_s += e_vdW;
+                e_vdW_l += e_vdW;
 
                 de_base = (twbp->D * twbp->alpha / twbp->r_vdW) * (exp2 - exp1);
             }
@@ -392,7 +392,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
             {
                 e_core = twbp->ecore * EXP( twbp->acore * (1.0 - (r_ij / twbp->rcore)) );
                 e_vdW += self_coef * (e_core * Tap);
-                e_vdW_s += (self_coef * (e_core * Tap));
+                e_vdW_l += (self_coef * (e_core * Tap));
 
                 de_core = -(twbp->acore / twbp->rcore) * e_core;
             }
@@ -426,7 +426,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
             dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
             e_clb = C_ELE * (my_atoms[i].q * my_atoms[j].q) / dr3gamij_3;
             e_ele = self_coef * (e_clb * Tap);
-            e_ele_s += e_ele;
+            e_ele_l += e_ele;
 
             de_clb = -C_ELE * (my_atoms[i].q * my_atoms[j].q)
                     * (r_ij * r_ij) / POW( dr3gamij_1, 4.0 / 3.0 );
@@ -441,12 +441,12 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
             {
                 if ( i < j ) 
                 {
-                    rvec_ScaledAdd( f_s,
+                    rvec_ScaledAdd( f_l,
                             -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
                 }
                 else 
                 {
-                    rvec_ScaledAdd( f_s,
+                    rvec_ScaledAdd( f_l,
                             (CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
                 }
             }
@@ -460,11 +460,11 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
 
                 if ( i < j ) 
                 {
-                    rvec_ScaledAdd( f_s, -1.0, temp );
+                    rvec_ScaledAdd( f_l, -1.0, temp );
                 }
                 else 
                 {
-                    rvec_Add( f_s, temp );
+                    rvec_Add( f_l, temp );
                 }
 
                 rvec_iMultiply( ext_press,
@@ -507,19 +507,19 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
     /* warp-level sum using registers within a warp */
     for ( offset = warpSize >> 1; offset > 0; offset /= 2 )
     {
-        e_vdW_s += __shfl_down_sync( mask, e_vdW_s, offset );
-        e_ele_s += __shfl_down_sync( mask, e_ele_s, offset );
-        f_s[0] += __shfl_down_sync( mask, f_s[0], offset );
-        f_s[1] += __shfl_down_sync( mask, f_s[1], offset );
-        f_s[2] += __shfl_down_sync( mask, f_s[2], offset );
+        e_vdW_l += __shfl_down_sync( FULL_MASK, e_vdW_l, offset );
+        e_ele_l += __shfl_down_sync( FULL_MASK, e_ele_l, offset );
+        f_l[0] += __shfl_down_sync( FULL_MASK, f_l[0], offset );
+        f_l[1] += __shfl_down_sync( FULL_MASK, f_l[1], offset );
+        f_l[2] += __shfl_down_sync( FULL_MASK, f_l[2], offset );
     }
 
     /* first thread within a warp writes warp-level sum to global memory */
     if ( lane_id == 0 )
     {
-        data_e_vdW[i] = e_vdW_s;
-        data_e_ele[i] = e_ele_s;
-        rvec_Add( workspace.f[i], f_s );
+        data_e_vdW[i] = e_vdW_l;
+        data_e_ele[i] = e_ele_l;
+        rvec_Add( workspace.f[i], f_l );
     }
 }
 
@@ -692,7 +692,7 @@ void Cuda_NonBonded_Energy( reax_system *system, control_params *control,
         storage *workspace, simulation_data *data, reax_list **lists,
         output_controls *out_control )
 {
-    int update_energy;
+    int update_energy, blocks;
     real *spad;
     rvec *spad_rvec;
 
@@ -704,6 +704,9 @@ void Cuda_NonBonded_Energy( reax_system *system, control_params *control,
             "Cuda_NonBonded_Energy::workspace->scratch" );
     spad = (real *) workspace->scratch;
 
+    blocks = system->n * 32 / DEF_BLOCK_SIZE
+        + (system->n * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+
     if ( control->tabulate == 0 )
     {
         k_vdW_coulomb_energy <<< control->blocks, control->block_size >>>
@@ -712,8 +715,8 @@ void Cuda_NonBonded_Energy( reax_system *system, control_params *control,
               *(workspace->d_workspace), *(lists[FAR_NBRS]), 
               system->n, system->reax_param.num_atom_types, 
               spad, &spad[system->n], (rvec *) (&spad[2 * system->n]) );
-//        k_vdW_coulomb_energy_opt <<< blocks, DEF_BLOCK_SIZE,
-//                             (2 * sizeof(real) + sizeof(rvec)) * DEF_BLOCK_SIZE >>>
+
+//        k_vdW_coulomb_energy_opt <<< blocks, DEF_BLOCK_SIZE >>>
 //            ( system->d_my_atoms, system->reax_param.d_tbp, 
 //              system->reax_param.d_gp, (control_params *) control->d_control_params, 
 //              *(workspace->d_workspace), *(lists[FAR_NBRS]), 
