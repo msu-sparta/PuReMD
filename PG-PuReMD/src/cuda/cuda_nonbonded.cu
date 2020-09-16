@@ -181,7 +181,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy( reax_atom *my_atoms,
             /* Coulomb Calculations */
             dr3gamij_1 = r_ij * r_ij * r_ij
                 + POW( twbp->gamma, -3.0 );
-            dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
+            dr3gamij_3 = POW( dr3gamij_1, 1.0 / 3.0 );
             e_clb = C_ELE * (my_atoms[i].q * my_atoms[j].q) / dr3gamij_3;
             e_ele += self_coef * (e_clb * Tap);
 
@@ -199,17 +199,14 @@ CUDA_GLOBAL void k_vdW_coulomb_energy( reax_atom *my_atoms,
                 if ( i < j ) 
                 {
                     rvec_Scale( temp, -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
-                    atomic_rvecAdd( workspace.f[i], temp );
-                    rvec_Scale( temp, -1.0, temp );
-                    atomic_rvecAdd( workspace.f[j], temp );
                 }
                 else 
                 {
                     rvec_Scale( temp, (CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
-                    atomic_rvecAdd( workspace.f[i], temp );
-                    rvec_Scale( temp, -1.0, temp );
-                    atomic_rvecAdd( workspace.f[j], temp );
                 }
+                atomic_rvecAdd( workspace.f[i], temp );
+                rvec_Scale( temp, -1.0, temp );
+                atomic_rvecAdd( workspace.f[j], temp );
             }
             /* NPT, iNPT or sNPT */
             else
@@ -220,18 +217,15 @@ CUDA_GLOBAL void k_vdW_coulomb_energy( reax_atom *my_atoms,
                 {
                     rvec_Scale( temp,
                             -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
-                    atomic_rvecAdd( workspace.f[i], temp );
-                    rvec_Scale( temp, -1.0, temp );
-                    atomic_rvecAdd( workspace.f[j], temp );
                 }
                 else 
                 {
                     rvec_Scale( temp,
                             (CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
-                    atomic_rvecAdd( workspace.f[i], temp );
-                    rvec_Scale( temp, -1.0, temp );
-                    atomic_rvecAdd( workspace.f[j], temp );
                 }
+                atomic_rvecAdd( workspace.f[i], temp );
+                rvec_Scale( temp, -1.0, temp );
+                atomic_rvecAdd( workspace.f[j], temp );
 
                 rvec_iMultiply( ext_press,
                         far_nbr_list.far_nbr_list.rel_box[pj], temp );
@@ -274,7 +268,6 @@ CUDA_GLOBAL void k_vdW_coulomb_energy( reax_atom *my_atoms,
 }
 
 
-//TODO: fix issue with atomic forces not being correctly accumulated
 /* one warp of threads per atom implementation */
 CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms, 
         two_body_parameters *tbp, global_parameters gp, control_params *control, 
@@ -306,14 +299,14 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
 
     lane_id = thread_id & 0x0000001F; 
     i = warp_id;
-    e_vdW_l = 0.0;
-    e_ele_l = 0.0;
-    rvec_MakeZero( f_l );
+    p_vdW1 = gp.l[28];
+    p_vdW1i = 1.0 / p_vdW1;
     e_vdW = 0.0;
     e_ele = 0.0;
     rvec_MakeZero( ext_press );
-    p_vdW1 = gp.l[28];
-    p_vdW1i = 1.0 / p_vdW1;
+    e_vdW_l = 0.0;
+    e_ele_l = 0.0;
+    rvec_MakeZero( f_l );
 
     start_i = Start_Index( i, &far_nbr_list );
     end_i = End_Index( i, &far_nbr_list );
@@ -406,24 +399,15 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
                     + (e_base + e_core) * dTap );
 
 #if defined(DEBUG_FOCUS)
-            if ( i < j )
-            {
-                printf( "%6d%6d%24.12f%24.12f%24.12f%24.12f\n",
-                        i + 1, j + 1, 
-                        e_base, de_base, e_core, de_core );
-            }
-            else
-            {
-                printf( "%6d%6d%24.12f%24.12f%24.12f%24.12f\n",
-                        j + 1, i + 1, 
-                        e_base, de_base, e_core, de_core );
-            }
+            printf( "%6d%6d%24.12f%24.12f%24.12f%24.12f\n",
+                    i + 1, j + 1, 
+                    e_base, de_base, e_core, de_core );
 #endif
 
             /* Coulomb Calculations */
             dr3gamij_1 = r_ij * r_ij * r_ij
                 + POW( twbp->gamma, -3.0 );
-            dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
+            dr3gamij_3 = POW( dr3gamij_1, 1.0 / 3.0 );
             e_clb = C_ELE * (my_atoms[i].q * my_atoms[j].q) / dr3gamij_3;
             e_ele = self_coef * (e_clb * Tap);
             e_ele_l += e_ele;
@@ -441,31 +425,34 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
             {
                 if ( i < j ) 
                 {
-                    rvec_ScaledAdd( f_l,
-                            -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
+                    rvec_Scale( temp, -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
                 }
                 else 
                 {
-                    rvec_ScaledAdd( f_l,
-                            (CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
+                    rvec_Scale( temp, (CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
                 }
+                rvec_Add( f_l, temp );
+                rvec_Scale( temp, -1.0, temp );
+                atomic_rvecAdd( workspace.f[j], temp );
             }
             /* NPT, iNPT or sNPT */
             else
             {
                 /* for pressure coupling, terms not related to bond order 
                    derivatives are added directly into pressure vector/tensor */
-                rvec_Scale( temp,
-                        (CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
-
                 if ( i < j ) 
                 {
-                    rvec_ScaledAdd( f_l, -1.0, temp );
+                    rvec_Scale( temp,
+                            -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
                 }
                 else 
                 {
-                    rvec_Add( f_l, temp );
+                    rvec_Scale( temp,
+                            (CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
                 }
+                rvec_Add( f_l, temp );
+                rvec_Scale( temp, -1.0, temp );
+                atomic_rvecAdd( workspace.f[j], temp );
 
                 rvec_iMultiply( ext_press,
                         far_nbr_list.far_nbr_list.rel_box[pj], temp );
@@ -519,7 +506,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
     {
         data_e_vdW[i] = e_vdW_l;
         data_e_ele[i] = e_ele_l;
-        rvec_Add( workspace.f[i], f_l );
+        atomic_rvecAdd( workspace.f[i], f_l );
     }
 }
 
@@ -709,19 +696,19 @@ void Cuda_NonBonded_Energy( reax_system *system, control_params *control,
 
     if ( control->tabulate == 0 )
     {
-        k_vdW_coulomb_energy <<< control->blocks, control->block_size >>>
-            ( system->d_my_atoms, system->reax_param.d_tbp, 
-              system->reax_param.d_gp, (control_params *) control->d_control_params, 
-              *(workspace->d_workspace), *(lists[FAR_NBRS]), 
-              system->n, system->reax_param.num_atom_types, 
-              spad, &spad[system->n], (rvec *) (&spad[2 * system->n]) );
-
-//        k_vdW_coulomb_energy_opt <<< blocks, DEF_BLOCK_SIZE >>>
+//        k_vdW_coulomb_energy <<< control->blocks, control->block_size >>>
 //            ( system->d_my_atoms, system->reax_param.d_tbp, 
 //              system->reax_param.d_gp, (control_params *) control->d_control_params, 
 //              *(workspace->d_workspace), *(lists[FAR_NBRS]), 
 //              system->n, system->reax_param.num_atom_types, 
 //              spad, &spad[system->n], (rvec *) (&spad[2 * system->n]) );
+
+        k_vdW_coulomb_energy_opt <<< blocks, DEF_BLOCK_SIZE >>>
+            ( system->d_my_atoms, system->reax_param.d_tbp, 
+              system->reax_param.d_gp, (control_params *) control->d_control_params, 
+              *(workspace->d_workspace), *(lists[FAR_NBRS]), 
+              system->n, system->reax_param.num_atom_types, 
+              spad, &spad[system->n], (rvec *) (&spad[2 * system->n]) );
         cudaCheckError( );
     }
     else
