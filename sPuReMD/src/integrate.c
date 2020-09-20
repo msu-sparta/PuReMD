@@ -32,7 +32,7 @@
 #include "vector.h"
 #include "stdlib.h"
 #include "stdio.h"
-
+static int global_ctr = 0;
 real dot_product(int N,rvec *v1, rvec *v2) {
 	int i;
 	real res = 0;
@@ -42,25 +42,29 @@ real dot_product(int N,rvec *v1, rvec *v2) {
 	return res;
 }
 
-void copy(int N, rvec* dst, rvec* src) {
+void copy(int N, rvec* dst, rvec* src, int mult) {
 	int i,j;
 	for (i = 0; i < N; i++) {
 		for (j=0; j < 3; j++) {
-			dst[i][j] = src[i][j];
+			dst[i][j] = mult * src[i][j];
 		}
 	}
 }
-
-void calculate_energy_and_grads( reax_system *system, control_params *control,
+void calculate_energy_and_grads(rvec *s,real alpha, rvec *pos0, rvec* map0, reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control, int renbr) {
-	// Assume positions wont change drastically (no need for reneigh.)
-	//for ( i = 0; i < system->N; i++ )
-    //{
-    //    control->update_atom_position( system->atoms[i].x, x[i], system->atoms[i].rel_map, &system->box );
-    //}
-	
-    Reallocate( system, control, workspace, lists, renbr );
+	int i;
+	rvec dx;
+	global_ctr++;
+	for ( i = 0; i < system->N; i++ )
+   	{
+        rvec_Scale(dx, alpha, s[i]);
+		//printf(" %f, %f, %f", dx[0],dx[1],dx[2]);
+		rvec_Copy(system->atoms[i].x,pos0[i]);
+		rvec_Copy(system->atoms[i].rel_map,map0[i]);
+        control->update_atom_position( system->atoms[i].x, dx, system->atoms[i].rel_map, &system->box );
+    }
+	Reallocate( system, control, workspace, lists, renbr );
 
     Reset( system, control, data, workspace, lists );
 
@@ -74,62 +78,184 @@ void calculate_energy_and_grads( reax_system *system, control_params *control,
 	
 	Compute_Potential_Energy(data);
 }
+
+// if c1 == 0, ignore armijo cond, if c2 == 0, ignore curv, condition, https://en.wikipedia.org/wiki/Wolfe_conditions
+_Bool wolfe_condition(int N, real f0, rvec *grad0, real f1, rvec *grad1, rvec *s, real alpha, real c1, real c2, real dot0) 
+{
+	int i;
+	_Bool final_res = TRUE;
+
+	_Bool armijo, curv;
+	//real dot0 = dot_product(N, s, grad0);
+
+	armijo = (c1 == 0) || (f1 <= f0 + c1 * alpha * dot0);
+	curv = (c2 == 0) || (-dot_product(N,s,grad1) <= -c2 * dot0);
+	
+	return armijo && curv;
+}
+
+void recover_atoms(rvec *pos0, rvec *map0, reax_system *system) {
+	int i;	
+	for ( i = 0; i < system->N; i++ )
+   	{
+		rvec_Copy(system->atoms[i].x,pos0[i]);
+		rvec_Copy(system->atoms[i].rel_map,map0[i]);
+	}
+}
+real find_max_and_scale(int N,rvec* vecs) 
+{
+	int i,j;
+	real max = -999999;
+	for (i = 0; i < N; i++) 
+	{
+		for(j = 0; j < 3; j++) 
+		{
+			real val = FABS(vecs[i][j]);
+			max = max > val ? max : val;
+		}
+	}
+	fprintf(stderr, "max %f", max);
+	real vhulp = 0.001;
+	// max val will be 0.01
+	if (max > vhulp) {
+		max = max/vhulp + 0.00001; // in case max is 0
+		for (i = 0; i < N; i++) 
+		{
+			for(j = 0; j < 3; j++) 
+			{
+				vecs[i][j] /= max; 
+			}
+		}
+	}
+	return max;
+}
+
+real line_search_wolfe1( reax_system *system, control_params *control,
+        simulation_data *data, static_storage *workspace,
+        reax_list **lists, output_controls *out_control, rvec *s)
+{
+	
+}
+// Backtracking line search: https://en.wikipedia.org/wiki/Backtracking_line_search
 real line_search( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control, rvec *s)
 {
 	int i,ctr;
 	// search for best stepsize(use backtracking for now)
-	int max_it = 10;
+	int max_it = 20;
 	int a1,a2,a3;
-	real alpha = 0.1; // 1.11 * 0.9 = 1 (it will be multip. by 0.9 at least once))
+	real alpha0 = 1.0; // 1.11 * 0.9 = 1 (it will be multip. by 0.9 at least once))
+	real alpha_min = 0.0001;
+	real alpha1, alpha2;
 	real rho = 0.5;
-	real c1 = 0.0001;
-	rvec dx;	
+	real c1 = 0.001;
+	rvec dx;
+	real f_a0,f_a1, f_a2;
 	real f0 = data->E_Pot;
 	rvec grad0[system->N];
-    rvec cur_grad[system->N];
-	rvec cur_pos[system->N];
+    rvec grad1[system->N];
+	rvec pos1[system->N];
 	rvec pos0[system->N];
 	rvec rel_map0[system->N];
 	//return 0.01;
 	for (i = 0; i < system->N; i++) {
-		rvec_Scale(grad0[i], -1, system->atoms[i].f);
+		rvec_Scale(grad0[i], 1, system->atoms[i].f);
+		rvec_clip(grad0[i], -0.01, 0.01);
 		rvec_Copy(pos0[i], system->atoms[i].x);
 		rvec_Copy(rel_map0[i], system->atoms[i].rel_map);
 	}
-	
+		
+	//real max = find_max_and_scale(system->N, grad0);
 	real dot0 = dot_product(system->N, grad0, s);
-	real cur_dot; 
-	real cur_energy = 999999999; // so that init cond. is True
-	ctr = 0;
-	while (cur_energy > f0 + c1 * dot0 && ctr < max_it) {
-		alpha = alpha *rho;
-		for ( i = 0; i < system->N; i++ )
-   		{
-        	rvec_Scale(dx, alpha, s[i]);
-			//printf(" %f, %f, %f", dx[0],dx[1],dx[2]);
-			
-			rvec_Copy(system->atoms[i].x,pos0[i]);
-			rvec_Copy(system->atoms[i].rel_map,rel_map0[i]);
-        	control->update_atom_position( system->atoms[i].x, dx, system->atoms[i].rel_map, &system->box );
-    	}
 	
-		calculate_energy_and_grads( system, control,
+	calculate_energy_and_grads(s, alpha0, pos0,rel_map0, system, control,
+        data, workspace,
+       	lists, out_control,
+		TRUE);
+	f_a0 = data->E_Pot;
+		
+	fprintf(stderr, "dot0 %f", dot0);	
+	if (f_a0 <= f0 + alpha0 * c1 * dot0) {
+		recover_atoms(pos0, rel_map0, system);
+		return alpha0;
+	}
+	/*
+	//Otherwise, compute the minimizer of a quadratic interpolant
+	alpha1 = -(dot0) * (alpha0 * alpha0) * 0.5 / (f_a0 - f0 - dot0 * alpha0);
+	calculate_energy_and_grads(s, alpha1, pos0,rel_map0, system, control,
+        data, workspace,
+       	lists, out_control,
+		TRUE);
+	f_a1 = data->E_Pot;
+	
+	if (f_a1 <= f0 + (alpha1 * c1 * dot0)) {
+		recover_atoms(pos0, rel_map0, system);
+		return alpha1;
+	}
+	
+	//Otherwise, loop with cubic interpolation until we find an alpha which
+	//satisfies the first Wolfe condition (since we are backtracking, we will
+	//assume that the value of alpha is not too small and satisfies the second
+	//condition.
+	ctr = 0;
+	while (alpha1 > alpha_min && ctr < max_it) 
+	{
+		real factor = (alpha0 * alpha0) * (alpha1 * alpha1) * (alpha1-alpha0);
+		real a = (alpha0 * alpha0) * (f_a1 - f0 - dot0*alpha1) - (alpha1 * alpha1) * (f_a0 - f0 - dot0*alpha0);
+		a = a / factor;
+		real b = -(alpha0 * alpha0 * alpha0) * (f_a1 - f0 - dot0*alpha1) + (alpha1 * alpha1 * alpha1) * (f_a0 - f0 - dot0*alpha0);
+		b = b / factor;
+		fprintf(stderr, "\n%f %f %f\n", factor, a, b);
+		alpha2 = (-b + SQRT(FABS(SQR(b) - 3 * a * dot0))) / (3.0 * a);
+
+		fprintf(stderr, "\nalpha2:%f\n", alpha2);
+		calculate_energy_and_grads(s, alpha2, pos0,rel_map0, system, control,
         	data, workspace,
        		lists, out_control,
-			FALSE);
-		cur_energy = data->E_Pot;
-		fprintf(stderr,"\n%f, %f, %f", f0, cur_energy, c1 * dot0);	
-		ctr++;
+			TRUE);
+		f_a2 = data->E_Pot;
+		fprintf(stderr, "%f, %f", alpha2, f_a2);
+		if (f_a2 <= (f0 + alpha2 * c1 * dot0)) {
+			recover_atoms(pos0, rel_map0, system);
+			return alpha2;
+		}
+		
+		if ((alpha1 - alpha2) > alpha1 / 2.0 || (1 - alpha2/alpha1) < 0.96)
+		{
+			alpha2 = alpha1 / 2.0;
+		}
+
+		alpha0 = alpha1;
+		alpha1 = alpha2;
+		f_a0 = f_a1;
+		f_a1 = f_a2;
+		ctr++;	
 	}
 
-	for ( i = 0; i < system->N; i++ )
-   	{
-		rvec_Copy(system->atoms[i].x,pos0[i]);
-		rvec_Copy(system->atoms[i].rel_map,rel_map0[i]);
+	recover_atoms(pos0, rel_map0, system);
+	return alpha_min;
+	
+	*/
+	ctr = 0;
+	while (f_a0 > f0 + alpha0 * c1 * dot0 && ctr < max_it) {
+		alpha0 = alpha0 *rho;
+		calculate_energy_and_grads(s, alpha0, pos0,rel_map0, system, control,
+        	data, workspace,
+       		lists, out_control,
+			TRUE);
+		f_a0 = data->E_Pot;
+		fprintf(stderr,"\n%f, %f, %f", f0, f_a0,alpha0 * c1 * dot0);	
+		ctr++;
 	}
-	return alpha;
+	recover_atoms(pos0,rel_map0, system);
+	if (ctr >= max_it) {
+		fprintf(stderr, "line search failed, terminating");
+		alpha0 = alpha_min;
+		//exit(0);
+	}
+	return alpha0;
+	
 }
 
 
@@ -143,31 +269,32 @@ void minimize_energy( reax_system *system, control_params *control,
 	 * Notes: reneighboring is expensive, limit the max gradient(force) 
 	
 	*/
+	//global_ctr++;
     int i,j, renbr;
+	static int reset_ctr = 0;
+	real prev_pot = 999999;
     real inv_m, dt, dt_sqr;
     rvec dx;
-    rvec s[system->N]; // search direction
+    rvec s_cur[system->N]; // search direction
 	real beta;
 	rvec x_cur[system->N];
 	rvec x_diff[system->N];
 	real step_size;
-    dt = control->dt;
-    dt_sqr = SQR(dt);
     renbr = ((data->step - data->prev_steps) % control->reneighbor) == 0 ? TRUE : FALSE;
 	//fprintf(stderr, "test");
 	for ( i = 0; i < system->N; i++ )
     {
-		rvec_clip(system->atoms[i].f, -0.5,0.5);
 		rvec_Copy(x_cur[i], system->atoms[i].f);
-		rvec_Scale(x_cur[i], -1, x_cur[i]);
+		rvec_clip(x_cur[i], -0.01, 0.01);
     }
-	//printf("%d", data->step);
+	//real max = find_max_and_scale(system->N, x_cur);
+
 	if (data->step == 1) {
-		copy(system->N, x_prev, x_cur);
-		copy(system->N, s_prev, x_cur);
+		copy(system->N, x_prev, x_cur, 1);
+		copy(system->N, s_prev, x_cur, -1);
 		Compute_Potential_Energy(data);
-	}
-	//printf("%f %f %f", x_cur[0][0], x_prev[0][0], s_prev[0][0]);
+	} 
+	prev_pot = data->E_Pot;
 	// compute B_n(Polak-Ribiere)
 	// calculate diff
 	for ( i = 0; i < system->N; i++ )
@@ -178,26 +305,43 @@ void minimize_energy( reax_system *system, control_params *control,
 	beta = dot_product(system->N,x_cur, x_diff) / dot_product(system->N,x_prev, x_prev);
 	//printf("beta %f",beta);
 	beta = beta > 0.0 ? beta : 0.0;
+	fprintf(stderr, "beta %f\n", beta);
 	// conj. direction
 	for ( i = 0; i < system->N; i++ )			
     {
-		rvec_ScaledSum(s[i], 1, x_cur[i], beta, s_prev[i]); 
+		rvec_ScaledSum(s_cur[i], -1, x_cur[i], beta, s_prev[i]); 
     }
 		
 	
-	fprintf(stderr,"before step size");
+	fprintf(stderr,"before step size\n");
 	step_size =  line_search( system, control,
         data, workspace,
-        lists, out_control, s); 
-	fprintf(stderr,"step_size: %f", step_size);
+        lists, out_control, s_cur); 
+	fprintf(stderr,"step_size: %f\n", step_size);
+	if (step_size <= 0.0001) {
+		//resetting
+		fprintf(stderr, "reset the search dir to the cur. grad vector %d", reset_ctr);
+		for ( i = 0; i < system->N; i++ )  
+		{
+			rvec_ScaledSum(s_cur[i], -1, x_cur[i], 0, s_prev[i]);
+		}
+		reset_ctr++;
+		// second search, after resetting
+		step_size =  line_search( system, control,
+        	data, workspace,
+        	lists, out_control, s_cur); 
+	}
+	//if (reset_ctr == 2){
+	//	exit(0);
+	//}
 	for ( i = 0; i < system->N; i++ )
     {
-        rvec_Scale(dx, step_size, s[i]);
+        rvec_Scale(dx, step_size, s_cur[i]);
 		//printf(" %f, %f, %f", dx[0],dx[1],dx[2]);
         control->update_atom_position( system->atoms[i].x, dx, system->atoms[i].rel_map, &system->box );
     }
-	copy(system->N, x_prev, x_cur);
-	copy(system->N, s_prev, x_cur);
+	copy(system->N, x_prev, x_cur, 1);
+	copy(system->N, s_prev, s_cur, 1);
 	
     Reallocate( system, control, workspace, lists, renbr );
 
@@ -210,8 +354,13 @@ void minimize_energy( reax_system *system, control_params *control,
     }
 
     Compute_Forces( system, control, data, workspace, lists, out_control );
-
 	Compute_Potential_Energy(data);
+	fprintf(stderr, "prev: %f, cur: %f", prev_pot, data->E_Pot);
+	if (FABS(prev_pot - data->E_Pot) < 0.001) {
+		exit(0);	
+	}
+	
+	fprintf(stderr, "\n\n global ctr: %d", global_ctr);
 }
 /* Velocity Verlet integrator for microcanonical ensemble. */
 void Velocity_Verlet_NVE( reax_system *system, control_params *control,

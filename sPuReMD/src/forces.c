@@ -100,7 +100,7 @@ static void Compute_Angle_Restraint_Forces( reax_system *system, control_params 
 	// angle restraints
 	for (i = 0; i < system->bond_rest_cnt; i++) 
 	{
-		bond_restraint br = system->bond_restraints[i];
+		angle_restraint br = system->angle_restraints[i];
 		reax_atom a1, a2, a3;
 		a1 = system->atoms[br.atom_inds[0]];
 		a2 = system->atoms[br.atom_inds[1]];
@@ -117,7 +117,7 @@ static void Compute_Torsion_Restraint_Forces( reax_system *system, control_param
 	// torsion restraints
 	for (i = 0; i < system->tors_rest_cnt; i++) 
 	{
-		bond_restraint br = system->torsion_restraints[i];
+		torsion_restraint br = system->torsion_restraints[i];
 		reax_atom a1, a2, a3, a4;
 		a1 = system->atoms[br.atom_inds[0]];
 		a2 = system->atoms[br.atom_inds[1]];

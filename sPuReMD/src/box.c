@@ -287,7 +287,9 @@ void Update_Atom_Position_Periodic( rvec x, rvec dx, ivec rel_map, simulation_bo
                 }
             }
         }
-
+		if (tmp < 0.0 || tmp > box->box_norms[i]) {
+			fprintf(stderr,"error %f", tmp);
+		}
         assert( tmp >= 0.0 && tmp <= box->box_norms[i] );
 
         x[i] = tmp;

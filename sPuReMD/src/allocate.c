@@ -224,8 +224,8 @@ static void Reallocate_Bonds_List( int n, reax_list *bonds, int *num_bonds, int 
 
     for ( i = 0; i < n; ++i )
     {
-        *est_3body += SQR( Num_Entries( i, bonds ) );
-        bond_top[i] = MAX( Num_Entries( i, bonds ) * 2, MIN_BONDS );
+        *est_3body += SQR( Num_Entries( i, bonds )) * 2;
+        bond_top[i] = MAX( Num_Entries( i, bonds ) * 10, MIN_BONDS );
     }
 
     Delete_List( TYP_BOND, bonds );
@@ -251,14 +251,14 @@ void Reallocate( reax_system *system, control_params *control, static_storage *w
     if ( realloc->num_far > 0 && nbr_flag == TRUE )
     {
         Reallocate_Neighbor_List( lists[FAR_NBRS],
-                system->N, realloc->num_far * SAFE_ZONE );
+                system->N, realloc->num_far * SAFE_ZONE*2 );
         realloc->num_far = -1;
     }
 
     if ( realloc->Htop > 0 )
     {
         Reallocate_Matrix( &workspace->H, system->N_cm,
-                realloc->Htop * SAFE_ZONE );
+                realloc->Htop * SAFE_ZONE*2 );
         realloc->Htop = -1;
 
         Deallocate_Matrix( workspace->L );
@@ -279,7 +279,7 @@ void Reallocate( reax_system *system, control_params *control, static_storage *w
     {
         Reallocate_Bonds_List( system->N, lists[BONDS], &num_bonds, &est_3body );
         realloc->bonds = -1;
-        realloc->num_3body = MAX( realloc->num_3body, est_3body );
+        realloc->num_3body = MAX( realloc->num_3body, est_3body )*2;
     }
 
     if ( realloc->num_3body > 0 )
