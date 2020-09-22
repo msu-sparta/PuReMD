@@ -290,6 +290,35 @@ if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "
 	fi
 	AC_SUBST([T_LIBS], ["${TENSORFLOW_LIBS}"])
 
+	# Check for GNU Scientific Library (for energy minimization)
+	GSL_LIBS=
+	AC_CHECK_HEADERS([gsl/gsl_sf_bessel.h], [GSL_FOUND_HEADERS="yes"])
+	if test "x${GSL_FOUND_HEADERS}" = "xyes"; then
+		# BUG: AC_SEARCH_LIBS fails to reset LIBS when nested in conditional statements, so do it manually
+		save_LIBS="${LIBS}"
+		AC_SEARCH_LIBS([gsl_sf_bessel_J0], [gsl],
+			       [GSL_FOUND_LIBS="yes"], [GSL_FOUND_LIBS="no"],
+			       [-lgslcblas -m])
+		LIBS="${save_LIBS}"
+		AS_IF([test "x${GSL_FOUND_LIBS}" != "xyes"],
+		      [AC_MSG_WARN([
+----------------------------------------------------
+ Unable to find GNU scientific library (GSL) on this system.
+ Disabling support for dependent methods.
+----------------------------------------------------])])
+		if test "x${GSL_FOUND_HEADERS}" = "xyes" && test "x${GSL_FOUND_LIBS}" = "xyes"; then
+			GSL_LIBS="-lgsl -lgslcblas -m"
+		fi
+		AC_DEFINE([HAVE_GSL], [1], [Define to 1 if you have GNU scientific library (GSL) support enabled.])
+	else
+		AC_MSG_WARN([
+--------------------------------------------------
+ Unable to find GNU scientific library (GSL) headers on this system.
+ Disabling support for dependent methods.
+--------------------------------------------------])
+	fi
+	AC_SUBST([G_LIBS], ["${GSL_LIBS}"])
+
 	AC_LANG_POP([C])
 fi
 AM_CONDITIONAL([BUILD_S_OMP], [test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "xyes"])
