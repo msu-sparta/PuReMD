@@ -384,7 +384,7 @@ void Calculate_Droptol( const sparse_matrix * const A,
 #endif
 
 #if defined(_OPENMP)
-    #pragma omp parallel default(none) private(i, j, k, val, tid), shared(droptol_local, stderr)
+    #pragma omp parallel default(none) private(i, j, k, val, tid), shared(A, droptol, dtol, droptol_local, stderr)
 #endif
     {
 #if defined(_OPENMP)
@@ -482,7 +482,7 @@ int Estimate_LU_Fill( const sparse_matrix * const A, const real * const droptol 
 
 #if defined(_OPENMP)
     #pragma omp parallel for schedule(static) \
-    default(none) private(i, pj, val) reduction(+: fillin)
+    default(none) private(i, pj, val) shared( A, droptol) reduction(+: fillin)
 #endif
     for ( i = 0; i < A->n; ++i )
     {
@@ -511,7 +511,7 @@ real jacobi( const sparse_matrix * const H, real * const Hdia_inv )
 
 #if defined(_OPENMP)
     #pragma omp parallel for schedule(dynamic,256) \
-    default(none) private(i)
+    default(none) private(i) shared(H, Hdia_inv)
 #endif
     for ( i = 0; i < H->n; ++i )
     {
@@ -1139,7 +1139,7 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
 
 #if defined(_OPENMP)
     #pragma omp parallel for schedule(dynamic,512) \
-        default(none) shared(D, D_inv, gamma) private(i)
+        default(none) shared(A, D, D_inv, gamma) private(i)
 #endif
     for ( i = 0; i < A->n; ++i )
     {
@@ -1157,7 +1157,7 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
 
 #if defined(_OPENMP)
     #pragma omp parallel for schedule(dynamic,512) \
-        default(none) shared(D, D_inv, stderr) private(i)
+        default(none) shared(A, D, D_inv, stderr) private(i)
 #endif
     for ( i = 0; i < A->n; ++i )
     {
@@ -1170,7 +1170,7 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
     memcpy( DAD->j, A->j, sizeof(unsigned int) * A->start[A->n] );
 #if defined(_OPENMP)
     #pragma omp parallel for schedule(dynamic,4096) \
-        default(none) shared(DAD, D, gamma) private(i, pj)
+        default(none) shared(DAD, A, D, gamma) private(i, pj)
 #endif
     for ( i = 0; i < A->n; ++i )
     {
@@ -1348,7 +1348,7 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
 
 #if defined(_OPENMP)
     #pragma omp parallel for schedule(dynamic,512) \
-        default(none) shared(D_inv, gamma) private(i)
+        default(none) shared(A, D_inv, gamma) private(i)
 #endif
     for ( i = 0; i < A->n; ++i )
     {
@@ -1366,7 +1366,7 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
 
 #if defined(_OPENMP)
     #pragma omp parallel for schedule(dynamic,512) \
-        default(none) shared(D, D_inv) private(i)
+        default(none) shared(A, D, D_inv) private(i)
 #endif
     for ( i = 0; i < A->n; ++i )
     {
@@ -1380,7 +1380,7 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
     memcpy( DAD->j, A->j, sizeof(unsigned int) * A->start[A->n] );
 #if defined(_OPENMP)
     #pragma omp parallel for schedule(dynamic,4096) \
-        default(none) shared(DAD, D, gamma) private(i, pj)
+        default(none) shared(DAD, A, D, gamma) private(i, pj)
 #endif
     for ( i = 0; i < A->n; ++i )
     {
@@ -1406,7 +1406,7 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
     /* L has unit diagonal, by convention */
 #if defined(_OPENMP)
     #pragma omp parallel for schedule(dynamic,512) \
-        default(none) private(i) shared(L_temp)
+        default(none) private(i) shared(A, L_temp)
 #endif
     for ( i = 0; i < A->n; ++i )
     {
@@ -3028,8 +3028,8 @@ static void apply_preconditioner( const static_storage * const workspace,
 /* Generalized minimual residual method with restarting and
  * left preconditioning for sparse linear systems */
 int GMRES( const static_storage * const workspace, const control_params * const control,
-           simulation_data * const data, const sparse_matrix * const H, const real * const b,
-           const real tol, real * const x, const int fresh_pre )
+        simulation_data * const data, const sparse_matrix * const H, const real * const b,
+        const real tol, real * const x, const int fresh_pre )
 {
     int i, j, k, itr, N, g_j, g_itr;
     real cc, tmp1, tmp2, temp, bnorm, g_bnorm;
@@ -3047,7 +3047,7 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 #if defined(_OPENMP)
     #pragma omp parallel default(none) \
     private(i, j, k, itr, bnorm, temp, t_start) \
-    shared(N, cc, tmp1, tmp2, g_itr, g_j, g_bnorm, stderr) \
+    shared(workspace, control, H, b, tol, x, fresh_pre, N, cc, tmp1, tmp2, g_itr, g_j, g_bnorm, stderr) \
     reduction(+: t_ortho, t_pa, t_spmv, t_ts, t_vops)
 #endif
     {
@@ -3235,9 +3235,9 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 
 
 int GMRES_HouseHolder( const static_storage * const workspace,
-                       const control_params * const control, simulation_data * const data,
-                       const sparse_matrix * const H, const real * const b, real tol,
-                       real * const x, const int fresh_pre )
+        const control_params * const control, simulation_data * const data,
+        const sparse_matrix * const H, const real * const b, real tol,
+        real * const x, const int fresh_pre )
 {
     int i, j, k, itr, N, g_j, g_itr;
     real cc, tmp1, tmp2, temp, bnorm, g_bnorm;
@@ -3256,7 +3256,7 @@ int GMRES_HouseHolder( const static_storage * const workspace,
 #if defined(_OPENMP)
     #pragma omp parallel default(none) \
     private(i, j, k, itr, bnorm, temp, t_start) \
-    shared(v, z, w, u, tol, N, cc, tmp1, tmp2, g_itr, g_j, g_bnorm, stderr) \
+    shared(workspace, control, H, b, tol, x, fresh_pre, v, z, w, u, N, cc, tmp1, tmp2, g_itr, g_j, g_bnorm, stderr) \
     reduction(+: t_ortho, t_pa, t_spmv, t_ts, t_vops)
 #endif
     {
@@ -3501,7 +3501,7 @@ int CG( const static_storage * const workspace, const control_params * const con
     #pragma omp parallel default(none) \
     private(i, tmp, alpha, beta, bnorm, rnorm, sig_old, sig_new, t_start) \
     reduction(+: t_pa, t_spmv, t_vops) \
-    shared(g_itr, g_bnorm, g_rnorm, N, d, r, p, z)
+    shared(workspace, control, H, b, tol, x, fresh_pre, g_itr, g_bnorm, g_rnorm, N, d, r, p, z)
 #endif
     {
         t_pa = 0.0;
@@ -3615,7 +3615,7 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
     #pragma omp parallel default(none) \
     private(i, tmp, alpha, beta, omega, sigma, rho, rho_old, rnorm, bnorm, t_start) \
     reduction(+: t_pa, t_spmv, t_vops) \
-    shared(g_itr, g_rnorm, g_bnorm, g_omega, g_rho, N)
+    shared(workspace, control, H, b, tol, x, fresh_pre, g_itr, g_rnorm, g_bnorm, g_omega, g_rho, N)
 #endif
     {
         t_pa = 0.0;
@@ -3662,7 +3662,10 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
             }
             if ( i > 0 )
             {
+                #pragma GCC diagnostic push
+                #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
                 beta = (rho / rho_old) * (alpha / omega);
+                #pragma GCC diagnostic pop
                 Vector_Sum( workspace->q, 1.0, workspace->p, -1.0 * omega, workspace->z, N );
                 Vector_Sum( workspace->p, 1.0, workspace->r, beta, workspace->q, N );
             }
@@ -3794,7 +3797,7 @@ int SDM( const static_storage * const workspace, const control_params * const co
     #pragma omp parallel default(none) \
     private(i, tmp, alpha, bnorm, sig, t_start) \
     reduction(+: t_pa, t_spmv, t_vops) \
-    shared(g_itr, g_sig, g_bnorm, N)
+    shared(workspace, control, H, b, tol, x, fresh_pre, g_itr, g_sig, g_bnorm, N)
 #endif
     {
         t_pa = 0.0;
