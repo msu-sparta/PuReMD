@@ -406,6 +406,8 @@ PG_PuReMD_bin_pg_puremd_SOURCES = PG-PuReMD/src/allocate.c \
 if USE_CUDA
 PG_PuReMD_bin_pg_puremd_SOURCES += PG-PuReMD/src/cuda/cuda_allocate.cu \
 				   PG-PuReMD/src/cuda/cuda_allocate.h \
+				   PG-PuReMD/src/cuda/cuda_basic_comm.cu \
+				   PG-PuReMD/src/cuda/cuda_basic_comm.h \
 				   PG-PuReMD/src/cuda/cuda_bond_orders.cu \
 				   PG-PuReMD/src/cuda/cuda_bond_orders.h \
 				   PG-PuReMD/src/cuda/cuda_bonds.cu \

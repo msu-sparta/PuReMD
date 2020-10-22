@@ -69,6 +69,13 @@
 //#define TEST_ENERGY
 /* compile force calculation test code */
 //#define TEST_FORCES
+/* pack/unpack MPI buffers on device and use CUDA-aware MPI for messaging */
+//TODO: rewrite this to use configure option to include
+/* OpenMPI extensions for CUDA-aware support */
+//#include <mpi-ext.h>
+#if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
+  #define CUDA_DEVICE_PACK
+#endif
 
 /* disable assertions if NOT compiling with debug support --
  * the definition (or lack thereof) controls how the assert macro is defined */
@@ -741,6 +748,21 @@ struct mpi_datatypes
     size_t in_nt_buffer_size;
     /**/
     mpi_out_data out_nt_buffers[MAX_NT_NBRS];
+#endif
+#if defined(HAVE_CUDA)
+    /* ingress buffer for communications with neighbor 1 along
+     * one dimension of the 3D Cartesian topology (GPU) */
+    void *d_in1_buffer;
+    /* size of ingress buffer, in bytes (GPU) */
+    size_t d_in1_buffer_size;
+    /* ingress buffer for communications with neighbor 2 along
+     * one dimension of the 3D Cartesian topology (GPU) */
+    void *d_in2_buffer;
+    /* size of ingress buffer, in bytes (GPU) */
+    size_t d_in2_buffer_size;
+    /* egress buffers for communications with neighbors in
+     * 3D Cartesian topology (GPU) */
+    mpi_out_data d_out_buffers[MAX_NBRS];
 #endif
 };
 

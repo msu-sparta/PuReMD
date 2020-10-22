@@ -276,6 +276,11 @@ int simulate( const void * const handle )
         /* compute f_0 */
         Comm_Atoms( system, control, data, workspace, mpi_data, TRUE );
 
+#if defined(CUDA_DEVICE_PACK)
+        //TODO: remove once Comm_Atoms ported
+        Cuda_Copy_MPI_Data_Host_to_Device( mpi_data );
+#endif
+
         Cuda_Init_Block_Sizes( system, control );
 
         Cuda_Copy_Atoms_Host_to_Device( system );

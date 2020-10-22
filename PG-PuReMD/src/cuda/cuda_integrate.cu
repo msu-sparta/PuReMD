@@ -307,6 +307,14 @@ int Cuda_Velocity_Verlet_NVE( reax_system *system, control_params *control,
         Cuda_Copy_Atoms_Device_to_Host( system );
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
 
+#if defined(CUDA_DEVICE_PACK)
+        if ( renbr == TRUE )
+        {
+            //TODO: remove once Comm_Atoms ported
+            Cuda_Copy_MPI_Data_Host_to_Device( mpi_data );
+        }
+#endif
+
         Cuda_Init_Block_Sizes( system, control );
 
         verlet_part1_done = TRUE;
@@ -396,6 +404,14 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
 
         Cuda_Copy_Atoms_Device_to_Host( system );
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
+
+#if defined(CUDA_DEVICE_PACK)
+        if ( renbr == TRUE )
+        {
+            //TODO: remove once Comm_Atoms ported
+            Cuda_Copy_MPI_Data_Host_to_Device( mpi_data );
+        }
+#endif
 
         Cuda_Init_Block_Sizes( system, control );
 
@@ -520,6 +536,14 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
         Cuda_Copy_Atoms_Device_to_Host( system );
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
 
+#if defined(CUDA_DEVICE_PACK)
+        if ( renbr == TRUE )
+        {
+            //TODO: remove once Comm_Atoms ported
+            Cuda_Copy_MPI_Data_Host_to_Device( mpi_data );
+        }
+#endif
+
         Cuda_Init_Block_Sizes( system, control );
 
         verlet_part1_done = TRUE;
@@ -625,6 +649,14 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
 
         Cuda_Copy_Atoms_Device_to_Host( system );
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
+
+#if defined(CUDA_DEVICE_PACK)
+        if ( renbr == TRUE )
+        {
+            //TODO: remove once Comm_Atoms ported
+            Cuda_Copy_MPI_Data_Host_to_Device( mpi_data );
+        }
+#endif
 
         Cuda_Init_Block_Sizes( system, control );
 

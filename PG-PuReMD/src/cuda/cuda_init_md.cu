@@ -233,6 +233,29 @@ extern "C" void Cuda_Initialize( reax_system *system, control_params *control,
 {
     Init_MPI_Datatypes( system, workspace, mpi_data );
 
+#if defined(CUDA_DEVICE_PACK)
+    if ( MPIX_Query_cuda_support( ) != 1 )
+    {
+        fprintf( stderr, "[ERROR] CUDA device-side MPI buffer packing/unpacking enabled "
+                "but no CUDA-aware support detected. Terminating...\n" );
+        MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
+    }
+
+    mpi_data->d_in1_buffer = NULL;
+    mpi_data->d_in1_buffer_size = 0;
+    mpi_data->d_in2_buffer = NULL;
+    mpi_data->d_in2_buffer_size = 0;
+
+    for ( int i = 0; i < MAX_NBRS; ++i )
+    {
+        mpi_data->d_out_buffers[i].cnt = 0;
+        mpi_data->d_out_buffers[i].index = NULL;
+        mpi_data->d_out_buffers[i].index_size = 0;
+        mpi_data->d_out_buffers[i].out_atoms = NULL;
+        mpi_data->d_out_buffers[i].out_atoms_size = 0;
+    }
+#endif
+
     Cuda_Init_Simulation_Data( system, control, data );
 
     /* scratch space - set before Cuda_Init_Workspace

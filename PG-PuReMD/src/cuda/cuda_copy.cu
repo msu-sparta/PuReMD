@@ -194,3 +194,31 @@ extern "C" void Cuda_Copy_List_Device_to_Host( reax_list *host_list, reax_list *
             break;
     }  
 }
+
+/* Copy atom info from device to host */
+extern "C" void Cuda_Copy_MPI_Data_Host_to_Device( mpi_datatypes *mpi_data )
+{
+    cuda_check_malloc( &mpi_data->d_in1_buffer, &mpi_data->d_in1_buffer_size,
+            mpi_data->in1_buffer_size, "Cuda_Copy_MPI_Data_Host_to_Device::mpi_data->d_in1_buffer" );
+
+    cuda_check_malloc( &mpi_data->d_in2_buffer, &mpi_data->d_in2_buffer_size,
+            mpi_data->in2_buffer_size, "Cuda_Copy_MPI_Data_Host_to_Device::mpi_data->d_in2_buffer" );
+
+    for ( int i = 0; i < MAX_NBRS; ++i )
+    {
+        mpi_data->d_out_buffers[i].cnt = mpi_data->out_buffers[i].cnt;
+        cuda_check_malloc( (void **) &mpi_data->d_out_buffers[i].index, &mpi_data->d_out_buffers[i].index_size,
+                mpi_data->out_buffers[i].index_size, "Cuda_Copy_MPI_Data_Host_to_Device::mpi_data->d_out_buffers[i].index" );
+        cuda_check_malloc( &mpi_data->d_out_buffers[i].out_atoms, &mpi_data->d_out_buffers[i].out_atoms_size,
+                mpi_data->out_buffers[i].out_atoms_size, "Cuda_Copy_MPI_Data_Host_to_Device::mpi_data->d_out_buffers[i].out_atoms" );
+    }
+
+    for ( int i = 0; i < MAX_NBRS; ++i )
+    {
+        /* index is set during SendRecv and reused during MPI comms afterward,
+         * so copy to device while SendRecv is still done on the host */
+        copy_host_device( mpi_data->out_buffers[i].index, mpi_data->d_out_buffers[i].index,
+                mpi_data->d_out_buffers[i].index_size, cudaMemcpyHostToDevice,
+                "Cuda_Copy_MPI_Data_Host_to_Device::mpi_data->d_in1_buffer" );
+    }
+}

@@ -582,9 +582,9 @@ real Dot( storage * const workspace,
 {
     int ret;
     real sum, *spad;
-#if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
+//#if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
     real temp;
-#endif
+//#endif
 
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
             sizeof(real) * (k + 1), "Dot::workspace->scratch" );

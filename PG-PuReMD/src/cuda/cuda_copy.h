@@ -20,6 +20,8 @@ void Cuda_Copy_Atoms_Device_to_Host( reax_system * );
 
 void Cuda_Copy_Simulation_Data_Device_to_Host( simulation_data *, simulation_data * );
 
+void Cuda_Copy_MPI_Data_Host_to_Device( mpi_datatypes * );
+
 #ifdef __cplusplus
 }
 #endif

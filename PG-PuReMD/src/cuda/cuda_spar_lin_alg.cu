@@ -21,12 +21,17 @@
 
 #include "cuda_spar_lin_alg.h"
 
+#if defined(CUDA_DEVICE_PACK)
+  #include "cuda_basic_comm.h"
+#endif
 #include "cuda_dense_lin_alg.h"
 #include "cuda_helpers.h"
 #include "cuda_utils.h"
 #include "cuda_reduction.h"
 
-#include "../basic_comm.h"
+#if !defined(CUDA_DEVICE_PACK)
+  #include "../basic_comm.h"
+#endif
 #include "../comm_tools.h"
 #include "../tool_box.h"
 
@@ -587,11 +592,10 @@ static void Dual_Sparse_MatVec_Comm_Part1( const reax_system * const system,
 {
     rvec2 *spad;
 
-//#if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
-//    /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
-//    Dist( system, mpi_data, x, buf_type, mpi_type );
-//#else
-
+#if defined(CUDA_DEVICE_PACK)
+    /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
+    Cuda_Dist( system, mpi_data, x, buf_type, mpi_type );
+#else
     check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
             sizeof(rvec2) * n, TRUE, SAFE_ZONE,
             "Dual_Sparse_MatVec_Comm_Part1::workspace->host_scratch" );
@@ -605,7 +609,7 @@ static void Dual_Sparse_MatVec_Comm_Part1( const reax_system * const system,
 
     copy_host_device( spad, (void *) x, sizeof(rvec2) * n,
             cudaMemcpyHostToDevice, "Dual_Sparse_MatVec_Comm_Part1::x" );
-//#endif
+#endif
 }
 
 
@@ -685,10 +689,9 @@ static void Dual_Sparse_MatVec_Comm_Part2( const reax_system * const system,
     /* reduction required for symmetric half matrix */
     if ( mat_format == SYM_HALF_MATRIX )
     {
-//#if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
-//        Coll( system, mpi_data, b, buf_type, mpi_type );
-//#else
-
+#if defined(CUDA_DEVICE_PACK)
+        Cuda_Coll( system, mpi_data, b, buf_type, mpi_type );
+#else
         check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
                 sizeof(rvec2) * n1, TRUE, SAFE_ZONE,
                 "Dual_Sparse_MatVec_Comm_Part2::workspace->host_scratch" );
@@ -700,7 +703,7 @@ static void Dual_Sparse_MatVec_Comm_Part2( const reax_system * const system,
 
         copy_host_device( spad, b, sizeof(rvec2) * n2,
                 cudaMemcpyHostToDevice, "Dual_Sparse_MatVec_Comm_Part2::b" );
-//#endif
+#endif
     }
 }
 
@@ -767,11 +770,10 @@ static void Sparse_MatVec_Comm_Part1( const reax_system * const system,
 {
     real *spad;
 
-//#if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
-//    /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
-//    Dist( system, mpi_data, x, buf_type, mpi_type );
-//#else
-
+#if defined(CUDA_DEVICE_PACK)
+    /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
+    Cuda_Dist( system, mpi_data, x, buf_type, mpi_type );
+#else
     check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
             sizeof(real) * n, TRUE, SAFE_ZONE,
             "Sparse_MatVec_Comm_Part1::workspace->host_scratch" );
@@ -784,7 +786,7 @@ static void Sparse_MatVec_Comm_Part1( const reax_system * const system,
 
     copy_host_device( spad, (void *) x, sizeof(real) * n,
             cudaMemcpyHostToDevice, "Sparse_MatVec_Comm_Part1::x" );
-//#endif
+#endif
 }
 
 
@@ -862,10 +864,9 @@ static void Sparse_MatVec_Comm_Part2( const reax_system * const system,
     /* reduction required for symmetric half matrix */
     if ( mat_format == SYM_HALF_MATRIX )
     {
-//#if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
-//        Coll( system, mpi_data, b, buf_type, mpi_type );
-//#else
-
+#if defined(CUDA_DEVICE_PACK)
+        Cuda_Coll( system, mpi_data, b, buf_type, mpi_type );
+#else
         check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
                 sizeof(real) * n1, TRUE, SAFE_ZONE,
                 "Sparse_MatVec_Comm_Part2::workspace->host_scratch" );
@@ -877,7 +878,7 @@ static void Sparse_MatVec_Comm_Part2( const reax_system * const system,
 
         copy_host_device( spad, b, sizeof(real) * n2,
                 cudaMemcpyHostToDevice, "Sparse_MatVec_Comm_Part2::b" );
-//#endif
+#endif
     }
 }
 
