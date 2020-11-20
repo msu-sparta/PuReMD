@@ -1408,7 +1408,7 @@ void Estimate_Storage_Sizes( reax_system *system, control_params *control,
 
     far_nbrs = lists[FAR_NBRS];
 
-    for ( i = 0; i < system->N; ++i )
+    for ( i = 0; i < far_nbrs->n; ++i )
     {
         atom_i = &system->atoms[i];
         type_i = atom_i->type;

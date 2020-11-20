@@ -786,14 +786,14 @@ struct grid
     /* max. num. of neighbors for a grid cell;
      * used for memory allocation purposes */
     int max_nbrs;
-    /**/
-    int total;
     /* lengths of each dimesion of a grid cell */
     real cell_size;
     /**/
     ivec spread;
-    /* num. of cells along each dimension for entire grid */
+    /* num. of cells along each dimension for entire grid for this simulation */
     ivec ncell;
+    /* max. num. of cells along each dimension for entire grid across all simulations */
+    ivec ncell_max;
     /* lengths of each dimesion of a grid cell */
     rvec len;
     /* multiplicative inverse of length of each dimesion of a grid cell */
@@ -820,10 +820,14 @@ struct grid
 
 struct reax_system
 {
-    /* number of local (non-periodic image) atoms */
+    /* number of local (non-periodic image) atoms for the current simulation */
     int N;
+    /* max. number of local (non-periodic image) atoms across all simulations */
+    int N_max;
     /* dimension of the N x N sparse charge method matrix H */
     int N_cm;
+    /* max. dimension of the N x N sparse charge method matrix H across all simulations */
+    int N_cm_max;
     /* atom info */
     reax_atom *atoms;
     /* atomic interaction parameters */
@@ -1122,6 +1126,8 @@ struct reax_timing
 
 struct simulation_data
 {
+    /* integer ID uniquely identifying the simulation */
+    int sim_id;
     /* current simulation step number (0-based) */
     int step;
     /* last simulation step number for restarted runs (0-based) */
@@ -1349,8 +1355,10 @@ struct bond_data
  */
 struct sparse_matrix
 {
-    /* number of rows */
+    /* active number of rows for this simulation */
     unsigned int n;
+    /* max. number of rows across all simulations */
+    unsigned int n_max;
     /* number of nonzeros (NNZ) ALLOCATED */
     unsigned int m;
     /* row pointer (last element contains ACTUAL NNZ) */
@@ -1530,8 +1538,12 @@ struct static_storage
     /* permutation for ILUTP */
     unsigned int *perm_ilutp;
 
+    /* num. hydrogen atoms for this simulation */
     int num_H;
-    int *hbond_index; // for hydrogen bonds
+    /* max. num. hydrogen atoms across all simulations */
+    int num_H_max;
+    /* for hydrogen bonds */
+    int *hbond_index;
 
     rvec *v_const;
     rvec *f_old;
@@ -1586,15 +1598,17 @@ struct static_storage
 /* interaction lists */
 struct reax_list
 {
-    /* num. entries in list */
+    /* num. active entries in list for this simulation */
     int n;
-    /* sum of max. interactions per atom */
+    /* max. num. entries in list across all simulations */
+    int n_max;
+    /* total interactions across all entries which can be stored in the list */
     int total_intrs;
     /* starting position of atom's interactions */
     int *index;
     /* ending position of atom's interactions */
     int *end_index;
-    /* max. num. of interactions per atom */
+    /* max. num. of interactions per list entry */
     int *max_intrs;
     /* interaction list (polymorphic via union dereference) */
 //    union
@@ -1701,20 +1715,24 @@ struct output_controls
 /* Handle for working with an instance of the sPuReMD library */
 struct spuremd_handle
 {
-    /* System info. struct pointer */
+    /* System info. */
     reax_system *system;
-    /* Control parameters struct pointer */
+    /* Control parameters */
     control_params *control;
-    /* Atomic simulation data struct pointer */
+    /* Atomic simulation data */
     simulation_data *data;
-    /* Internal workspace struct pointer */
+    /* Internal workspace */
     static_storage *workspace;
-    /* Reax interaction list struct pointer */
+    /* Reax interaction list */
     reax_list **lists;
-    /* Output controls struct pointer */
+    /* Output controls */
     output_controls *out_control;
+    /* TRUE for first simulation, FALSE otherwise */
+    int first_run;
     /* TRUE if file I/O for simulation output enabled, FALSE otherwise */
     int output_enabled;
+    /* TRUE if reallocation is required due to num. atoms increasing, FALSE otherwise */
+    int realloc;
     /* Callback for getting simulation state at the end of each time step */
     callback_function callback;
 };

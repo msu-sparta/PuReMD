@@ -39,6 +39,9 @@
 #include "vector.h"
 
 
+/* Handles additional entire geometry calculations after
+ * perturbing atom positions during a simulation step
+ */
 static void Post_Evolve( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
         reax_list ** const lists, output_controls * const out_control )
@@ -51,7 +54,7 @@ static void Post_Evolve( reax_system * const system, control_params * const cont
             && data->step % control->remove_CoM_vel == 0 )
     {
         /* compute velocity of the center of mass */
-        Compute_Center_of_Mass( system, data, out_control->prs );
+        Compute_Center_of_Mass( system, data );
 
         for ( i = 0; i < system->N; i++ )
         {
@@ -83,44 +86,47 @@ static void Post_Evolve( reax_system * const system, control_params * const cont
 }
 
 
-static void Read_System( const char * const geo_file,
-        const char * const ffield_file,
-        const char * const control_file,
-        reax_system * const system,
-        control_params * const control,
-        simulation_data * const data,
-        static_storage * const workspace,
-        output_controls * const out_control )
+/* Parse input files
+ *
+ * geo_file: file containing geometry info of the structure to simulate
+ * ffield_file: file containing force field parameters
+ * control_file: file containing simulation parameters
+ */
+static void Read_Input_Files( const char * const geo_file,
+        const char * const ffield_file, const char * const control_file,
+        reax_system * const system, control_params * const control,
+        simulation_data * const data, static_storage * const workspace,
+        output_controls * const out_control, int first_run )
 {
     FILE *ffield, *ctrl;
 
     ffield = sfopen( ffield_file, "r" );
     ctrl = sfopen( control_file, "r" );
 
-    Read_Force_Field( ffield, &system->reax_param );
+    Read_Force_Field( ffield, &system->reax_param, first_run );
 
     Read_Control_File( ctrl, system, control, out_control );
 
     if ( control->geo_format == CUSTOM )
     {
-        Read_Geo( geo_file, system, control, data, workspace );
+        Read_Geo( geo_file, system, control, data, workspace, first_run );
     }
     else if ( control->geo_format == PDB )
     {
-        Read_PDB( geo_file, system, control, data, workspace );
+        Read_PDB( geo_file, system, control, data, workspace, first_run );
     }
     else if ( control->geo_format == BGF )
     {
-        Read_BGF( geo_file, system, control, data, workspace );
+        Read_BGF( geo_file, system, control, data, workspace, first_run );
     }
     else if ( control->geo_format == ASCII_RESTART )
     {
-        Read_ASCII_Restart( geo_file, system, control, data, workspace );
+        Read_ASCII_Restart( geo_file, system, control, data, workspace, first_run );
         control->restart = TRUE;
     }
     else if ( control->geo_format == BINARY_RESTART )
     {
-        Read_Binary_Restart( geo_file, system, control, data, workspace );
+        Read_Binary_Restart( geo_file, system, control, data, workspace, first_run );
         control->restart = TRUE;
     }
     else
@@ -129,16 +135,22 @@ static void Read_System( const char * const geo_file,
         exit( INVALID_GEO );
     }
 
-    sfclose( ffield, "Read_System::ffield" );
-    sfclose( ctrl, "Read_System::ctrl" );
+    sfclose( ffield, "Read_Input_Files::ffield" );
+    sfclose( ctrl, "Read_Input_Files::ctrl" );
 
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "input files have been read...\n" );
     Print_Box( &system->box, stderr );
 #endif
 }
 
 
+/* Allocate top-level data structures and parse input files
+ * for the first simulation
+ *
+ * geo_file: file containing geometry info of the structure to simulate
+ * ffield_file: file containing force field parameters
+ * control_file: file containing simulation parameters
+ */
 void* setup( const char * const geo_file, const char * const ffield_file,
         const char * const control_file )
 {
@@ -169,19 +181,28 @@ void* setup( const char * const geo_file, const char * const ffield_file,
     spmd_handle->out_control = smalloc( sizeof(output_controls),
            "Setup::spmd_handle->out_control" );
 
+    spmd_handle->first_run = TRUE;
     spmd_handle->output_enabled = TRUE;
+    spmd_handle->realloc = TRUE;
     spmd_handle->callback = NULL;
+    spmd_handle->data->sim_id = 0;
 
-    /* parse geometry file */
-    Read_System( geo_file, ffield_file, control_file,
+    Read_Input_Files( geo_file, ffield_file, control_file,
             spmd_handle->system, spmd_handle->control,
             spmd_handle->data, spmd_handle->workspace,
-            spmd_handle->out_control );
+            spmd_handle->out_control, spmd_handle->first_run );
+
+    spmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * spmd_handle->system->N );
 
     return (void*) spmd_handle;
 }
 
 
+/* Setup callback function to be run after each simulation step
+ *
+ * handle: pointer to wrapper struct with top-level data structures
+ * callback: function pointer to attach for callback
+ */
 int setup_callback( const void * const handle, const callback_function callback  )
 {
     int ret;
@@ -201,6 +222,10 @@ int setup_callback( const void * const handle, const callback_function callback 
 }
 
 
+/* Run the simulation according to the prescribed parameters
+ *
+ * handle: pointer to wrapper struct with top-level data structures
+ */
 int simulate( const void * const handle )
 {
     int steps, ret;
@@ -216,7 +241,10 @@ int simulate( const void * const handle )
         Initialize( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                 spmd_handle->workspace, spmd_handle->lists,
                 spmd_handle->out_control, &Evolve,
-                spmd_handle->output_enabled );
+                spmd_handle->output_enabled,
+                spmd_handle->first_run, spmd_handle->realloc );
+
+        spmd_handle->realloc = FALSE;
 
         /* compute f_0 */
         //if( control.restart == FALSE ) {
@@ -248,7 +276,10 @@ int simulate( const void * const handle )
             {
                 Compute_Total_Energy( spmd_handle->data );
             }
+        }
 
+        if ( spmd_handle->output_enabled == TRUE )
+        {
             Output_Results( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                     spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control );
         }
@@ -338,6 +369,10 @@ int simulate( const void * const handle )
 }
 
 
+/* Deallocate all data structures post-simulation
+ *
+ * handle: pointer to wrapper struct with top-level data structures
+ */
 int cleanup( const void * const handle )
 {
     int i, ret;
@@ -351,7 +386,7 @@ int cleanup( const void * const handle )
 
         Finalize( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                 spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control,
-                spmd_handle->output_enabled );
+                spmd_handle->output_enabled, FALSE );
 
         sfree( spmd_handle->out_control, "cleanup::spmd_handle->out_control" );
         for ( i = 0; i < LIST_N; ++i )
@@ -373,6 +408,59 @@ int cleanup( const void * const handle )
 }
 
 
+/* Reset for the next simulation by parsing input files and triggering
+ * reallocation if more space is needed
+ *
+ * handle: pointer to wrapper struct with top-level data structures
+ * geo_file: file containing geometry info of the structure to simulate
+ * ffield_file: file containing force field parameters
+ * control_file: file containing simulation parameters
+ */
+int reset( const void * const handle, const char * const geo_file,
+        const char * const ffield_file, const char * const control_file )
+{
+    int ret;
+    spuremd_handle *spmd_handle;
+
+    ret = SPUREMD_FAILURE;
+
+    if ( handle != NULL )
+    {
+        spmd_handle = (spuremd_handle*) handle;
+
+        spmd_handle->first_run = FALSE;
+        spmd_handle->realloc = FALSE;
+        spmd_handle->data->sim_id++;
+
+        Read_Input_Files( geo_file, ffield_file, control_file,
+                spmd_handle->system, spmd_handle->control,
+                spmd_handle->data, spmd_handle->workspace,
+                spmd_handle->out_control, spmd_handle->first_run );
+
+        if ( spmd_handle->system->N > spmd_handle->system->N_max )
+        {
+            /* deallocate everything which needs more space
+             * (i.e., structures whose space is a function of the number of atoms),
+             * except for data structures allocated while parsing input files */
+            Finalize( spmd_handle->system, spmd_handle->control, spmd_handle->data,
+                    spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control,
+                    spmd_handle->output_enabled, TRUE );
+
+            spmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * spmd_handle->system->N );
+            spmd_handle->realloc = TRUE;
+        }
+
+        ret = SPUREMD_SUCCESS;
+    }
+
+    return ret;
+}
+
+
+/* Getter for atom info
+ *
+ * handle: pointer to wrapper struct with top-level data structures
+ */
 reax_atom* get_atoms( const void * const handle )
 {
     spuremd_handle *spmd_handle;
@@ -390,6 +478,11 @@ reax_atom* get_atoms( const void * const handle )
 }
 
 
+/* Setter for writing output to files
+ *
+ * handle: pointer to wrapper struct with top-level data structures
+ * enabled: TRUE enables writing output to files, FALSE otherwise
+ */
 int set_output_enabled( const void * const handle, const int enabled )
 {
     int ret;

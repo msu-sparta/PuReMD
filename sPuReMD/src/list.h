@@ -25,7 +25,7 @@
 #include "reax_types.h"
 
 
-void Make_List( int, int, int, reax_list* );
+void Make_List( int, int, int, int, reax_list* );
 
 void Delete_List( int, reax_list* );
 

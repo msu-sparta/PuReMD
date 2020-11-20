@@ -25,17 +25,17 @@
 #include "reax_types.h"
 
 
-void Read_Geo( const char * const, reax_system*, control_params*,
-        simulation_data*, static_storage* );
+void Read_Geo( const char * const, reax_system *, control_params *,
+        simulation_data *, static_storage *, int );
 
-void Read_PDB( const char * const, reax_system*, control_params*,
-        simulation_data*, static_storage* );
+void Read_PDB( const char * const, reax_system *, control_params *,
+        simulation_data *, static_storage *, int );
 
-void Read_BGF( const char * const, reax_system*, control_params*,
-        simulation_data*, static_storage* );
+void Read_BGF( const char * const, reax_system *, control_params *,
+        simulation_data *, static_storage *, int );
 
-void Write_PDB( reax_system*, reax_list*, simulation_data*,
-        control_params*, static_storage*, output_controls* );
+void Write_PDB( reax_system *, reax_list *, simulation_data *,
+        control_params *, static_storage *, output_controls * );
 
 
 #endif

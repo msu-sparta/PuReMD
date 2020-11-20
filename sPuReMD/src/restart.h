@@ -53,12 +53,12 @@ typedef struct
 #define READ_RESTART_HEADER " %d %d %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf"
 #define READ_RESTART_LINE " %d %d %s %lf %lf %lf %lf %lf %lf"
 
-void Write_Restart( reax_system*, control_params*,
-                    simulation_data*, static_storage*, output_controls* );
+void Write_Restart( reax_system *, control_params *,
+                    simulation_data *, static_storage *, output_controls * );
 
-void Read_Binary_Restart( const char * const, reax_system*, control_params*,
-                          simulation_data*, static_storage* );
-void Read_ASCII_Restart( const char * const, reax_system*, control_params*,
-                         simulation_data*, static_storage* );
+void Read_Binary_Restart( const char * const, reax_system *, control_params *,
+                          simulation_data *, static_storage *, int );
+void Read_ASCII_Restart( const char * const, reax_system *, control_params *,
+                         simulation_data *, static_storage *, int );
 
 #endif

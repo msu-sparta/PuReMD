@@ -99,7 +99,7 @@ static void Generate_Initial_Velocities( reax_system *system,
 
 
 static void Init_System( reax_system *system, control_params *control,
-        simulation_data *data )
+        simulation_data *data, int first_run )
 {
     int i;
     rvec dx;
@@ -110,7 +110,7 @@ static void Init_System( reax_system *system, control_params *control,
     }
 
     Compute_Total_Mass( system, data );
-    Compute_Center_of_Mass( system, data, stderr );
+    Compute_Center_of_Mass( system, data );
 
     /* just fit the atoms to the periodic box */
     if ( control->reposition_atoms == 0 )
@@ -154,17 +154,17 @@ static void Init_System( reax_system *system, control_params *control,
         Generate_Initial_Velocities( system, control, control->T_init );
     }
 
-    Setup_Grid( system );
+    Setup_Grid( system, first_run );
 }
 
 
 static void Init_Simulation_Data( reax_system *system, control_params *control,
         simulation_data *data, output_controls *out_control,
-        evolve_function *Evolve )
+        evolve_function *Evolve, int alloc )
 {
 #if defined(_OPENMP)
-    if ( control->ensemble == sNPT || control->ensemble == iNPT
-            || control->ensemble == aNPT || control->compute_pressure == TRUE )
+    if ( alloc == TRUE && (control->ensemble == sNPT || control->ensemble == iNPT
+            || control->ensemble == aNPT || control->compute_pressure == TRUE) )
     {
         data->press_local = smalloc( sizeof( rtensor ) * control->num_threads,
                "Init_Simulation_Data::data->press_local" );
@@ -323,60 +323,66 @@ static void Init_Taper( control_params *control, static_storage *workspace )
 
 
 static void Init_Workspace( reax_system *system, control_params *control,
-        static_storage *workspace )
+        static_storage *workspace, int alloc )
 {
     int i;
 
-    /* hydrogen bond list */
-    workspace->hbond_index = smalloc( system->N * sizeof( int ),
-           "Init_Workspace::workspace->hbond_index" );
+    if ( alloc == TRUE )
+    {
+        /* hydrogen bond list */
+        workspace->hbond_index = smalloc( system->N_max * sizeof( int ),
+               "Init_Workspace::workspace->hbond_index" );
 
-    /* bond order related storage  */
-    workspace->total_bond_order = smalloc( system->N * sizeof( real ),
-           "Init_Workspace::workspace->bond_order" );
-    workspace->Deltap = smalloc( system->N * sizeof( real ),
-           "Init_Workspace::workspace->Deltap" );
-    workspace->Deltap_boc = smalloc( system->N * sizeof( real ),
-           "Init_Workspace::workspace->Deltap_boc" );
-    workspace->dDeltap_self = smalloc( system->N * sizeof( rvec ),
-           "Init_Workspace::workspace->dDeltap_self" );
+        /* bond order related storage  */
+        workspace->total_bond_order = smalloc( system->N_max * sizeof( real ),
+               "Init_Workspace::workspace->bond_order" );
+        workspace->Deltap = smalloc( system->N_max * sizeof( real ),
+               "Init_Workspace::workspace->Deltap" );
+        workspace->Deltap_boc = smalloc( system->N_max * sizeof( real ),
+               "Init_Workspace::workspace->Deltap_boc" );
+        workspace->dDeltap_self = smalloc( system->N_max * sizeof( rvec ),
+               "Init_Workspace::workspace->dDeltap_self" );
 
-    workspace->Delta = smalloc( system->N * sizeof( real ),
-           "Init_Workspace::workspace->Delta" );
-    workspace->Delta_lp = smalloc( system->N * sizeof( real ),
-           "Init_Workspace::workspace->Delta_lp" );
-    workspace->Delta_lp_temp = smalloc( system->N * sizeof( real ),
-           "Init_Workspace::workspace->Delta_lp_temp" );
-    workspace->dDelta_lp = smalloc( system->N * sizeof( real ),
-           "Init_Workspace::workspace->dDelta_lp" );
-    workspace->dDelta_lp_temp = smalloc( system->N * sizeof( real ),
-           "Init_Workspace::workspace->dDelta_lp_temp" );
-    workspace->Delta_e = smalloc( system->N * sizeof( real ),
-           "Init_Workspace::workspace->Delta_e" );
-    workspace->Delta_boc = smalloc( system->N * sizeof( real ),
-           "Init_Workspace::workspace->Delta_boc" );
-    workspace->nlp = smalloc( system->N * sizeof( real ),
-           "Init_Workspace::workspace->nlp" );
-    workspace->nlp_temp = smalloc( system->N * sizeof( real ),
-           "Init_Workspace::workspace->nlp_temp" );
-    workspace->Clp = smalloc( system->N * sizeof( real ),
-           "Init_Workspace::workspace->Clp" );
-    workspace->CdDelta = smalloc( system->N * sizeof( real ),
-           "Init_Workspace::workspace->CdDelta" );
-    workspace->vlpex = smalloc( system->N * sizeof( real ),
-           "Init_Workspace::workspace->vlpex" );
+        workspace->Delta = smalloc( system->N_max * sizeof( real ),
+               "Init_Workspace::workspace->Delta" );
+        workspace->Delta_lp = smalloc( system->N_max * sizeof( real ),
+               "Init_Workspace::workspace->Delta_lp" );
+        workspace->Delta_lp_temp = smalloc( system->N_max * sizeof( real ),
+               "Init_Workspace::workspace->Delta_lp_temp" );
+        workspace->dDelta_lp = smalloc( system->N_max * sizeof( real ),
+               "Init_Workspace::workspace->dDelta_lp" );
+        workspace->dDelta_lp_temp = smalloc( system->N_max * sizeof( real ),
+               "Init_Workspace::workspace->dDelta_lp_temp" );
+        workspace->Delta_e = smalloc( system->N_max * sizeof( real ),
+               "Init_Workspace::workspace->Delta_e" );
+        workspace->Delta_boc = smalloc( system->N_max * sizeof( real ),
+               "Init_Workspace::workspace->Delta_boc" );
+        workspace->nlp = smalloc( system->N_max * sizeof( real ),
+               "Init_Workspace::workspace->nlp" );
+        workspace->nlp_temp = smalloc( system->N_max * sizeof( real ),
+               "Init_Workspace::workspace->nlp_temp" );
+        workspace->Clp = smalloc( system->N_max * sizeof( real ),
+               "Init_Workspace::workspace->Clp" );
+        workspace->CdDelta = smalloc( system->N_max * sizeof( real ),
+               "Init_Workspace::workspace->CdDelta" );
+        workspace->vlpex = smalloc( system->N_max * sizeof( real ),
+               "Init_Workspace::workspace->vlpex" );
+    }
 
     /* charge method storage */
     switch ( control->charge_method )
     {
         case QEQ_CM:
             system->N_cm = system->N;
+            system->N_cm_max = system->N_max;
             break;
         case EE_CM:
             system->N_cm = system->N + 1;
+            system->N_cm_max = system->N_max + 1;
             break;
         case ACKS2_CM:
             system->N_cm = 2 * system->N + 2;
+            system->N_cm_max = 2 * system->N_max + 2;
             break;
         default:
             fprintf( stderr, "[ERROR] Unknown charge method type. Terminating...\n" );
@@ -384,44 +390,47 @@ static void Init_Workspace( reax_system *system, control_params *control,
             break;
     }
 
-    /* sparse matrices */
-    workspace->H = NULL;
-    workspace->H_full = NULL;
-    workspace->H_sp = NULL;
-    workspace->H_p = NULL;
-    workspace->H_spar_patt = NULL;
-    workspace->H_spar_patt_full = NULL;
-    workspace->H_app_inv = NULL;
-    workspace->L = NULL;
-    workspace->U = NULL;
-    workspace->Hdia_inv = NULL;
-    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
-            || (control->cm_solver_pre_comp_type == ILUT_PC && control->cm_solver_pre_comp_droptol > 0.0 )
-            || control->cm_solver_pre_comp_type == ILUTP_PC
-            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
+    if ( alloc == TRUE )
     {
-        workspace->droptol = scalloc( system->N_cm, sizeof( real ),
-                "Init_Workspace::workspace->droptol" );
-    }
+        /* sparse matrices */
+        workspace->H = NULL;
+        workspace->H_full = NULL;
+        workspace->H_sp = NULL;
+        workspace->H_p = NULL;
+        workspace->H_spar_patt = NULL;
+        workspace->H_spar_patt_full = NULL;
+        workspace->H_app_inv = NULL;
+        workspace->L = NULL;
+        workspace->U = NULL;
+        workspace->Hdia_inv = NULL;
+        if ( control->cm_solver_pre_comp_type == ICHOLT_PC
+                || (control->cm_solver_pre_comp_type == ILUT_PC && control->cm_solver_pre_comp_droptol > 0.0 )
+                || control->cm_solver_pre_comp_type == ILUTP_PC
+                || control->cm_solver_pre_comp_type == FG_ILUT_PC )
+        {
+            workspace->droptol = scalloc( system->N_cm_max, sizeof( real ),
+                    "Init_Workspace::workspace->droptol" );
+        }
 
-    workspace->b_s = scalloc( system->N_cm, sizeof( real ),
-            "Init_Workspace::workspace->b_s" );
-    workspace->b_t = scalloc( system->N_cm, sizeof( real ),
-            "Init_Workspace::workspace->b_t" );
-    workspace->b_prc = scalloc( system->N_cm * 2, sizeof( real ),
-            "Init_Workspace::workspace->b_prc" );
-    workspace->b_prm = scalloc( system->N_cm * 2, sizeof( real ),
-            "Init_Workspace::workspace->b_prm" );
-    workspace->s = scalloc( 5, sizeof( real* ),
-            "Init_Workspace::workspace->s" );
-    workspace->t = scalloc( 5, sizeof( real* ),
-            "Init_Workspace::workspace->t" );
-    for ( i = 0; i < 5; ++i )
-    {
-        workspace->s[i] = scalloc( system->N_cm, sizeof( real ),
-                "Init_Workspace::workspace->s[i]" );
-        workspace->t[i] = scalloc( system->N_cm, sizeof( real ),
-                "Init_Workspace::workspace->t[i]" );
+        workspace->b_s = scalloc( system->N_cm_max, sizeof( real ),
+                "Init_Workspace::workspace->b_s" );
+        workspace->b_t = scalloc( system->N_cm_max, sizeof( real ),
+                "Init_Workspace::workspace->b_t" );
+        workspace->b_prc = scalloc( system->N_cm_max * 2, sizeof( real ),
+                "Init_Workspace::workspace->b_prc" );
+        workspace->b_prm = scalloc( system->N_cm_max * 2, sizeof( real ),
+                "Init_Workspace::workspace->b_prm" );
+        workspace->s = scalloc( 5, sizeof( real* ),
+                "Init_Workspace::workspace->s" );
+        workspace->t = scalloc( 5, sizeof( real* ),
+                "Init_Workspace::workspace->t" );
+        for ( i = 0; i < 5; ++i )
+        {
+            workspace->s[i] = scalloc( system->N_cm_max, sizeof( real ),
+                    "Init_Workspace::workspace->s[i]" );
+            workspace->t[i] = scalloc( system->N_cm_max, sizeof( real ),
+                    "Init_Workspace::workspace->t[i]" );
+        }
     }
 
     switch ( control->charge_method )
@@ -469,274 +478,283 @@ static void Init_Workspace( reax_system *system, control_params *control,
             break;
     }
 
-    switch ( control->cm_solver_type )
+    if ( alloc == TRUE )
     {
-        case GMRES_S:
-        case GMRES_H_S:
-            workspace->y = scalloc( control->cm_solver_restart + 1, sizeof( real ),
-                    "Init_Workspace::workspace->y" );
-            workspace->z = scalloc( control->cm_solver_restart + 1, sizeof( real ),
-                    "Init_Workspace::workspace->z" );
-            workspace->g = scalloc( control->cm_solver_restart + 1, sizeof( real ),
-                    "Init_Workspace::workspace->g" );
-            workspace->h = scalloc( control->cm_solver_restart + 1, sizeof( real*),
-                    "Init_Workspace::workspace->h" );
-            workspace->hs = scalloc( control->cm_solver_restart + 1, sizeof( real ),
-                    "Init_Workspace::workspace->hs" );
-            workspace->hc = scalloc( control->cm_solver_restart + 1, sizeof( real ),
-                    "Init_Workspace::workspace->hc" );
-            workspace->rn = scalloc( control->cm_solver_restart + 1, sizeof( real*),
-                    "Init_Workspace::workspace->rn" );
-            workspace->v = scalloc( control->cm_solver_restart + 1, sizeof( real*),
-                    "Init_Workspace::workspace->v" );
+        switch ( control->cm_solver_type )
+        {
+            case GMRES_S:
+            case GMRES_H_S:
+                workspace->y = scalloc( control->cm_solver_restart + 1, sizeof( real ),
+                        "Init_Workspace::workspace->y" );
+                workspace->z = scalloc( control->cm_solver_restart + 1, sizeof( real ),
+                        "Init_Workspace::workspace->z" );
+                workspace->g = scalloc( control->cm_solver_restart + 1, sizeof( real ),
+                        "Init_Workspace::workspace->g" );
+                workspace->h = scalloc( control->cm_solver_restart + 1, sizeof( real*),
+                        "Init_Workspace::workspace->h" );
+                workspace->hs = scalloc( control->cm_solver_restart + 1, sizeof( real ),
+                        "Init_Workspace::workspace->hs" );
+                workspace->hc = scalloc( control->cm_solver_restart + 1, sizeof( real ),
+                        "Init_Workspace::workspace->hc" );
+                workspace->rn = scalloc( control->cm_solver_restart + 1, sizeof( real*),
+                        "Init_Workspace::workspace->rn" );
+                workspace->v = scalloc( control->cm_solver_restart + 1, sizeof( real*),
+                        "Init_Workspace::workspace->v" );
 
-            for ( i = 0; i < control->cm_solver_restart + 1; ++i )
-            {
-                workspace->h[i] = scalloc( control->cm_solver_restart + 1, sizeof( real ),
-                        "Init_Workspace::workspace->h[i]" );
-                workspace->rn[i] = scalloc( system->N_cm * 2, sizeof( real ),
-                        "Init_Workspace::workspace->rn[i]" );
-                workspace->v[i] = scalloc( system->N_cm, sizeof( real ),
-                        "Init_Workspace::workspace->v[i]" );
-            }
+                for ( i = 0; i < control->cm_solver_restart + 1; ++i )
+                {
+                    workspace->h[i] = scalloc( control->cm_solver_restart + 1, sizeof( real ),
+                            "Init_Workspace::workspace->h[i]" );
+                    workspace->rn[i] = scalloc( system->N_cm_max * 2, sizeof( real ),
+                            "Init_Workspace::workspace->rn[i]" );
+                    workspace->v[i] = scalloc( system->N_cm_max, sizeof( real ),
+                            "Init_Workspace::workspace->v[i]" );
+                }
 
-            workspace->r = scalloc( system->N_cm, sizeof( real ),
-                    "Init_Workspace::workspace->r" );
-            workspace->d = scalloc( system->N_cm, sizeof( real ),
-                    "Init_Workspace::workspace->d" );
-            workspace->q = scalloc( system->N_cm, sizeof( real ),
-                    "Init_Workspace::workspace->q" );
-            workspace->p = scalloc( system->N_cm, sizeof( real ),
-                    "Init_Workspace::workspace->p" );
-            break;
+                workspace->r = scalloc( system->N_cm_max, sizeof( real ),
+                        "Init_Workspace::workspace->r" );
+                workspace->d = scalloc( system->N_cm_max, sizeof( real ),
+                        "Init_Workspace::workspace->d" );
+                workspace->q = scalloc( system->N_cm_max, sizeof( real ),
+                        "Init_Workspace::workspace->q" );
+                workspace->p = scalloc( system->N_cm_max, sizeof( real ),
+                        "Init_Workspace::workspace->p" );
+                break;
 
-        case CG_S:
-            workspace->r = scalloc( system->N_cm, sizeof( real ),
-                    "Init_Workspace::workspace->r" );
-            workspace->d = scalloc( system->N_cm, sizeof( real ),
-                    "Init_Workspace::workspace->d" );
-            workspace->q = scalloc( system->N_cm, sizeof( real ),
-                    "Init_Workspace::workspace->q" );
-            workspace->p = scalloc( system->N_cm, sizeof( real ),
-                    "Init_Workspace::workspace->p" );
-            break;
+            case CG_S:
+                workspace->r = scalloc( system->N_cm_max, sizeof( real ),
+                        "Init_Workspace::workspace->r" );
+                workspace->d = scalloc( system->N_cm_max, sizeof( real ),
+                        "Init_Workspace::workspace->d" );
+                workspace->q = scalloc( system->N_cm_max, sizeof( real ),
+                        "Init_Workspace::workspace->q" );
+                workspace->p = scalloc( system->N_cm_max, sizeof( real ),
+                        "Init_Workspace::workspace->p" );
+                break;
 
-        case SDM_S:
-            workspace->r = scalloc( system->N_cm, sizeof( real ),
-                    "Init_Workspace::workspace->r" );
-            workspace->d = scalloc( system->N_cm, sizeof( real ),
-                    "Init_Workspace::workspace->d" );
-            workspace->q = scalloc( system->N_cm, sizeof( real ),
-                    "Init_Workspace::workspace->q" );
-            break;
+            case SDM_S:
+                workspace->r = scalloc( system->N_cm_max, sizeof( real ),
+                        "Init_Workspace::workspace->r" );
+                workspace->d = scalloc( system->N_cm_max, sizeof( real ),
+                        "Init_Workspace::workspace->d" );
+                workspace->q = scalloc( system->N_cm_max, sizeof( real ),
+                        "Init_Workspace::workspace->q" );
+                break;
 
-        case BiCGStab_S:
-            workspace->r = scalloc( system->N_cm, sizeof( real ),
-                    "Init_Workspace::workspace->r" );
-            workspace->r_hat = scalloc( system->N_cm, sizeof( real ),
-                    "Init_Workspace::workspace->r_hat" );
-            workspace->d = scalloc( system->N_cm, sizeof( real ),
-                    "Init_Workspace::workspace->d" );
-            workspace->q = scalloc( system->N_cm, sizeof( real ),
-                    "Init_Workspace::workspace->q" );
-            workspace->q_hat = scalloc( system->N_cm, sizeof( real ),
-                    "Init_Workspace::workspace->q_hat" );
-            workspace->p = scalloc( system->N_cm, sizeof( real ),
-                    "Init_Workspace::workspace->p" );
-            workspace->y = scalloc( system->N_cm, sizeof( real ),
-                    "Init_Workspace::workspace->y" );
-            workspace->z = scalloc( system->N_cm, sizeof( real ),
-                    "Init_Workspace::workspace->z" );
-            workspace->g = scalloc( system->N_cm, sizeof( real ),
-                    "Init_Workspace::workspace->g" );
-            break;
+            case BiCGStab_S:
+                workspace->r = scalloc( system->N_cm_max, sizeof( real ),
+                        "Init_Workspace::workspace->r" );
+                workspace->r_hat = scalloc( system->N_cm_max, sizeof( real ),
+                        "Init_Workspace::workspace->r_hat" );
+                workspace->d = scalloc( system->N_cm_max, sizeof( real ),
+                        "Init_Workspace::workspace->d" );
+                workspace->q = scalloc( system->N_cm_max, sizeof( real ),
+                        "Init_Workspace::workspace->q" );
+                workspace->q_hat = scalloc( system->N_cm_max, sizeof( real ),
+                        "Init_Workspace::workspace->q_hat" );
+                workspace->p = scalloc( system->N_cm_max, sizeof( real ),
+                        "Init_Workspace::workspace->p" );
+                workspace->y = scalloc( system->N_cm_max, sizeof( real ),
+                        "Init_Workspace::workspace->y" );
+                workspace->z = scalloc( system->N_cm_max, sizeof( real ),
+                        "Init_Workspace::workspace->z" );
+                workspace->g = scalloc( system->N_cm_max, sizeof( real ),
+                        "Init_Workspace::workspace->g" );
+                break;
 
-        default:
-            fprintf( stderr, "[ERROR] Unknown charge method linear solver type. Terminating...\n" );
-            exit( INVALID_INPUT );
-            break;
-    }
+            default:
+                fprintf( stderr, "[ERROR] Unknown charge method linear solver type. Terminating...\n" );
+                exit( INVALID_INPUT );
+                break;
+        }
 
-    /* SpMV related */
 #if defined(_OPENMP)
-    workspace->b_local = smalloc( control->num_threads * system->N_cm * sizeof(real),
-            "Init_Workspace::b_local" );
+        /* SpMV related */
+        workspace->b_local = smalloc( control->num_threads * system->N_cm_max * sizeof(real),
+                "Init_Workspace::b_local" );
 #endif
+    }
 
     /* level scheduling related */
     workspace->levels_L = 1;
     workspace->levels_U = 1;
-    if ( control->cm_solver_pre_app_type == TRI_SOLVE_LEVEL_SCHED_PA ||
-            control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
+    if ( alloc == TRUE )
     {
-        workspace->row_levels_L = smalloc( system->N_cm * sizeof(unsigned int),
-                "Init_Workspace::row_levels_L" );
-        workspace->level_rows_L = smalloc( system->N_cm * sizeof(unsigned int),
-                "Init_Workspace::level_rows_L" );
-        workspace->level_rows_cnt_L = smalloc( (system->N_cm + 1) * sizeof(unsigned int),
-                "Init_Workspace::level_rows_cnt_L" );
-        workspace->row_levels_U = smalloc( system->N_cm * sizeof(unsigned int),
-                "Init_Workspace::row_levels_U" );
-        workspace->level_rows_U = smalloc( system->N_cm * sizeof(unsigned int),
-                "Init_Workspace::level_rows_U" );
-        workspace->level_rows_cnt_U = smalloc( (system->N_cm + 1) * sizeof(unsigned int),
-                "Init_Workspace::level_rows_cnt_U" );
-        workspace->top = smalloc( (system->N_cm + 1) * sizeof(unsigned int),
-                "Init_Workspace::top" );
-    }
-    else
-    {
-        workspace->row_levels_L = NULL;
-        workspace->level_rows_L = NULL;
-        workspace->level_rows_cnt_L = NULL;
-        workspace->row_levels_U = NULL;
-        workspace->level_rows_U = NULL;
-        workspace->level_rows_cnt_U = NULL;
-        workspace->top = NULL;
+        if ( control->cm_solver_pre_app_type == TRI_SOLVE_LEVEL_SCHED_PA ||
+                control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
+        {
+            workspace->row_levels_L = smalloc( system->N_cm_max * sizeof(unsigned int),
+                    "Init_Workspace::row_levels_L" );
+            workspace->level_rows_L = smalloc( system->N_cm_max * sizeof(unsigned int),
+                    "Init_Workspace::level_rows_L" );
+            workspace->level_rows_cnt_L = smalloc( (system->N_cm_max + 1) * sizeof(unsigned int),
+                    "Init_Workspace::level_rows_cnt_L" );
+            workspace->row_levels_U = smalloc( system->N_cm_max * sizeof(unsigned int),
+                    "Init_Workspace::row_levels_U" );
+            workspace->level_rows_U = smalloc( system->N_cm_max * sizeof(unsigned int),
+                    "Init_Workspace::level_rows_U" );
+            workspace->level_rows_cnt_U = smalloc( (system->N_cm_max + 1) * sizeof(unsigned int),
+                    "Init_Workspace::level_rows_cnt_U" );
+            workspace->top = smalloc( (system->N_cm_max + 1) * sizeof(unsigned int),
+                    "Init_Workspace::top" );
+        }
+        else
+        {
+            workspace->row_levels_L = NULL;
+            workspace->level_rows_L = NULL;
+            workspace->level_rows_cnt_L = NULL;
+            workspace->row_levels_U = NULL;
+            workspace->level_rows_U = NULL;
+            workspace->level_rows_cnt_U = NULL;
+            workspace->top = NULL;
+        }
     }
 
     /* graph coloring related */
     workspace->recolor_cnt = 0;
-    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
+    if ( alloc == TRUE )
     {
-        workspace->color = smalloc( sizeof(unsigned int) * system->N_cm,
-                "Init_Workspace::color" );
-        workspace->to_color = smalloc( sizeof(unsigned int) * system->N_cm,
-                "Init_Workspace::to_color" );
-        workspace->conflict = smalloc( sizeof(unsigned int) * system->N_cm,
-                "setup_graph_coloring::conflict" );
-        workspace->conflict_cnt = smalloc( sizeof(unsigned int) * (control->num_threads + 1),
-                "Init_Workspace::conflict_cnt" );
-        workspace->recolor = smalloc( sizeof(unsigned int) * system->N_cm,
-                "Init_Workspace::recolor" );
-        workspace->color_top = smalloc( sizeof(unsigned int) * (system->N_cm + 1),
-                "Init_Workspace::color_top" );
-        workspace->permuted_row_col = smalloc( sizeof(unsigned int) * system->N_cm,
-                "Init_Workspace::premuted_row_col" );
-        workspace->permuted_row_col_inv = smalloc( sizeof(unsigned int) * system->N_cm,
-                "Init_Workspace::premuted_row_col_inv" );
-    }
-    else
-    {
-        workspace->color = NULL;
-        workspace->to_color = NULL;
-        workspace->conflict = NULL;
-        workspace->conflict_cnt = NULL;
-        workspace->recolor = NULL;
-        workspace->color_top = NULL;
-        workspace->permuted_row_col = NULL;
-        workspace->permuted_row_col_inv = NULL;
-    }
+        if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
+        {
+            workspace->color = smalloc( sizeof(unsigned int) * system->N_cm_max,
+                    "Init_Workspace::color" );
+            workspace->to_color = smalloc( sizeof(unsigned int) * system->N_cm_max,
+                    "Init_Workspace::to_color" );
+            workspace->conflict = smalloc( sizeof(unsigned int) * system->N_cm_max,
+                    "setup_graph_coloring::conflict" );
+            workspace->conflict_cnt = smalloc( sizeof(unsigned int) * (control->num_threads + 1),
+                    "Init_Workspace::conflict_cnt" );
+            workspace->recolor = smalloc( sizeof(unsigned int) * system->N_cm_max,
+                    "Init_Workspace::recolor" );
+            workspace->color_top = smalloc( sizeof(unsigned int) * (system->N_cm_max + 1),
+                    "Init_Workspace::color_top" );
+            workspace->permuted_row_col = smalloc( sizeof(unsigned int) * system->N_cm_max,
+                    "Init_Workspace::premuted_row_col" );
+            workspace->permuted_row_col_inv = smalloc( sizeof(unsigned int) * system->N_cm_max,
+                    "Init_Workspace::premuted_row_col_inv" );
+        }
+        else
+        {
+            workspace->color = NULL;
+            workspace->to_color = NULL;
+            workspace->conflict = NULL;
+            workspace->conflict_cnt = NULL;
+            workspace->recolor = NULL;
+            workspace->color_top = NULL;
+            workspace->permuted_row_col = NULL;
+            workspace->permuted_row_col_inv = NULL;
+        }
 
-    /* graph coloring related OR ILUTP preconditioner */
-    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA 
-            || control->cm_solver_pre_comp_type == ILUTP_PC )
-    {
-        workspace->y_p = smalloc( sizeof(real) * system->N_cm, "Init_Workspace::y_p" );
-        workspace->x_p = smalloc( sizeof(real) * system->N_cm, "Init_Workspace::x_p" );
-    }
-    else
-    {
-        workspace->y_p = NULL;
-        workspace->x_p = NULL;
-    }
+        /* graph coloring related OR ILUTP preconditioner */
+        if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA 
+                || control->cm_solver_pre_comp_type == ILUTP_PC )
+        {
+            workspace->y_p = smalloc( sizeof(real) * system->N_cm_max, "Init_Workspace::y_p" );
+            workspace->x_p = smalloc( sizeof(real) * system->N_cm_max, "Init_Workspace::x_p" );
+        }
+        else
+        {
+            workspace->y_p = NULL;
+            workspace->x_p = NULL;
+        }
 
-    /* Jacobi iteration related */
-    if ( control->cm_solver_pre_app_type == JACOBI_ITER_PA )
-    {
-        workspace->Dinv_L = smalloc( sizeof(real) * system->N_cm,
-                "Init_Workspace::Dinv_L" );
-        workspace->Dinv_U = smalloc( sizeof(real) * system->N_cm,
-                "Init_Workspace::Dinv_U" );
-        workspace->Dinv_b = smalloc( sizeof(real) * system->N_cm,
-                "Init_Workspace::Dinv_b" );
-        workspace->rp = smalloc( sizeof(real) * system->N_cm,
-                "Init_Workspace::rp" );
-        workspace->rp2 = smalloc( sizeof(real) * system->N_cm,
-                "Init_Workspace::rp2" );
-    }
-    else
-    {
-        workspace->Dinv_L = NULL;
-        workspace->Dinv_U = NULL;
-        workspace->Dinv_b = NULL;
-        workspace->rp = NULL;
-        workspace->rp2 = NULL;
-    }
+        /* Jacobi iteration related */
+        if ( control->cm_solver_pre_app_type == JACOBI_ITER_PA )
+        {
+            workspace->Dinv_L = smalloc( sizeof(real) * system->N_cm_max,
+                    "Init_Workspace::Dinv_L" );
+            workspace->Dinv_U = smalloc( sizeof(real) * system->N_cm_max,
+                    "Init_Workspace::Dinv_U" );
+            workspace->Dinv_b = smalloc( sizeof(real) * system->N_cm_max,
+                    "Init_Workspace::Dinv_b" );
+            workspace->rp = smalloc( sizeof(real) * system->N_cm_max,
+                    "Init_Workspace::rp" );
+            workspace->rp2 = smalloc( sizeof(real) * system->N_cm_max,
+                    "Init_Workspace::rp2" );
+        }
+        else
+        {
+            workspace->Dinv_L = NULL;
+            workspace->Dinv_U = NULL;
+            workspace->Dinv_b = NULL;
+            workspace->rp = NULL;
+            workspace->rp2 = NULL;
+        }
 
-    /* ILUTP preconditioner related */
-    if ( control->cm_solver_pre_comp_type == ILUTP_PC )
-    {
-        workspace->perm_ilutp = smalloc( sizeof( int ) * system->N_cm,
-               "Init_Workspace::workspace->perm_ilutp" );
-    }
-    else
-    {
-        workspace->perm_ilutp = NULL;
-    }
+        /* ILUTP preconditioner related */
+        if ( control->cm_solver_pre_comp_type == ILUTP_PC )
+        {
+            workspace->perm_ilutp = smalloc( sizeof( int ) * system->N_cm_max,
+                   "Init_Workspace::workspace->perm_ilutp" );
+        }
+        else
+        {
+            workspace->perm_ilutp = NULL;
+        }
 
-    /* integrator storage */
-    workspace->a = smalloc( system->N * sizeof( rvec ),
-           "Init_Workspace::workspace->a" );
-    workspace->f_old = smalloc( system->N * sizeof( rvec ),
-           "Init_Workspace::workspace->f_old" );
-    workspace->v_const = smalloc( system->N * sizeof( rvec ),
-           "Init_Workspace::workspace->v_const" );
+        /* integrator storage */
+        workspace->a = smalloc( system->N_max * sizeof( rvec ),
+               "Init_Workspace::workspace->a" );
+        workspace->f_old = smalloc( system->N_max * sizeof( rvec ),
+               "Init_Workspace::workspace->f_old" );
+        workspace->v_const = smalloc( system->N_max * sizeof( rvec ),
+               "Init_Workspace::workspace->v_const" );
 
 #if defined(_OPENMP)
-    workspace->f_local = smalloc( control->num_threads * system->N * sizeof( rvec ),
-           "Init_Workspace::workspace->f_local" );
+        workspace->f_local = smalloc( control->num_threads * system->N_max * sizeof( rvec ),
+               "Init_Workspace::workspace->f_local" );
 #endif
 
-    /* storage for analysis */
-    if ( control->molec_anal || control->diffusion_coef )
-    {
-        workspace->mark = scalloc( system->N, sizeof(int),
-                "Init_Workspace::workspace->mark" );
-        workspace->old_mark = scalloc( system->N, sizeof(int),
-                "Init_Workspace::workspace->old_mark" );
-    }
-    else
-    {
-        workspace->mark = workspace->old_mark = NULL;
-    }
+        /* storage for analysis */
+        if ( control->molec_anal || control->diffusion_coef )
+        {
+            workspace->mark = scalloc( system->N_max, sizeof(int),
+                    "Init_Workspace::workspace->mark" );
+            workspace->old_mark = scalloc( system->N_max, sizeof(int),
+                    "Init_Workspace::workspace->old_mark" );
+        }
+        else
+        {
+            workspace->mark = workspace->old_mark = NULL;
+        }
 
-    if ( control->diffusion_coef )
-    {
-        workspace->x_old = scalloc( system->N, sizeof( rvec ),
-                "Init_Workspace::workspace->x_old" );
-    }
-    else
-    {
-        workspace->x_old = NULL;
+        if ( control->diffusion_coef )
+        {
+            workspace->x_old = scalloc( system->N_max, sizeof( rvec ),
+                    "Init_Workspace::workspace->x_old" );
+        }
+        else
+        {
+            workspace->x_old = NULL;
+        }
     }
 
 #if defined(TEST_FORCES)
-    workspace->dDelta = smalloc( system->N * sizeof( rvec ),
+    workspace->dDelta = smalloc( system->N_max * sizeof( rvec ),
            "Init_Workspace::workspace->dDelta" );
-    workspace->f_ele = smalloc( system->N * sizeof( rvec ),
+    workspace->f_ele = smalloc( system->N_max * sizeof( rvec ),
            "Init_Workspace::workspace->f_ele" );
-    workspace->f_vdw = smalloc( system->N * sizeof( rvec ),
+    workspace->f_vdw = smalloc( system->N_max * sizeof( rvec ),
            "Init_Workspace::workspace->f_vdw" );
-    workspace->f_be = smalloc( system->N * sizeof( rvec ),
+    workspace->f_be = smalloc( system->N_max * sizeof( rvec ),
            "Init_Workspace::workspace->f_be" );
-    workspace->f_lp = smalloc( system->N * sizeof( rvec ),
+    workspace->f_lp = smalloc( system->N_max * sizeof( rvec ),
            "Init_Workspace::workspace->f_lp" );
-    workspace->f_ov = smalloc( system->N * sizeof( rvec ),
+    workspace->f_ov = smalloc( system->N_max * sizeof( rvec ),
            "Init_Workspace::workspace->f_ov" );
-    workspace->f_un = smalloc( system->N * sizeof( rvec ),
+    workspace->f_un = smalloc( system->N_max * sizeof( rvec ),
            "Init_Workspace::workspace->f_un" );
-    workspace->f_ang = smalloc( system->N * sizeof( rvec ),
+    workspace->f_ang = smalloc( system->N_max * sizeof( rvec ),
            "Init_Workspace::workspace->f_ang" );
-    workspace->f_coa = smalloc( system->N * sizeof( rvec ),
+    workspace->f_coa = smalloc( system->N_max * sizeof( rvec ),
            "Init_Workspace::workspace->f_coa" );
-    workspace->f_pen = smalloc( system->N * sizeof( rvec ),
+    workspace->f_pen = smalloc( system->N_max * sizeof( rvec ),
            "Init_Workspace::workspace->f_pen" );
-    workspace->f_hb = smalloc( system->N * sizeof( rvec ),
+    workspace->f_hb = smalloc( system->N_max * sizeof( rvec ),
            "Init_Workspace::workspace->f_hb" );
-    workspace->f_tor = smalloc( system->N * sizeof( rvec ),
+    workspace->f_tor = smalloc( system->N_max * sizeof( rvec ),
            "Init_Workspace::workspace->f_tor" );
-    workspace->f_con = smalloc( system->N * sizeof( rvec ),
+    workspace->f_con = smalloc( system->N_max * sizeof( rvec ),
            "Init_Workspace::workspace->f_con" );
 #endif
 
@@ -756,22 +774,27 @@ static void Init_Workspace( reax_system *system, control_params *control,
 
 static void Init_Lists( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        reax_list **lists, output_controls *out_control )
+        reax_list **lists, output_controls *out_control,
+        int first_run, int alloc )
 {
-    int i, num_nbrs, num_bonds, num_3body, Htop, max_nnz;
+    int i, num_nbrs, num_bonds, num_hbonds, num_3body, Htop, max_nnz;
     int *hb_top, *bond_top;
-#if defined(DEBUG_FOCUS)
-    int num_hbonds;
-#endif
 
     num_nbrs = Estimate_Num_Neighbors( system, control, workspace, lists );
 
-    Make_List( system->N, num_nbrs, TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "memory allocated: far_nbrs = %ldMB\n",
-             num_nbrs * sizeof(far_neighbor_data) / (1024 * 1024) );
-#endif
+    if ( first_run == TRUE )
+    {
+        Make_List( system->N, system->N_max, num_nbrs, TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
+    }
+    else if ( alloc == TRUE || lists[FAR_NBRS]->total_intrs < num_nbrs )
+    {
+        Delete_List( TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
+        Make_List( system->N, system->N_max, num_nbrs, TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
+    }
+    else
+    {
+        lists[FAR_NBRS]->n = system->N;
+    }
 
     Generate_Neighbor_Lists( system, control, data, workspace, lists, out_control );
 
@@ -800,12 +823,41 @@ static void Init_Lists( reax_system *system, control_params *control,
             break;
     }
 
-    Allocate_Matrix( &workspace->H, system->N_cm, max_nnz );
-    /* TODO: better estimate for H_sp?
-     *   If so, need to refactor Estimate_Storage_Sizes
-     *   to use various cut-off distances as parameters
-     *   (non-bonded, hydrogen, 3body, etc.) */
-    Allocate_Matrix( &workspace->H_sp, system->N_cm, max_nnz );
+    if ( first_run == TRUE )
+    {
+        Allocate_Matrix( &workspace->H, system->N_cm, system->N_cm_max, max_nnz );
+    }
+    else if ( alloc == TRUE || workspace->H->m < max_nnz )
+    {
+        Deallocate_Matrix( workspace->H );
+        Allocate_Matrix( &workspace->H, system->N_cm, system->N_cm_max, max_nnz );
+    }
+    else
+    {
+        workspace->H->n = system->N_cm;
+    }
+
+    if ( first_run == TRUE )
+    {
+        /* TODO: better estimate for H_sp?
+         *   If so, need to refactor Estimate_Storage_Sizes
+         *   to use various cut-off distances as parameters
+         *   (non-bonded, hydrogen, 3body, etc.) */
+        Allocate_Matrix( &workspace->H_sp, system->N_cm, system->N_cm_max, max_nnz );
+    }
+    else if ( alloc == TRUE || workspace->H_sp->m < max_nnz )
+    {
+        Deallocate_Matrix( workspace->H_sp );
+        /* TODO: better estimate for H_sp?
+         *   If so, need to refactor Estimate_Storage_Sizes
+         *   to use various cut-off distances as parameters
+         *   (non-bonded, hydrogen, 3body, etc.) */
+        Allocate_Matrix( &workspace->H_sp, system->N_cm, system->N_cm_max, max_nnz );
+    }
+    else
+    {
+        workspace->H_sp->n = system->N_cm;
+    }
 
     workspace->num_H = 0;
     if ( control->hbond_cut > 0.0 )
@@ -829,21 +881,64 @@ static void Init_Lists( reax_system *system, control_params *control,
         }
         else
         {
-            Allocate_HBond_List( system->N, workspace->num_H, workspace->hbond_index,
-                    hb_top, lists[HBONDS] );
+            num_hbonds = 0;
+            for ( i = 0; i < system->N; ++i )
+            {
+                num_hbonds += hb_top[i];
+            }
+
+            if ( first_run == TRUE )
+            {
+                workspace->num_H_max = (int) CEIL( SAFE_ZONE * workspace->num_H );
+
+                Allocate_HBond_List( system->N, workspace->num_H, workspace->num_H_max,
+                        workspace->hbond_index, hb_top, lists[HBONDS] );
+            }
+            else if ( workspace->num_H_max < workspace->num_H
+                    || lists[HBONDS]->total_intrs < num_hbonds )
+            {
+                if ( workspace->num_H_max < workspace->num_H )
+                {
+                    workspace->num_H_max = (int) CEIL( SAFE_ZONE * workspace->num_H );
+                }
+
+                Delete_List( TYP_HBOND, lists[HBONDS] );
+                Allocate_HBond_List( system->N, workspace->num_H, workspace->num_H_max,
+                        workspace->hbond_index, hb_top, lists[HBONDS] );
+            }
+            else
+            {
+                lists[HBONDS]->n = workspace->num_H;
+            }
         }
 
 #if defined(DEBUG_FOCUS)
-        num_hbonds = hb_top[system->N - 1];
         fprintf( stderr, "estimated storage - num_hbonds: %d\n", num_hbonds );
         fprintf( stderr, "memory allocated: hbonds = %ldMB\n",
                  num_hbonds * sizeof(hbond_data) / (1024 * 1024) );
 #endif
     }
 
+    num_bonds = 0;
+    for ( i = 0; i < system->N; ++i )
+    {
+        num_bonds += bond_top[i];
+    }
+
     /* bonds list */
-    Allocate_Bond_List( system->N, bond_top, lists[BONDS] );
-    num_bonds = bond_top[system->N - 1];
+    if ( first_run == TRUE )
+    {
+        Allocate_Bond_List( system->N, system->N_max, bond_top, lists[BONDS] );
+    }
+    else if ( alloc == TRUE || lists[BONDS]->total_intrs < num_bonds )
+    {
+        Delete_List( TYP_BOND, lists[BONDS] );
+        Allocate_Bond_List( system->N, system->N_max, bond_top, lists[BONDS] );
+    }
+    else
+    {
+        lists[BONDS]->n = system->N;
+    }
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "estimated storage - num_bonds: %d\n", num_bonds );
@@ -852,7 +947,29 @@ static void Init_Lists( reax_system *system, control_params *control,
 #endif
 
     /* 3bodies list */
-    Make_List( num_bonds, num_3body, TYP_THREE_BODY, lists[THREE_BODIES] );
+    if ( first_run == TRUE )
+    {
+        Make_List( num_bonds, num_bonds, num_3body, TYP_THREE_BODY, lists[THREE_BODIES] );
+    }
+    else if ( lists[THREE_BODIES]->n_max < num_bonds
+            || lists[THREE_BODIES]->total_intrs < num_3body )
+    {
+        Delete_List( TYP_THREE_BODY, lists[THREE_BODIES] );
+        if ( lists[THREE_BODIES]->n_max < num_bonds )
+        {
+            Make_List( num_bonds, num_bonds, num_3body,
+                    TYP_THREE_BODY, lists[THREE_BODIES] );
+        }
+        else
+        {
+            Make_List( num_bonds, lists[THREE_BODIES]->n_max, num_3body,
+                    TYP_THREE_BODY, lists[THREE_BODIES] );
+        }
+    }
+    else
+    {
+        lists[THREE_BODIES]->n = num_bonds;
+    }
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "estimated storage - num_3body: %d\n", num_3body );
@@ -885,12 +1002,12 @@ static void Init_Lists( reax_system *system, control_params *control,
 
 
 static void Init_Out_Controls( reax_system *system, control_params *control,
-        static_storage *workspace, output_controls *out_control )
+        static_storage *workspace, output_controls *out_control, int output_enabled )
 {
 #define TEMP_SIZE (1000)
     char temp[TEMP_SIZE];
 
-    if ( out_control->write_steps > 0 )
+    if ( output_enabled == TRUE && out_control->write_steps > 0 )
     {
         strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
         temp[TEMP_SIZE - 5] = '\0';
@@ -903,7 +1020,7 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
         out_control->trj = NULL;
     }
 
-    if ( out_control->log_update_freq > 0 )
+    if ( output_enabled == TRUE && out_control->log_update_freq > 0 )
     {
         strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
         temp[TEMP_SIZE - 5] = '\0';
@@ -940,8 +1057,8 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
         out_control->log = NULL;
     }
 
-    if ( control->ensemble == sNPT || control->ensemble == iNPT
-            || control->ensemble == aNPT || control->compute_pressure == TRUE )
+    if ( output_enabled == TRUE && (control->ensemble == sNPT || control->ensemble == iNPT
+            || control->ensemble == aNPT || control->compute_pressure == TRUE) )
     {
         strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
         temp[TEMP_SIZE - 5] = '\0';
@@ -964,7 +1081,7 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
     }
 
     /* Init molecular analysis file */
-    if ( control->molec_anal )
+    if ( output_enabled == TRUE && control->molec_anal )
     {
         snprintf( temp, TEMP_SIZE, "%.*s.mol", TEMP_SIZE - 5, control->sim_name );
         out_control->mol = sfopen( temp, "w" );
@@ -980,7 +1097,7 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
         out_control->ign = NULL;
     }
 
-    if ( control->dipole_anal )
+    if ( output_enabled == TRUE && control->dipole_anal )
     {
         strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
         temp[TEMP_SIZE - 5] = '\0';
@@ -995,7 +1112,7 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
         out_control->dpl = NULL;
     }
 
-    if ( control->diffusion_coef )
+    if ( output_enabled == TRUE && control->diffusion_coef )
     {
         strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
         temp[TEMP_SIZE - 6] = '\0';
@@ -1148,12 +1265,8 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
 void Initialize( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control, evolve_function *Evolve,
-        const int output_enabled )
+        int output_enabled, int first_run, int alloc )
 {
-#if defined(DEBUG)
-    real start, end;
-#endif
-
 #if defined(_OPENMP)
     #pragma omp parallel default(none) shared(control)
     {
@@ -1166,18 +1279,15 @@ void Initialize( reax_system *system, control_params *control,
 
     Randomize( );
 
-    Init_System( system, control, data );
+    Init_System( system, control, data, first_run );
 
-    Init_Simulation_Data( system, control, data, out_control, Evolve );
+    Init_Simulation_Data( system, control, data, out_control, Evolve, alloc );
 
-    Init_Workspace( system, control, workspace );
+    Init_Workspace( system, control, workspace, alloc );
 
-    Init_Lists( system, control, data, workspace, lists, out_control );
+    Init_Lists( system, control, data, workspace, lists, out_control, first_run, alloc );
 
-    if ( output_enabled == TRUE )
-    {
-        Init_Out_Controls( system, control, workspace, out_control );
-    }
+    Init_Out_Controls( system, control, workspace, out_control, output_enabled );
 
     /* These are done in forces.c, only forces.c can see all those functions */
     Init_Bonded_Force_Functions( control );
@@ -1188,27 +1298,13 @@ void Initialize( reax_system *system, control_params *control,
 
     if ( control->tabulate )
     {
-#if defined(DEBUG)
-        start = Get_Time( );
-#endif
-
         Make_LR_Lookup_Table( system, control, workspace );
-
-#if defined(DEBUG)
-        end = Get_Timing_Info( start );
-
-        fprintf( stderr, "[INFO] LR lookup table calculation time: %f\n", end );
-#endif
     }
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "data structures have been initialized...\n" );
-#endif
 }
 
 
 static void Finalize_System( reax_system *system, control_params *control,
-        simulation_data *data )
+        simulation_data *data, int reset )
 {
     int i, j, k;
     reax_interaction *reax;
@@ -1217,35 +1313,38 @@ static void Finalize_System( reax_system *system, control_params *control,
 
     Finalize_Grid( system );
 
-    sfree( reax->gp.l, "Finalize_System::reax->gp.l" );
-
-    for ( i = 0; i < reax->num_atom_types; i++ )
+    if ( reset == FALSE )
     {
-        for ( j = 0; j < reax->num_atom_types; j++ )
+        sfree( reax->gp.l, "Finalize_System::reax->gp.l" );
+
+        for ( i = 0; i < reax->num_atom_types; i++ )
         {
-            for ( k = 0; k < reax->num_atom_types; k++ )
+            for ( j = 0; j < reax->num_atom_types; j++ )
             {
-                sfree( reax->fbp[i][j][k], "Finalize_System::reax->fbp[i][j][k]" );
+                for ( k = 0; k < reax->num_atom_types; k++ )
+                {
+                    sfree( reax->fbp[i][j][k], "Finalize_System::reax->fbp[i][j][k]" );
+                }
+
+                sfree( reax->thbp[i][j], "Finalize_System::reax->thbp[i][j]" );
+                sfree( reax->hbp[i][j], "Finalize_System::reax->hbp[i][j]" );
+                sfree( reax->fbp[i][j], "Finalize_System::reax->fbp[i][j]" );
             }
 
-            sfree( reax->thbp[i][j], "Finalize_System::reax->thbp[i][j]" );
-            sfree( reax->hbp[i][j], "Finalize_System::reax->hbp[i][j]" );
-            sfree( reax->fbp[i][j], "Finalize_System::reax->fbp[i][j]" );
+            sfree( reax->tbp[i], "Finalize_System::reax->tbp[i]" );
+            sfree( reax->thbp[i], "Finalize_System::reax->thbp[i]" );
+            sfree( reax->hbp[i], "Finalize_System::reax->hbp[i]" );
+            sfree( reax->fbp[i], "Finalize_System::reax->fbp[i]" );
         }
 
-        sfree( reax->tbp[i], "Finalize_System::reax->tbp[i]" );
-        sfree( reax->thbp[i], "Finalize_System::reax->thbp[i]" );
-        sfree( reax->hbp[i], "Finalize_System::reax->hbp[i]" );
-        sfree( reax->fbp[i], "Finalize_System::reax->fbp[i]" );
+        sfree( reax->sbp, "Finalize_System::reax->sbp" );
+        sfree( reax->tbp, "Finalize_System::reax->tbp" );
+        sfree( reax->thbp, "Finalize_System::reax->thbp" );
+        sfree( reax->hbp, "Finalize_System::reax->hbp" );
+        sfree( reax->fbp, "Finalize_System::reax->fbp" );
+
+        sfree( system->atoms, "Finalize_System::system->atoms" );
     }
-
-    sfree( reax->sbp, "Finalize_System::reax->sbp" );
-    sfree( reax->tbp, "Finalize_System::reax->tbp" );
-    sfree( reax->thbp, "Finalize_System::reax->thbp" );
-    sfree( reax->hbp, "Finalize_System::reax->hbp" );
-    sfree( reax->fbp, "Finalize_System::reax->fbp" );
-
-    sfree( system->atoms, "Finalize_System::system->atoms" );
 }
 
 
@@ -1256,14 +1355,14 @@ static void Finalize_Simulation_Data( reax_system *system, control_params *contr
     if ( control->ensemble == sNPT || control->ensemble == iNPT
             || control->ensemble == aNPT || control->compute_pressure == TRUE )
     {
-        sfree( data->press_local, "Finalize_Workspace::workspace->press_local" );
+        sfree( data->press_local, "Finalize_Simulation_Data::data->press_local" );
     }
 #endif
 }
 
 
 static void Finalize_Workspace( reax_system *system, control_params *control,
-        static_storage *workspace )
+        static_storage *workspace, int reset )
 {
     int i;
 
@@ -1285,9 +1384,9 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
     sfree( workspace->CdDelta, "Finalize_Workspace::workspace->CdDelta" );
     sfree( workspace->vlpex, "Finalize_Workspace::workspace->vlpex" );
 
-    if ( control->geo_format == BGF
+    if ( reset == FALSE && (control->geo_format == BGF
             || control->geo_format == ASCII_RESTART
-            || control->geo_format == BINARY_RESTART )
+            || control->geo_format == BINARY_RESTART) )
     {
         sfree( workspace->map_serials, "Finalize_Workspace::workspace->map_serials" );
     }
@@ -1472,19 +1571,22 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
         sfree( workspace->x_old, "Finalize_Workspace::workspace->x_old" );
     }
 
-    sfree( workspace->orig_id, "Finalize_Workspace::workspace->orig_id" );
-
-    /* space for keeping restriction info, if any */
-    if ( control->restrict_bonds )
+    if ( reset == FALSE )
     {
-        for ( i = 0; i < system->N; ++i )
-        {
-            sfree( workspace->restricted_list[i],
-                    "Finalize_Workspace::workspace->restricted_list[i]" );
-        }
+        sfree( workspace->orig_id, "Finalize_Workspace::workspace->orig_id" );
 
-        sfree( workspace->restricted, "Finalize_Workspace::workspace->restricted" );
-        sfree( workspace->restricted_list, "Finalize_Workspace::workspace->restricted_list" );
+        /* space for keeping restriction info, if any */
+        if ( control->restrict_bonds )
+        {
+            for ( i = 0; i < system->N; ++i )
+            {
+                sfree( workspace->restricted_list[i],
+                        "Finalize_Workspace::workspace->restricted_list[i]" );
+            }
+
+            sfree( workspace->restricted, "Finalize_Workspace::workspace->restricted" );
+            sfree( workspace->restricted_list, "Finalize_Workspace::workspace->restricted_list" );
+        }
     }
 
 #if defined(TEST_FORCES)
@@ -1600,7 +1702,7 @@ static void Finalize_Out_Controls( reax_system *system, control_params *control,
  */
 void Finalize( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace, reax_list **lists,
-        output_controls *out_control, const int output_enabled )
+        output_controls *out_control, int output_enabled, int reset )
 {
     if ( control->tabulate )
     {
@@ -1614,9 +1716,9 @@ void Finalize( reax_system *system, control_params *control,
 
     Finalize_Lists( control, lists );
 
-    Finalize_Workspace( system, control, workspace );
+    Finalize_Workspace( system, control, workspace, reset );
 
     Finalize_Simulation_Data( system, control, data, out_control );
 
-    Finalize_System( system, control, data );
+    Finalize_System( system, control, data, reset );
 }

@@ -73,7 +73,7 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
 
 void Read_Binary_Restart( const char * const fname, reax_system *system,
         control_params *control, simulation_data *data,
-        static_storage *workspace )
+        static_storage *workspace, int first_run )
 {
     int i;
     FILE *fres;
@@ -87,7 +87,6 @@ void Read_Binary_Restart( const char * const fname, reax_system *system,
     fread( &res_header, sizeof(restart_header), 1, fres );
 
     data->prev_steps = res_header.step;
-    system->N = res_header.N;
     data->therm.T = res_header.T;
     data->therm.xi = res_header.xi;
     data->therm.v_xi = res_header.v_xi;
@@ -109,10 +108,17 @@ void Read_Binary_Restart( const char * const fname, reax_system *system,
              system->box.box[2][0], system->box.box[2][1], system->box.box[2][2] );
 #endif
 
-    PreAllocate_Space( system, control, workspace );
+    if ( first_run == TRUE || res_header.N > system->N )
+    {
+        PreAllocate_Space( system, control, workspace, res_header.N, first_run );
+    }
+    system->N = res_header.N;
 
-    workspace->map_serials = scalloc( MAX_ATOM_ID, sizeof(int),
-            "Read_Binary_Restart::workspace->map_serials" );
+    if ( first_run == TRUE )
+    {
+        workspace->map_serials = scalloc( MAX_ATOM_ID, sizeof(int),
+                "Read_Binary_Restart::workspace->map_serials" );
+    }
 
     for ( i = 0; i < MAX_ATOM_ID; ++i )
     {
@@ -185,9 +191,9 @@ void Write_ASCII_Restart( reax_system *system, control_params *control,
 
 void Read_ASCII_Restart( const char * const fname, reax_system *system,
         control_params *control, simulation_data *data,
-        static_storage *workspace )
+        static_storage *workspace, int first_run )
 {
-    int i;
+    int i, n;
     FILE *fres;
     reax_atom *p_atom;
 
@@ -195,7 +201,7 @@ void Read_ASCII_Restart( const char * const fname, reax_system *system,
 
     /* parse header of restart file */
     fscanf( fres, READ_RESTART_HEADER,
-            &data->prev_steps, &system->N, &data->therm.T, &data->therm.xi,
+            &data->prev_steps, &n, &data->therm.T, &data->therm.xi,
             &data->therm.v_xi, &data->therm.v_xi_old, &data->therm.G_xi,
             &system->box.box[0][0], &system->box.box[0][1], &system->box.box[0][2],
             &system->box.box[1][0], &system->box.box[1][1], &system->box.box[1][2],
@@ -216,10 +222,17 @@ void Read_ASCII_Restart( const char * const fname, reax_system *system,
              system->box.box[2][0], system->box.box[2][1], system->box.box[2][2] );
 #endif
 
-    PreAllocate_Space( system, control, workspace );
+    if ( first_run == TRUE || n > system->N )
+    {
+        PreAllocate_Space( system, control, workspace, n, first_run );
+    }
+    system->N = n;
 
-    workspace->map_serials = scalloc( MAX_ATOM_ID, sizeof(int),
-            "Read_ASCII_Restart::workspace->map_serials" );
+    if ( first_run == TRUE )
+    {
+        workspace->map_serials = scalloc( MAX_ATOM_ID, sizeof(int),
+                "Read_ASCII_Restart::workspace->map_serials" );
+    }
 
     for ( i = 0; i < MAX_ATOM_ID; ++i )
     {

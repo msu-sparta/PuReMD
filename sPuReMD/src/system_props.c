@@ -74,8 +74,7 @@ void Compute_Total_Mass( reax_system *system, simulation_data *data )
 }
 
 
-void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
-        FILE *fout )
+void Compute_Center_of_Mass( reax_system *system, simulation_data *data )
 {
     int i;
     real m, xx, xy, xz, yy, yz, zz, det;

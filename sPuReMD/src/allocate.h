@@ -25,17 +25,17 @@
 #include "reax_types.h"
 
 
-void PreAllocate_Space( reax_system*, control_params*, static_storage* );
+void PreAllocate_Space( reax_system*, control_params*, static_storage*, int, int );
 
 void Reallocate( reax_system*, control_params*, static_storage*, reax_list**, int );
 
-void Allocate_Matrix( sparse_matrix**, int, int );
+void Allocate_Matrix( sparse_matrix**, int, int, int );
 
 void Deallocate_Matrix( sparse_matrix* );
 
-void Allocate_HBond_List( int, int, int*, int*, reax_list* );
+void Allocate_HBond_List( int, int, int, int*, int*, reax_list* );
 
-void Allocate_Bond_List( int, int*, reax_list* );
+void Allocate_Bond_List( int, int, int*, reax_list* );
 
 
 #endif

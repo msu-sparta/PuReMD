@@ -57,7 +57,7 @@ static sparse_matrix * create_test_mat( void )
     unsigned int i, n;
     sparse_matrix *H_test;
 
-    Allocate_Matrix( &H_test, 3, 6 );
+    Allocate_Matrix( &H_test, 3, 3, 6 );
 
     //3x3, SPD, store lower half
     i = 0;
@@ -169,15 +169,15 @@ static void compute_full_sparse_matrix( const sparse_matrix * const A,
 
     if ( *A_full == NULL )
     {
-        Allocate_Matrix( A_full, A->n, 2 * A->m - A->n );
+        Allocate_Matrix( A_full, A->n, A->n_max, 2 * A->m - A->n );
     }
     else if ( (*A_full)->m < 2 * A->m - A->n )
     {
         Deallocate_Matrix( *A_full );
-        Allocate_Matrix( A_full, A->n, 2 * A->m - A->n );
+        Allocate_Matrix( A_full, A->n, A->n_max, 2 * A->m - A->n );
     }
 
-    Allocate_Matrix( &A_t, A->n, A->m );
+    Allocate_Matrix( &A_t, A->n, A->n_max, A->m );
 
     /* Set up the sparse matrix data structure for A. */
     Transpose( A, A_t );
@@ -233,12 +233,12 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
 
     if ( *A_spar_patt == NULL )
     {
-        Allocate_Matrix( A_spar_patt, A->n, A->m );
+        Allocate_Matrix( A_spar_patt, A->n, A->n_max, A->m );
     }
     else if ( ((*A_spar_patt)->m) < (A->m) )
     {
         Deallocate_Matrix( *A_spar_patt );
-        Allocate_Matrix( A_spar_patt, A->n, A->m );
+        Allocate_Matrix( A_spar_patt, A->n, A->n_max, A->m );
     }
 
     list = smalloc( sizeof(real) * A->start[A->n],
@@ -352,7 +352,8 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
     {
         /* A_app_inv has the same sparsity pattern
          * as A_spar_patt_full (omit non-zero values) */
-        Allocate_Matrix( A_app_inv, (*A_spar_patt_full)->n, (*A_spar_patt_full)->m );
+        Allocate_Matrix( A_app_inv, (*A_spar_patt_full)->n, (*A_spar_patt_full)->n_max,
+                (*A_spar_patt_full)->m );
     }
     else if ( (*A_app_inv)->m < A->m )
     {
@@ -360,7 +361,8 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
 
         /* A_app_inv has the same sparsity pattern
          * as A_spar_patt_full (omit non-zero values) */
-        Allocate_Matrix( A_app_inv, (*A_spar_patt_full)->n, (*A_spar_patt_full)->m );
+        Allocate_Matrix( A_app_inv, (*A_spar_patt_full)->n, (*A_spar_patt_full)->n_max,
+                (*A_spar_patt_full)->m );
     }
 
     sfree( list, "setup_sparse_approx_inverse::list" );
@@ -1130,8 +1132,8 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
 
     start = Get_Time( );
 
-    Allocate_Matrix( &DAD, A->n, A->m );
-    Allocate_Matrix( &U_T_temp, A->n, A->m );
+    Allocate_Matrix( &DAD, A->n, A->n_max, A->m );
+    Allocate_Matrix( &U_T_temp, A->n, A->n_max, A->m );
 
     D = smalloc( sizeof(real) * A->n, "FG_ICHOLT::D" );
     D_inv = smalloc( sizeof(real) * A->n, "FG_ICHOLT::D_inv" );
@@ -1338,9 +1340,9 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
 
     start = Get_Time( );
 
-    Allocate_Matrix( &DAD, A->n, A->m );
-    Allocate_Matrix( &L_temp, A->n, A->m );
-    Allocate_Matrix( &U_T_temp, A->n, A->m );
+    Allocate_Matrix( &DAD, A->n, A->n_max, A->m );
+    Allocate_Matrix( &L_temp, A->n, A->n_max, A->m );
+    Allocate_Matrix( &U_T_temp, A->n, A->n_max, A->m );
 
     D = smalloc( sizeof(real) * A->n, "FG_ILUT::D" );
     D_inv = smalloc( sizeof(real) * A->n, "FG_ILUT::D_inv" );
@@ -1980,7 +1982,7 @@ void Transpose_I( sparse_matrix * const A )
 {
     sparse_matrix * A_t;
 
-    Allocate_Matrix( &A_t, A->n, A->m );
+    Allocate_Matrix( &A_t, A->n, A->n_max, A->m );
 
     Transpose( A, A_t );
 
@@ -2487,7 +2489,7 @@ static void permute_matrix( const static_storage * const workspace,
     int i, pj, nr, nc;
     sparse_matrix *LUtemp;
 
-    Allocate_Matrix( &LUtemp, LU->n, LU->m );
+    Allocate_Matrix( &LUtemp, LU->n, LU->n_max, LU->m );
 
     for ( i = 0; i < LU->n + 1; ++i )
         workspace->color_top[i] = 0;
@@ -2623,12 +2625,12 @@ void setup_graph_coloring( const control_params * const control,
 {
     if ( *H_p == NULL )
     {
-        Allocate_Matrix( H_p, H->n, H->m );
+        Allocate_Matrix( H_p, H->n, H->n_max, H->m );
     }
     else if ( (*H_p)->m < H->m )
     {
         Deallocate_Matrix( *H_p );
-        Allocate_Matrix( H_p, H->n, H->m );
+        Allocate_Matrix( H_p, H->n, H->n_max, H->m );
     }
 
     compute_full_sparse_matrix( H, H_full );

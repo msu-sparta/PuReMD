@@ -24,17 +24,20 @@
 #include "tool_box.h"
 
 
-void Make_List( int n, int total_intrs, int type, reax_list* l )
+void Make_List( int n, int n_max, int total_intrs, int type, reax_list* l )
 {
     assert( n > 0 );
+    assert( n_max > 0 );
+    assert( n_max >= n );
     assert( total_intrs > 0 );
     assert( l != NULL );
 
     l->n = n;
+    l->n_max = n_max;
     l->total_intrs = total_intrs;
 
-    l->index = smalloc( n * sizeof(int), "Make_List::l->index" );
-    l->end_index = smalloc( n * sizeof(int), "Make_List::l->end_index" );
+    l->index = smalloc( n_max * sizeof(int), "Make_List::l->index" );
+    l->end_index = smalloc( n_max * sizeof(int), "Make_List::l->end_index" );
 
     switch ( type )
     {

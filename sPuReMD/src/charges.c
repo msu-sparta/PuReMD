@@ -1186,16 +1186,16 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
 
             if ( workspace->L == NULL )
             {
-                Allocate_Matrix( &workspace->L, Hptr->n, fillin );
-                Allocate_Matrix( &workspace->U, Hptr->n, fillin );
+                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, fillin );
+                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, fillin );
             }
             else if ( workspace->L->m < fillin )
             {
                 Deallocate_Matrix( workspace->L );
                 Deallocate_Matrix( workspace->U );
 
-                Allocate_Matrix( &workspace->L, Hptr->n, fillin );
-                Allocate_Matrix( &workspace->U, Hptr->n, fillin );
+                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, fillin );
+                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, fillin );
             }
             break;
 
@@ -1207,16 +1207,16 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
 
             if ( workspace->L == NULL )
             {
-                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->m );
-                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->m );
+                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
+                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
             else if ( workspace->L->m < Hptr->m )
             {
                 Deallocate_Matrix( workspace->L );
                 Deallocate_Matrix( workspace->U );
 
-                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->m );
-                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->m );
+                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
+                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
             break;
 
@@ -1228,8 +1228,8 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
             {
                 /* safest storage estimate is ILU(0) (same as
                  * lower triangular portion of H), could improve later */
-                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->m );
-                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->m );
+                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
+                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
             else if ( workspace->L->m < Hptr->m )
             {
@@ -1238,8 +1238,8 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
 
                 /* safest storage estimate is ILU(0) (same as
                  * lower triangular portion of H), could improve later */
-                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->m );
-                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->m );
+                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
+                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
             break;
 
@@ -1317,16 +1317,16 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
 
             if ( workspace->L == NULL )
             {
-                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->m );
-                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->m );
+                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
+                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
             else if ( workspace->L->m < Hptr->m )
             {
                 Deallocate_Matrix( workspace->L );
                 Deallocate_Matrix( workspace->U );
 
-                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->m );
-                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->m );
+                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
+                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
             break;
 
@@ -1344,8 +1344,8 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
             {
                 /* safest storage estimate is ILU(0) (same as
                  * lower triangular portion of H), could improve later */
-                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->m );
-                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->m );
+                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
+                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
             else if ( workspace->L->m < Hptr->m )
             {
@@ -1354,8 +1354,8 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
 
                 /* safest storage estimate is ILU(0) (same as
                  * lower triangular portion of H), could improve later */
-                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->m );
-                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->m );
+                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
+                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
             break;
 
@@ -1435,16 +1435,16 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
 
             if ( workspace->L == NULL )
             {
-                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->m );
-                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->m );
+                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
+                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
             else if ( workspace->L->m < Hptr->m )
             {
                 Deallocate_Matrix( workspace->L );
                 Deallocate_Matrix( workspace->U );
 
-                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->m );
-                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->m );
+                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
+                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
             break;
 
@@ -1464,8 +1464,8 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
             {
                 /* safest storage estimate is ILU(0) (same as
                  * lower triangular portion of H), could improve later */
-                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->m );
-                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->m );
+                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
+                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
             else if ( workspace->L->m < Hptr->m )
             {
@@ -1473,8 +1473,8 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
                 Deallocate_Matrix( workspace->U );
 
                 /* factors have sparsity pattern as H */
-                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->m );
-                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->m );
+                Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
+                Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
             break;
 

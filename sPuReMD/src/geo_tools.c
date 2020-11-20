@@ -229,12 +229,14 @@ static int Read_Box_Info( reax_system *system, FILE *fp, int geo_format )
  * fp: file pointer to open geometry file 
  * geo_format: type of geometry file
  * */
-static void Count_Atoms( reax_system *system, FILE *fp, int geo_format )
+static int Count_Atoms( reax_system *system, FILE *fp, int geo_format )
 {
     char line[MAX_LINE];
+    int n;
+
+    n = 0;
 
     fseek( fp, 0, SEEK_SET );
-    system->N = 0;
 
     /* increment number of atoms for each line denoting an atom desc */
     switch ( geo_format )
@@ -247,7 +249,7 @@ static void Count_Atoms( reax_system *system, FILE *fp, int geo_format )
                 if ( strncmp( line, "ATOM", 4 ) == 0
                         || strncmp( line, "HETATM", 6 ) == 0 )
                 {
-                    system->N++;
+                    ++n;
                 }
             }
 
@@ -259,7 +261,7 @@ static void Count_Atoms( reax_system *system, FILE *fp, int geo_format )
 
             /* second line contains integer count
              * of the number of atoms */
-            fscanf( fp, " %d", &system->N );
+            fscanf( fp, " %d", &n );
 
             break;
 
@@ -269,20 +271,22 @@ static void Count_Atoms( reax_system *system, FILE *fp, int geo_format )
             break;
     }
 
-    assert( system->N > 0 );
+    assert( n > 0 );
 
 #if defined(DEBUG)
     fprintf( stderr, "[INFO] Count_Atoms: " );
     fprintf( stderr, "N = %d\n", system->N );
 #endif
+
+    return n;
 }
 
 
 void Read_Geo( const char * const geo_file, reax_system* system, control_params *control,
-        simulation_data *data, static_storage *workspace )
+        simulation_data *data, static_storage *workspace, int first_run )
 {
     FILE *geo;
-    int i, serial, top;
+    int i, n, serial, top;
     rvec x;
     char element[3], name[9];
     reax_atom *atom;
@@ -297,8 +301,12 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
     }
 
     /* count atoms and allocate storage */
-    Count_Atoms( system, geo, CUSTOM );
-    PreAllocate_Space( system, control, workspace );
+    n = Count_Atoms( system, geo, CUSTOM );
+    if ( first_run == TRUE || n > system->N )
+    {
+        PreAllocate_Space( system, control, workspace, n, first_run );
+    }
+    system->N = n;
 
     /* parse atom info lines (3rd line and beyond) */
     top = 0;
@@ -331,9 +339,9 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
 
 
 void Read_PDB( const char * const pdb_file, reax_system* system, control_params *control,
-        simulation_data *data, static_storage *workspace )
+        simulation_data *data, static_storage *workspace, int first_run )
 {
-    int i, c, c1, pdb_serial, top;
+    int i, n, c, c1, pdb_serial, top;
     FILE *pdb;
     char **tmp;
     char *s, *s1;
@@ -361,8 +369,12 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
         exit( INVALID_GEO );
     }
 
-    Count_Atoms( system, pdb, PDB );
-    PreAllocate_Space( system, control, workspace );
+    n = Count_Atoms( system, pdb, PDB );
+    if ( first_run == TRUE || n > system->N )
+    {
+        PreAllocate_Space( system, control, workspace, n, first_run );
+    }
+    system->N = n;
 
     /* reset file pointer to beginning of file
      * and parse the PDB file */
@@ -601,7 +613,7 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
 
 
 void Read_BGF( const char * const bgf_file, reax_system* system, control_params *control,
-        simulation_data *data, static_storage *workspace )
+        simulation_data *data, static_storage *workspace, int first_run )
 {
     FILE *bgf;
     char **tokens;
@@ -614,7 +626,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
     char chain_id;
     char s_a[12], s_b[12], s_c[12], s_alpha[12], s_beta[12], s_gamma[12];
     char *endptr;
-    int i, atom_cnt, token_cnt, bgf_serial, ratom, crystx_found;
+    int i, n, atom_cnt, token_cnt, bgf_serial, ratom, crystx_found;
 
     endptr = NULL;
     ratom = 0;
@@ -626,7 +638,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             &tokens, MAX_TOKENS, MAX_TOKEN_LEN );
 
     /* count number of atoms in the BGF file */
-    system->N = 0;
+    n = 0;
     line[0] = 0;
 
     while ( fgets( line, MAX_LINE, bgf ) )
@@ -637,7 +649,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
         if ( strncmp( tokens[0], "ATOM", 4 ) == 0
                 || strncmp( tokens[0], "HETATM", 6 ) == 0 )
         {
-            ++system->N;
+            ++n;
         }
 
         line[0] = 0;
@@ -650,7 +662,11 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
 
     sfclose( bgf, "Read_BGF::bgf" );
 
-    PreAllocate_Space( system, control, workspace );
+    if ( first_run == TRUE || n > system->N )
+    {
+        PreAllocate_Space( system, control, workspace, n, first_run );
+    }
+    system->N = n;
 
     workspace->map_serials = scalloc( MAX_ATOM_ID, sizeof(int),
             "Read_BGF::workspace->map_serials" );
