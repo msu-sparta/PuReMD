@@ -229,12 +229,19 @@
 /* ensemble type */
 enum ensemble
 {
+    /* microcanonical ensemble */
     NVE = 0,
+    /* Berendsen NVT ensemble */
     bNVT = 1,
+    /* Nose-Hoover NVT ensemble */
     nhNVT = 2,
+    /* Parrinello-Rehman-Nose-Hoover semi-isotropic NPT ensemble */
     sNPT = 3,
+    /* Parrinello-Rehman-Nose-Hoover isotropic NPT ensemble */
     iNPT = 4,
+    /* Parrinello-Rehman-Nose-Hoover anisotropic NPT ensemble */
     aNPT = 5,
+    /* total number of ensemble types */
     ens_N = 6,
 };
 
@@ -860,12 +867,12 @@ struct control_params
      * (smallest point) in the simulation box */
     int reposition_atoms;
     /* ensemble values:
-     * 0 : NVE
+     * 0 : microcanonical ensemble (NVE)
      * 1 : Berendsen NVT (bNVT)
      * 2 : Nose-Hoover NVT (nhNVT)
      * 3 : Parrinello-Rehman-Nose-Hoover semi-isotropic NPT (sNPT)
-     * 4 : Parrinello-Rehman-Nose-Hoover isotropic (iNPT) 
-     * 5 : Parrinello-Rehman-Nose-Hoover anisotropic (aNPT) */
+     * 4 : Parrinello-Rehman-Nose-Hoover isotropic NPT (iNPT) 
+     * 5 : Parrinello-Rehman-Nose-Hoover anisotropic NPT (aNPT) */
     int ensemble;
     /* number of simulation time steps */
     int nsteps;

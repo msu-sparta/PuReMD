@@ -83,7 +83,7 @@ void Velocity_Verlet_NVE( reax_system *system, control_params *control,
 }
 
 
-/* Velocity Verlet integrator for constant volume and constant temperature
+/* Velocity Verlet integrator for constant volume and temperature
  *  with Berendsen thermostat. */
 void Velocity_Verlet_Berendsen_NVT( reax_system* system,
         control_params* control, simulation_data *data,
@@ -133,9 +133,9 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* system,
         rvec_ScaledAdd( system->atoms[i].v, scalar1 * inv_m, system->atoms[i].f );
     }
 
-    /* temperature scaler */
     Compute_Kinetic_Energy( system, data );
 
+    /* temperature scaler */
     lambda = 1.0 + ((control->dt * 1.0e-12) / control->Tau_T)
         * (control->T / data->therm.T - 1.0);
 
@@ -334,16 +334,20 @@ void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system* system,
     mu = (mu_3[0] + mu_3[1] + mu_3[2]) / 3.0;
 
     /* temperature scaler */
-    lambda = 1.0 + ((dt * 1.0e-10) / control->Tau_T) * (control->T / data->therm.T - 1.0);
+    lambda = 1.0 + ((dt * 1.0e-12) / control->Tau_T)
+        * (control->T / data->therm.T - 1.0);
+
     if ( lambda < MIN_dT )
     {
         lambda = MIN_dT;
     }
-    else if (lambda > MAX_dT )
+
+    lambda = SQRT( lambda );
+
+    if ( lambda > MAX_dT )
     {
         lambda = MAX_dT;
     }
-    lambda = SQRT( lambda );
 
     /* Scale velocities and positions at t+dt */
     for ( i = 0; i < system->N; ++i )
@@ -358,6 +362,7 @@ void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system* system,
         rvec_Scale( system->atoms[i].x, mu, system->atoms[i].x );
     }
 
+    /* update kinetic energy and temperature based on new velocities */
     Compute_Kinetic_Energy( system, data );
 
     Update_Box_Isotropic( &system->box, mu );
@@ -435,16 +440,20 @@ void Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system* system,
     }
 
     /* temperature scaler */
-    lambda = 1.0 + ((dt * 1.0e-10) / control->Tau_T) * (control->T / data->therm.T - 1.0);
+    lambda = 1.0 + ((dt * 1.0e-12) / control->Tau_T)
+        * (control->T / data->therm.T - 1.0);
+
     if ( lambda < MIN_dT )
     {
         lambda = MIN_dT;
     }
-    else if ( lambda > MAX_dT )
+
+    lambda = SQRT( lambda );
+
+    if ( lambda > MAX_dT )
     {
         lambda = MAX_dT;
     }
-    lambda = SQRT( lambda );
 
     /* Scale velocities and positions at t+dt */
     for ( i = 0; i < system->N; ++i )
@@ -459,6 +468,7 @@ void Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system* system,
         rvec_Multiply( system->atoms[i].x, mu, system->atoms[i].x );
     }
 
+    /* update kinetic energy and temperature based on new velocities */
     Compute_Kinetic_Energy( system, data );
 
     Update_Box_Semi_Isotropic( &system->box, mu );
