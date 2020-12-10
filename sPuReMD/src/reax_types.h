@@ -180,8 +180,8 @@
 
 #define MAX_dV (1.01)
 #define MIN_dV (1.0 / MAX_dV)
-#define MAX_dT (4.00)
-#define MIN_dT (0.00)
+#define MAX_dT (2.0)
+#define MIN_dT (0.0)
 
 #define ZERO (0.000000000000000e+00)
 #define ALMOST_ZERO (1.0e-10)
@@ -911,7 +911,7 @@ struct control_params
     real T_final;
     /* current temperature (in K) */
     real T;
-    /* thermostat inertia (in K / s) */
+    /* thermostat inertial damping constant (in K / s) */
     real Tau_T;
     /* control mode for thermostat,
      * 0: none, 1: step-wise, 2: constant slope */
@@ -1035,17 +1035,17 @@ struct control_params
 
 struct thermostat
 {
-    /* temperature scaler */
+    /* temperature scaler of the system at the current simulation step */
     real T;
-    /* temperature tensor */
+    /* temperature tensor of the system at the current simulation step */
     rtensor Temp;
-    /**/
+    /* for Nose-Hoover thermostat */
     real xi;
-    /**/
+    /* for Nose-Hoover thermostat */
     real v_xi;
-    /**/
+    /* for Nose-Hoover thermostat */
     real v_xi_old;
-    /**/
+    /* for Nose-Hoover thermostat */
     real G_xi;
 };
 

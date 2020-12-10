@@ -68,7 +68,10 @@ static void Post_Evolve( reax_system * const system, control_params * const cont
         }
     }
 
-    Compute_Kinetic_Energy( system, data );
+    if ( control->ensemble == NVE )
+    {
+        Compute_Kinetic_Energy( system, data );
+    }
 
     if ( (out_control->log_update_freq > 0
                 && data->step % out_control->log_update_freq == 0)

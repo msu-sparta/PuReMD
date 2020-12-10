@@ -38,24 +38,26 @@ void Velocity_Verlet_NVE( reax_system *system, control_params *control,
         reax_list **lists, output_controls *out_control )
 {
     int i, renbr;
-    real inv_m, dt, dt_sqr;
+    real inv_m, scalar1, scalar2;
     rvec dx;
 
-    dt = control->dt;
-    dt_sqr = SQR(dt);
     renbr = ((data->step - data->prev_steps) % control->reneighbor) == 0 ? TRUE : FALSE;
+    scalar1 = -0.5 * control->dt * F_CONV;
+    scalar2 = -0.5 * SQR( control->dt ) * F_CONV;
 
     for ( i = 0; i < system->N; i++ )
     {
         inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
-        rvec_ScaledSum( dx, dt, system->atoms[i].v,
-                0.5 * dt_sqr * -F_CONV * inv_m, system->atoms[i].f );
+        /* Compute x(t + dt) */
+        rvec_ScaledSum( dx, control->dt, system->atoms[i].v,
+                scalar2 * inv_m, system->atoms[i].f );
 
         control->update_atom_position( system->atoms[i].x, dx, system->atoms[i].rel_map, &system->box );
 
+        /* Compute v(t + dt/2) */
         rvec_ScaledAdd( system->atoms[i].v,
-                0.5 * dt * -F_CONV * inv_m, system->atoms[i].f );
+                scalar1 * inv_m, system->atoms[i].f );
     }
 
     Reallocate( system, control, workspace, lists, renbr );
@@ -73,8 +75,10 @@ void Velocity_Verlet_NVE( reax_system *system, control_params *control,
     for ( i = 0; i < system->N; i++ )
     {
         inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
+
+        /* Compute v(t + dt) */
         rvec_ScaledAdd( system->atoms[i].v,
-                0.5 * dt * -F_CONV * inv_m, system->atoms[i].f );
+                scalar1 * inv_m, system->atoms[i].f );
     }
 }
 
@@ -87,26 +91,25 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* system,
         output_controls *out_control )
 {
     int i, renbr;
-    real inv_m, dt, lambda;
+    real inv_m, scalar1, scalar2, lambda;
     rvec dx;
-    reax_atom *atom;
 
-    dt = control->dt;
     renbr = ((data->step - data->prev_steps) % control->reneighbor) == 0 ? TRUE : FALSE;
+    scalar1 = -0.5 * control->dt * F_CONV;
+    scalar2 = -0.5 * SQR( control->dt ) * F_CONV;
 
     /* velocity verlet, 1st part */
     for ( i = 0; i < system->N; i++ )
     {
-        atom = &system->atoms[i];
-        inv_m = 1.0 / system->reax_param.sbp[atom->type].mass;
+        inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
         /* Compute x(t + dt) */
-        rvec_ScaledSum( dx, dt, atom->v, -0.5 * F_CONV * inv_m * SQR(dt), atom->f );
+        rvec_ScaledSum( dx, control->dt, system->atoms[i].v, scalar2 * inv_m, system->atoms[i].f );
 
-        control->update_atom_position( atom->x, dx, system->atoms[i].rel_map, &system->box );
+        control->update_atom_position( system->atoms[i].x, dx, system->atoms[i].rel_map, &system->box );
 
         /* Compute v(t + dt/2) */
-        rvec_ScaledAdd( atom->v, -0.5 * F_CONV * inv_m * dt, atom->f );
+        rvec_ScaledAdd( system->atoms[i].v, scalar1 * inv_m, system->atoms[i].f );
     }
 
     Reallocate( system, control, workspace, lists, renbr );
@@ -124,33 +127,40 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* system,
     /* velocity verlet, 2nd part */
     for ( i = 0; i < system->N; i++ )
     {
-        atom = &system->atoms[i];
-        inv_m = 1.0 / system->reax_param.sbp[atom->type].mass;
+        inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
+
         /* Compute v(t + dt) */
-        rvec_ScaledAdd( atom->v, -0.5 * dt * F_CONV * inv_m, atom->f );
+        rvec_ScaledAdd( system->atoms[i].v, scalar1 * inv_m, system->atoms[i].f );
     }
 
     /* temperature scaler */
     Compute_Kinetic_Energy( system, data );
-    lambda = 1.0 + ((dt * 1.0e-10) / control->Tau_T) * (control->T / data->therm.T - 1.0);
+
+    lambda = 1.0 + ((control->dt * 1.0e-12) / control->Tau_T)
+        * (control->T / data->therm.T - 1.0);
+
     if ( lambda < MIN_dT )
     {
         lambda = MIN_dT;
     }
-    else if ( lambda > MAX_dT )
+
+    lambda = SQRT( lambda );
+
+    if ( lambda > MAX_dT )
     {
         lambda = MAX_dT;
     }
-    lambda = SQRT( lambda );
 
     /* Scale velocities and positions at t+dt */
     for ( i = 0; i < system->N; ++i )
     {
-        atom = &system->atoms[i];
-        rvec_Scale( atom->v, lambda, atom->v );
+        rvec_Scale( system->atoms[i].v, lambda, system->atoms[i].v );
     }
+
+    /* update kinetic energy and temperature based on new velocities */
     Compute_Kinetic_Energy( system, data );
 }
+
 
 /* Velocity Verlet integrator for constant volume and constant temperature
  *  with Nose-Hoover thermostat.
@@ -162,31 +172,34 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system, control_params*
         output_controls *out_control )
 {
     int i, itr, renbr;
-    real inv_m, coef_v, dt, dt_sqr;
+    real inv_m, scalar1, scalar2, scalar3, scalar4, coef_v;
     real E_kin_new, G_xi_new, v_xi_new, v_xi_old;
     rvec dx;
     thermostat *therm;
 
-    dt = control->dt;
-    dt_sqr = SQR( dt );
-    therm = &data->therm;
     renbr = ((data->step - data->prev_steps) % control->reneighbor) == 0 ? TRUE : FALSE;
+    scalar1 = -0.5 * control->dt * F_CONV;
+    scalar2 = -0.5 * SQR( control->dt ) * F_CONV;
+    scalar3 = -0.5 * control->dt;
+    scalar4 = -0.5 * SQR( control->dt );
+    therm = &data->therm;
 
     /* Compute x(t + dt) and copy old forces */
     for ( i = 0; i < system->N; i++ )
     {
         inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
-        rvec_ScaledSum( dx, dt - 0.5 * dt_sqr * therm->v_xi, system->atoms[i].v,
-                -0.5 * dt_sqr * inv_m * F_CONV, system->atoms[i].f );
+        rvec_ScaledSum( dx, control->dt + scalar4 * therm->v_xi, system->atoms[i].v,
+                scalar2 * inv_m, system->atoms[i].f );
 
-        control->update_atom_position( system->atoms[i].x, dx, system->atoms[i].rel_map, &system->box );
+        control->update_atom_position( system->atoms[i].x, dx,
+                system->atoms[i].rel_map, &system->box );
 
         rvec_Copy( workspace->f_old[i], system->atoms[i].f );
     }
 
     /* Compute xi(t + dt) */
-    therm->xi += therm->v_xi * dt + 0.5 * dt_sqr * therm->G_xi;
+    therm->xi += therm->v_xi * control->dt + 0.5 * SQR( control->dt ) * therm->G_xi;
 
     Reallocate( system, control, workspace, lists, renbr );
 
@@ -207,14 +220,14 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system, control_params*
         inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
         rvec_Scale( workspace->v_const[i],
-                1.0 - 0.5 * dt * therm->v_xi, system->atoms[i].v );
+                1.0 + scalar3 * therm->v_xi, system->atoms[i].v );
         rvec_ScaledAdd( workspace->v_const[i],
-                -0.5 * dt * inv_m * F_CONV, workspace->f_old[i] );
+                scalar1 * inv_m, workspace->f_old[i] );
         rvec_ScaledAdd( workspace->v_const[i],
-                -0.5 * dt * inv_m * F_CONV, system->atoms[i].f );
+                scalar1 * inv_m, system->atoms[i].f );
     }
 
-    v_xi_new = therm->v_xi_old + 2.0 * dt * therm->G_xi;
+    v_xi_new = therm->v_xi_old + 2.0 * control->dt * therm->G_xi;
     E_kin_new = 0.0;
     G_xi_new = 0.0;
     v_xi_old = 0.0;
@@ -223,7 +236,7 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system, control_params*
     {
         itr++;
         v_xi_old = v_xi_new;
-        coef_v = 1.0 / (1.0 + 0.5 * dt * v_xi_old);
+        coef_v = 1.0 / (1.0 + 0.5 * control->dt * v_xi_old);
         E_kin_new = 0.0;
 
         for ( i = 0; i < system->N; ++i )
@@ -236,7 +249,7 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system, control_params*
 
         G_xi_new = control->Tau_T * (2.0 * E_kin_new
                 - data->N_f * K_B * control->T);
-        v_xi_new = therm->v_xi + 0.5 * dt * (therm->G_xi + G_xi_new);
+        v_xi_new = therm->v_xi + 0.5 * control->dt * (therm->G_xi + G_xi_new);
     }
     while ( FABS( v_xi_new - v_xi_old ) > 1.0e-5 );
 
