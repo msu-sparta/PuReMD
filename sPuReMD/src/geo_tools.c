@@ -275,7 +275,7 @@ static int Count_Atoms( reax_system *system, FILE *fp, int geo_format )
 
 #if defined(DEBUG)
     fprintf( stderr, "[INFO] Count_Atoms: " );
-    fprintf( stderr, "N = %d\n", system->N );
+    fprintf( stderr, "N = %d\n", n );
 #endif
 
     return n;

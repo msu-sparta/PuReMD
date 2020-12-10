@@ -27,7 +27,9 @@
 
 void Reset_Pressures( control_params *control, simulation_data *data )
 {
+#if defined(_OPENMP)
     int i;
+#endif
 
     rtensor_MakeZero( data->flex_bar.P );
     data->iso_bar.P = 0.0;

@@ -66,7 +66,7 @@ void Atom_Energy( reax_system *system, control_params *control,
         /* lone-pair Energy */
         p_lp2 = sbp_i->p_lp2;
         expvd2 = EXP( -75.0 * workspace->Delta_lp[i] );
-        inv_expvd2 = 1.0 / (1.0 + expvd2 );
+        inv_expvd2 = 1.0 / (1.0 + expvd2);
 
         /* calculate the energy */
         e_lp = p_lp2 * workspace->Delta_lp[i] * inv_expvd2;
@@ -178,16 +178,16 @@ void Atom_Energy( reax_system *system, control_params *control,
         exp_ovun2 = EXP( p_ovun2 * Delta_lpcorr );
         inv_exp_ovun2 = 1.0 / (1.0 + exp_ovun2);
 
-        DlpVi = 1.0 / (Delta_lpcorr + sbp_i->valency + 1e-8 );
+        DlpVi = 1.0 / (Delta_lpcorr + sbp_i->valency + 1.0e-8 );
         CEover1 = Delta_lpcorr * DlpVi * inv_exp_ovun2;
 
         e_ov = sum_ovun1 * CEover1;
         data->E_Ov += e_ov;
 
         CEover2 = sum_ovun1 * DlpVi * inv_exp_ovun2
-            * ( 1.0 - Delta_lpcorr * ( DlpVi + p_ovun2 * exp_ovun2 * inv_exp_ovun2 ) );
+            * (1.0 - Delta_lpcorr * (DlpVi + p_ovun2 * exp_ovun2 * inv_exp_ovun2));
 
-        CEover3 = CEover2 * (1.0 - dfvl * workspace->dDelta_lp[i] * inv_exp_ovun1 );
+        CEover3 = CEover2 * (1.0 - dfvl * workspace->dDelta_lp[i] * inv_exp_ovun1);
 
         CEover4 = CEover2 * (dfvl * workspace->Delta_lp_temp[i])
             * p_ovun4 * exp_ovun1 * SQR(inv_exp_ovun1);
@@ -205,7 +205,7 @@ void Atom_Energy( reax_system *system, control_params *control,
         e_un = -p_ovun5 * (1.0 - exp_ovun6) * inv_exp_ovun2n * inv_exp_ovun8;
         data->E_Un += e_un;
 
-        CEunder1 = inv_exp_ovun2n * ( p_ovun5 * p_ovun6 * exp_ovun6 * inv_exp_ovun8
+        CEunder1 = inv_exp_ovun2n * (p_ovun5 * p_ovun6 * exp_ovun6 * inv_exp_ovun8
                 + p_ovun2 * e_un * exp_ovun2n);
         CEunder2 = -e_un * p_ovun8 * exp_ovun8 * inv_exp_ovun8;
         CEunder3 = CEunder1 * (1.0 - dfvl * workspace->dDelta_lp[i] * inv_exp_ovun1);

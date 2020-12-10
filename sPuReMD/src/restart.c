@@ -37,7 +37,7 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
     restart_header res_header;
     restart_atom res_data;
 
-    snprintf( fname, MAX_STR, "%s.res%d", control->sim_name, data->step );
+    snprintf( fname, MAX_STR, "%.*s.res%d", MAX_STR - 12, control->sim_name, data->step );
     fres = sfopen( fname, "wb" );
 
     res_header.step = data->step;

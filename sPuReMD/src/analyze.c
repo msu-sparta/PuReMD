@@ -197,12 +197,12 @@ static void Get_Molecule( int atom, molecule *m, int *mark, reax_system *system,
 }
 
 
-static void Print_Molecule( reax_system *system, molecule *m, int mode, char *s,
-       size_t size )
+static void Print_Molecule( reax_system *system, molecule *m, int mode,
+        char *s, size_t s_size, char *s_out, size_t s_out_size )
 {
     int j, atom;
 
-    s[0] = 0;
+    s[0] = '\0';
 
     if ( mode == 1 )
     {
@@ -211,8 +211,9 @@ static void Print_Molecule( reax_system *system, molecule *m, int mode, char *s,
         {
             if ( m->mtypes[j] )
             {
-                snprintf( s, size, "%s%14s%3d", s, system->reax_param.sbp[j].name, m->mtypes[j] );
-                s[size - 1] = '\0';
+                snprintf( s_out, s_out_size, "%.*s%14s%3d", (int) MAX(s_out_size - 18, 0),
+                        s, system->reax_param.sbp[j].name, m->mtypes[j] );
+                s_out[s_out_size - 1] = '\0';
             }
         }
     }
@@ -222,8 +223,10 @@ static void Print_Molecule( reax_system *system, molecule *m, int mode, char *s,
         for ( j = 0; j < m->atom_count; ++j )
         {
             atom = m->atom_list[j];
-            snprintf( s, size, "%s%s(%d)",
-                     s, system->reax_param.sbp[ system->atoms[atom].type ].name, atom );
+            snprintf( s_out, s_out_size, "%.*s%.*s(%d)", (int) MAX((s_out_size - 5) / 2, 0), s,
+                    (int) MAX((s_out_size - 5) / 2, 0),
+                    system->reax_param.sbp[ system->atoms[atom].type ].name, atom );
+            s_out[s_out_size - 1] = '\0';
         }
     }
 }
@@ -238,6 +241,7 @@ static void Analyze_Molecules( reax_system *system, control_params *control,
     int *old_mark = workspace->old_mark;
     int num_old, num_new;
     char s[MAX_MOLECULE_SIZE * 10];
+    char s_out[MAX_MOLECULE_SIZE * 10];
     reax_list *new_bonds = lists[BONDS];
     reax_list *old_bonds = lists[OLD_BONDS];
     molecule old_molecules[20], new_molecules[20];
@@ -306,8 +310,8 @@ static void Analyze_Molecules( reax_system *system, control_params *control,
                 fprintf( fout, "old molecules: " );
                 for ( i = 0; i < num_old; ++i )
                 {
-                    Print_Molecule( system, &old_molecules[i], 1, &s[0],
-                            MAX_MOLECULE_SIZE * 10 );
+                    Print_Molecule( system, &old_molecules[i], 1, s,
+                            sizeof(s), s_out, sizeof(s_out) );
                     fprintf( fout, "%s\t", s );
                 }
                 fprintf( fout, "\n" );
@@ -315,8 +319,8 @@ static void Analyze_Molecules( reax_system *system, control_params *control,
                 fprintf( fout, "new molecules: " );
                 for ( i = 0; i < num_new; ++i )
                 {
-                    Print_Molecule( system, &new_molecules[i], 1, &s[0],
-                            MAX_MOLECULE_SIZE * 10 );
+                    Print_Molecule( system, &new_molecules[i], 1, s,
+                            sizeof(s), s_out, sizeof(s_out) );
                     fprintf( fout, "%s\t", s );
                 }
                 fprintf( fout, "\n" );
@@ -595,6 +599,7 @@ static void Analyze_Fragments( reax_system *system, control_params *control,
     int *mark = workspace->mark;
     int num_fragments, num_fragment_types;
     char fragment[MAX_ATOM_TYPES];
+    char fragment_out[MAX_ATOM_TYPES];
     char fragments[MAX_FRAGMENT_TYPES][MAX_ATOM_TYPES];
     int fragment_count[MAX_FRAGMENT_TYPES];
     molecule m;
@@ -618,13 +623,14 @@ static void Analyze_Fragments( reax_system *system, control_params *control,
             memset( m.mtypes, 0, MAX_ATOM_TYPES * sizeof(int) );
             Visit_Bonds( atom, mark, m.mtypes, system, control, new_bonds, ignore );
             ++num_fragments;
-            Print_Molecule( system, &m, 1, fragment, MAX_FRAGMENT_TYPES );
+            Print_Molecule( system, &m, 1, fragment, sizeof(fragment),
+                    fragment_out, sizeof(fragment_out) );
 
             /* check if a similar fragment already exists */
             flag = 0;
             for ( i = 0; i < num_fragment_types; ++i )
             {
-                if ( !strncmp( fragments[i], fragment, MAX_ATOM_TYPES ) )
+                if ( !strncmp( fragments[i], fragment_out, MAX_ATOM_TYPES ) )
                 {
                     ++fragment_count[i];
                     flag = 1;
@@ -635,7 +641,7 @@ static void Analyze_Fragments( reax_system *system, control_params *control,
             if ( flag == 0 )
             {
                 /* it is a new one, add to the fragments list */
-                strncpy( fragments[num_fragment_types], fragment,
+                strncpy( fragments[num_fragment_types], fragment_out,
                         sizeof(fragments[num_fragment_types]) - 1 );
                 fragments[num_fragment_types][sizeof(fragments[num_fragment_types]) - 1] = '\0';
                 fragment_count[num_fragment_types] = 1;

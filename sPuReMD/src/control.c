@@ -92,10 +92,10 @@ void Read_Control_File( FILE* fp, reax_system *system, control_params* control,
     strncpy( control->cm_init_guess_gd_model, "frozen_model.pb", sizeof(control->cm_init_guess_gd_model) - 1 );
     control->cm_init_guess_gd_model[sizeof(control->cm_init_guess_gd_model) - 1] = '\0';
     control->cm_init_guess_win_size = 5;
-    control->cm_solver_pre_comp_type = ICHOLT_PC;
+    control->cm_solver_pre_comp_type = JACOBI_PC;
     control->cm_solver_pre_comp_sweeps = 3;
     control->cm_solver_pre_comp_sai_thres = 0.1;
-    control->cm_solver_pre_comp_refactor = 100;
+    control->cm_solver_pre_comp_refactor = 1;
     control->cm_solver_pre_comp_droptol = 0.01;
     control->cm_solver_pre_app_type = TRI_SOLVE_PA;
     control->cm_solver_pre_app_jacobi_iters = 50;

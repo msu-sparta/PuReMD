@@ -470,6 +470,13 @@ void Calculate_Droptol( const sparse_matrix * const A,
         {
             droptol[i] = SQRT( droptol[i] ) * dtol;
         }
+
+#if defined(_OPENMP)
+        #pragma omp master
+        {
+            sfree( droptol_local, "Calculate_Droptol::droptol_local" );
+        }
+#endif
     }
 }
 
