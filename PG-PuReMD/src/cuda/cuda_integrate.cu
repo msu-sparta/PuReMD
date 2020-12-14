@@ -43,6 +43,7 @@ CUDA_GLOBAL void k_velocity_verlet_part1( reax_atom *my_atoms,
     /* Compute x(t + dt) */
     rvec_ScaledSum( dx, dt, atom->v, -0.5 * F_CONV * inv_m * SQR(dt), atom->f );
     rvec_Add( atom->x, dx );
+
     /* Compute v(t + dt/2) */
     rvec_ScaledAdd( atom->v, -0.5 * F_CONV * inv_m * dt, atom->f );
 }

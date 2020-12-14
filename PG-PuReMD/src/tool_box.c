@@ -34,6 +34,9 @@
   #include "reax_comm_tools.h"
 #endif
 
+#include <ctype.h>
+#include <string.h>
+
 
 /************** taken from comm_tools.c **************/
 int SumScan( int n, int me, int root, MPI_Comm comm )
@@ -155,22 +158,31 @@ int Check_Input_Range( int val, int lo, int hi, char *message )
 }
 
 
-/* Note: element must be NULL-terminated before calling */
-void Trim_Spaces( char *element )
+void Trim_Spaces( char * const element, const size_t size )
 {
-    int i, j;
+    int i, j, n;
+
+    element[size - 1] = '\0';
+    n = strlen( element );
+
+    /* buffer not NULL-terminated, abort */
+    if ( n == size )
+    {
+        fprintf( stderr, "[ERROR] buffer not NULL-terminated (Trim_Spaces). Terminating...\n" );
+        exit( RUNTIME_ERROR );
+    }
 
     /* skip initial space chars */
     for ( i = 0; element[i] == ' '; ++i )
         ;
 
-    /* strlen safe here only if element is NULL-terminated before calling Trim_Spaces */
-    for ( j = i; j < (int) strlen(element) && element[j] != ' '; ++j )
+    /* make uppercase, offset to 0 */
+    for ( j = i; j < n && element[j] != ' '; ++j )
     {
-        /* make uppercase, offset to 0 */
         element[j - i] = toupper( element[j] );
     }
-    /* NULL-terminate the string */
+
+    /* NULL terminate */
     element[j - i] = '\0';
 }
 
@@ -210,16 +222,16 @@ void Update_Timing_Info( real *t_start, real *timing )
 
 
 /*********** from io_tools.c **************/
-int Get_Atom_Type( reax_interaction *reax_param, char *s )
+int Get_Atom_Type( reax_interaction *reax_param, char *s, size_t n )
 {
     int i, ret, flag;
     
     flag = FAILURE;
-    ret = -1;
 
     for ( i = 0; i < reax_param->num_atom_types; ++i )
     {
-        if ( strncmp( reax_param->sbp[i].name, s, 15 ) == 0 )
+        if ( strncmp( reax_param->sbp[i].name, s,
+                    MIN( sizeof(reax_param->sbp[i].name), n ) ) == 0 )
         {
             ret = i;
             flag = SUCCESS;
@@ -249,33 +261,37 @@ char *Get_Atom_Name( reax_system *system, int i )
 }
 
 
-void Deallocate_Tokenizer_Space( char *line, char *backup, char **tokens )
+void Allocate_Tokenizer_Space( char **line, size_t line_size,
+        char **backup, size_t backup_size,
+        char ***tokens, size_t num_tokens, size_t token_size )
 {
     int i;
 
-    for ( i = 0; i < MAX_TOKENS; i++ )
-    {
-        sfree( tokens[i], "Deallocate_Tokenizer_Space::tokens[i]" );
-    }
+    *line = smalloc( sizeof(char) * line_size, "Allocate_Tokenizer_Space::*line" );
+    *backup = smalloc( sizeof(char) * backup_size, "Allocate_Tokenizer_Space::*backup" );
+    *tokens = smalloc( sizeof(char*) * num_tokens, "Allocate_Tokenizer_Space::*tokens" );
 
-    sfree( line, "Deallocate_Tokenizer_Space::line" );
-    sfree( backup, "Deallocate_Tokenizer_Space::backup" );
-    sfree( tokens, "Deallocate_Tokenizer_Space::tokens" );
+    for ( i = 0; i < num_tokens; i++ )
+    {
+        (*tokens)[i] = smalloc( sizeof(char) * token_size,
+                "Allocate_Tokenizer_Space::(*tokens)[i]" );
+    }
 }
 
 
-void Allocate_Tokenizer_Space( char **line, char **backup, char ***tokens )
+void Deallocate_Tokenizer_Space( char **line, char **backup,
+        char ***tokens, size_t num_tokens )
 {
     int i;
 
-    *line = smalloc( sizeof(char) * MAX_LINE, "Allocate_Tokenizer_Space::line" );
-    *backup =  smalloc( sizeof(char) * MAX_LINE, "Allocate_Tokenizer_Space::backup" );
-    *tokens = smalloc( sizeof(char*) * MAX_TOKENS, "Allocate_Tokenizer_Space::tokens" );
-
-    for ( i = 0; i < MAX_TOKENS; i++ )
+    for ( i = 0; i < num_tokens; i++ )
     {
-        (*tokens)[i] = smalloc( sizeof(char) * MAX_TOKEN_LEN, "Allocate_Tokenizer_Space::tokens[i]" );
+        sfree( (*tokens)[i], "Deallocate_Tokenizer_Space::tokens[i]" );
     }
+
+    sfree( *line, "Deallocate_Tokenizer_Space::line" );
+    sfree( *backup, "Deallocate_Tokenizer_Space::backup" );
+    sfree( *tokens, "Deallocate_Tokenizer_Space::tokens" );
 }
 
 

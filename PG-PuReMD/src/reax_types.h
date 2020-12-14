@@ -69,6 +69,12 @@
 //#define TEST_ENERGY
 /* compile force calculation test code */
 //#define TEST_FORCES
+/* constants defined in reference Fortran ReaxFF code (useful for comparisons) */
+#define USE_REF_FORTRAN_REAXFF_CONSTANTS
+/* constants defined in reference Fortran eReaxFF code (useful for comparisons) */
+//#define USE_REF_FORTRAN_EREAXFF_CONSTANTS
+/* constants defined in LAMMPS ReaxFF code (useful for comparisons) */
+//#define USE_LAMMPS_REAXFF_CONSTANTS
 /* pack/unpack MPI buffers on device and use CUDA-aware MPI for messaging */
 //TODO: rewrite this to use configure option to include
 /* OpenMPI extensions for CUDA-aware support */
@@ -121,35 +127,92 @@
 #define MIN(x,y) (((x) < (y)) ? (x) : (y))
 #define MAX3(x,y,z) MAX( MAX((x),(y)), (z))
 
-/* ??? */
-#define C_ELE (332.06371)
-/* kcal/mol/K */
-//#define K_B (503.398008)
-/* amu A^2 / ps^2 / K */
-#define K_B (0.831687)
-/* --> amu A / ps^2 */
-#define F_CONV (1.0e6 / 48.88821291 / 48.88821291)
-/* amu A^2 / ps^2 --> kcal/mol */
-#define E_CONV (0.002391)
-/* conversion factor from electron volts to kilo calories per mole  */
-#define EV_to_KCALpMOL (14.400000)
-/* conversion factor from kilo calories per mode to electron volts */
-//#define KCALpMOL_to_EV (23.060549) // (23.020000)
-#define KCALpMOL_to_EV (23.020000)
-/* conversion factor from (elemental charge * angstroms) to debye */
-#define ECxA_to_DEBYE (4.803204)
-/* conversion factor from calories to joules */
-#define CAL_to_JOULES (4.184000)
-/* conversion factor from joules to calories */
-#define JOULES_to_CAL (1.0 / 4.184000)
-/* conversion factor from (unified) atomic mass units to grams */
-#define AMU_to_GRAM (1.6605e-24)
-/* conversion factor from angstroms to centimenters */
-#define ANG_to_CM (1.0e-8)
-/* Avogadro's constant */
-#define AVOGNR (6.0221367e23)
-/* ??? */
-#define P_CONV (1.0e-24 * AVOGNR * JOULES_to_CAL)
+#if defined(USE_REF_FORTRAN_REAXFF_CONSTANTS)
+  /* transcendental constant pi */
+  #define PI (3.14159265)
+  /* unit conversion from ??? to kcal / mol */
+  #define C_ELE (332.0638)
+  /* Boltzmann constant, AMU * A^2 / (ps^2 * K) */
+  #define K_B (0.831687)
+//  #define K_B (0.8314510)
+  /* unit conversion for atomic force to AMU * A / ps^2 */
+  #define F_CONV (4.184e2)
+  /* energy conversion constant from electron volts to kilo-calories per mole */
+  #define KCALpMOL_to_EV (23.02)
+  /* electric dipole moment conversion constant from elementary charge * angstrom to debye */
+  #define ECxA_to_DEBYE (4.80320679913)
+#elif defined(USE_REF_FORTRAN_EREAXFF_CONSTANTS)
+  //TODO
+  /* energy conversion constant from electron volts to kilo-calories per mole */
+  #define KCALpMOL_to_EV (23.02)
+  /* electric dipole moment conversion constant from elementary charge * angstrom to debye */
+  #define ECxA_to_DEBYE (4.80320679913)
+#elif defined(USE_LAMMPS_REAXFF_CONSTANTS)
+  //TODO
+  /* energy conversion constant from electron volts to kilo-calories per mole */
+  #define KCALpMOL_to_EV (23.060549)
+#endif
+
+/* Coulomb energy conversion */
+#if !defined(C_ELE)
+  #define C_ELE (332.06371)
+#endif
+/* Boltzmann constant */
+#if !defined(K_B)
+  /* in ??? */
+//  #define K_B (503.398008)
+  /* Boltzmann constant, AMU * A^2 / (ps^2 * K) */
+//  #define K_B (0.831687)
+  #define K_B (0.8314510)
+#endif
+/* unit conversion for atomic force */
+#if !defined(F_CONV)
+  /* to AMU * A / ps^2 */
+  #define F_CONV (1.0e6 / 48.88821291 / 48.88821291)
+#endif
+/* unit conversion for atomic energy */
+#if !defined(E_CONV)
+  /* AMU * Angstroms^2 / ps^2 --> kcal / mol */
+  #define E_CONV (0.002391)
+#endif
+/* energy conversion constant from electron volts to kilo-calories per mole */
+#if !defined(EV_to_KCALpMOL)
+  #define EV_to_KCALpMOL (14.40)
+#endif
+/* energy conversion constant from electron volts to kilo-calories per mole */
+#if !defined(KCALpMOL_to_EV)
+  #define KCALpMOL_to_EV (23.0408)
+#endif
+/* electric dipole moment conversion constant from elementary charge * angstrom to debye */
+#if !defined(ECxA_to_DEBYE)
+  #define ECxA_to_DEBYE (4.803204)
+#endif
+/* energy conversion constant from (gram) calories to Joules (SI) */
+#if !defined(CAL_to_JOULES)
+  #define CAL_to_JOULES (4.1840)
+#endif
+/* energy conversion constant from Joules (SI) to (gram) calories */
+#if !defined(JOULES_to_CAL)
+  #define JOULES_to_CAL (1.0 / 4.1840)
+#endif
+/* mass conversion constant from unified atomic mass units (daltons) to grams */
+#if !defined(AMU_to_GRAM)
+  #define AMU_to_GRAM (1.6605e-24)
+#endif
+/* distance conversion constant from angstroms to centimeters */
+#if !defined(ANG_to_CM)
+  #define ANG_to_CM (1.0e-8)
+#endif
+/* Avogradro's constant */
+#if !defined(AVOGNR)
+  #define AVOGNR (6.0221367e23)
+#endif
+/* unit conversion for pressure:
+ * (1 s / 10^12 ps) * (1 m / 10^10 Angstroms) * (6.0221367^23 atoms / mole) * (0.2390057 J / cal)
+ * ps * Angstroms * moles * cals => s * m * atoms * J */
+#if !defined(P_CONV)
+  #define P_CONV (1.0e-24 * AVOGNR * JOULES_to_CAL)
+#endif
 
 /* max. num. of characters for string buffers */
 #define MAX_STR (1024)
@@ -162,6 +225,8 @@
 /* max. num. of characters in atom name */
 #define MAX_ATOM_NAME_LEN (8)
 
+/* max. atom ID in geo file */
+#define MAX_ATOM_ID (100000)
 /* ??? */
 #define MAX_RESTRICT (15)
 /* max. num. atoms per molecule */
@@ -222,9 +287,9 @@
 /* min. pressure scaler for simulation box dimenion in NPT ensembles */
 #define MIN_dV (0.99)
 /* max. temperature scaler for atomic positions and velocities in NPT ensembles */
-#define MAX_dT (4.00)
+#define MAX_dT (2.0)
 /* min. temperature scaler for atomic positions and velocities in NPT ensembles */
-#define MIN_dT (0.00)
+#define MIN_dT (0.0)
 
 /* ??? */
 #define MASTER_NODE (0)
@@ -403,9 +468,10 @@ enum geo_formats
 {
     CUSTOM = 0,
     PDB = 1,
-    ASCII_RESTART = 2,
-    BINARY_RESTART = 3,
-    GF_N = 4,
+    BGF = 2,
+    ASCII_RESTART = 3,
+    BINARY_RESTART = 4,
+    GF_N = 5,
 };
 
 /* method for computing atomic charges */

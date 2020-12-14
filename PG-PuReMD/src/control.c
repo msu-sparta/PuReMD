@@ -91,7 +91,7 @@ void Read_Control_File( const char * const control_file, control_params * const 
     control->cm_domain_sparsity = 1.0;
     control->cm_solver_pre_comp_type = JACOBI_PC;
     control->cm_solver_pre_comp_sweeps = 3;
-    control->cm_solver_pre_comp_refactor = 100;
+    control->cm_solver_pre_comp_refactor = 1;
     control->cm_solver_pre_comp_droptol = 0.01;
     control->cm_solver_pre_app_type = TRI_SOLVE_PA;
     control->cm_solver_pre_app_jacobi_iters = 50;
@@ -378,9 +378,9 @@ void Read_Control_File( const char * const control_file, control_params * const 
                 val = atof(tmp[1]);
                 control->T_init = val;
 
-                if ( control->T_init < 0.1 )
+                if ( control->T_init < 0.001 )
                 {
-                    control->T_init = 0.1;
+                    control->T_init = 0.001;
                 }
             }
             else if ( strncmp(tmp[0], "temp_final", MAX_LINE) == 0 )
@@ -396,7 +396,8 @@ void Read_Control_File( const char * const control_file, control_params * const 
             else if ( strncmp(tmp[0], "t_mass", MAX_LINE) == 0 )
             {
                 val = atof(tmp[1]);
-                control->Tau_T = val * 1.e-3;    // convert t_mass from fs to ps
+                /* convert from fs to s */
+                control->Tau_T = val * 1.0e-15;
             }
             else if ( strncmp(tmp[0], "t_mode", MAX_LINE) == 0 )
             {

@@ -43,7 +43,7 @@ int is_Valid_Serial( storage*, int );
 
 int Check_Input_Range( int, int, int, char* );
 
-void Trim_Spaces( char* );
+void Trim_Spaces( char * const, const size_t );
 
 /* from system_props.h */
 real Get_Time( );
@@ -53,15 +53,17 @@ real Get_Elapsed_Time( real );
 void Update_Timing_Info( real*, real* );
 
 /* from io_tools.h */
-int Get_Atom_Type( reax_interaction*, char* );
+int Get_Atom_Type( reax_interaction*, char*, size_t );
 
 char *Get_Element( reax_system*, int );
 
 char *Get_Atom_Name( reax_system*, int );
 
-void Deallocate_Tokenizer_Space( char *, char *, char ** );
+void Allocate_Tokenizer_Space( char**, size_t, char**, size_t, char***,
+        size_t, size_t );
 
-void Allocate_Tokenizer_Space( char **, char **, char *** );
+void Deallocate_Tokenizer_Space( char **, char **, char ***,
+        size_t );
 
 int Tokenize( char*, char***, size_t );
 

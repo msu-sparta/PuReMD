@@ -238,21 +238,28 @@ real Get_Timing_Info( real t_start )
 /*********** from io_tools.c **************/
 int Get_Atom_Type( reax_interaction *reax_param, char *s, size_t n )
 {
-    int i;
+    int i, ret, flag;
+    
+    flag = FAILURE;
 
     for ( i = 0; i < reax_param->num_atom_types; ++i )
     {
         if ( strncmp( reax_param->sbp[i].name, s,
                     MIN( sizeof(reax_param->sbp[i].name), n ) ) == 0 )
         {
-            return i;
+            ret = i;
+            flag = SUCCESS;
+            break;
         }
     }
 
-    fprintf( stderr, "[ERROR] Unknown atom type: %s. Terminating...\n", s );
-    exit( UNKNOWN_ATOM_TYPE );
+    if ( flag == FAILURE )
+    {
+        fprintf( stderr, "[ERROR] Unknown atom type: %s. Terminating...\n", s );
+        exit( UNKNOWN_ATOM_TYPE );
+    }
 
-    return FAILURE;
+    return ret;
 }
 
 

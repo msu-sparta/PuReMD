@@ -182,7 +182,7 @@ void Setup_Big_Box( real a, real b, real c, real alpha, real beta, real gamma,
     box->box[2][2] = c * SQRT(1.0 - SQR(c_beta) - SQR(zi));
 
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "box is %8.2f x %8.2f x %8.2f\n",
+    fprintf( stderr, "[INFO] box = (%8.4f, %8.4f, %8.4f)\n",
             box->box[0][0], box->box[1][1], box->box[2][2] );
 #endif
 
@@ -378,26 +378,34 @@ void Scale_Box( reax_system * const system, control_params * const control,
     }
 
     /* temperature scaler */
-    lambda = 1.0 + (dt / control->Tau_T) * (control->T / data->therm.T - 1.0);
+    lambda = 1.0 + ((dt * 1.0e-12) / control->Tau_T)
+        * (control->T / data->therm.T - 1.0);
+
     if ( lambda < MIN_dT )
     {
         lambda = MIN_dT;
     }
-    else if ( lambda > MAX_dT )
+
+    lambda = SQRT( lambda );
+
+    if ( lambda > MAX_dT )
     {
         lambda = MAX_dT;
     }
-    lambda = SQRT( lambda );
 
     /* Scale velocities and positions at t+dt */
     for ( i = 0; i < system->n; ++i )
     {
         atom = &system->my_atoms[i];
+
         rvec_Scale( atom->v, lambda, atom->v );
+
         atom->x[0] = mu[0] * atom->x[0];
         atom->x[1] = mu[1] * atom->x[1];
         atom->x[2] = mu[2] * atom->x[2];
     }
+
+    /* update kinetic energy and temperature based on new positions and velocities */
     Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
 
     /* update box & grid */

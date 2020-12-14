@@ -38,10 +38,10 @@
 
 /* enables debugging code */
 //#define DEBUG_FOCUS
-/* enables test forces code */
-//#define TEST_FORCES
 /* enables test energy code */
 //#define TEST_ENERGY
+/* enables test forces code */
+//#define TEST_FORCES
 /* constants defined in reference Fortran ReaxFF code (useful for comparisons) */
 #define USE_REF_FORTRAN_REAXFF_CONSTANTS
 /* constants defined in reference Fortran eReaxFF code (useful for comparisons) */
@@ -70,7 +70,7 @@
 #if defined(USE_REF_FORTRAN_REAXFF_CONSTANTS)
   /* transcendental constant pi */
   #define PI (3.14159265)
-  /* uni conversion from ??? to kcal / mol */
+  /* unit conversion from ??? to kcal / mol */
   #define C_ELE (332.0638)
   /* Boltzmann constant, AMU * A^2 / (ps^2 * K) */
   #define K_B (0.831687)
@@ -163,14 +163,22 @@
   #define P_CONV (1.0e-24 * AVOGNR * JOULES_to_CAL)
 #endif
 
+/* max. num. of characters for string buffers */
 #define MAX_STR (1024)
+/* max. num. of characters for a line in files */
 #define MAX_LINE (1024)
+/* max. num. of tokens per line */
 #define MAX_TOKENS (1024)
+/* max. num. of characters per token */
 #define MAX_TOKEN_LEN (1024)
 
+/* max. atom ID in geo file */
 #define MAX_ATOM_ID (100000)
+/* ??? */
 #define MAX_RESTRICT (15)
+/* max. num. atoms per molecule */
 #define MAX_MOLECULE_SIZE (20)
+/* max. num. atom types defined in the force field parameter file */
 #define MAX_ATOM_TYPES (25)
 
 #define MAX_GRID (50)
@@ -178,9 +186,13 @@
 #define MAX_4BODY_PARAM (5)
 #define NUM_INTRS (10)
 
+/* max. pressure scaler for simulation box dimenion in NPT ensembles */
 #define MAX_dV (1.01)
+/* min. pressure scaler for simulation box dimenion in NPT ensembles */
 #define MIN_dV (1.0 / MAX_dV)
+/* max. temperature scaler for atomic positions and velocities in NPT ensembles */
 #define MAX_dT (2.0)
+/* min. temperature scaler for atomic positions and velocities in NPT ensembles */
 #define MIN_dT (0.0)
 
 #define ZERO (0.000000000000000e+00)

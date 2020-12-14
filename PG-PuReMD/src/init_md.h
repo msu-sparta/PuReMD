@@ -29,7 +29,7 @@
 extern "C" {
 #endif
 
-void Generate_Initial_Velocities( reax_system * const, real );
+void Generate_Initial_Velocities( reax_system * const, control_params * const, real );
 
 void Init_MPI_Datatypes( reax_system * const, storage * const, mpi_datatypes * const );
 

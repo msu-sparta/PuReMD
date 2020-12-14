@@ -34,35 +34,37 @@
 #include "vector.h"
 
 
+/* Velocity Verlet integrator for microcanonical ensemble. */
 int Velocity_Verlet_NVE( reax_system * const system, control_params * const control,
         simulation_data * const data, storage * const workspace, reax_list ** const lists,
         output_controls * const out_control, mpi_datatypes * const mpi_data )
 {
     int i, steps, renbr, ret;
     static int verlet_part1_done = FALSE, gen_nbr_list = FALSE;
-    real inv_m, dt, dt_sqr;
+    real inv_m, scalar1, scalar2;
     rvec dx;
     reax_atom *atom;
 
     ret = SUCCESS;
-    dt = control->dt;
     steps = data->step - data->prev_steps;
     renbr = steps % control->reneighbor == 0 ? TRUE : FALSE;
+    scalar1 = -0.5 * control->dt * F_CONV;
+    scalar2 = -0.5 * SQR( control->dt ) * F_CONV;
 
     if ( verlet_part1_done == FALSE )
     {
-        dt_sqr = SQR(dt);
-
         /* velocity verlet, 1st part */
         for ( i = 0; i < system->n; i++ )
         {
             atom = &system->my_atoms[i];
             inv_m = 1.0 / system->reax_param.sbp[atom->type].mass;
+
             /* Compute x(t + dt) */
-            rvec_ScaledSum( dx, dt, atom->v, -0.5 * dt_sqr * F_CONV * inv_m, atom->f );
+            rvec_ScaledSum( dx, control->dt, atom->v, scalar2 * inv_m, atom->f );
             rvec_Add( system->my_atoms[i].x, dx );
+
             /* Compute v(t + dt/2) */
-            rvec_ScaledAdd( atom->v, -0.5 * dt * F_CONV * inv_m, atom->f );
+            rvec_ScaledAdd( atom->v, scalar1 * inv_m, atom->f );
         }
 
         Reallocate_Part1( system, control, data, workspace, lists, mpi_data );
@@ -102,7 +104,9 @@ int Velocity_Verlet_NVE( reax_system * const system, control_params * const cont
         {
             atom = &system->my_atoms[i];
             inv_m = 1.0 / system->reax_param.sbp[ atom->type ].mass;
-            rvec_ScaledAdd( atom->v, -0.5 * dt * F_CONV * inv_m, atom->f );
+
+            /* Compute v(t + dt) */
+            rvec_ScaledAdd( atom->v, scalar1 * inv_m, atom->f );
         }
 
         verlet_part1_done = FALSE;
@@ -113,6 +117,133 @@ int Velocity_Verlet_NVE( reax_system * const system, control_params * const cont
 }
 
 
+/* Velocity Verlet integrator for constant volume and temperature
+ *  with Berendsen thermostat.
+ *
+ * NOTE: All box dimensions are scaled by the same amount, and
+ * there is no change in the angles between axes. */
+int Velocity_Verlet_Berendsen_NVT( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace, reax_list ** const lists,
+        output_controls * const out_control, mpi_datatypes * const mpi_data )
+{
+    int i, steps, renbr, ret;
+    static int verlet_part1_done = FALSE, gen_nbr_list = FALSE;
+    real inv_m, scalar1, scalar2, lambda;
+    rvec dx;
+    reax_atom *atom;
+
+    ret = SUCCESS;
+    steps = data->step - data->prev_steps;
+    renbr = steps % control->reneighbor == 0 ? TRUE : FALSE;
+    scalar1 = -0.5 * control->dt * F_CONV;
+    scalar2 = -0.5 * SQR( control->dt ) * F_CONV;
+
+    if ( verlet_part1_done == FALSE )
+    {
+        /* velocity verlet, 1st part */
+        for ( i = 0; i < system->n; i++ )
+        {
+            atom = &system->my_atoms[i];
+            inv_m = 1.0 / system->reax_param.sbp[atom->type].mass;
+
+            /* Compute x(t + dt) */
+            rvec_ScaledSum( dx, control->dt, atom->v, scalar2 * inv_m, atom->f );
+            rvec_Add( atom->x, dx );
+
+            /* Compute v(t + dt/2) */
+            rvec_ScaledAdd( atom->v, scalar1 * inv_m, atom->f );
+        }
+
+        Reallocate_Part1( system, control, data, workspace, lists, mpi_data );
+
+        if ( renbr == TRUE )
+        {
+            Update_Grid( system, control, MPI_COMM_WORLD );
+        }
+
+        Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
+
+        verlet_part1_done = TRUE;
+    }
+
+    Reallocate_Part2( system, control, data, workspace, lists, mpi_data );
+        
+    Reset( system, control, data, workspace, lists );
+
+    if ( renbr == TRUE && gen_nbr_list == FALSE )
+    {
+        ret = Generate_Neighbor_Lists( system, data, workspace, lists );
+
+        if ( ret == SUCCESS )
+        {
+            gen_nbr_list = TRUE;
+        }
+        else
+        {
+            Estimate_Num_Neighbors( system, data, lists[FAR_NBRS]->format );
+        }
+    }
+
+    if ( ret == SUCCESS )
+    {
+        ret = Compute_Forces( system, control, data, workspace,
+                lists, out_control, mpi_data );
+    }
+
+    if ( ret == SUCCESS )
+    {
+        /* velocity verlet, 2nd part */
+        for ( i = 0; i < system->n; i++ )
+        {
+            atom = &system->my_atoms[i];
+            inv_m = 1.0 / system->reax_param.sbp[atom->type].mass;
+
+            /* Compute v(t + dt) */
+            rvec_ScaledAdd( atom->v, scalar1 * inv_m, atom->f );
+        }
+
+        Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
+
+        /* temperature scaler */
+        lambda = 1.0 + ((control->dt * 1.0e-12) / control->Tau_T)
+            * (control->T / data->therm.T - 1.0);
+
+        if ( lambda < MIN_dT )
+        {
+            lambda = MIN_dT;
+        }
+
+        lambda = SQRT( lambda );
+
+        if ( lambda > MAX_dT )
+        {
+            lambda = MAX_dT;
+        }
+
+        /* Scale velocities and positions at t+dt */
+        for ( i = 0; i < system->n; ++i )
+        {
+            atom = &system->my_atoms[i];
+
+            rvec_Scale( atom->v, lambda, atom->v );
+        }
+
+        /* update kinetic energy and temperature based on new velocities */
+        Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
+
+        verlet_part1_done = FALSE;
+        gen_nbr_list = FALSE;
+    }
+
+    return ret;
+}
+
+
+/* Velocity Verlet integrator for constant volume and constant temperature
+ *  with Nose-Hoover thermostat.
+ *
+ * Reference: Understanding Molecular Simulation, Frenkel and Smit
+ *  Academic Press Inc. San Diego, 1996 p. 388-391 */
 int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
         control_params * const control, simulation_data * const data, storage * const workspace,
         reax_list ** const lists, output_controls * const out_control, mpi_datatypes * const mpi_data )
@@ -233,122 +364,9 @@ int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
 }
 
 
-/* uses Berendsen-type coupling for both T and P.
- * All box dimensions are scaled by the same amount,
- * there is no change in the angles between axes. */
-int Velocity_Verlet_Berendsen_NVT( reax_system * const system, control_params * const control,
-        simulation_data * const data, storage * const workspace, reax_list ** const lists,
-        output_controls * const out_control, mpi_datatypes * const mpi_data )
-{
-    int i, steps, renbr, ret;
-    static int verlet_part1_done = FALSE, gen_nbr_list = FALSE;
-    real inv_m, dt, dt_sqr, lambda;
-    rvec dx;
-    reax_atom *atom;
-
-    ret = SUCCESS;
-    dt = control->dt;
-    steps = data->step - data->prev_steps;
-    renbr = steps % control->reneighbor == 0 ? TRUE : FALSE;
-
-    if ( verlet_part1_done == FALSE )
-    {
-        dt_sqr = SQR( dt );
-
-        /* velocity verlet, 1st part */
-        for ( i = 0; i < system->n; i++ )
-        {
-            atom = &system->my_atoms[i];
-            inv_m = 1.0 / system->reax_param.sbp[atom->type].mass;
-            /* Compute x(t + dt) */
-            rvec_ScaledSum( dx, dt, atom->v, -0.5 * F_CONV * inv_m * dt_sqr, atom->f );
-            rvec_Add( atom->x, dx );
-            /* Compute v(t + dt/2) */
-            rvec_ScaledAdd( atom->v, -0.5 * F_CONV * inv_m * dt, atom->f );
-        }
-
-        Reallocate_Part1( system, control, data, workspace, lists, mpi_data );
-
-        if ( renbr == TRUE )
-        {
-            Update_Grid( system, control, MPI_COMM_WORLD );
-        }
-
-        Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
-
-        verlet_part1_done = TRUE;
-    }
-
-    Reallocate_Part2( system, control, data, workspace, lists, mpi_data );
-        
-    Reset( system, control, data, workspace, lists );
-
-    if ( renbr == TRUE && gen_nbr_list == FALSE )
-    {
-        ret = Generate_Neighbor_Lists( system, data, workspace, lists );
-
-        if ( ret == SUCCESS )
-        {
-            gen_nbr_list = TRUE;
-        }
-        else
-        {
-            Estimate_Num_Neighbors( system, data, lists[FAR_NBRS]->format );
-        }
-    }
-
-    if ( ret == SUCCESS )
-    {
-        ret = Compute_Forces( system, control, data, workspace,
-                lists, out_control, mpi_data );
-    }
-
-    if ( ret == SUCCESS )
-    {
-        /* velocity verlet, 2nd part */
-        for ( i = 0; i < system->n; i++ )
-        {
-            atom = &system->my_atoms[i];
-            inv_m = 1.0 / system->reax_param.sbp[atom->type].mass;
-            /* Compute v(t + dt) */
-            rvec_ScaledAdd( atom->v, -0.5 * dt * F_CONV * inv_m, atom->f );
-        }
-
-        Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
-
-        /* temperature scaler */
-        lambda = 1.0 + (dt / control->Tau_T) * (control->T / data->therm.T - 1.0);
-
-        if ( lambda < MIN_dT )
-        {
-            lambda = MIN_dT;
-        }
-        else if (lambda > MAX_dT )
-        {
-            lambda = MAX_dT;
-        }
-
-        lambda = SQRT( lambda );
-
-        /* Scale velocities and positions at t+dt */
-        for ( i = 0; i < system->n; ++i )
-        {
-            atom = &system->my_atoms[i];
-            rvec_Scale( atom->v, lambda, atom->v );
-        }
-
-        Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
-
-        verlet_part1_done = FALSE;
-        gen_nbr_list = FALSE;
-    }
-
-    return ret;
-}
-
-
-/* uses Berendsen-type coupling for both T and P.
- * All box dimensions are scaled by the same amount,
+/* Velocity Verlet integrator for constant pressure and constant temperature.
+ *
+ * NOTE: All box dimensions are scaled by the same amount, and
  * there is no change in the angles between axes. */
 int Velocity_Verlet_Berendsen_NPT( reax_system * const system, control_params * const control,
         simulation_data * const data, storage * const workspace, reax_list ** const lists,
@@ -372,9 +390,11 @@ int Velocity_Verlet_Berendsen_NPT( reax_system * const system, control_params * 
         {
             atom = &system->my_atoms[i];
             inv_m = 1.0 / system->reax_param.sbp[atom->type].mass;
+
             /* Compute x(t + dt) */
             rvec_ScaledSum( dx, dt, atom->v, -0.5 * F_CONV * inv_m * SQR(dt), atom->f );
             rvec_Add( atom->x, dx );
+
             /* Compute v(t + dt/2) */
             rvec_ScaledAdd( atom->v, -0.5 * F_CONV * inv_m * dt, atom->f );
         }
@@ -420,6 +440,7 @@ int Velocity_Verlet_Berendsen_NPT( reax_system * const system, control_params * 
         {
             atom = &system->my_atoms[i];
             inv_m = 1.0 / system->reax_param.sbp[atom->type].mass;
+
             /* Compute v(t + dt) */
             rvec_ScaledAdd( atom->v, -0.5 * dt * F_CONV * inv_m, atom->f );
         }

@@ -110,6 +110,11 @@ COLUMNS       DATA TYPE       FIELD         DEFINITION
 #define PDB_ATOM_FORMAT_O_LENGTH 81
 #define PDB_CRYST1_FORMAT_O "%6s%9.3f%9.3f%9.3f%7.2f%7.2f%7.2f%11s%4d\n"
 
+#define BGF_ATOM_FORMAT "%6s %5s %5s %3s %c %5s%10s%10s%10s %5s%3s%2s %8s"
+#define BGF_CRYSTX_FORMAT "%8s%11s%11s%11s%11s%11s%11s"
+
+#define BGF_ATOM_FORMAT_O "%6s %5d %-5s %3s %c %5s%10.5f%10.5f%10.5f %-5s%3d%2d %8.5f"
+
 
 #ifdef __cplusplus
 extern "C" {
@@ -119,6 +124,9 @@ void Read_Geo_File( const char * const, reax_system * const, control_params * co
         simulation_data * const, storage * const, mpi_datatypes * const );
 
 void Read_PDB_File( const char * const, reax_system * const, control_params * const,
+        simulation_data * const, storage * const, mpi_datatypes * const );
+
+void Read_BGF( const char * const, reax_system * const, control_params * const,
         simulation_data * const, storage * const, mpi_datatypes * const );
 
 void Write_PDB_File( reax_system * const, reax_list * const, simulation_data * const,

@@ -89,8 +89,9 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data,
         m = system->reax_param.sbp[system->my_atoms[i].type].mass;
 
         rvec_Scale( p, m, system->my_atoms[i].v );
-        data->my_en.e_kin += 0.5 * rvec_Dot( p, system->my_atoms[i].v );
+        data->my_en.e_kin += rvec_Dot( p, system->my_atoms[i].v );
     }
+    data->my_en.e_kin *= 0.5;
 
     ret = MPI_Allreduce( &data->my_en.e_kin, &data->sys_en.e_kin, 1, MPI_DOUBLE,
             MPI_SUM, comm );

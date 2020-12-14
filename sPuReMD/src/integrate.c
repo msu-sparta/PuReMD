@@ -53,7 +53,8 @@ void Velocity_Verlet_NVE( reax_system *system, control_params *control,
         rvec_ScaledSum( dx, control->dt, system->atoms[i].v,
                 scalar2 * inv_m, system->atoms[i].f );
 
-        control->update_atom_position( system->atoms[i].x, dx, system->atoms[i].rel_map, &system->box );
+        control->update_atom_position( system->atoms[i].x, dx,
+                system->atoms[i].rel_map, &system->box );
 
         /* Compute v(t + dt/2) */
         rvec_ScaledAdd( system->atoms[i].v,
@@ -307,6 +308,7 @@ void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system* system,
     for ( i = 0; i < system->N; i++ )
     {
         inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
+
         /* Compute v(t + dt) */
         rvec_ScaledAdd( system->atoms[i].v,
                 -0.5 * dt * F_CONV * inv_m, system->atoms[i].f );

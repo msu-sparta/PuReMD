@@ -100,13 +100,30 @@ static void Reposition_Atoms( reax_system * const system, control_params * const
 
 
 
-void Generate_Initial_Velocities( reax_system * const system, real T )
+void Generate_Initial_Velocities( reax_system * const system,
+        control_params * const control, real T )
 {
     int i;
     real m, scale, norm;
 
-    if ( T <= 0.1 )
+    if ( T <= 0.1 || control->random_vel == FALSE )
     {
+        /* warnings if conflicts between initial temperature and control file parameter */
+        if ( control->random_vel == TRUE )
+        {
+            fprintf( stderr, "[ERROR] conflicting control file parameters\n" );
+            fprintf( stderr, "[INFO] random_vel = 1 and small initial temperature (t_init = %f)\n", T );
+            fprintf( stderr, "[INFO] set random_vel = 0 to resolve this (atom initial velocites set to zero)\n" );
+            MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
+        }
+        else if ( T > 0.1 )
+        {
+            fprintf( stderr, "[ERROR] conflicting control file paramters\n" );
+            fprintf( stderr, "[INFO] random_vel = 0 and large initial temperature (t_init = %f)\n", T );
+            fprintf( stderr, "[INFO] set random_vel = 1 to resolve this (random atom initial velocites according to t_init)\n" );
+            MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
+        }
+
         for ( i = 0; i < system->n; i++ )
         {
             rvec_MakeZero( system->my_atoms[i].v );
@@ -114,6 +131,13 @@ void Generate_Initial_Velocities( reax_system * const system, real T )
     }
     else
     {
+        if ( T <= 0.0 )
+        {
+            fprintf( stderr, "[ERROR] random atom initial velocities specified with invalid temperature (%f). Terminating...\n",
+                  T );
+            MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
+        }
+
         Randomize( );
 
         for ( i = 0; i < system->n; i++ )
@@ -211,9 +235,10 @@ void Init_System( reax_system * const system, control_params * const control,
 //    Reposition_Atoms( system, control, data, mpi_data );
 
     /* initialize velocities so that desired init T can be attained */
-    if ( !control->restart || (control->restart && control->random_vel) )
+    if ( control->restart == FALSE
+            || (control->restart == TRUE && control->random_vel == TRUE) )
     {
-        Generate_Initial_Velocities( system, control->T_init );
+        Generate_Initial_Velocities( system, control, control->T_init );
     }
 
     Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
@@ -242,7 +267,7 @@ void Init_Simulation_Data( reax_system * const system, control_params * const co
         break;
 
     case bNVT:
-        data->N_f = 3 * system->bigN + 1;
+        data->N_f = 3 * system->bigN;
         control->Evolve = &Velocity_Verlet_Berendsen_NVT;
         control->virial = 0;
         break;

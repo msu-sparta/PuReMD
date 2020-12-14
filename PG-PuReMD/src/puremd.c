@@ -70,6 +70,10 @@ static void Read_Config_Files( const char * const geo_file,
     {
         Read_PDB_File( geo_file, system, control, data, workspace, mpi_data );
     }
+    else if ( control->geo_format == BGF )
+    {
+        Read_BGF( geo_file, system, control, data, workspace, mpi_data );
+    }
     else if ( control->geo_format == ASCII_RESTART )
     {
         Read_Restart_File( geo_file, system, control, data, workspace, mpi_data );
@@ -104,9 +108,12 @@ static void Cuda_Post_Evolve( reax_system * const system, control_params * const
         Cuda_Remove_CoM_Velocities( system, control, data );
     }
 
-    /* compute kinetic energy of the system */
-    Cuda_Compute_Kinetic_Energy( system, control, workspace,
-            data, mpi_data->comm_mesh3D );
+    if ( control->ensemble == NVE )
+    {
+        /* compute kinetic energy of the system */
+        Cuda_Compute_Kinetic_Energy( system, control, workspace,
+                data, mpi_data->comm_mesh3D );
+    }
 
     if ( (out_control->energy_update_freq > 0
                 && (data->step - data->prev_steps) % out_control->energy_update_freq == 0)
@@ -145,8 +152,11 @@ static void Post_Evolve( reax_system * const system, control_params * const cont
         }
     }
 
-    /* compute kinetic energy of system */
-    Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
+    if ( control->ensemble == NVE )
+    {
+        /* compute kinetic energy of system */
+        Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
+    }
 
     if ( (out_control->energy_update_freq > 0
                 && (data->step - data->prev_steps) % out_control->energy_update_freq == 0)
