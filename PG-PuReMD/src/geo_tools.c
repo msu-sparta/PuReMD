@@ -838,6 +838,9 @@ void Read_BGF( const char * const bgf_file, reax_system * const system,
         MPI_Abort( MPI_COMM_WORLD, INVALID_GEO );
     }
 
+    system->n = atom_cnt;
+    system->N = atom_cnt;
+
     Deallocate_Tokenizer_Space( &line, &backup, &tokens, MAX_TOKENS );
 
     sfclose( bgf, "Read_BGF::bgf" );
