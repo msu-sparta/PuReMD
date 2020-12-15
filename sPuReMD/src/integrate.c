@@ -71,7 +71,7 @@ void Velocity_Verlet_NVE( reax_system *system, control_params *control,
                 lists, out_control );
     }
 
-    Compute_Forces( system, control, data, workspace, lists, out_control );
+    Compute_Forces( system, control, data, workspace, lists, out_control, FALSE );
 
     for ( i = 0; i < system->N; i++ )
     {
@@ -123,7 +123,7 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* system,
     }
 
     Compute_Forces( system, control, data, workspace,
-            lists, out_control );
+            lists, out_control, FALSE );
 
     /* velocity verlet, 2nd part */
     for ( i = 0; i < system->N; i++ )
@@ -213,7 +213,7 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system, control_params*
     }
 
     /* Calculate Forces at time (t + dt) */
-    Compute_Forces( system, control, data, workspace, lists, out_control );
+    Compute_Forces( system, control, data, workspace, lists, out_control, FALSE );
 
     /* Compute iteration constants for each atom's velocity */
     for ( i = 0; i < system->N; ++i )
@@ -302,7 +302,7 @@ void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system* system,
                 lists, out_control );
     }
 
-    Compute_Forces( system, control, data, workspace, lists, out_control );
+    Compute_Forces( system, control, data, workspace, lists, out_control, FALSE );
 
     /* velocity verlet, 2nd part */
     for ( i = 0; i < system->N; i++ )
@@ -410,7 +410,7 @@ void Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system* system,
                 lists, out_control );
     }
 
-    Compute_Forces( system, control, data, workspace, lists, out_control );
+    Compute_Forces( system, control, data, workspace, lists, out_control, FALSE );
 
     /* velocity verlet, 2nd part */
     for ( i = 0; i < system->N; i++ )
@@ -481,9 +481,8 @@ void Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system* system,
 /* BELOW FUNCTIONS ARE NOT BEING USED ANYMORE!  */
 /************************************************/
 #if defined(ANISOTROPIC)
-void Velocity_Verlet_Nose_Hoover_NVT( reax_system* system,
-        control_params* control, simulation_data *data,
-        static_storage *workspace, reax_list **lists,
+void Velocity_Verlet_Nose_Hoover_NVT( reax_system* system, control_params* control,
+        simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control )
 {
     int i;
@@ -528,7 +527,7 @@ void Velocity_Verlet_Nose_Hoover_NVT( reax_system* system,
 //    fprintf( out_control->log, "qeq-" );
 //    fflush( out_control->log );
 
-    Compute_Forces( system, control, data, workspace, lists, out_control );
+    Compute_Forces( system, control, data, workspace, lists, out_control, FALSE );
     fprintf(out_control->log, "forces\n");
     fflush( out_control->log );
 
@@ -555,9 +554,8 @@ void Velocity_Verlet_Nose_Hoover_NVT( reax_system* system,
 }
 
 
-void Velocity_Verlet_Isotropic_NPT( reax_system* system,
-        control_params* control, simulation_data *data,
-        static_storage *workspace, reax_list **lists,
+void Velocity_Verlet_Isotropic_NPT( reax_system* system, control_params* control,
+        simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control )
 {
     int i, itr;
@@ -633,8 +631,7 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system,
 //    fprintf( out_control->log, "qeq-" );
 //    fflush( out_control->log );
 
-    Compute_Forces( system, control, data, workspace, lists,
-            out_control );
+    Compute_Forces( system, control, data, workspace, lists, out_control, FALSE );
     fprintf(out_control->log, "forces\n");
     fflush( out_control->log );
 

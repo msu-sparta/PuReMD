@@ -449,11 +449,10 @@ typedef void (*print_interaction)(reax_system*, control_params*, simulation_data
 /* function pointer for evolving the atomic system (i.e., updating the positions)
  * given the pre-computed forces from the prescribed interactions */
 typedef void (*evolve_function)( reax_system*, control_params*,
-        simulation_data*, static_storage*,
-        reax_list**, output_controls* );
+        simulation_data*, static_storage*, reax_list**, output_controls* );
 /* function pointer for a callback function to be triggered after
  * completion of a simulation step -- useful for, e.g., the Python wrapper */
-typedef void (*callback_function)( reax_atom*, simulation_data*, reax_list** );
+typedef void (*callback_function)( int, reax_atom*, simulation_data* );
 /* function pointer for writing trajectory file header */
 typedef int (*write_header_function)( reax_system*, control_params*,
         static_storage*, output_controls* );
@@ -509,8 +508,13 @@ typedef int (*write_function)( FILE *, const char *, ... );
  * l[38] = p_coa3 */
 struct global_parameters
 {
+    /* num. global parameters in the force field paramater file for this simulation */
     int n_global;
+    /* max. num. global parameters in the force field paramater file across all simulations */
+    int max_n_global;
+    /* parameters, see list in comment above for mapping */
     real* l;
+    /* van der Waals interaction type */
     int vdw_type;
 };
 
@@ -732,12 +736,21 @@ struct four_body_header
 
 struct reax_interaction
 {
+    /* num. atom types in force field parameter file for this simulation */
     int num_atom_types;
+    /* max. num. atom types in force field parameter file across all simulations */
+    int max_num_atom_types;
+    /* */
     global_parameters gp;
+    /* */
     single_body_parameters *sbp;
+    /* */
     two_body_parameters **tbp;
+    /* */
     three_body_header ***thbp;
+    /* */
     hbond_parameters ***hbp;
+    /* */
     four_body_header ****fbp;
 };
 
@@ -1617,6 +1630,8 @@ struct static_storage
 /* interaction lists */
 struct reax_list
 {
+    /* 0 if struct members are NOT allocated, 1 otherwise */
+    int allocated;
     /* num. active entries in list for this simulation */
     int n;
     /* max. num. entries in list across all simulations */

@@ -179,7 +179,7 @@ void* setup( const char * const geo_file, const char * const ffield_file,
     {
         spmd_handle->lists[i] = smalloc( sizeof(reax_list),
                 "Setup::spmd_handle->lists[i]" );
-//        spmd_handle->lists[i]->allocated = FALSE;
+        spmd_handle->lists[i]->allocated = FALSE;
     }
     spmd_handle->out_control = smalloc( sizeof(output_controls),
            "Setup::spmd_handle->out_control" );
@@ -258,7 +258,8 @@ int simulate( const void * const handle )
                 spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control );
 
         Compute_Forces( spmd_handle->system, spmd_handle->control, spmd_handle->data,
-                spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control );
+                spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control,
+                spmd_handle->realloc );
 
         Compute_Kinetic_Energy( spmd_handle->system, spmd_handle->data );
 
@@ -301,8 +302,8 @@ int simulate( const void * const handle )
 
         if ( spmd_handle->callback != NULL )
         {
-            spmd_handle->callback( spmd_handle->system->atoms, spmd_handle->data,
-                    spmd_handle->lists );
+            spmd_handle->callback( spmd_handle->system->N, spmd_handle->system->atoms,
+                    spmd_handle->data );
         }
         //}
 
@@ -352,8 +353,8 @@ int simulate( const void * const handle )
 
             if ( spmd_handle->callback != NULL )
             {
-                spmd_handle->callback( spmd_handle->system->atoms, spmd_handle->data,
-                        spmd_handle->lists );
+                spmd_handle->callback( spmd_handle->system->N, spmd_handle->system->atoms,
+                        spmd_handle->data );
             }
         }
 
@@ -431,6 +432,13 @@ int reset( const void * const handle, const char * const geo_file,
     {
         spmd_handle = (spuremd_handle*) handle;
 
+        /* close files used in previous simulation */
+        if ( spmd_handle->output_enabled == TRUE )
+        {
+            Finalize_Out_Controls( spmd_handle->system, spmd_handle->control,
+                    spmd_handle->workspace, spmd_handle->out_control );
+        }
+
         spmd_handle->first_run = FALSE;
         spmd_handle->realloc = FALSE;
         spmd_handle->data->sim_id++;
@@ -460,24 +468,64 @@ int reset( const void * const handle, const char * const geo_file,
 }
 
 
-/* Getter for atom info
+/* Getter for atom positions
  *
  * handle: pointer to wrapper struct with top-level data structures
+ * pos_x: x-coordinate of atom positions (allocated by caller)
+ * pos_y: y-coordinate of atom positions (allocated by caller)
+ * pos_z: z-coordinate of atom positions (allocated by caller)
  */
-reax_atom* get_atoms( const void * const handle )
+int get_atom_positions( const void * const handle, double * const pos_x,
+        double * const pos_y, double * const pos_z )
 {
+    int i, ret;
     spuremd_handle *spmd_handle;
-    reax_atom *atoms;
 
-    atoms = NULL;
+    ret = SPUREMD_FAILURE;
 
     if ( handle != NULL )
     {
         spmd_handle = (spuremd_handle*) handle;
-        atoms = spmd_handle->system->atoms;
+
+        for ( i = 0; i < spmd_handle->system->N; ++i )
+        {
+            pos_x[i] = spmd_handle->system->atoms[i].x[0];
+            pos_y[i] = spmd_handle->system->atoms[i].x[1];
+            pos_z[i] = spmd_handle->system->atoms[i].x[2];
+        }
+
+        ret = SPUREMD_SUCCESS;
     }
 
-    return atoms;
+    return ret;
+}
+
+
+/* Getter for atom charges
+ *
+ * handle: pointer to wrapper struct with top-level data structures
+ * q: atom charges (allocated by caller)
+ */
+int get_atom_charges( const void * const handle, double * const q )
+{
+    int i, ret;
+    spuremd_handle *spmd_handle;
+
+    ret = SPUREMD_FAILURE;
+
+    if ( handle != NULL )
+    {
+        spmd_handle = (spuremd_handle*) handle;
+
+        for ( i = 0; i < spmd_handle->system->N; ++i )
+        {
+            q[i] = spmd_handle->system->atoms[i].q;
+        }
+
+        ret = SPUREMD_SUCCESS;
+    }
+
+    return ret;
 }
 
 

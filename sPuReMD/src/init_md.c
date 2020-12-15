@@ -160,10 +160,10 @@ static void Init_System( reax_system *system, control_params *control,
 
 static void Init_Simulation_Data( reax_system *system, control_params *control,
         simulation_data *data, output_controls *out_control,
-        evolve_function *Evolve, int alloc )
+        evolve_function *Evolve, int realloc )
 {
 #if defined(_OPENMP)
-    if ( alloc == TRUE && (control->ensemble == sNPT || control->ensemble == iNPT
+    if ( realloc == TRUE && (control->ensemble == sNPT || control->ensemble == iNPT
             || control->ensemble == aNPT || control->compute_pressure == TRUE) )
     {
         data->press_local = smalloc( sizeof( rtensor ) * control->num_threads,
@@ -323,11 +323,11 @@ static void Init_Taper( control_params *control, static_storage *workspace )
 
 
 static void Init_Workspace( reax_system *system, control_params *control,
-        static_storage *workspace, int alloc )
+        static_storage *workspace, int realloc )
 {
     int i;
 
-    if ( alloc == TRUE )
+    if ( realloc == TRUE )
     {
         /* hydrogen bond list */
         workspace->hbond_index = smalloc( system->N_max * sizeof( int ),
@@ -390,7 +390,7 @@ static void Init_Workspace( reax_system *system, control_params *control,
             break;
     }
 
-    if ( alloc == TRUE )
+    if ( realloc == TRUE )
     {
         /* sparse matrices */
         workspace->H = NULL;
@@ -478,7 +478,7 @@ static void Init_Workspace( reax_system *system, control_params *control,
             break;
     }
 
-    if ( alloc == TRUE )
+    if ( realloc == TRUE )
     {
         switch ( control->cm_solver_type )
         {
@@ -578,7 +578,7 @@ static void Init_Workspace( reax_system *system, control_params *control,
     /* level scheduling related */
     workspace->levels_L = 1;
     workspace->levels_U = 1;
-    if ( alloc == TRUE )
+    if ( realloc == TRUE )
     {
         if ( control->cm_solver_pre_app_type == TRI_SOLVE_LEVEL_SCHED_PA ||
                 control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
@@ -612,7 +612,7 @@ static void Init_Workspace( reax_system *system, control_params *control,
 
     /* graph coloring related */
     workspace->recolor_cnt = 0;
-    if ( alloc == TRUE )
+    if ( realloc == TRUE )
     {
         if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
         {
@@ -775,7 +775,7 @@ static void Init_Workspace( reax_system *system, control_params *control,
 static void Init_Lists( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control,
-        int first_run, int alloc )
+        int first_run, int realloc )
 {
     int i, num_nbrs, num_bonds, num_hbonds, num_3body, Htop, max_nnz;
     int *hb_top, *bond_top;
@@ -786,7 +786,7 @@ static void Init_Lists( reax_system *system, control_params *control,
     {
         Make_List( system->N, system->N_max, num_nbrs, TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
     }
-    else if ( alloc == TRUE || lists[FAR_NBRS]->total_intrs < num_nbrs )
+    else if ( realloc == TRUE || lists[FAR_NBRS]->total_intrs < num_nbrs )
     {
         Delete_List( TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
         Make_List( system->N, system->N_max, num_nbrs, TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
@@ -827,7 +827,7 @@ static void Init_Lists( reax_system *system, control_params *control,
     {
         Allocate_Matrix( &workspace->H, system->N_cm, system->N_cm_max, max_nnz );
     }
-    else if ( alloc == TRUE || workspace->H->m < max_nnz )
+    else if ( realloc == TRUE || workspace->H->m < max_nnz )
     {
         Deallocate_Matrix( workspace->H );
         Allocate_Matrix( &workspace->H, system->N_cm, system->N_cm_max, max_nnz );
@@ -845,7 +845,7 @@ static void Init_Lists( reax_system *system, control_params *control,
          *   (non-bonded, hydrogen, 3body, etc.) */
         Allocate_Matrix( &workspace->H_sp, system->N_cm, system->N_cm_max, max_nnz );
     }
-    else if ( alloc == TRUE || workspace->H_sp->m < max_nnz )
+    else if ( realloc == TRUE || workspace->H_sp->m < max_nnz )
     {
         Deallocate_Matrix( workspace->H_sp );
         /* TODO: better estimate for H_sp?
@@ -887,7 +887,7 @@ static void Init_Lists( reax_system *system, control_params *control,
                 num_hbonds += hb_top[i];
             }
 
-            if ( first_run == TRUE )
+            if ( first_run == TRUE || lists[HBONDS]->allocated == FALSE )
             {
                 workspace->num_H_max = (int) CEIL( SAFE_ZONE * workspace->num_H );
 
@@ -926,11 +926,11 @@ static void Init_Lists( reax_system *system, control_params *control,
     }
 
     /* bonds list */
-    if ( first_run == TRUE )
+    if ( lists[BONDS]->allocated == FALSE )
     {
         Allocate_Bond_List( system->N, system->N_max, bond_top, lists[BONDS] );
     }
-    else if ( alloc == TRUE || lists[BONDS]->total_intrs < num_bonds )
+    else if ( realloc == TRUE || lists[BONDS]->total_intrs < num_bonds )
     {
         Delete_List( TYP_BOND, lists[BONDS] );
         Allocate_Bond_List( system->N, system->N_max, bond_top, lists[BONDS] );
@@ -947,7 +947,7 @@ static void Init_Lists( reax_system *system, control_params *control,
 #endif
 
     /* 3bodies list */
-    if ( first_run == TRUE )
+    if ( lists[THREE_BODIES]->allocated == FALSE )
     {
         Make_List( num_bonds, num_bonds, num_3body, TYP_THREE_BODY, lists[THREE_BODIES] );
     }
@@ -1265,7 +1265,7 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
 void Initialize( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control, evolve_function *Evolve,
-        int output_enabled, int first_run, int alloc )
+        int output_enabled, int first_run, int realloc )
 {
 #if defined(_OPENMP)
     #pragma omp parallel default(none) shared(control)
@@ -1281,11 +1281,11 @@ void Initialize( reax_system *system, control_params *control,
 
     Init_System( system, control, data, first_run );
 
-    Init_Simulation_Data( system, control, data, out_control, Evolve, alloc );
+    Init_Simulation_Data( system, control, data, out_control, Evolve, realloc );
 
-    Init_Workspace( system, control, workspace, alloc );
+    Init_Workspace( system, control, workspace, realloc );
 
-    Init_Lists( system, control, data, workspace, lists, out_control, first_run, alloc );
+    Init_Lists( system, control, data, workspace, lists, out_control, first_run, realloc );
 
     Init_Out_Controls( system, control, workspace, out_control, output_enabled );
 
@@ -1317,11 +1317,11 @@ static void Finalize_System( reax_system *system, control_params *control,
     {
         sfree( reax->gp.l, "Finalize_System::reax->gp.l" );
 
-        for ( i = 0; i < reax->num_atom_types; i++ )
+        for ( i = 0; i < reax->max_num_atom_types; i++ )
         {
-            for ( j = 0; j < reax->num_atom_types; j++ )
+            for ( j = 0; j < reax->max_num_atom_types; j++ )
             {
-                for ( k = 0; k < reax->num_atom_types; k++ )
+                for ( k = 0; k < reax->max_num_atom_types; k++ )
                 {
                     sfree( reax->fbp[i][j][k], "Finalize_System::reax->fbp[i][j][k]" );
                 }
@@ -1610,7 +1610,7 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
 static void Finalize_Lists( control_params *control, reax_list **lists )
 {
     Delete_List( TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
-    if ( control->hbond_cut > 0.0 )
+    if ( control->hbond_cut > 0.0 && lists[HBONDS]->index != NULL )
     {
         Delete_List( TYP_HBOND, lists[HBONDS] );
     }
@@ -1624,7 +1624,7 @@ static void Finalize_Lists( control_params *control, reax_list **lists )
 }
 
 
-static void Finalize_Out_Controls( reax_system *system, control_params *control,
+void Finalize_Out_Controls( reax_system *system, control_params *control,
         static_storage *workspace, output_controls *out_control )
 {
     if ( out_control->write_steps > 0 )

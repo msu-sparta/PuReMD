@@ -162,7 +162,7 @@ void Sort_Matrix_Rows( sparse_matrix * const A )
  *   A has non-zero diagonals
  *   Each row of A has at least one non-zero (i.e., no rows with all zeros) */
 static void compute_full_sparse_matrix( const sparse_matrix * const A,
-                                        sparse_matrix ** A_full )
+        sparse_matrix ** A_full, int realloc )
 {
     int count, i, pj;
     sparse_matrix *A_t;
@@ -171,7 +171,7 @@ static void compute_full_sparse_matrix( const sparse_matrix * const A,
     {
         Allocate_Matrix( A_full, A->n, A->n_max, 2 * A->m - A->n );
     }
-    else if ( (*A_full)->m < 2 * A->m - A->n )
+    else if ( (*A_full)->m < 2 * A->m - A->n || realloc == TRUE )
     {
         Deallocate_Matrix( *A_full );
         Allocate_Matrix( A_full, A->n, A->n_max, 2 * A->m - A->n );
@@ -221,9 +221,10 @@ static void compute_full_sparse_matrix( const sparse_matrix * const A,
  * Assumptions:
  *   A has non-zero diagonals
  *   Each row of A has at least one non-zero (i.e., no rows with all zeros) */
-void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix ** A_full,
-        sparse_matrix ** A_spar_patt, sparse_matrix **A_spar_patt_full,
-        sparse_matrix ** A_app_inv, const real filter )
+void setup_sparse_approx_inverse( const sparse_matrix * const A,
+        sparse_matrix ** A_full, sparse_matrix ** A_spar_patt,
+        sparse_matrix **A_spar_patt_full, sparse_matrix ** A_app_inv,
+        const real filter, int realloc )
 {
     int i, pj, size;
     int left, right, k, p, turn;
@@ -235,7 +236,7 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
     {
         Allocate_Matrix( A_spar_patt, A->n, A->n_max, A->m );
     }
-    else if ( ((*A_spar_patt)->m) < (A->m) )
+    else if ( ((*A_spar_patt)->m) < (A->m) || realloc == TRUE )
     {
         Deallocate_Matrix( *A_spar_patt );
         Allocate_Matrix( A_spar_patt, A->n, A->n_max, A->m );
@@ -345,24 +346,24 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A, sparse_matrix *
     }
     (*A_spar_patt)->start[A->n] = size;
 
-    compute_full_sparse_matrix( A, A_full );
-    compute_full_sparse_matrix( *A_spar_patt, A_spar_patt_full );
+    compute_full_sparse_matrix( A, A_full, realloc );
+    compute_full_sparse_matrix( *A_spar_patt, A_spar_patt_full, realloc );
 
     if ( *A_app_inv == NULL )
     {
         /* A_app_inv has the same sparsity pattern
          * as A_spar_patt_full (omit non-zero values) */
-        Allocate_Matrix( A_app_inv, (*A_spar_patt_full)->n, (*A_spar_patt_full)->n_max,
-                (*A_spar_patt_full)->m );
+        Allocate_Matrix( A_app_inv, (*A_spar_patt_full)->n,
+                (*A_spar_patt_full)->n_max, (*A_spar_patt_full)->m );
     }
-    else if ( (*A_app_inv)->m < A->m )
+    else if ( (*A_app_inv)->m < A->m || realloc == TRUE )
     {
         Deallocate_Matrix( *A_app_inv );
 
         /* A_app_inv has the same sparsity pattern
          * as A_spar_patt_full (omit non-zero values) */
-        Allocate_Matrix( A_app_inv, (*A_spar_patt_full)->n, (*A_spar_patt_full)->n_max,
-                (*A_spar_patt_full)->m );
+        Allocate_Matrix( A_app_inv, (*A_spar_patt_full)->n,
+                (*A_spar_patt_full)->n_max, (*A_spar_patt_full)->m );
     }
 
     sfree( list, "setup_sparse_approx_inverse::list" );
@@ -706,7 +707,7 @@ real ILU( const sparse_matrix * const A, sparse_matrix * const L,
 
     start = Get_Time( );
 
-    compute_full_sparse_matrix( A, &A_full );
+    compute_full_sparse_matrix( A, &A_full, FALSE );
 
     Ltop = 0;
     Utop = 0;
@@ -812,7 +813,7 @@ real ILU( const sparse_matrix * const A, sparse_matrix * const L,
  * droptol: row-wise tolerances used for dropping
  * L / U: (output) triangular matrices, A \approx LU, CSR format */
 real ILUT( const sparse_matrix * const A, const real * const droptol,
-             sparse_matrix * const L, sparse_matrix * const U )
+        sparse_matrix * const L, sparse_matrix * const U )
 {
     unsigned int i, k, pj, Ltop, Utop, *nz_mask;
     real *w, start;
@@ -825,7 +826,7 @@ real ILUT( const sparse_matrix * const A, const real * const droptol,
     w = smalloc( sizeof(real) * A->n, "ILUT::w" );
     nz_mask = smalloc( sizeof(unsigned int) * A->n, "ILUT::nz_mask" );
 
-    compute_full_sparse_matrix( A, &A_full );
+    compute_full_sparse_matrix( A, &A_full, FALSE );
 
     Ltop = 0;
     Utop = 0;
@@ -969,7 +970,7 @@ real ILUT( const sparse_matrix * const A, const real * const droptol,
  * droptol: row-wise tolerances used for dropping
  * L / U: (output) triangular matrices, A \approx LU, CSR format */
 real ILUTP( const sparse_matrix * const A, const real * const droptol,
-             sparse_matrix * const L, sparse_matrix * const U )
+        sparse_matrix * const L, sparse_matrix * const U )
 {
     unsigned int i, k, pj, Ltop, Utop, *nz_mask, *perm, *perm_inv, pivot_j;
     real *w, start, pivot_val;
@@ -983,7 +984,7 @@ real ILUTP( const sparse_matrix * const A, const real * const droptol,
     perm = smalloc( sizeof(int) * A->n, "ILUTP::perm" );
     perm_inv = smalloc( sizeof(int) * A->n, "ILUTP::perm_inv" );
 
-    compute_full_sparse_matrix( A, &A_full );
+    compute_full_sparse_matrix( A, &A_full, FALSE );
 
     Ltop = 0;
     Utop = 0;
@@ -2628,19 +2629,19 @@ static void permute_matrix( const static_storage * const workspace,
  */
 void setup_graph_coloring( const control_params * const control,
         const static_storage * const workspace, const sparse_matrix * const H,
-        sparse_matrix ** H_full, sparse_matrix ** H_p )
+        sparse_matrix ** H_full, sparse_matrix ** H_p, int realloc )
 {
     if ( *H_p == NULL )
     {
         Allocate_Matrix( H_p, H->n, H->n_max, H->m );
     }
-    else if ( (*H_p)->m < H->m )
+    else if ( (*H_p)->m < H->m || realloc == TRUE )
     {
         Deallocate_Matrix( *H_p );
         Allocate_Matrix( H_p, H->n, H->n_max, H->m );
     }
 
-    compute_full_sparse_matrix( H, H_full );
+    compute_full_sparse_matrix( H, H_full, realloc );
 
     graph_coloring( control, (static_storage *) workspace, *H_full, LOWER );
     sort_rows_by_colors( workspace, (*H_full)->n, LOWER );

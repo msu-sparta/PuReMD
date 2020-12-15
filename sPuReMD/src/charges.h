@@ -25,9 +25,10 @@
 #include "reax_types.h"
 
 
-void Compute_Charges( reax_system* const, control_params* const, simulation_data* const,
-          static_storage* const, const output_controls* const );
+void Compute_Charges( reax_system * const, control_params * const,
+        simulation_data * const, static_storage * const,
+        const output_controls * const, int );
 
-int is_refactoring_step ( control_params* const, simulation_data* const );
+int is_refactoring_step( control_params * const, simulation_data * const );
 
 #endif

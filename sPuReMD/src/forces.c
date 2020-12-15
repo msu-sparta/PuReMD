@@ -138,7 +138,7 @@ static void Compute_Bonded_Forces( reax_system *system, control_params *control,
 
 static void Compute_NonBonded_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        reax_list** lists, output_controls *out_control )
+        reax_list** lists, output_controls *out_control, int realloc )
 {
     real t_start, t_elapsed;
 
@@ -150,7 +150,7 @@ static void Compute_NonBonded_Forces( reax_system *system, control_params *contr
 #endif
 
     t_start = Get_Time( );
-    Compute_Charges( system, control, data, workspace, out_control );
+    Compute_Charges( system, control, data, workspace, out_control, realloc );
     t_elapsed = Get_Timing_Info( t_start );
     data->timing.cm += t_elapsed;
     
@@ -1513,7 +1513,7 @@ void Estimate_Storage_Sizes( reax_system *system, control_params *control,
 
 void Compute_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        reax_list** lists, output_controls *out_control )
+        reax_list** lists, output_controls *out_control, int realloc )
 {
     real t_start, t_elapsed;
 
@@ -1536,7 +1536,7 @@ void Compute_Forces( reax_system *system, control_params *control,
 
     t_start = Get_Time( );
     Compute_NonBonded_Forces( system, control, data, workspace,
-            lists, out_control );
+            lists, out_control, realloc );
     t_elapsed = Get_Timing_Info( t_start );
     data->timing.nonb += t_elapsed;
 

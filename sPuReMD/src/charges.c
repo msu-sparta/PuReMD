@@ -491,8 +491,8 @@ static void Spline_Extrapolate_Charges_EE( const reax_system * const system,
 /* Compute preconditioner for QEq
  */
 static void Compute_Preconditioner_QEq( const reax_system * const system,
-        const control_params * const control,
-        simulation_data * const data, static_storage * const workspace )
+        const control_params * const control, simulation_data * const data,
+        static_storage * const workspace, int realloc )
 {
     real time;
     sparse_matrix *Hptr;
@@ -513,7 +513,8 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
     time = Get_Time( );
     if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
     {
-        setup_graph_coloring( control, workspace, Hptr, &workspace->H_full, &workspace->H_p );
+        setup_graph_coloring( control, workspace, Hptr, &workspace->H_full,
+                &workspace->H_p, realloc );
         Sort_Matrix_Rows( workspace->H_p );
         Hptr = workspace->H_p;
     }
@@ -614,257 +615,9 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 
 /* Compute preconditioner for EE
  */
-//static void Compute_Preconditioner_EE( const reax_system * const system,
-//        const control_params * const control,
-//        simulation_data * const data, static_storage * const workspace )
-//{
-//    int i, top;
-//    static real * ones = NULL, * x = NULL, * y = NULL;
-//    sparse_matrix *Hptr;
-//
-//    Hptr = workspace->H_EE;
-//
-//#if defined(TEST_MAT)
-//    Hptr = create_test_mat( );
-//#endif
-//
-//    if ( ones == NULL )
-//    {
-//        ones = smalloc( system->N * sizeof(real), "Compute_Preconditioner_EE::ones" );
-//        x = smalloc( system->N * sizeof(real), "Compute_Preconditioner_EE::x" );
-//        y = smalloc( system->N * sizeof(real), "Compute_Preconditioner_EE::y" );
-//
-//        for ( i = 0; i < system->N; ++i )
-//        {
-//            ones[i] = 1.0;
-//        }
-//    }
-//
-//    switch ( control->cm_solver_pre_comp_type )
-//    {
-//    case JACOBI_PC:
-//        data->timing.cm_solver_pre_comp += jacobi( Hptr, workspace->Hdia_inv );
-//        break;
-//
-//    case ICHOLT_PC:
-//        fprintf( stderr, "[ERROR] ICHOLT is not supported for indefinite, symmetric matrices of EE. Terminating...\n" );
-//        exit( INVALID_INPUT );
-//        break;
-//
-//    case ILUT_PC:
-//        if ( control->cm_solver_pre_comp_droptol > 0.0 )
-//        {
-//            data->timing.cm_solver_pre_comp +=
-//                ILUT( Hptr, workspace->droptol, workspace->L, workspace->U );
-//        }
-//        else
-//        {
-//            data->timing.cm_solver_pre_comp +=
-//                ILU( Hptr, workspace->L, workspace->U );
-//        }
-//        break;
-//
-//    case ILUTP_PC:
-//        data->timing.cm_solver_pre_comp +=
-//            ILUTP( Hptr, workspace->droptol, workspace->L, workspace->U );
-//        break;
-//
-//    case FG_ILUT_PC:
-//        data->timing.cm_solver_pre_comp +=
-//            FG_ILUT( Hptr, workspace->droptol, control->cm_solver_pre_comp_sweeps,
-//                    workspace->L_EE, workspace->U_EE );
-//        break;
-//
-//    default:
-//            fprintf( stderr, "[ERROR] Unrecognized preconditioner computation method (%d). Terminating...\n",
-//                    control->cm_solver_pre_comp_type );
-//        exit( INVALID_INPUT );
-//        break;
-//    }
-//
-//    if ( control->cm_solver_pre_comp_type != JACOBI_PC )
-//    {
-//        switch ( control->cm_solver_pre_app_type )
-//        {
-//            case TRI_SOLVE_PA:
-//                tri_solve( workspace->L_EE, ones, x, LOWER );
-//                Transpose_I( workspace->U_EE );
-//                tri_solve( workspace->U_EE, ones, y, LOWER );
-//                Transpose_I( workspace->U_EE );
-//
-//                memcpy( workspace->L->start, workspace->L_EE->start, sizeof(unsigned int) * (system->N + 1) );
-//                memcpy( workspace->L->j, workspace->L_EE->j, sizeof(unsigned int) * workspace->L_EE->start[workspace->L_EE->n] );
-//                memcpy( workspace->L->val, workspace->L_EE->val, sizeof(real) * workspace->L_EE->start[workspace->L_EE->n] );
-//
-//                top = workspace->L->start[system->N];
-//                for ( i = 0; i < system->N; ++i )
-//                {
-//                    workspace->L->j[top] = i;
-//                    workspace->L->val[top] = x[i];
-//                    ++top;
-//                }
-//
-//                workspace->L->j[top] = system->N_cm - 1;
-//                workspace->L->val[top] = 1.0;
-//                ++top;
-//
-//                workspace->L->start[system->N_cm] = top;
-//
-//                top = 0;
-//                for ( i = 0; i < system->N; ++i )
-//                {
-//                    workspace->U->start[i] = top;
-//                    memcpy( workspace->U->j + top, workspace->U_EE->j + workspace->U_EE->start[i],
-//                            sizeof(unsigned int) * (workspace->U_EE->start[i + 1] - workspace->U_EE->start[i]) );
-//                    memcpy( workspace->U->val + top, workspace->U_EE->val + workspace->U_EE->start[i],
-//                            sizeof(real) * (workspace->U_EE->start[i + 1] - workspace->U_EE->start[i]) );
-//                    top += (workspace->U_EE->start[i + 1] - workspace->U_EE->start[i]);
-//
-//                    workspace->U->j[top] = system->N_cm - 1;
-//                    workspace->U->val[top] = y[i];
-//                    ++top;
-//                }
-//
-//                workspace->U->start[system->N_cm - 1] = top;
-//
-//                workspace->U->j[top] = system->N_cm - 1;
-//                workspace->U->val[top] = -Dot( x, y, system->N );
-//                ++top;
-//
-//                workspace->U->start[system->N_cm] = top;
-//                break;
-//
-//            case TRI_SOLVE_LEVEL_SCHED_PA:
-//                tri_solve_level_sched( workspace->L_EE, ones, x, LOWER, TRUE );
-//                Transpose_I( workspace->U_EE );
-//                tri_solve_level_sched( workspace->U_EE, ones, y, LOWER, TRUE );
-//                Transpose_I( workspace->U_EE );
-//
-//                memcpy( workspace->L->start, workspace->L_EE->start, sizeof(unsigned int) * (system->N + 1) );
-//                memcpy( workspace->L->j, workspace->L_EE->j, sizeof(unsigned int) * workspace->L_EE->start[workspace->L_EE->n] );
-//                memcpy( workspace->L->val, workspace->L_EE->val, sizeof(real) * workspace->L_EE->start[workspace->L_EE->n] );
-//
-//                top = workspace->L->start[system->N];
-//                for ( i = 0; i < system->N; ++i )
-//                {
-//                    workspace->L->j[top] = i;
-//                    workspace->L->val[top] = x[i];
-//                    ++top;
-//                }
-//
-//                workspace->L->j[top] = system->N_cm - 1;
-//                workspace->L->val[top] = 1.0;
-//                ++top;
-//
-//                workspace->L->start[system->N_cm] = top;
-//
-//                top = 0;
-//                for ( i = 0; i < system->N; ++i )
-//                {
-//                    workspace->U->start[i] = top;
-//                    memcpy( workspace->U->j + top, workspace->U_EE->j + workspace->U_EE->start[i],
-//                            sizeof(unsigned int) * (workspace->U_EE->start[i + 1] - workspace->U_EE->start[i]) );
-//                    memcpy( workspace->U->val + top, workspace->U_EE->val + workspace->U_EE->start[i],
-//                            sizeof(real) * (workspace->U_EE->start[i + 1] - workspace->U_EE->start[i]) );
-//                    top += (workspace->U_EE->start[i + 1] - workspace->U_EE->start[i]);
-//
-//                    workspace->U->j[top] = system->N_cm - 1;
-//                    workspace->U->val[top] = y[i];
-//                    ++top;
-//                }
-//
-//                workspace->U->start[system->N_cm - 1] = top;
-//
-//                workspace->U->j[top] = system->N_cm - 1;
-//                workspace->U->val[top] = -Dot( x, y, system->N );
-//                ++top;
-//
-//                workspace->U->start[system->N_cm] = top;
-//                break;
-//
-//            //TODO: add Jacobi iter, etc.?
-//            default:
-//                tri_solve( workspace->L_EE, ones, x, LOWER );
-//                Transpose_I( workspace->U_EE );
-//                tri_solve( workspace->U_EE, ones, y, LOWER );
-//                Transpose_I( workspace->U_EE );
-//
-//                memcpy( workspace->L->start, workspace->L_EE->start, sizeof(unsigned int) * (system->N + 1) );
-//                memcpy( workspace->L->j, workspace->L_EE->j, sizeof(unsigned int) * workspace->L_EE->start[workspace->L_EE->n] );
-//                memcpy( workspace->L->val, workspace->L_EE->val, sizeof(real) * workspace->L_EE->start[workspace->L_EE->n] );
-//
-//                top = workspace->L->start[system->N];
-//                for ( i = 0; i < system->N; ++i )
-//                {
-//                    workspace->L->j[top] = i;
-//                    workspace->L->val[top] = x[i];
-//                    ++top;
-//                }
-//
-//                workspace->L->j[top] = system->N_cm - 1;
-//                workspace->L->val[top] = 1.0;
-//                ++top;
-//
-//                workspace->L->start[system->N_cm] = top;
-//
-//                top = 0;
-//                for ( i = 0; i < system->N; ++i )
-//                {
-//                    workspace->U->start[i] = top;
-//                    memcpy( workspace->U->j + top, workspace->U_EE->j + workspace->U_EE->start[i],
-//                            sizeof(unsigned int) * (workspace->U_EE->start[i + 1] - workspace->U_EE->start[i]) );
-//                    memcpy( workspace->U->val + top, workspace->U_EE->val + workspace->U_EE->start[i],
-//                            sizeof(real) * (workspace->U_EE->start[i + 1] - workspace->U_EE->start[i]) );
-//                    top += (workspace->U_EE->start[i + 1] - workspace->U_EE->start[i]);
-//
-//                    workspace->U->j[top] = system->N_cm - 1;
-//                    workspace->U->val[top] = y[i];
-//                    ++top;
-//                }
-//
-//                workspace->U->start[system->N_cm - 1] = top;
-//
-//                workspace->U->j[top] = system->N_cm - 1;
-//                workspace->U->val[top] = -Dot( x, y, system->N );
-//                ++top;
-//
-//                workspace->U->start[system->N_cm] = top;
-//                break;
-//        }
-//    }
-//
-//#if defined(DEBUG)
-//    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
-//            || control->cm_solver_pre_comp_type == ILUT_PC
-//            || control->cm_solver_pre_comp_type == ILUTP_PC
-//            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
-//    {
-//        fprintf( stderr, "[INFO] condest = %f\n", condest(workspace->L) );
-//
-//#if defined(DEBUG_FOCUS)
-//#define SIZE (1000)
-//        char fname[SIZE];
-//        snprintf( fname, SIZE, "%s.L%d.out", control->sim_name, data->step );
-//        Print_Sparse_Matrix2( workspace->L, fname, NULL );
-//        snprintf( fname, SIZE, "%s.U%d.out", control->sim_name, data->step );
-//        Print_Sparse_Matrix2( workspace->U, fname, NULL );
-//
-//        fprintf( stderr, "icholt-" );
-//        snprintf( fname, SIZE, "%s.L%d.out", control->sim_name, data->step );
-//        Print_Sparse_Matrix2( workspace->L, fname, NULL );
-//        Print_Sparse_Matrix( U );
-//#undef SIZE
-//#endif
-//    }
-//#endif
-//}
-
-
-/* Compute preconditioner for EE
- */
 static void Compute_Preconditioner_EE( const reax_system * const system,
-        const control_params * const control,
-        simulation_data * const data, static_storage * const workspace )
+        const control_params * const control, simulation_data * const data,
+        static_storage * const workspace, int realloc )
 {
     real time;
     sparse_matrix *Hptr;
@@ -891,7 +644,8 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
     time = Get_Time( );
     if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
     {
-        setup_graph_coloring( control, workspace, Hptr, &workspace->H_full, &workspace->H_p );
+        setup_graph_coloring( control, workspace, Hptr, &workspace->H_full,
+                &workspace->H_p, realloc );
         Sort_Matrix_Rows( workspace->H_p );
         Hptr = workspace->H_p;
     }
@@ -1002,8 +756,8 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
 /* Compute preconditioner for ACKS2
  */
 static void Compute_Preconditioner_ACKS2( const reax_system * const system,
-        const control_params * const control,
-        simulation_data * const data, static_storage * const workspace )
+        const control_params * const control, simulation_data * const data,
+        static_storage * const workspace, int realloc )
 {
     real time;
     sparse_matrix *Hptr;
@@ -1031,7 +785,8 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
     time = Get_Time( );
     if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
     {
-        setup_graph_coloring( control, workspace, Hptr, &workspace->H_full, &workspace->H_p );
+        setup_graph_coloring( control, workspace, Hptr, &workspace->H_full,
+                &workspace->H_p, realloc );
         Sort_Matrix_Rows( workspace->H_p );
         Hptr = workspace->H_p;
     }
@@ -1141,8 +896,8 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
 
 
 static void Setup_Preconditioner_QEq( const reax_system * const system,
-        const control_params * const control,
-        simulation_data * const data, static_storage * const workspace )
+        const control_params * const control, simulation_data * const data,
+        static_storage * const workspace, int realloc )
 {
     int fillin;
     real time;
@@ -1174,7 +929,13 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
         case JACOBI_PC:
             if ( workspace->Hdia_inv == NULL )
             {
-                workspace->Hdia_inv = scalloc( Hptr->n, sizeof( real ),
+                workspace->Hdia_inv = scalloc( Hptr->n_max, sizeof( real ),
+                        "Setup_Preconditioner_QEq::workspace->Hdia_inv" );
+            }
+            else if ( realloc == TRUE )
+            {
+                workspace->Hdia_inv = srealloc( workspace->Hdia_inv,
+                        sizeof( real ) * Hptr->n_max,
                         "Setup_Preconditioner_QEq::workspace->Hdia_inv" );
             }
             break;
@@ -1189,7 +950,7 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, fillin );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, fillin );
             }
-            else if ( workspace->L->m < fillin )
+            else if ( workspace->L->m < fillin || realloc == TRUE )
             {
                 Deallocate_Matrix( workspace->L );
                 Deallocate_Matrix( workspace->U );
@@ -1210,7 +971,7 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
-            else if ( workspace->L->m < Hptr->m )
+            else if ( workspace->L->m < Hptr->m || realloc == TRUE )
             {
                 Deallocate_Matrix( workspace->L );
                 Deallocate_Matrix( workspace->U );
@@ -1231,7 +992,7 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
-            else if ( workspace->L->m < Hptr->m )
+            else if ( workspace->L->m < Hptr->m || realloc == TRUE )
             {
                 Deallocate_Matrix( workspace->L );
                 Deallocate_Matrix( workspace->U );
@@ -1244,9 +1005,10 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
             break;
 
         case SAI_PC:
-            setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
-                    &workspace->H_spar_patt_full, &workspace->H_app_inv,
-                    control->cm_solver_pre_comp_sai_thres );
+            setup_sparse_approx_inverse( Hptr, &workspace->H_full,
+                    &workspace->H_spar_patt, &workspace->H_spar_patt_full,
+                    &workspace->H_app_inv, control->cm_solver_pre_comp_sai_thres,
+                    realloc );
             break;
 
         default:
@@ -1261,8 +1023,8 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
 /* Setup routines before computing the preconditioner for EE
  */
 static void Setup_Preconditioner_EE( const reax_system * const system,
-        const control_params * const control,
-        simulation_data * const data, static_storage * const workspace )
+        const control_params * const control, simulation_data * const data,
+        static_storage * const workspace, int realloc )
 {
     real time;
     sparse_matrix *Hptr;
@@ -1293,7 +1055,13 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
         case JACOBI_PC:
             if ( workspace->Hdia_inv == NULL )
             {
-                workspace->Hdia_inv = scalloc( Hptr->n, sizeof( real ),
+                workspace->Hdia_inv = scalloc( Hptr->n_max, sizeof( real ),
+                        "Setup_Preconditioner_EE::workspace->Hdiv_inv" );
+            }
+            else if ( realloc == TRUE )
+            {
+                workspace->Hdia_inv = srealloc( workspace->Hdia_inv,
+                        sizeof( real ) * Hptr->n_max,
                         "Setup_Preconditioner_EE::workspace->Hdiv_inv" );
             }
             break;
@@ -1320,7 +1088,7 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
-            else if ( workspace->L->m < Hptr->m )
+            else if ( workspace->L->m < Hptr->m || realloc == TRUE )
             {
                 Deallocate_Matrix( workspace->L );
                 Deallocate_Matrix( workspace->U );
@@ -1347,7 +1115,7 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
-            else if ( workspace->L->m < Hptr->m )
+            else if ( workspace->L->m < Hptr->m || realloc == TRUE )
             {
                 Deallocate_Matrix( workspace->L );
                 Deallocate_Matrix( workspace->U );
@@ -1360,9 +1128,10 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
             break;
 
         case SAI_PC:
-            setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
-                    &workspace->H_spar_patt_full, &workspace->H_app_inv,
-                    control->cm_solver_pre_comp_sai_thres );
+            setup_sparse_approx_inverse( Hptr, &workspace->H_full,
+                    &workspace->H_spar_patt, &workspace->H_spar_patt_full,
+                    &workspace->H_app_inv, control->cm_solver_pre_comp_sai_thres,
+                    realloc );
             break;
 
         default:
@@ -1377,8 +1146,8 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
 /* Setup routines before computing the preconditioner for ACKS2
  */
 static void Setup_Preconditioner_ACKS2( const reax_system * const system,
-        const control_params * const control,
-        simulation_data * const data, static_storage * const workspace )
+        const control_params * const control, simulation_data * const data,
+        static_storage * const workspace, int realloc )
 {
     real time;
     sparse_matrix *Hptr;
@@ -1409,7 +1178,13 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
         case JACOBI_PC:
             if ( workspace->Hdia_inv == NULL )
             {
-                workspace->Hdia_inv = scalloc( Hptr->n, sizeof( real ),
+                workspace->Hdia_inv = scalloc( Hptr->n_max, sizeof( real ),
+                        "Setup_Preconditioner_ACKS2::workspace->Hdiv_inv" );
+            }
+            else if ( realloc == TRUE )
+            {
+                workspace->Hdia_inv = srealloc( workspace->Hdia_inv,
+                        sizeof( real ) * Hptr->n_max,
                         "Setup_Preconditioner_ACKS2::workspace->Hdiv_inv" );
             }
             break;
@@ -1438,7 +1213,7 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
-            else if ( workspace->L->m < Hptr->m )
+            else if ( workspace->L->m < Hptr->m || realloc == TRUE )
             {
                 Deallocate_Matrix( workspace->L );
                 Deallocate_Matrix( workspace->U );
@@ -1467,7 +1242,7 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
-            else if ( workspace->L->m < Hptr->m )
+            else if ( workspace->L->m < Hptr->m || realloc == TRUE )
             {
                 Deallocate_Matrix( workspace->L );
                 Deallocate_Matrix( workspace->U );
@@ -1479,9 +1254,10 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
             break;
 
         case SAI_PC:
-            setup_sparse_approx_inverse( Hptr, &workspace->H_full, &workspace->H_spar_patt,
-                    &workspace->H_spar_patt_full, &workspace->H_app_inv,
-                    control->cm_solver_pre_comp_sai_thres );
+            setup_sparse_approx_inverse( Hptr, &workspace->H_full,
+                    &workspace->H_spar_patt, &workspace->H_spar_patt_full,
+                    &workspace->H_app_inv, control->cm_solver_pre_comp_sai_thres,
+                    realloc );
             break;
 
         default:
@@ -1572,7 +1348,7 @@ static void Calculate_Charges_ACKS2( const reax_system * const system,
  */
 static void QEq( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        const output_controls * const out_control )
+        const output_controls * const out_control, int realloc )
 {
     int iters, refactor;
 
@@ -1580,9 +1356,9 @@ static void QEq( reax_system * const system, control_params * const control,
 
     if ( refactor == TRUE )    
     {
-        Setup_Preconditioner_QEq( system, control, data, workspace );
+        Setup_Preconditioner_QEq( system, control, data, workspace, realloc );
 
-        Compute_Preconditioner_QEq( system, control, data, workspace );
+        Compute_Preconditioner_QEq( system, control, data, workspace, realloc );
     }
 
     switch ( control->cm_init_guess_type )
@@ -1684,7 +1460,7 @@ static void QEq( reax_system * const system, control_params * const control,
  */
 static void EE( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        const output_controls * const out_control )
+        const output_controls * const out_control, int realloc )
 {
     int iters, refactor;
 
@@ -1692,9 +1468,9 @@ static void EE( reax_system * const system, control_params * const control,
 
     if ( refactor == TRUE )
     {
-        Setup_Preconditioner_EE( system, control, data, workspace );
+        Setup_Preconditioner_EE( system, control, data, workspace, realloc );
 
-        Compute_Preconditioner_EE( system, control, data, workspace );
+        Compute_Preconditioner_EE( system, control, data, workspace, realloc );
     }
 
     switch ( control->cm_init_guess_type )
@@ -1778,7 +1554,7 @@ static void EE( reax_system * const system, control_params * const control,
  */
 static void ACKS2( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        const output_controls * const out_control )
+        const output_controls * const out_control, int realloc )
 {
     int iters, refactor;
 
@@ -1786,9 +1562,9 @@ static void ACKS2( reax_system * const system, control_params * const control,
 
     if ( refactor == TRUE )
     {
-        Setup_Preconditioner_ACKS2( system, control, data, workspace );
+        Setup_Preconditioner_ACKS2( system, control, data, workspace, realloc );
 
-        Compute_Preconditioner_ACKS2( system, control, data, workspace );
+        Compute_Preconditioner_ACKS2( system, control, data, workspace, realloc );
     }
 
 //   Print_Linear_System( system, control, workspace, data->step );
@@ -1879,7 +1655,7 @@ static void ACKS2( reax_system * const system, control_params * const control,
 
 void Compute_Charges( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        const output_controls * const out_control )
+        const output_controls * const out_control, int realloc )
 {
 #if defined(DEBUG_FOCUS)
 #define SIZE (200)
@@ -1908,15 +1684,15 @@ void Compute_Charges( reax_system * const system, control_params * const control
     switch ( control->charge_method )
     {
     case QEQ_CM:
-        QEq( system, control, data, workspace, out_control );
+        QEq( system, control, data, workspace, out_control, realloc );
         break;
 
     case EE_CM:
-        EE( system, control, data, workspace, out_control );
+        EE( system, control, data, workspace, out_control, realloc );
         break;
 
     case ACKS2_CM:
-        ACKS2( system, control, data, workspace, out_control );
+        ACKS2( system, control, data, workspace, out_control, realloc );
         break;
 
     default:

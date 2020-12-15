@@ -32,6 +32,14 @@ void Make_List( int n, int n_max, int total_intrs, int type, reax_list* l )
     assert( total_intrs > 0 );
     assert( l != NULL );
 
+    if ( l->allocated == TRUE )
+    {
+        fprintf( stderr, "[WARNING] attempted to allocate list which was already allocated."
+                " Returning without allocation...\n" );
+        return;
+    }
+
+    l->allocated = TRUE;
     l->n = n;
     l->n_max = n_max;
     l->total_intrs = total_intrs;
@@ -91,6 +99,20 @@ void Make_List( int n, int n_max, int total_intrs, int type, reax_list* l )
 
 void Delete_List( int type, reax_list* l )
 {
+    assert( l != NULL );
+
+    if ( l->allocated == FALSE )
+    {
+        fprintf( stderr, "[WARNING] attempted to free list which was not allocated."
+                " Returning without deallocation...\n" );
+        return;
+    }
+
+    l->allocated = FALSE;
+    l->n = 0;
+    l->n_max = 0;
+    l->total_intrs = 0;
+
     sfree( l->index, "Delete_List::l->index" );
     sfree( l->end_index, "Delete_List::l->end_index" );
 

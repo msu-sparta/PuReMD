@@ -45,7 +45,10 @@ int cleanup( const void * const );
 int reset( const void * const, const char * const,
         const char * const, const char * const );
 
-reax_atom* get_atoms( const void * const );
+int get_atom_positions( const void * const, double * const,
+        double * const, double * const );
+
+int get_atom_charges( const void * const, double * const );
 
 int set_output_enabled( const void * const, const int );
 

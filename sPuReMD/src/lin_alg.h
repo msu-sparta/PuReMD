@@ -33,7 +33,7 @@ typedef enum
 void Sort_Matrix_Rows( sparse_matrix * const );
 
 void setup_sparse_approx_inverse( const sparse_matrix * const, sparse_matrix **, 
-        sparse_matrix **, sparse_matrix **, sparse_matrix **, const real );
+        sparse_matrix **, sparse_matrix **, sparse_matrix **, const real, int );
 
 int Estimate_LU_Fill( const sparse_matrix * const, const real * const );
 
@@ -84,7 +84,7 @@ void jacobi_iter( const static_storage * const,
 
 void setup_graph_coloring( const control_params * const,
         const static_storage * const, const sparse_matrix * const,
-        sparse_matrix **, sparse_matrix ** );
+        sparse_matrix **, sparse_matrix **, int );
 
 int GMRES( const static_storage * const, const control_params * const,
         simulation_data * const, const sparse_matrix * const,

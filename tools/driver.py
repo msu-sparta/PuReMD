@@ -193,6 +193,7 @@ class ReaxTiming(Structure):
 
 class SimulationData(Structure):
     _fields_ = [
+            ("sim_id", c_int),
             ("step", c_int),
             ("prev_step", c_int),
             ("time", c_double),
@@ -400,6 +401,10 @@ if __name__ == '__main__':
     cleanup.argtypes = [c_void_p]
     cleanup.restype = c_int
 
+    reset = lib.reset
+    reset.argtypes = [c_void_p, c_char_p, c_char_p, c_char_p]
+    reset.restype = c_int
+
     get_atoms = lib.get_atoms
     get_atoms.argtypes = [c_void_p]
     get_atoms.restype = POINTER(ReaxAtom)
@@ -435,14 +440,14 @@ if __name__ == '__main__':
 
         with conn:
             conn.execute("INSERT INTO system_properties VALUES (?,?,?,?,?,?,?,?)",
-                    (0, data[0].step, data[0].E_Tot, data[0].E_Pot, data[0].E_Kin,
+                    (data[0].sim_id, data[0].step, data[0].E_Tot, data[0].E_Pot, data[0].E_Kin,
                         data[0].therm.T, 0.0, data[0].iso_bar.P))
             # MISSING: ID, system->box.volume
 
         if record_potential:
             with conn:
                 conn.execute("INSERT INTO potential VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                        (0, data[0].step, data[0].E_BE, data[0].E_Ov + data[0].E_Un,
+                        (data[0].sim_id, data[0].step, data[0].E_BE, data[0].E_Ov + data[0].E_Un,
                             data[0].E_Lp, data[0].E_Ang + data[0].E_Pen, data[0].E_Coa,
                             data[0].E_HB, data[0].E_Tor, data[0].E_Con, data[0].E_vdW,
                             data[0].E_Ele, data[0].E_Pol))
@@ -451,13 +456,13 @@ if __name__ == '__main__':
             with conn:
                 for i in range(6540):
                     conn.execute("INSERT INTO trajectory VALUES (?,?,?,?,?,?,?)",
-                            (0, data[0].step, i, atoms[i].x[0], atoms[i].x[1],
+                            (data[0].sim_id, data[0].step, i, atoms[i].x[0], atoms[i].x[1],
                                 atoms[i].x[2], atoms[i].q))
 
         if record_performance:
             with conn:
                 conn.execute("INSERT INTO performance VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                        (0, data[0].step, data[0].timing.total, data[0].timing.nbrs, data[0].timing.init_forces,
+                        (data[0].sim_id, data[0].step, data[0].timing.total, data[0].timing.nbrs, data[0].timing.init_forces,
                             data[0].timing.bonded, data[0].timing.nonb, data[0].timing.cm,
                             data[0].timing.cm_sort_mat_rows, data[0].timing.cm_solver_iters,
                             data[0].timing.cm_solver_pre_comp,
@@ -474,6 +479,22 @@ if __name__ == '__main__':
 
     ret = set_output_enabled(handle, c_int(0))
 
+    print("{0:24}|{1:24}|{2:24}".format("Total Energy", "Kinetic Energy", "Potential Energy"))
+    ret = simulate(handle)
+
+    atoms = get_atoms(handle)
+
+    print()
+    print("{0:9}|{1:24}|{2:24}|{3:24}|{4:24}".format("Atom Num", "x-Position", "y-Position", "z-Position", "Charge"))
+    for i in range(10):
+        print("{0:9d} {1:24.15f} {2:24.15f} {3:24.15f} {4:24.15f}".format(
+            i + 1, atoms[i].x[0], atoms[i].x[1], atoms[i].x[2], atoms[i].q))
+
+    ret = reset(handle, b"data/benchmarks/silica/silica_6000.pdb",
+            b"data/benchmarks/silica/ffield-bio",
+            b"environ/control_silica")
+
+    print()
     print("{0:24}|{1:24}|{2:24}".format("Total Energy", "Kinetic Energy", "Potential Energy"))
     ret = simulate(handle)
 
