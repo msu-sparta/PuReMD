@@ -99,37 +99,6 @@ class HBondData(Structure):
             ]
 
 
-class ReaxListSelector(Union):
-    _fields_ = [
-            ("v", c_void_p),
-            ("three_body_interaction_data", POINTER(ThreeBodyData)),
-            ("bond_data", POINTER(BondData)),
-            ("dbond_data", POINTER(DBondData)),
-            ("dDelta_data", POINTER(DDeltaData)),
-            ("far_neighbor_data", POINTER(FarNbrData)),
-            ("near_neighbor_data", POINTER(NearNbrData)),
-            ("hbond_data", POINTER(HBondData)),
-            ]
-
-
-class ReaxList(Structure):
-    _fields_ = [
-            ("n", c_int),
-            ("total_intrs", c_int),
-            ("index", POINTER(c_int)),
-            ("end_index", POINTER(c_int)),
-            ("max_intrs", POINTER(c_int)),
-            ("v", c_void_p),
-            ("three_body_interaction_data", POINTER(ThreeBodyData)),
-            ("bond_data", POINTER(BondData)),
-            ("dbond_data", POINTER(DBondData)),
-            ("dDelta_data", POINTER(DDeltaData)),
-            ("far_neighbor_data", POINTER(FarNbrData)),
-            ("near_neighbor_data", POINTER(NearNbrData)),
-            ("hbond_data", POINTER(HBondData)),
-            ]
-
-
 class Thermostat(Structure):
     _fields_ = [
             ("T", c_double),
@@ -405,12 +374,17 @@ if __name__ == '__main__':
     reset.argtypes = [c_void_p, c_char_p, c_char_p, c_char_p]
     reset.restype = c_int
 
-    get_atoms = lib.get_atoms
-    get_atoms.argtypes = [c_void_p]
-    get_atoms.restype = POINTER(ReaxAtom)
+    get_atom_positions = lib.get_atom_positions
+    get_atom_positions.argtypes = [c_void_p, POINTER(c_double),
+            POINTER(c_double), POINTER(c_double)]
+    get_atom_positions.restype = c_int
 
-    CALLBACKFUNC = CFUNCTYPE(None, POINTER(ReaxAtom),
-            POINTER(SimulationData), POINTER(POINTER(ReaxList)))
+    get_atom_charges = lib.get_atom_charges
+    get_atom_charges.argtypes = [c_void_p, POINTER(c_double)]
+    get_atom_charges.restype = c_int
+
+    CALLBACKFUNC = CFUNCTYPE(None, c_int, POINTER(ReaxAtom),
+            POINTER(SimulationData))
 
     setup_callback = lib.setup_callback
     setup_callback.argtypes = [c_void_p, CALLBACKFUNC]
@@ -430,7 +404,7 @@ if __name__ == '__main__':
     record_trajectory = False
     record_performance = True
 
-    def get_simulation_step_results(atoms, data, lists):
+    def get_simulation_step_results(num_atoms, atoms, data):
         print("{0:24.15f} {1:24.15f} {2:24.15f}".format(
             data[0].E_Tot, data[0].E_Kin, data[0].E_Pot))
 
@@ -454,7 +428,7 @@ if __name__ == '__main__':
 
         if record_trajectory:
             with conn:
-                for i in range(6540):
+                for i in range(num_atoms):
                     conn.execute("INSERT INTO trajectory VALUES (?,?,?,?,?,?,?)",
                             (data[0].sim_id, data[0].step, i, atoms[i].x[0], atoms[i].x[1],
                                 atoms[i].x[2], atoms[i].q))
@@ -482,13 +456,19 @@ if __name__ == '__main__':
     print("{0:24}|{1:24}|{2:24}".format("Total Energy", "Kinetic Energy", "Potential Energy"))
     ret = simulate(handle)
 
-    atoms = get_atoms(handle)
+    x = (c_double * 6540)()
+    y = (c_double * 6540)()
+    z = (c_double * 6540)()
+    atoms = get_atom_positions(handle, x, y, z)
+
+    q = (c_double * 6540)()
+    atoms = get_atom_charges(handle, q)
 
     print()
     print("{0:9}|{1:24}|{2:24}|{3:24}|{4:24}".format("Atom Num", "x-Position", "y-Position", "z-Position", "Charge"))
     for i in range(10):
         print("{0:9d} {1:24.15f} {2:24.15f} {3:24.15f} {4:24.15f}".format(
-            i + 1, atoms[i].x[0], atoms[i].x[1], atoms[i].x[2], atoms[i].q))
+            i + 1, x[i], y[i], z[i], q[i]))
 
     ret = reset(handle, b"data/benchmarks/silica/silica_6000.pdb",
             b"data/benchmarks/silica/ffield-bio",
@@ -498,13 +478,19 @@ if __name__ == '__main__':
     print("{0:24}|{1:24}|{2:24}".format("Total Energy", "Kinetic Energy", "Potential Energy"))
     ret = simulate(handle)
 
-    atoms = get_atoms(handle)
+    x = (c_double * 6000)()
+    y = (c_double * 6000)()
+    z = (c_double * 6000)()
+    atoms = get_atom_positions(handle, x, y, z)
+
+    q = (c_double * 6000)()
+    atoms = get_atom_charges(handle, q)
 
     print()
     print("{0:9}|{1:24}|{2:24}|{3:24}|{4:24}".format("Atom Num", "x-Position", "y-Position", "z-Position", "Charge"))
     for i in range(10):
         print("{0:9d} {1:24.15f} {2:24.15f} {3:24.15f} {4:24.15f}".format(
-            i + 1, atoms[i].x[0], atoms[i].x[1], atoms[i].x[2], atoms[i].q))
+            i + 1, x[i], y[i], z[i], q[i]))
 
     conn.close()
     cleanup(handle)
