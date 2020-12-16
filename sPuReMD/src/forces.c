@@ -724,8 +724,8 @@ static void Init_Forces( reax_system *system, control_params *control,
     far_nbrs = lists[FAR_NBRS];
     bonds = lists[BONDS];
     hbonds = lists[HBONDS];
-    H = workspace->H;
-    H_sp = workspace->H_sp;
+    H = &workspace->H;
+    H_sp = &workspace->H_sp;
     Htop = 0;
     H_sp_top = 0;
     num_bonds = 0;
@@ -1075,8 +1075,8 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
     far_nbrs = lists[FAR_NBRS];
     bonds = lists[BONDS];
     hbonds = lists[HBONDS];
-    H = workspace->H;
-    H_sp = workspace->H_sp;
+    H = &workspace->H;
+    H_sp = &workspace->H_sp;
     Htop = 0;
     H_sp_top = 0;
     num_bonds = 0;

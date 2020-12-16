@@ -499,11 +499,11 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 
     if ( control->cm_domain_sparsify_enabled == TRUE )
     {
-        Hptr = workspace->H_sp;
+        Hptr = &workspace->H_sp;
     }
     else
     {
-        Hptr = workspace->H;
+        Hptr = &workspace->H;
     }
 
 #if defined(TEST_MAT)
@@ -515,8 +515,8 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
     {
         setup_graph_coloring( control, workspace, Hptr, &workspace->H_full,
                 &workspace->H_p, realloc );
-        Sort_Matrix_Rows( workspace->H_p );
-        Hptr = workspace->H_p;
+        Sort_Matrix_Rows( &workspace->H_p );
+        Hptr = &workspace->H_p;
     }
     data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
 
@@ -531,25 +531,25 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 
         case ICHOLT_PC:
             data->timing.cm_solver_pre_comp +=
-                ICHOLT( Hptr, workspace->droptol, workspace->L, workspace->U );
+                ICHOLT( Hptr, workspace->droptol, &workspace->L, &workspace->U );
             break;
 
         case ILUT_PC:
             if ( control->cm_solver_pre_comp_droptol > 0.0 )
             {
                 data->timing.cm_solver_pre_comp +=
-                    ILUT( Hptr, workspace->droptol, workspace->L, workspace->U );
+                    ILUT( Hptr, workspace->droptol, &workspace->L, &workspace->U );
             }
             else
             {
                 data->timing.cm_solver_pre_comp +=
-                    ILU( Hptr, workspace->L, workspace->U );
+                    ILU( Hptr, &workspace->L, &workspace->U );
             }
             break;
 
         case ILUTP_PC:
             data->timing.cm_solver_pre_comp +=
-                ILUTP( Hptr, workspace->droptol, workspace->L, workspace->U );
+                ILUTP( Hptr, workspace->droptol, &workspace->L, &workspace->U );
             break;
 
         case FG_ILUT_PC:
@@ -557,13 +557,13 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
             {
                 data->timing.cm_solver_pre_comp +=
                     FG_ICHOLT( Hptr, workspace->droptol, control->cm_solver_pre_comp_sweeps,
-                            workspace->L, workspace->U );
+                            &workspace->L, &workspace->U );
             }
             else
             {
                 data->timing.cm_solver_pre_comp +=
                     FG_ILUT( Hptr, workspace->droptol, control->cm_solver_pre_comp_sweeps,
-                            workspace->L, workspace->U );
+                            &workspace->L, &workspace->U );
             }
             break;
 
@@ -597,7 +597,7 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
             || control->cm_solver_pre_comp_type == ILUTP_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
-        fprintf( stderr, "[INFO] condest = %f\n", condest(workspace->L, workspace->U) );
+        fprintf( stderr, "[INFO] condest = %f\n", condest(&workspace->L, &workspace->U) );
 
 #if defined(DEBUG_FOCUS)
 #define SIZE (1000)
@@ -624,11 +624,11 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
 
     if ( control->cm_domain_sparsify_enabled == TRUE )
     {
-        Hptr = workspace->H_sp;
+        Hptr = &workspace->H_sp;
     }
     else
     {
-        Hptr = workspace->H;
+        Hptr = &workspace->H;
     }
 
 #if defined(TEST_MAT)
@@ -646,8 +646,8 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
     {
         setup_graph_coloring( control, workspace, Hptr, &workspace->H_full,
                 &workspace->H_p, realloc );
-        Sort_Matrix_Rows( workspace->H_p );
-        Hptr = workspace->H_p;
+        Sort_Matrix_Rows( &workspace->H_p );
+        Hptr = &workspace->H_p;
     }
     data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
     
@@ -669,24 +669,24 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
             if ( control->cm_solver_pre_comp_droptol > 0.0 )
             {
                 data->timing.cm_solver_pre_comp +=
-                    ILUT( Hptr, workspace->droptol, workspace->L, workspace->U );
+                    ILUT( Hptr, workspace->droptol, &workspace->L, &workspace->U );
             }
             else
             {
                 data->timing.cm_solver_pre_comp +=
-                    ILU( Hptr, workspace->L, workspace->U );
+                    ILU( Hptr, &workspace->L, &workspace->U );
             }
             break;
 
         case ILUTP_PC:
             data->timing.cm_solver_pre_comp +=
-                ILUTP( Hptr, workspace->droptol, workspace->L, workspace->U );
+                ILUTP( Hptr, workspace->droptol, &workspace->L, &workspace->U );
             break;
 
         case FG_ILUT_PC:
             data->timing.cm_solver_pre_comp +=
                 FG_ILUT( Hptr, workspace->droptol, control->cm_solver_pre_comp_sweeps,
-                        workspace->L, workspace->U );
+                        &workspace->L, &workspace->U );
             break;
 
         case SAI_PC:
@@ -717,11 +717,11 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
     {
         if ( control->cm_domain_sparsify_enabled == TRUE )
         {
-            Hptr = workspace->H_sp;
+            Hptr = &workspace->H_sp;
         }
         else
         {
-            Hptr = workspace->H;
+            Hptr = &workspace->H;
         }
     }
 
@@ -737,7 +737,7 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
             || control->cm_solver_pre_comp_type == ILUTP_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
-        fprintf( stderr, "[INFO] condest = %f\n", condest(workspace->L, workspace->U) );
+        fprintf( stderr, "[INFO] condest = %f\n", condest(&workspace->L, &workspace->U) );
 
 #if defined(DEBUG_FOCUS)
 #define SIZE (1000)
@@ -764,11 +764,11 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
 
     if ( control->cm_domain_sparsify_enabled == TRUE )
     {
-        Hptr = workspace->H_sp;
+        Hptr = &workspace->H_sp;
     }
     else
     {
-        Hptr = workspace->H;
+        Hptr = &workspace->H;
     }
 
 #if defined(TEST_MAT)
@@ -787,8 +787,8 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
     {
         setup_graph_coloring( control, workspace, Hptr, &workspace->H_full,
                 &workspace->H_p, realloc );
-        Sort_Matrix_Rows( workspace->H_p );
-        Hptr = workspace->H_p;
+        Sort_Matrix_Rows( &workspace->H_p );
+        Hptr = &workspace->H_p;
     }
     data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
     
@@ -810,24 +810,24 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
             if ( control->cm_solver_pre_comp_droptol > 0.0 )
             {
                 data->timing.cm_solver_pre_comp +=
-                    ILUT( Hptr, workspace->droptol, workspace->L, workspace->U );
+                    ILUT( Hptr, workspace->droptol, &workspace->L, &workspace->U );
             }
             else
             {
                 data->timing.cm_solver_pre_comp +=
-                    ILU( Hptr, workspace->L, workspace->U );
+                    ILU( Hptr, &workspace->L, &workspace->U );
             }
             break;
 
         case ILUTP_PC:
             data->timing.cm_solver_pre_comp +=
-                ILUTP( Hptr, workspace->droptol, workspace->L, workspace->U );
+                ILUTP( Hptr, workspace->droptol, &workspace->L, &workspace->U );
             break;
 
         case FG_ILUT_PC:
             data->timing.cm_solver_pre_comp +=
                 FG_ILUT( Hptr, workspace->droptol, control->cm_solver_pre_comp_sweeps,
-                        workspace->L, workspace->U );
+                        &workspace->L, &workspace->U );
             break;
 
         case SAI_PC:
@@ -858,11 +858,11 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
     {
         if ( control->cm_domain_sparsify_enabled == TRUE )
         {
-            Hptr = workspace->H_sp;
+            Hptr = &workspace->H_sp;
         }
         else
         {
-            Hptr = workspace->H;
+            Hptr = &workspace->H;
         }
     }
 
@@ -879,7 +879,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
             || control->cm_solver_pre_comp_type == ILUTP_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
-        fprintf( stderr, "[INFO] condest = %f\n", condest(workspace->L, workspace->U) );
+        fprintf( stderr, "[INFO] condest = %f\n", condest(&workspace->L, &workspace->U) );
 
 #if defined(DEBUG_FOCUS)
 #define SIZE (1000)
@@ -905,19 +905,19 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
 
     if ( control->cm_domain_sparsify_enabled == TRUE )
     {
-        Hptr = workspace->H_sp;
+        Hptr = &workspace->H_sp;
     }
     else
     {
-        Hptr = workspace->H;
+        Hptr = &workspace->H;
     }
 
     /* sort H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
     time = Get_Time( );
-    Sort_Matrix_Rows( workspace->H );
+    Sort_Matrix_Rows( &workspace->H );
     if ( control->cm_domain_sparsify_enabled == TRUE )
     {
-        Sort_Matrix_Rows( workspace->H_sp );
+        Sort_Matrix_Rows( &workspace->H_sp );
     }
     data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
 
@@ -945,15 +945,15 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
 
             fillin = Estimate_LU_Fill( Hptr, workspace->droptol );
 
-            if ( workspace->L == NULL )
+            if ( workspace->L.allocated == FALSE )
             {
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, fillin );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, fillin );
             }
-            else if ( workspace->L->m < fillin || realloc == TRUE )
+            else if ( workspace->L.m < fillin || realloc == TRUE )
             {
-                Deallocate_Matrix( workspace->L );
-                Deallocate_Matrix( workspace->U );
+                Deallocate_Matrix( &workspace->L );
+                Deallocate_Matrix( &workspace->U );
 
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, fillin );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, fillin );
@@ -966,15 +966,15 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
                 Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
             }
 
-            if ( workspace->L == NULL )
+            if ( workspace->L.allocated == FALSE )
             {
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
-            else if ( workspace->L->m < Hptr->m || realloc == TRUE )
+            else if ( workspace->L.m < Hptr->m || realloc == TRUE )
             {
-                Deallocate_Matrix( workspace->L );
-                Deallocate_Matrix( workspace->U );
+                Deallocate_Matrix( &workspace->L );
+                Deallocate_Matrix( &workspace->U );
 
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
@@ -985,17 +985,17 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
         case FG_ILUT_PC:
             Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
 
-            if ( workspace->L == NULL )
+            if ( workspace->L.allocated == FALSE )
             {
                 /* safest storage estimate is ILU(0) (same as
                  * lower triangular portion of H), could improve later */
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
-            else if ( workspace->L->m < Hptr->m || realloc == TRUE )
+            else if ( workspace->L.m < Hptr->m || realloc == TRUE )
             {
-                Deallocate_Matrix( workspace->L );
-                Deallocate_Matrix( workspace->U );
+                Deallocate_Matrix( &workspace->L );
+                Deallocate_Matrix( &workspace->U );
 
                 /* safest storage estimate is ILU(0) (same as
                  * lower triangular portion of H), could improve later */
@@ -1031,19 +1031,19 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
 
     if ( control->cm_domain_sparsify_enabled == TRUE )
     {
-        Hptr = workspace->H_sp;
+        Hptr = &workspace->H_sp;
     }
     else
     {
-        Hptr = workspace->H;
+        Hptr = &workspace->H;
     }
 
     /* sorted H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
     time = Get_Time( );
-    Sort_Matrix_Rows( workspace->H );
+    Sort_Matrix_Rows( &workspace->H );
     if ( control->cm_domain_sparsify_enabled == TRUE )
     {
-        Sort_Matrix_Rows( workspace->H_sp );
+        Sort_Matrix_Rows( &workspace->H_sp );
     }
     data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
 
@@ -1083,15 +1083,15 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
                 Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
             }
 
-            if ( workspace->L == NULL )
+            if ( workspace->L.allocated == FALSE )
             {
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
-            else if ( workspace->L->m < Hptr->m || realloc == TRUE )
+            else if ( workspace->L.m < Hptr->m || realloc == TRUE )
             {
-                Deallocate_Matrix( workspace->L );
-                Deallocate_Matrix( workspace->U );
+                Deallocate_Matrix( &workspace->L );
+                Deallocate_Matrix( &workspace->U );
 
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
@@ -1108,17 +1108,17 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
             /* put zeros back */
             Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
 
-            if ( workspace->L == NULL )
+            if ( workspace->L.allocated == FALSE )
             {
                 /* safest storage estimate is ILU(0) (same as
                  * lower triangular portion of H), could improve later */
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
-            else if ( workspace->L->m < Hptr->m || realloc == TRUE )
+            else if ( workspace->L.m < Hptr->m || realloc == TRUE )
             {
-                Deallocate_Matrix( workspace->L );
-                Deallocate_Matrix( workspace->U );
+                Deallocate_Matrix( &workspace->L );
+                Deallocate_Matrix( &workspace->U );
 
                 /* safest storage estimate is ILU(0) (same as
                  * lower triangular portion of H), could improve later */
@@ -1154,19 +1154,19 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
 
     if ( control->cm_domain_sparsify_enabled == TRUE )
     {
-        Hptr = workspace->H_sp;
+        Hptr = &workspace->H_sp;
     }
     else
     {
-        Hptr = workspace->H;
+        Hptr = &workspace->H;
     }
 
     /* sort H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
     time = Get_Time( );
-    Sort_Matrix_Rows( workspace->H );
+    Sort_Matrix_Rows( &workspace->H );
     if ( control->cm_domain_sparsify_enabled == TRUE )
     {
-        Sort_Matrix_Rows( workspace->H_sp );
+        Sort_Matrix_Rows( &workspace->H_sp );
     }
     data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
 
@@ -1208,15 +1208,15 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
                 Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
             }
 
-            if ( workspace->L == NULL )
+            if ( workspace->L.allocated == FALSE )
             {
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
-            else if ( workspace->L->m < Hptr->m || realloc == TRUE )
+            else if ( workspace->L.m < Hptr->m || realloc == TRUE )
             {
-                Deallocate_Matrix( workspace->L );
-                Deallocate_Matrix( workspace->U );
+                Deallocate_Matrix( &workspace->L );
+                Deallocate_Matrix( &workspace->U );
 
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
@@ -1235,17 +1235,17 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
             Hptr->val[Hptr->start[system->N_cm - 1] - 1] = 0.0;
             Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
 
-            if ( workspace->L == NULL )
+            if ( workspace->L.allocated == FALSE )
             {
                 /* safest storage estimate is ILU(0) (same as
                  * lower triangular portion of H), could improve later */
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
-            else if ( workspace->L->m < Hptr->m || realloc == TRUE )
+            else if ( workspace->L.m < Hptr->m || realloc == TRUE )
             {
-                Deallocate_Matrix( workspace->L );
-                Deallocate_Matrix( workspace->U );
+                Deallocate_Matrix( &workspace->L );
+                Deallocate_Matrix( &workspace->U );
 
                 /* factors have sparsity pattern as H */
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
@@ -1393,37 +1393,37 @@ static void QEq( reax_system * const system, control_params * const control,
     switch ( control->cm_solver_type )
     {
     case GMRES_S:
-        iters = GMRES( workspace, control, data, workspace->H,
+        iters = GMRES( workspace, control, data, &workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0], refactor );
-        iters += GMRES( workspace, control, data, workspace->H,
+        iters += GMRES( workspace, control, data, &workspace->H,
                 workspace->b_t, control->cm_solver_q_err, workspace->t[0], FALSE );
         break;
 
     case GMRES_H_S:
-        iters = GMRES_HouseHolder( workspace, control, data, workspace->H,
+        iters = GMRES_HouseHolder( workspace, control, data, &workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0], refactor );
-        iters += GMRES_HouseHolder( workspace, control, data, workspace->H,
+        iters += GMRES_HouseHolder( workspace, control, data, &workspace->H,
                 workspace->b_t, control->cm_solver_q_err, workspace->t[0], 0 );
         break;
 
     case CG_S:
-        iters = CG( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = CG( workspace, control, data, &workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], refactor ) + 1;
-        iters += CG( workspace, control, data, workspace->H, workspace->b_t, control->cm_solver_q_err,
+        iters += CG( workspace, control, data, &workspace->H, workspace->b_t, control->cm_solver_q_err,
                 workspace->t[0], FALSE ) + 1;
         break;
 
     case SDM_S:
-        iters = SDM( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = SDM( workspace, control, data, &workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], refactor ) + 1;
-        iters += SDM( workspace, control, data, workspace->H, workspace->b_t, control->cm_solver_q_err,
+        iters += SDM( workspace, control, data, &workspace->H, workspace->b_t, control->cm_solver_q_err,
                       workspace->t[0], FALSE ) + 1;
         break;
 
     case BiCGStab_S:
-        iters = BiCGStab( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = BiCGStab( workspace, control, data, &workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], refactor ) + 1;
-        iters += BiCGStab( workspace, control, data, workspace->H, workspace->b_t, control->cm_solver_q_err,
+        iters += BiCGStab( workspace, control, data, &workspace->H, workspace->b_t, control->cm_solver_q_err,
                 workspace->t[0], FALSE ) + 1;
         break;
 
@@ -1505,27 +1505,27 @@ static void EE( reax_system * const system, control_params * const control,
     switch ( control->cm_solver_type )
     {
     case GMRES_S:
-        iters = GMRES( workspace, control, data, workspace->H,
+        iters = GMRES( workspace, control, data, &workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0], refactor );
         break;
 
     case GMRES_H_S:
-        iters = GMRES_HouseHolder( workspace, control, data,workspace->H,
+        iters = GMRES_HouseHolder( workspace, control, data, &workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0], refactor );
         break;
 
     case CG_S:
-        iters = CG( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = CG( workspace, control, data, &workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], refactor ) + 1;
         break;
 
     case SDM_S:
-        iters = SDM( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = SDM( workspace, control, data, &workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], refactor ) + 1;
         break;
 
     case BiCGStab_S:
-        iters = BiCGStab( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = BiCGStab( workspace, control, data, &workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], refactor ) + 1;
         break;
 
@@ -1616,27 +1616,27 @@ static void ACKS2( reax_system * const system, control_params * const control,
     switch ( control->cm_solver_type )
     {
     case GMRES_S:
-        iters = GMRES( workspace, control, data, workspace->H,
+        iters = GMRES( workspace, control, data, &workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0], refactor );
         break;
 
     case GMRES_H_S:
-        iters = GMRES_HouseHolder( workspace, control, data,workspace->H,
+        iters = GMRES_HouseHolder( workspace, control, data, &workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0], refactor );
         break;
 
     case CG_S:
-        iters = CG( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = CG( workspace, control, data, &workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], refactor ) + 1;
         break;
 
     case SDM_S:
-        iters = SDM( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = SDM( workspace, control, data, &workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], refactor ) + 1;
         break;
 
     case BiCGStab_S:
-        iters = BiCGStab( workspace, control, data, workspace->H, workspace->b_s, control->cm_solver_q_err,
+        iters = BiCGStab( workspace, control, data, &workspace->H, workspace->b_s, control->cm_solver_q_err,
                 workspace->s[0], refactor ) + 1;
         break;
 

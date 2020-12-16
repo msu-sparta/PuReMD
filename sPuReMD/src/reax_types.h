@@ -812,6 +812,8 @@ struct simulation_box
 
 struct grid
 {
+    /* 0 if struct members are NOT allocated, 1 otherwise */
+    int allocated;
     /* max. num. of atoms that can be binned within a grid cell;
      * used for memory allocation purposes */
     int max_atoms;
@@ -1387,6 +1389,8 @@ struct bond_data
  */
 struct sparse_matrix
 {
+    /* 0 if struct members are NOT allocated, 1 otherwise */
+    int allocated;
     /* active number of rows for this simulation */
     unsigned int n;
     /* max. number of rows across all simulations */
@@ -1475,25 +1479,25 @@ struct static_storage
 
     /* charge method storage */
     /* charge matrix */
-    sparse_matrix *H;
+    sparse_matrix H;
     /* charge matrix (full) */
-    sparse_matrix *H_full;
+    sparse_matrix H_full;
     /* sparser charge matrix */
-    sparse_matrix *H_sp;
+    sparse_matrix H_sp;
     /* permuted charge matrix (graph coloring) */
-    sparse_matrix *H_p;
+    sparse_matrix H_p;
     /* sparsity pattern of charge matrix, used in
      * computing a sparse approximate inverse preconditioner */
-    sparse_matrix *H_spar_patt;
+    sparse_matrix H_spar_patt;
     /* sparsity pattern of charge matrix (full), used in
      * computing a sparse approximate inverse preconditioner */
-    sparse_matrix *H_spar_patt_full;
+    sparse_matrix H_spar_patt_full;
     /* sparse approximate inverse preconditioner */
-    sparse_matrix *H_app_inv;
+    sparse_matrix H_app_inv;
     /* incomplete Cholesky or LU preconditioner */
-    sparse_matrix *L;
+    sparse_matrix L;
     /* incomplete Cholesky or LU preconditioner */
-    sparse_matrix *U;
+    sparse_matrix U;
     /* Jacobi preconditioner */
     real *Hdia_inv;
     /* row drop tolerences for incomplete Cholesky preconditioner */

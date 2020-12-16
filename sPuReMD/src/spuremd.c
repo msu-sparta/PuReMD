@@ -167,12 +167,26 @@ void* setup( const char * const geo_file, const char * const ffield_file,
     /* second-level allocations */
     spmd_handle->system = smalloc( sizeof(reax_system),
            "Setup::spmd_handle->system" );
+    spmd_handle->system->g.allocated = FALSE;
+
     spmd_handle->control = smalloc( sizeof(control_params),
            "Setup::spmd_handle->control" );
+
     spmd_handle->data = smalloc( sizeof(simulation_data),
            "Setup::spmd_handle->data" );
+
     spmd_handle->workspace = smalloc( sizeof(static_storage),
            "Setup::spmd_handle->workspace" );
+    spmd_handle->workspace->H.allocated = FALSE;
+    spmd_handle->workspace->H_full.allocated = FALSE;
+    spmd_handle->workspace->H_sp.allocated = FALSE;
+    spmd_handle->workspace->H_p.allocated = FALSE;
+    spmd_handle->workspace->H_spar_patt.allocated = FALSE;
+    spmd_handle->workspace->H_spar_patt_full.allocated = FALSE;
+    spmd_handle->workspace->H_app_inv.allocated = FALSE;
+    spmd_handle->workspace->L.allocated = FALSE;
+    spmd_handle->workspace->U.allocated = FALSE;
+
     spmd_handle->lists = smalloc( sizeof(reax_list *) * LIST_N,
            "Setup::spmd_handle->lists" );
     for ( i = 0; i < LIST_N; ++i )
@@ -245,7 +259,7 @@ int simulate( const void * const handle )
                 spmd_handle->workspace, spmd_handle->lists,
                 spmd_handle->out_control, &Evolve,
                 spmd_handle->output_enabled,
-                spmd_handle->first_run, spmd_handle->realloc );
+                spmd_handle->realloc );
 
         spmd_handle->realloc = FALSE;
 

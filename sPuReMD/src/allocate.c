@@ -26,8 +26,9 @@
 
 
 /* allocate space for atoms */
-void PreAllocate_Space( reax_system *system, control_params *control,
-        static_storage *workspace, int n, int first_run )
+void PreAllocate_Space( reax_system * const system,
+        control_params const  * const control,
+        static_storage * const workspace, int n, int first_run )
 {
     int i;
 
@@ -56,23 +57,42 @@ void PreAllocate_Space( reax_system *system, control_params *control,
     }
     else
     {
-        system->atoms = srealloc( system->atoms, n * sizeof(reax_atom),
+        sfree( system->atoms, "PreAllocate_Space::system->atoms" );
+        sfree( workspace->orig_id, "PreAllocate_Space::workspace->orid_id" );
+
+        /* bond restriction info */
+        if ( control->restrict_bonds )
+        {
+            sfree( workspace->restricted,
+                    "PreAllocate_Space::workspace->restricted_atoms" );
+
+            for ( i = 0; i < n; ++i )
+            {
+                sfree( workspace->restricted_list[i],
+                        "PreAllocate_Space::workspace->restricted_list[i]" );
+            }
+
+            sfree( workspace->restricted_list,
+                    "PreAllocate_Space::workspace->restricted_list" );
+        }
+
+        system->atoms = scalloc( n, sizeof(reax_atom),
                 "PreAllocate_Space::system->atoms" );
-        workspace->orig_id = srealloc( workspace->orig_id, n * sizeof(int),
+        workspace->orig_id = scalloc( n, sizeof(int),
                 "PreAllocate_Space::workspace->orid_id" );
 
         /* bond restriction info */
         if ( control->restrict_bonds )
         {
-            workspace->restricted = srealloc( workspace->restricted, n * sizeof(int),
+            workspace->restricted = scalloc( n, sizeof(int),
                     "PreAllocate_Space::workspace->restricted_atoms" );
 
-            workspace->restricted_list = srealloc( workspace->restricted_list, n * sizeof(int*),
+            workspace->restricted_list = scalloc( n, sizeof(int*),
                     "PreAllocate_Space::workspace->restricted_list" );
 
             for ( i = 0; i < n; ++i )
             {
-                workspace->restricted_list[i] = srealloc( workspace->restricted_list[i], MAX_RESTRICT * sizeof(int),
+                workspace->restricted_list[i] = scalloc( MAX_RESTRICT, sizeof(int),
                         "PreAllocate_Space::workspace->restricted_list[i]" );
             }
         }
@@ -80,18 +100,14 @@ void PreAllocate_Space( reax_system *system, control_params *control,
 }
 
 
-static void Reallocate_Neighbor_List( reax_list *far_nbrs, int n, int n_max, int num_intrs )
+static void Reallocate_Neighbor_List( reax_list *far_nbr_list, int n, int n_max, int num_intrs )
 {
-    Delete_List( TYP_FAR_NEIGHBOR, far_nbrs );
+    if ( far_nbr_list->allocated == TRUE )
+    {
+        Delete_List( TYP_FAR_NEIGHBOR, far_nbr_list );
+    }
 
-    Make_List( n, n_max, num_intrs, TYP_FAR_NEIGHBOR, far_nbrs );
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "num_far = %d, far_nbrs = %d -> reallocating!\n",
-             num_intrs, far_nbrs->total_intrs );
-    fprintf( stderr, "memory allocated: far_nbrs = %ldMB\n",
-             num_intrs * sizeof(far_neighbor_data) / (1024 * 1024) );
-#endif
+    Make_List( n, n_max, num_intrs, TYP_FAR_NEIGHBOR, far_nbr_list );
 }
 
 
@@ -102,13 +118,10 @@ static void Reallocate_Neighbor_List( reax_list *far_nbrs, int n, int n_max, int
  * n_max: max. num. rows of the matrix
  * m: number of nonzeros to allocate space for in matrix
  * */
-void Allocate_Matrix( sparse_matrix **pH, int n, int n_max, int m )
+void Allocate_Matrix( sparse_matrix * const H, int n, int n_max, int m )
 {
-    sparse_matrix *H;
+    H->allocated = TRUE;
 
-    *pH = smalloc( sizeof(sparse_matrix), "Allocate_Matrix::pH" );
-
-    H = *pH;
     H->n = n;
     H->n_max = n_max;
     H->m = m;
@@ -123,25 +136,26 @@ void Allocate_Matrix( sparse_matrix **pH, int n, int n_max, int m )
  *
  * H (output): pointer to sparse matrix for which to allocate
  * */
-void Deallocate_Matrix( sparse_matrix *H )
+void Deallocate_Matrix( sparse_matrix * const H )
 {
+    H->allocated = FALSE;
+
     sfree( H->start, "Deallocate_Matrix::H->start" );
     sfree( H->j, "Deallocate_Matrix::H->j" );
     sfree( H->val, "Deallocate_Matrix::H->val" );
-    sfree( H, "Deallocate_Matrix::H" );
 }
 
 
-static void Reallocate_Matrix( sparse_matrix **H, int n, int n_max, int m )
+static void Reallocate_Matrix( sparse_matrix *H, int n, int n_max, int m )
 {
-    Deallocate_Matrix( *H );
+    Deallocate_Matrix( H );
 
     Allocate_Matrix( H, n, n_max, m );
 }
 
 
-void Allocate_HBond_List( int n, int num_h, int num_h_max, int *h_index, int *hb_top,
-        reax_list *hbonds )
+void Allocate_HBond_List( int n, int num_h, int num_h_max,
+        int const * const h_index, int * const hb_top, reax_list * const hbond_list )
 {
     int i, num_hbonds;
 
@@ -153,32 +167,26 @@ void Allocate_HBond_List( int n, int num_h, int num_h_max, int *h_index, int *hb
     }
     num_hbonds = hb_top[n - 1];
 
-    Make_List( num_h, num_h_max, num_hbonds, TYP_HBOND, hbonds );
+    Make_List( num_h, num_h_max, num_hbonds, TYP_HBOND, hbond_list );
 
     for ( i = 0; i < n; ++i )
     {
         if ( h_index[i] == 0 )
         {
-            Set_Start_Index( 0, 0, hbonds );
-            Set_End_Index( 0, 0, hbonds );
+            Set_Start_Index( 0, 0, hbond_list );
+            Set_End_Index( 0, 0, hbond_list );
         }
         else if ( h_index[i] > 0 )
         {
-            Set_Start_Index( h_index[i], hb_top[i - 1], hbonds );
-            Set_End_Index( h_index[i], hb_top[i - 1], hbonds );
+            Set_Start_Index( h_index[i], hb_top[i - 1], hbond_list );
+            Set_End_Index( h_index[i], hb_top[i - 1], hbond_list );
         }
     }
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "allocating hbonds - num_hbonds: %d\n", num_hbonds );
-    fprintf( stderr, "memory allocated: hbonds = %ldMB\n",
-             num_hbonds * sizeof(hbond_data) / (1024 * 1024) );
-#endif
 }
 
 
 static void Reallocate_HBonds_List( int n, int num_h, int num_h_max,
-        int *h_index, reax_list *hbonds )
+        int *h_index, reax_list *hbond_list )
 {
     int i;
     int *hb_top;
@@ -188,19 +196,23 @@ static void Reallocate_HBonds_List( int n, int num_h, int num_h_max,
     {
         if ( h_index[i] >= 0 )
         {
-            hb_top[i] = MAX(Num_Entries(h_index[i], hbonds) * SAFE_HBONDS, MIN_HBONDS);
+            hb_top[i] = MAX(Num_Entries(h_index[i], hbond_list) * SAFE_HBONDS, MIN_HBONDS);
         }
     }
 
-    Delete_List( TYP_HBOND, hbonds );
+    if ( hbond_list->allocated == TRUE )
+    {
+        Delete_List( TYP_HBOND, hbond_list );
+    }
 
-    Allocate_HBond_List( n, num_h, num_h_max, h_index, hb_top, hbonds );
+    Allocate_HBond_List( n, num_h, num_h_max, h_index, hb_top, hbond_list );
 
     sfree( hb_top, "Reallocate_HBonds_List::hb_top" );
 }
 
 
-void Allocate_Bond_List( int n, int n_max, int *bond_top, reax_list *bonds )
+void Allocate_Bond_List( int n, int n_max, int * const bond_top,
+        reax_list * const bond_list )
 {
     int i, num_bonds;
 
@@ -212,53 +224,47 @@ void Allocate_Bond_List( int n, int n_max, int *bond_top, reax_list *bonds )
     }
     num_bonds = bond_top[n - 1];
 
-    Make_List( n, n_max, num_bonds, TYP_BOND, bonds );
+    Make_List( n, n_max, num_bonds, TYP_BOND, bond_list );
 
-    Set_Start_Index( 0, 0, bonds );
-    Set_End_Index( 0, 0, bonds );
+    Set_Start_Index( 0, 0, bond_list );
+    Set_End_Index( 0, 0, bond_list );
     for ( i = 1; i < n; ++i )
     {
-        Set_Start_Index( i, bond_top[i - 1], bonds );
-        Set_End_Index( i, bond_top[i - 1], bonds );
+        Set_Start_Index( i, bond_top[i - 1], bond_list );
+        Set_End_Index( i, bond_top[i - 1], bond_list );
     }
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "allocating bonds - num_bonds: %d\n", num_bonds );
-    fprintf( stderr, "memory allocated: bonds = %ldMB\n",
-             num_bonds * sizeof(bond_data) / (1024 * 1024) );
-#endif
 }
 
 
-static void Reallocate_Bonds_List( int n, int n_max, reax_list *bonds,
+static void Reallocate_Bonds_List( int n, int n_max, reax_list *bond_list,
         int *num_bonds, int *est_3body )
 {
     int i;
     int *bond_top;
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "reallocating bonds\n" );
-#endif
 
     bond_top = (int *) scalloc( n, sizeof(int), "Reallocate_Bonds_List::hb_top" );
     *est_3body = 0;
 
     for ( i = 0; i < n; ++i )
     {
-        *est_3body += SQR( Num_Entries( i, bonds ) );
-        bond_top[i] = MAX( Num_Entries( i, bonds ) * 2, MIN_BONDS );
+        *est_3body += SQR( Num_Entries( i, bond_list ) );
+        bond_top[i] = MAX( Num_Entries( i, bond_list ) * 2, MIN_BONDS );
     }
 
-    Delete_List( TYP_BOND, bonds );
+    if ( bond_list->allocated == TRUE )
+    {
+        Delete_List( TYP_BOND, bond_list );
+    }
 
-    Allocate_Bond_List( n, n_max, bond_top, bonds );
+    Allocate_Bond_List( n, n_max, bond_top, bond_list );
     *num_bonds = bond_top[n - 1];
 
     sfree( bond_top, "Reallocate_Bonds_List::bond_top" );
 }
 
 
-void Reallocate( reax_system *system, control_params *control, static_storage *workspace, reax_list **lists,
+void Reallocate( reax_system * const system, control_params const * const control,
+        static_storage * const workspace, reax_list ** const lists,
         int nbr_flag )
 {
     int i, j, k;
@@ -282,10 +288,8 @@ void Reallocate( reax_system *system, control_params *control, static_storage *w
                 realloc->Htop * SAFE_ZONE );
         realloc->Htop = -1;
 
-        Deallocate_Matrix( workspace->L );
-        Deallocate_Matrix( workspace->U );
-        workspace->L = NULL;
-        workspace->U = NULL;
+        Deallocate_Matrix( &workspace->L );
+        Deallocate_Matrix( &workspace->U );
     }
 
     if ( control->hbond_cut > 0.0 && realloc->hbonds > 0 )
@@ -305,7 +309,10 @@ void Reallocate( reax_system *system, control_params *control, static_storage *w
 
     if ( realloc->num_3body > 0 )
     {
-        Delete_List( TYP_THREE_BODY, lists[THREE_BODIES] );
+        if ( lists[THREE_BODIES]->allocated == TRUE )
+        {
+            Delete_List( TYP_THREE_BODY, lists[THREE_BODIES] );
+        }
 
         if ( num_bonds == -1 )
         {

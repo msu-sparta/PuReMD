@@ -162,50 +162,50 @@ void Sort_Matrix_Rows( sparse_matrix * const A )
  *   A has non-zero diagonals
  *   Each row of A has at least one non-zero (i.e., no rows with all zeros) */
 static void compute_full_sparse_matrix( const sparse_matrix * const A,
-        sparse_matrix ** A_full, int realloc )
+        sparse_matrix * A_full, int realloc )
 {
     int count, i, pj;
-    sparse_matrix *A_t;
+    sparse_matrix A_t;
 
-    if ( *A_full == NULL )
+    if ( A_full->allocated == FALSE )
     {
         Allocate_Matrix( A_full, A->n, A->n_max, 2 * A->m - A->n );
     }
-    else if ( (*A_full)->m < 2 * A->m - A->n || realloc == TRUE )
+    else if ( A_full->m < 2 * A->m - A->n || realloc == TRUE )
     {
-        Deallocate_Matrix( *A_full );
+        Deallocate_Matrix( A_full );
         Allocate_Matrix( A_full, A->n, A->n_max, 2 * A->m - A->n );
     }
 
     Allocate_Matrix( &A_t, A->n, A->n_max, A->m );
 
     /* Set up the sparse matrix data structure for A. */
-    Transpose( A, A_t );
+    Transpose( A, &A_t );
 
     count = 0;
     for ( i = 0; i < A->n; ++i )
     {
-        (*A_full)->start[i] = count;
+        A_full->start[i] = count;
 
         /* A: symmetric, lower triangular portion only stored */
         for ( pj = A->start[i]; pj < A->start[i + 1]; ++pj )
         {
-            (*A_full)->val[count] = A->val[pj];
-            (*A_full)->j[count] = A->j[pj];
+            A_full->val[count] = A->val[pj];
+            A_full->j[count] = A->j[pj];
             ++count;
         }
         /* A^T: symmetric, upper triangular portion only stored;
          * skip diagonal from A^T, as included from A above */
-        for ( pj = A_t->start[i] + 1; pj < A_t->start[i + 1]; ++pj )
+        for ( pj = A_t.start[i] + 1; pj < A_t.start[i + 1]; ++pj )
         {
-            (*A_full)->val[count] = A_t->val[pj];
-            (*A_full)->j[count] = A_t->j[pj];
+            A_full->val[count] = A_t.val[pj];
+            A_full->j[count] = A_t.j[pj];
             ++count;
         }
     }
-    (*A_full)->start[A->n] = count;
+    A_full->start[A->n] = count;
 
-    Deallocate_Matrix( A_t );
+    Deallocate_Matrix( &A_t );
 }
 
 
@@ -222,8 +222,8 @@ static void compute_full_sparse_matrix( const sparse_matrix * const A,
  *   A has non-zero diagonals
  *   Each row of A has at least one non-zero (i.e., no rows with all zeros) */
 void setup_sparse_approx_inverse( const sparse_matrix * const A,
-        sparse_matrix ** A_full, sparse_matrix ** A_spar_patt,
-        sparse_matrix **A_spar_patt_full, sparse_matrix ** A_app_inv,
+        sparse_matrix * A_full, sparse_matrix * A_spar_patt,
+        sparse_matrix * A_spar_patt_full, sparse_matrix * A_app_inv,
         const real filter, int realloc )
 {
     int i, pj, size;
@@ -232,13 +232,13 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A,
     real threshold;
     real *list;
 
-    if ( *A_spar_patt == NULL )
+    if ( A_spar_patt->allocated == FALSE )
     {
         Allocate_Matrix( A_spar_patt, A->n, A->n_max, A->m );
     }
-    else if ( ((*A_spar_patt)->m) < (A->m) || realloc == TRUE )
+    else if ( A_spar_patt->m < A->m || realloc == TRUE )
     {
-        Deallocate_Matrix( *A_spar_patt );
+        Deallocate_Matrix( A_spar_patt );
         Allocate_Matrix( A_spar_patt, A->n, A->n_max, A->m );
     }
 
@@ -327,43 +327,43 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A,
     /* fill sparsity pattern */
     for ( size = 0, i = 0; i < A->n; ++i )
     {
-        (*A_spar_patt)->start[i] = size;
+        A_spar_patt->start[i] = size;
 
         for ( pj = A->start[i]; pj < A->start[i + 1] - 1; ++pj )
         {
             if ( FABS( A->val[pj] ) >= threshold )
             {
-                (*A_spar_patt)->val[size] = A->val[pj];
-                (*A_spar_patt)->j[size] = A->j[pj];
+                A_spar_patt->val[size] = A->val[pj];
+                A_spar_patt->j[size] = A->j[pj];
                 size++;
             }
         }
 
         /* diagonal entries are always included */
-        (*A_spar_patt)->val[size] = A->val[pj];
-        (*A_spar_patt)->j[size] = A->j[pj];
+        A_spar_patt->val[size] = A->val[pj];
+        A_spar_patt->j[size] = A->j[pj];
         size++;
     }
-    (*A_spar_patt)->start[A->n] = size;
+    A_spar_patt->start[A->n] = size;
 
     compute_full_sparse_matrix( A, A_full, realloc );
-    compute_full_sparse_matrix( *A_spar_patt, A_spar_patt_full, realloc );
+    compute_full_sparse_matrix( A_spar_patt, A_spar_patt_full, realloc );
 
-    if ( *A_app_inv == NULL )
+    if ( A_app_inv->allocated == FALSE )
     {
         /* A_app_inv has the same sparsity pattern
          * as A_spar_patt_full (omit non-zero values) */
-        Allocate_Matrix( A_app_inv, (*A_spar_patt_full)->n,
-                (*A_spar_patt_full)->n_max, (*A_spar_patt_full)->m );
+        Allocate_Matrix( A_app_inv, A_spar_patt_full->n,
+                A_spar_patt_full->n_max, A_spar_patt_full->m );
     }
-    else if ( (*A_app_inv)->m < A->m || realloc == TRUE )
+    else if ( A_app_inv->m < A->m || realloc == TRUE )
     {
-        Deallocate_Matrix( *A_app_inv );
+        Deallocate_Matrix( A_app_inv );
 
         /* A_app_inv has the same sparsity pattern
          * as A_spar_patt_full (omit non-zero values) */
-        Allocate_Matrix( A_app_inv, (*A_spar_patt_full)->n,
-                (*A_spar_patt_full)->n_max, (*A_spar_patt_full)->m );
+        Allocate_Matrix( A_app_inv, A_spar_patt_full->n,
+                A_spar_patt_full->n_max, A_spar_patt_full->m );
     }
 
     sfree( list, "setup_sparse_approx_inverse::list" );
@@ -707,7 +707,7 @@ real ILU( const sparse_matrix * const A, sparse_matrix * const L,
 
     start = Get_Time( );
 
-    compute_full_sparse_matrix( A, &A_full, FALSE );
+    compute_full_sparse_matrix( A, A_full, FALSE );
 
     Ltop = 0;
     Utop = 0;
@@ -826,7 +826,7 @@ real ILUT( const sparse_matrix * const A, const real * const droptol,
     w = smalloc( sizeof(real) * A->n, "ILUT::w" );
     nz_mask = smalloc( sizeof(unsigned int) * A->n, "ILUT::nz_mask" );
 
-    compute_full_sparse_matrix( A, &A_full, FALSE );
+    compute_full_sparse_matrix( A, A_full, FALSE );
 
     Ltop = 0;
     Utop = 0;
@@ -984,7 +984,7 @@ real ILUTP( const sparse_matrix * const A, const real * const droptol,
     perm = smalloc( sizeof(int) * A->n, "ILUTP::perm" );
     perm_inv = smalloc( sizeof(int) * A->n, "ILUTP::perm_inv" );
 
-    compute_full_sparse_matrix( A, &A_full, FALSE );
+    compute_full_sparse_matrix( A, A_full, FALSE );
 
     Ltop = 0;
     Utop = 0;
@@ -1136,7 +1136,7 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
 {
     unsigned int i, pj, x = 0, y = 0, ei_x, ei_y, Utop, s;
     real *D, *D_inv, *gamma, sum, start;
-    sparse_matrix *DAD, *U_T_temp;
+    sparse_matrix DAD, U_T_temp;
 
     start = Get_Time( );
 
@@ -1176,8 +1176,8 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
 
     /* to get convergence, A must have unit diagonal, so apply
      * transformation DAD, where D = D(1./SQRT(D(A))) */
-    memcpy( DAD->start, A->start, sizeof(unsigned int) * (A->n + 1) );
-    memcpy( DAD->j, A->j, sizeof(unsigned int) * A->start[A->n] );
+    memcpy( DAD.start, A->start, sizeof(unsigned int) * (A->n + 1) );
+    memcpy( DAD.j, A->j, sizeof(unsigned int) * A->start[A->n] );
 #if defined(_OPENMP)
     #pragma omp parallel for schedule(dynamic,4096) \
         default(none) shared(DAD, A, D, gamma) private(i, pj)
@@ -1187,17 +1187,17 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
         /* non-diagonals */
         for ( pj = A->start[i]; pj < A->start[i + 1] - 1; ++pj )
         {
-            DAD->val[pj] = gamma[i] * (D[i] * A->val[pj] * D[A->j[pj]]);
+            DAD.val[pj] = gamma[i] * (D[i] * A->val[pj] * D[A->j[pj]]);
         }
         /* diagonal */
-        DAD->val[pj] = 1.0;
+        DAD.val[pj] = 1.0;
     }
 
     /* initial guesses for U^T,
      * assume: A and DAD symmetric and stored lower triangular */
-    memcpy( U_T_temp->start, DAD->start, sizeof(unsigned int) * (DAD->n + 1) );
-    memcpy( U_T_temp->j, DAD->j, sizeof(unsigned int) * DAD->start[DAD->n] );
-    memcpy( U_T_temp->val, DAD->val, sizeof(real) * DAD->start[DAD->n] );
+    memcpy( U_T_temp.start, DAD.start, sizeof(unsigned int) * (DAD.n + 1) );
+    memcpy( U_T_temp.j, DAD.j, sizeof(unsigned int) * DAD.start[DAD.n] );
+    memcpy( U_T_temp.val, DAD.val, sizeof(real) * DAD.start[DAD.n] );
 
     for ( s = 0; s < sweeps; ++s )
     {
@@ -1206,37 +1206,37 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
         #pragma omp parallel for schedule(dynamic,4096) \
             default(none) shared(DAD, U_T_temp, stderr) private(i, pj, x, y, ei_x, ei_y, sum)
 #endif
-        for ( pj = 0; pj < U_T_temp->start[U_T_temp->n]; ++pj )
+        for ( pj = 0; pj < U_T_temp.start[U_T_temp.n]; ++pj )
         {
             /* determine row bounds of current nonzero */
             x = 0;
             ei_x = pj;
-            for ( i = 1; i <= U_T_temp->n; ++i )
+            for ( i = 1; i <= U_T_temp.n; ++i )
             {
-                if ( U_T_temp->start[i] > pj )
+                if ( U_T_temp.start[i] > pj )
                 {
                     --i;
-                    x = U_T_temp->start[i];
+                    x = U_T_temp.start[i];
                     break;
                 }
             }
             /* column bounds of current nonzero */
-            y = U_T_temp->start[U_T_temp->j[pj]];
-            ei_y = U_T_temp->start[U_T_temp->j[pj] + 1];
+            y = U_T_temp.start[U_T_temp.j[pj]];
+            ei_y = U_T_temp.start[U_T_temp.j[pj] + 1];
 
             sum = ZERO;
 
             /* sparse vector-sparse vector inner product for nonzero (i, j):
              *   dot( U^T(i,1:j-1), U^T(j,1:j-1) ) */
-            for ( ; x < ei_x && y < ei_y && U_T_temp->j[y] < U_T_temp->j[pj]; )
+            for ( ; x < ei_x && y < ei_y && U_T_temp.j[y] < U_T_temp.j[pj]; )
             {
-                if ( U_T_temp->j[x] == U_T_temp->j[y] )
+                if ( U_T_temp.j[x] == U_T_temp.j[y] )
                 {
-                    sum += U_T_temp->val[x] * U_T_temp->val[y];
+                    sum += U_T_temp.val[x] * U_T_temp.val[y];
                     ++x;
                     ++y;
                 }
-                else if ( U_T_temp->j[x] < U_T_temp->j[y] )
+                else if ( U_T_temp.j[x] < U_T_temp.j[y] )
                 {
                     ++x;
                 }
@@ -1246,9 +1246,9 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
                 }
             }
 
-            sum = DAD->val[pj] - sum;
+            sum = DAD.val[pj] - sum;
 
-            if ( i == U_T_temp->j[pj] )
+            if ( i == U_T_temp.j[pj] )
             {
 #if defined(DEBUG_FOCUS)
                 /* sanity check */
@@ -1256,18 +1256,18 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
                 {
                     fprintf( stderr, "[ERROR] Numeric breakdown in FG_ICHOLT. Terminating.\n");
                     fprintf( stderr, "  [INFO] DAD(%5d,%5d) = %10.3f\n",
-                             i, DAD->j[pj], DAD->val[pj] );
+                             i, DAD.j[pj], DAD.val[pj] );
                     fprintf( stderr, "  [INFO] sum = %10.3f\n", sum);
                     exit( NUMERIC_BREAKDOWN );
                 }
 #endif
 
-                U_T_temp->val[pj] = SQRT( FABS( sum ) );
+                U_T_temp.val[pj] = SQRT( FABS( sum ) );
             }
             /* non-diagonal entries */
             else
             {
-                U_T_temp->val[pj] = sum / U_T_temp->val[ei_y - 1];
+                U_T_temp.val[pj] = sum / U_T_temp.val[ei_y - 1];
             }
         }
     }
@@ -1279,33 +1279,33 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
     #pragma omp parallel for schedule(dynamic,4096) \
         default(none) shared(U_T_temp, D_inv, gamma) private(i, pj)
 #endif
-    for ( i = 0; i < U_T_temp->n; ++i )
+    for ( i = 0; i < U_T_temp.n; ++i )
     {
-        for ( pj = U_T_temp->start[i]; pj < U_T_temp->start[i + 1]; ++pj )
+        for ( pj = U_T_temp.start[i]; pj < U_T_temp.start[i + 1]; ++pj )
         {
-            U_T_temp->val[pj] = gamma[i] * (D_inv[i] * U_T_temp->val[pj]);
+            U_T_temp.val[pj] = gamma[i] * (D_inv[i] * U_T_temp.val[pj]);
         }
     }
 
     /* apply the dropping rule */
     Utop = 0;
-    for ( i = 0; i < U_T_temp->n; ++i )
+    for ( i = 0; i < U_T_temp.n; ++i )
     {
         U_T->start[i] = Utop;
 
-        for ( pj = U_T_temp->start[i]; pj < U_T_temp->start[i + 1] - 1; ++pj )
+        for ( pj = U_T_temp.start[i]; pj < U_T_temp.start[i + 1] - 1; ++pj )
         {
-            if ( FABS( U_T_temp->val[pj] ) > FABS( droptol[i] / U_T_temp->val[U_T_temp->start[i + 1] - 1] ) )
+            if ( FABS( U_T_temp.val[pj] ) > FABS( droptol[i] / U_T_temp.val[U_T_temp.start[i + 1] - 1] ) )
             {
-                U_T->j[Utop] = U_T_temp->j[pj];
-                U_T->val[Utop] = U_T_temp->val[pj];
+                U_T->j[Utop] = U_T_temp.j[pj];
+                U_T->val[Utop] = U_T_temp.val[pj];
                 ++Utop;
             }
         }
 
         /* diagonal */
-        U_T->j[Utop] = U_T_temp->j[pj];
-        U_T->val[Utop] = U_T_temp->val[pj];
+        U_T->j[Utop] = U_T_temp.j[pj];
+        U_T->val[Utop] = U_T_temp.val[pj];
         ++Utop;
     }
     U_T->start[U_T->n] = Utop;
@@ -1318,8 +1318,8 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
     fprintf( stderr, "[INFO] nnz(U): %d\n", U->start[U->n] );
 #endif
 
-    Deallocate_Matrix( U_T_temp );
-    Deallocate_Matrix( DAD );
+    Deallocate_Matrix( &U_T_temp );
+    Deallocate_Matrix( &DAD );
     sfree( gamma, "FG_ICHOLT::gamma" );
     sfree( D_inv, "FG_ICHOLT::D_inv" );
     sfree( D, "FG_ICHOLT::D" );
@@ -1344,7 +1344,7 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
 {
     unsigned int i, pj, x, y, ei_x, ei_y, Ltop, Utop, s;
     real *D, *D_inv, *gamma, sum, start;
-    sparse_matrix *DAD, *L_temp, *U_T_temp;
+    sparse_matrix DAD, L_temp, U_T_temp;
 
     start = Get_Time( );
 
@@ -1386,8 +1386,8 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
     /* to get convergence, A must have unit diagonal, so apply
      * transformation \gamma DAD, where D = D(1./SQRT(D(A)))
      * and \gamma = {-1 if a_{ii} < 0, 1 otherwise} */
-    memcpy( DAD->start, A->start, sizeof(unsigned int) * (A->n + 1) );
-    memcpy( DAD->j, A->j, sizeof(unsigned int) * A->start[A->n] );
+    memcpy( DAD.start, A->start, sizeof(unsigned int) * (A->n + 1) );
+    memcpy( DAD.j, A->j, sizeof(unsigned int) * A->start[A->n] );
 #if defined(_OPENMP)
     #pragma omp parallel for schedule(dynamic,4096) \
         default(none) shared(DAD, A, D, gamma) private(i, pj)
@@ -1397,21 +1397,21 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
         /* non-diagonals */
         for ( pj = A->start[i]; pj < A->start[i + 1] - 1; ++pj )
         {
-            DAD->val[pj] = gamma[i] * (D[i] * A->val[pj] * D[A->j[pj]]);
+            DAD.val[pj] = gamma[i] * (D[i] * A->val[pj] * D[A->j[pj]]);
         }
         /* diagonal */
-        DAD->val[pj] = 1.0;
+        DAD.val[pj] = 1.0;
     }
 
     /* initial guesses for L and U,
      * assume: A and DAD symmetric and stored lower triangular */
-    memcpy( L_temp->start, DAD->start, sizeof(unsigned int) * (DAD->n + 1) );
-    memcpy( L_temp->j, DAD->j, sizeof(unsigned int) * DAD->start[DAD->n] );
-    memcpy( L_temp->val, DAD->val, sizeof(real) * DAD->start[DAD->n] );
+    memcpy( L_temp.start, DAD.start, sizeof(unsigned int) * (DAD.n + 1) );
+    memcpy( L_temp.j, DAD.j, sizeof(unsigned int) * DAD.start[DAD.n] );
+    memcpy( L_temp.val, DAD.val, sizeof(real) * DAD.start[DAD.n] );
     /* store U^T in CSR for row-wise access and tranpose later */
-    memcpy( U_T_temp->start, DAD->start, sizeof(unsigned int) * (DAD->n + 1) );
-    memcpy( U_T_temp->j, DAD->j, sizeof(unsigned int) * DAD->start[DAD->n] );
-    memcpy( U_T_temp->val, DAD->val, sizeof(real) * DAD->start[DAD->n] );
+    memcpy( U_T_temp.start, DAD.start, sizeof(unsigned int) * (DAD.n + 1) );
+    memcpy( U_T_temp.j, DAD.j, sizeof(unsigned int) * DAD.start[DAD.n] );
+    memcpy( U_T_temp.val, DAD.val, sizeof(real) * DAD.start[DAD.n] );
 
     /* L has unit diagonal, by convention */
 #if defined(_OPENMP)
@@ -1420,7 +1420,7 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
 #endif
     for ( i = 0; i < A->n; ++i )
     {
-        L_temp->val[L_temp->start[i + 1] - 1] = 1.0;
+        L_temp.val[L_temp.start[i + 1] - 1] = 1.0;
     }
 
     for ( s = 0; s < sweeps; ++s )
@@ -1430,27 +1430,27 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
         #pragma omp parallel for schedule(dynamic,4096) \
             default(none) shared(DAD, L_temp, U_T_temp) private(i, pj, x, y, ei_x, ei_y, sum)
 #endif
-        for ( pj = 0; pj < L_temp->start[L_temp->n]; ++pj )
+        for ( pj = 0; pj < L_temp.start[L_temp.n]; ++pj )
         {
             /* determine row bounds of current nonzero */
             x = 0;
             ei_x = pj;
-            for ( i = 1; i <= L_temp->n; ++i )
+            for ( i = 1; i <= L_temp.n; ++i )
             {
-                if ( L_temp->start[i] > pj )
+                if ( L_temp.start[i] > pj )
                 {
                     --i;
-                    x = L_temp->start[i];
+                    x = L_temp.start[i];
                     break;
                 }
             }
 
             /* skip diagonals for L */
-            if ( i > L_temp->j[pj] )
+            if ( i > L_temp.j[pj] )
             {
                 /* determine column bounds of current nonzero */
-                y = L_temp->start[L_temp->j[pj]];
-                ei_y = L_temp->start[L_temp->j[pj] + 1];
+                y = L_temp.start[L_temp.j[pj]];
+                ei_y = L_temp.start[L_temp.j[pj] + 1];
 
                 sum = ZERO;
 
@@ -1459,15 +1459,15 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
                  *
                  * Note: since L and U^T share the same sparsity pattern
                  * (due to symmetry in A), just use column indices from L */
-                for ( ; x < ei_x && y < ei_y && L_temp->j[y] < L_temp->j[pj]; )
+                for ( ; x < ei_x && y < ei_y && L_temp.j[y] < L_temp.j[pj]; )
                 {
-                    if ( L_temp->j[x] == L_temp->j[y] )
+                    if ( L_temp.j[x] == L_temp.j[y] )
                     {
-                        sum += L_temp->val[x] * U_T_temp->val[y];
+                        sum += L_temp.val[x] * U_T_temp.val[y];
                         ++x;
                         ++y;
                     }
-                    else if ( L_temp->j[x] < L_temp->j[y] )
+                    else if ( L_temp.j[x] < L_temp.j[y] )
                     {
                         ++x;
                     }
@@ -1477,7 +1477,7 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
                     }
                 }
 
-                L_temp->val[pj] = (DAD->val[pj] - sum) / U_T_temp->val[ei_y - 1];
+                L_temp.val[pj] = (DAD.val[pj] - sum) / U_T_temp.val[ei_y - 1];
             }
         }
 
@@ -1486,24 +1486,24 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
         #pragma omp parallel for schedule(dynamic,4096) \
             default(none) shared(DAD, L_temp, U_T_temp) private(i, pj, x, y, ei_x, ei_y, sum)
 #endif
-        for ( pj = 0; pj < L_temp->start[L_temp->n]; ++pj )
+        for ( pj = 0; pj < L_temp.start[L_temp.n]; ++pj )
         {
             /* determine row bounds of current nonzero */
             x = 0;
             ei_x = pj;
-            for ( i = 1; i <= L_temp->n; ++i )
+            for ( i = 1; i <= L_temp.n; ++i )
             {
-                if ( L_temp->start[i] > pj )
+                if ( L_temp.start[i] > pj )
                 {
                     --i;
-                    x = L_temp->start[i];
+                    x = L_temp.start[i];
                     break;
                 }
             }
 
             /* determine column bounds of current nonzero */
-            y = L_temp->start[L_temp->j[pj]];
-            ei_y = L_temp->start[L_temp->j[pj] + 1];
+            y = L_temp.start[L_temp.j[pj]];
+            ei_y = L_temp.start[L_temp.j[pj] + 1];
 
             sum = ZERO;
 
@@ -1512,15 +1512,15 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
              *
              * Note: since L and U^T share the same sparsity pattern
              * (due to symmetry in A), just use column indices from L */
-            for ( ; x < ei_x && y < ei_y && L_temp->j[y] < L_temp->j[pj]; )
+            for ( ; x < ei_x && y < ei_y && L_temp.j[y] < L_temp.j[pj]; )
             {
-                if ( L_temp->j[x] == L_temp->j[y] )
+                if ( L_temp.j[x] == L_temp.j[y] )
                 {
-                    sum += U_T_temp->val[x] * L_temp->val[y];
+                    sum += U_T_temp.val[x] * L_temp.val[y];
                     ++x;
                     ++y;
                 }
-                else if ( L_temp->j[x] < L_temp->j[y] )
+                else if ( L_temp.j[x] < L_temp.j[y] )
                 {
                     ++x;
                 }
@@ -1530,7 +1530,7 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
                 }
             }
 
-            U_T_temp->val[pj] = DAD->val[pj] - sum;
+            U_T_temp.val[pj] = DAD.val[pj] - sum;
         }
     }
 
@@ -1541,11 +1541,11 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
     #pragma omp parallel for schedule(dynamic,4096) \
         default(none) shared(DAD, L_temp, D_inv, gamma) private(i, pj)
 #endif
-    for ( i = 0; i < L_temp->n; ++i )
+    for ( i = 0; i < L_temp.n; ++i )
     {
-        for ( pj = L_temp->start[i]; pj < L_temp->start[i + 1]; ++pj )
+        for ( pj = L_temp.start[i]; pj < L_temp.start[i + 1]; ++pj )
         {
-            L_temp->val[pj] = gamma[i] * (D_inv[i] * L_temp->val[pj]);
+            L_temp.val[pj] = gamma[i] * (D_inv[i] * L_temp.val[pj]);
         }
     }
     /* note: since we're storing U^T, apply the transform from the left side */
@@ -1553,55 +1553,55 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
     #pragma omp parallel for schedule(dynamic,4096) \
         default(none) shared(DAD, U_T_temp, D_inv) private(i, pj)
 #endif
-    for ( i = 0; i < U_T_temp->n; ++i )
+    for ( i = 0; i < U_T_temp.n; ++i )
     {
-        for ( pj = U_T_temp->start[i]; pj < U_T_temp->start[i + 1]; ++pj )
+        for ( pj = U_T_temp.start[i]; pj < U_T_temp.start[i + 1]; ++pj )
         {
-            U_T_temp->val[pj] = D_inv[i] * U_T_temp->val[pj];
+            U_T_temp.val[pj] = D_inv[i] * U_T_temp.val[pj];
         }
     }
 
     /* apply the dropping rule */
     Ltop = 0;
-    for ( i = 0; i < L_temp->n; ++i )
+    for ( i = 0; i < L_temp.n; ++i )
     {
         L->start[i] = Ltop;
 
-        for ( pj = L_temp->start[i]; pj < L_temp->start[i + 1] - 1; ++pj )
+        for ( pj = L_temp.start[i]; pj < L_temp.start[i + 1] - 1; ++pj )
         {
-            if ( FABS( L_temp->val[pj] ) > FABS( droptol[i] / L_temp->val[L_temp->start[i + 1] - 1] ) )
+            if ( FABS( L_temp.val[pj] ) > FABS( droptol[i] / L_temp.val[L_temp.start[i + 1] - 1] ) )
             {
-                L->j[Ltop] = L_temp->j[pj];
-                L->val[Ltop] = L_temp->val[pj];
+                L->j[Ltop] = L_temp.j[pj];
+                L->val[Ltop] = L_temp.val[pj];
                 ++Ltop;
             }
         }
 
         /* diagonal */
-        L->j[Ltop] = L_temp->j[pj];
-        L->val[Ltop] = L_temp->val[pj];
+        L->j[Ltop] = L_temp.j[pj];
+        L->val[Ltop] = L_temp.val[pj];
         ++Ltop;
     }
     L->start[L->n] = Ltop;
 
     Utop = 0;
-    for ( i = 0; i < U_T_temp->n; ++i )
+    for ( i = 0; i < U_T_temp.n; ++i )
     {
         U->start[i] = Utop;
 
-        for ( pj = U_T_temp->start[i]; pj < U_T_temp->start[i + 1] - 1; ++pj )
+        for ( pj = U_T_temp.start[i]; pj < U_T_temp.start[i + 1] - 1; ++pj )
         {
-            if ( FABS( U_T_temp->val[pj] ) > FABS( droptol[i] / U_T_temp->val[U_T_temp->start[i + 1] - 1] ) )
+            if ( FABS( U_T_temp.val[pj] ) > FABS( droptol[i] / U_T_temp.val[U_T_temp.start[i + 1] - 1] ) )
             {
-                U->j[Utop] = U_T_temp->j[pj];
-                U->val[Utop] = U_T_temp->val[pj];
+                U->j[Utop] = U_T_temp.j[pj];
+                U->val[Utop] = U_T_temp.val[pj];
                 ++Utop;
             }
         }
 
         /* diagonal */
-        U->j[Utop] = U_T_temp->j[pj];
-        U->val[Utop] = U_T_temp->val[pj];
+        U->j[Utop] = U_T_temp.j[pj];
+        U->val[Utop] = U_T_temp.val[pj];
         ++Utop;
     }
     U->start[U->n] = Utop;
@@ -1613,9 +1613,9 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
     fprintf( stderr, "nnz(U): %d\n", U->start[U->n] );
 #endif
 
-    Deallocate_Matrix( U_T_temp );
-    Deallocate_Matrix( L_temp );
-    Deallocate_Matrix( DAD );
+    Deallocate_Matrix( &U_T_temp );
+    Deallocate_Matrix( &L_temp );
+    Deallocate_Matrix( &DAD );
     sfree( gamma, "FG_ILUT::gamma" );
     sfree( D_inv, "FG_ILUT::D_inv" );
     sfree( D, "FG_ILUT::D_inv" );
@@ -1652,8 +1652,7 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
  * Applied Numerical Mathematics 30, 1999
  * */
 real sparse_approx_inverse( const sparse_matrix * const A,
-        const sparse_matrix * const A_spar_patt,
-        sparse_matrix ** A_app_inv )
+        const sparse_matrix * const A_spar_patt, sparse_matrix * A_app_inv )
 {
     int i, k, pj, j_temp, identity_pos;
     int N, M, d_i, d_j;
@@ -1666,7 +1665,7 @@ real sparse_approx_inverse( const sparse_matrix * const A,
 
     start = Get_Time( );
 
-    (*A_app_inv)->start[(*A_app_inv)->n] = A_spar_patt->start[A_spar_patt->n];
+    A_app_inv->start[A_app_inv->n] = A_spar_patt->start[A_spar_patt->n];
 
 #if defined(_OPENMP)
     #pragma omp parallel default(none) \
@@ -1823,11 +1822,11 @@ real sparse_approx_inverse( const sparse_matrix * const A,
 //            print_matrix( "Least squares solution", n, nrhs, b, ldb );
 
             /* accumulate the resulting vector to build A_app_inv */
-            (*A_app_inv)->start[i] = A_spar_patt->start[i];
+            A_app_inv->start[i] = A_spar_patt->start[i];
             for ( k = A_spar_patt->start[i]; k < A_spar_patt->start[i + 1]; ++k)
             {
-                (*A_app_inv)->j[k] = A_spar_patt->j[k];
-                (*A_app_inv)->val[k] = e_j[k - A_spar_patt->start[i]];
+                A_app_inv->j[k] = A_spar_patt->j[k];
+                A_app_inv->val[k] = e_j[k - A_spar_patt->start[i]];
             }
         }
 
@@ -1988,17 +1987,17 @@ void Transpose( const sparse_matrix * const A, sparse_matrix * const A_t )
  */
 void Transpose_I( sparse_matrix * const A )
 {
-    sparse_matrix * A_t;
+    sparse_matrix A_t;
 
     Allocate_Matrix( &A_t, A->n, A->n_max, A->m );
 
-    Transpose( A, A_t );
+    Transpose( A, &A_t );
 
-    memcpy( A->start, A_t->start, sizeof(int) * (A_t->n + 1) );
-    memcpy( A->j, A_t->j, sizeof(int) * (A_t->start[A_t->n]) );
-    memcpy( A->val, A_t->val, sizeof(real) * (A_t->start[A_t->n]) );
+    memcpy( A->start, A_t.start, sizeof(int) * (A_t.n + 1) );
+    memcpy( A->j, A_t.j, sizeof(int) * (A_t.start[A_t.n]) );
+    memcpy( A->val, A_t.val, sizeof(real) * (A_t.start[A_t.n]) );
 
-    Deallocate_Matrix( A_t );
+    Deallocate_Matrix( &A_t );
 }
 
 
@@ -2495,7 +2494,7 @@ static void permute_matrix( const static_storage * const workspace,
         sparse_matrix * const LU, const TRIANGULARITY tri )
 {
     int i, pj, nr, nc;
-    sparse_matrix *LUtemp;
+    sparse_matrix LUtemp;
 
     Allocate_Matrix( &LUtemp, LU->n, LU->n_max, LU->m );
 
@@ -2553,7 +2552,7 @@ static void permute_matrix( const static_storage * const workspace,
         workspace->color_top[i] += workspace->color_top[i - 1];
     }
 
-    memcpy( LUtemp->start, workspace->color_top, sizeof(unsigned int) * (LU->n + 1) );
+    memcpy( LUtemp.start, workspace->color_top, sizeof(unsigned int) * (LU->n + 1) );
 
     /* permute factor */
     if ( tri == LOWER )
@@ -2568,15 +2567,15 @@ static void permute_matrix( const static_storage * const workspace,
 
                 if ( nc <= nr )
                 {
-                    LUtemp->j[workspace->color_top[nr]] = nc;
-                    LUtemp->val[workspace->color_top[nr]] = LU->val[pj];
+                    LUtemp.j[workspace->color_top[nr]] = nc;
+                    LUtemp.val[workspace->color_top[nr]] = LU->val[pj];
                     ++workspace->color_top[nr];
                 }
                 /* correct entries to maintain triangularity (lower) */
                 else
                 {
-                    LUtemp->j[workspace->color_top[nc]] = nr;
-                    LUtemp->val[workspace->color_top[nc]] = LU->val[pj];
+                    LUtemp.j[workspace->color_top[nc]] = nr;
+                    LUtemp.val[workspace->color_top[nc]] = LU->val[pj];
                     ++workspace->color_top[nc];
                 }
             }
@@ -2594,26 +2593,26 @@ static void permute_matrix( const static_storage * const workspace,
 
                 if ( nc >= nr )
                 {
-                    LUtemp->j[workspace->color_top[nr]] = nc;
-                    LUtemp->val[workspace->color_top[nr]] = LU->val[pj];
+                    LUtemp.j[workspace->color_top[nr]] = nc;
+                    LUtemp.val[workspace->color_top[nr]] = LU->val[pj];
                     ++workspace->color_top[nr];
                 }
                 /* correct entries to maintain triangularity (upper) */
                 else
                 {
-                    LUtemp->j[workspace->color_top[nc]] = nr;
-                    LUtemp->val[workspace->color_top[nc]] = LU->val[pj];
+                    LUtemp.j[workspace->color_top[nc]] = nr;
+                    LUtemp.val[workspace->color_top[nc]] = LU->val[pj];
                     ++workspace->color_top[nc];
                 }
             }
         }
     }
 
-    memcpy( LU->start, LUtemp->start, sizeof(unsigned int) * (LU->n + 1) );
-    memcpy( LU->j, LUtemp->j, sizeof(unsigned int) * LU->start[LU->n] );
-    memcpy( LU->val, LUtemp->val, sizeof(real) * LU->start[LU->n] );
+    memcpy( LU->start, LUtemp.start, sizeof(unsigned int) * (LU->n + 1) );
+    memcpy( LU->j, LUtemp.j, sizeof(unsigned int) * LU->start[LU->n] );
+    memcpy( LU->val, LUtemp.val, sizeof(real) * LU->start[LU->n] );
 
-    Deallocate_Matrix( LUtemp );
+    Deallocate_Matrix( &LUtemp );
 }
 
 
@@ -2629,27 +2628,27 @@ static void permute_matrix( const static_storage * const workspace,
  */
 void setup_graph_coloring( const control_params * const control,
         const static_storage * const workspace, const sparse_matrix * const H,
-        sparse_matrix ** H_full, sparse_matrix ** H_p, int realloc )
+        sparse_matrix * H_full, sparse_matrix * H_p, int realloc )
 {
-    if ( *H_p == NULL )
+    if ( H_p->allocated == FALSE )
     {
         Allocate_Matrix( H_p, H->n, H->n_max, H->m );
     }
-    else if ( (*H_p)->m < H->m || realloc == TRUE )
+    else if ( H_p->m < H->m || realloc == TRUE )
     {
-        Deallocate_Matrix( *H_p );
+        Deallocate_Matrix( H_p );
         Allocate_Matrix( H_p, H->n, H->n_max, H->m );
     }
 
     compute_full_sparse_matrix( H, H_full, realloc );
 
-    graph_coloring( control, (static_storage *) workspace, *H_full, LOWER );
-    sort_rows_by_colors( workspace, (*H_full)->n, LOWER );
+    graph_coloring( control, (static_storage *) workspace, H_full, LOWER );
+    sort_rows_by_colors( workspace, H_full->n, LOWER );
 
-    memcpy( (*H_p)->start, H->start, sizeof(int) * (H->n + 1) );
-    memcpy( (*H_p)->j, H->j, sizeof(int) * (H->start[H->n]) );
-    memcpy( (*H_p)->val, H->val, sizeof(real) * (H->start[H->n]) );
-    permute_matrix( workspace, (*H_p), LOWER );
+    memcpy( H_p->start, H->start, sizeof(int) * (H->n + 1) );
+    memcpy( H_p->j, H->j, sizeof(int) * (H->start[H->n]) );
+    memcpy( H_p->val, H->val, sizeof(real) * (H->start[H->n]) );
+    permute_matrix( workspace, H_p, LOWER );
 }
 
 
@@ -2766,7 +2765,7 @@ static void apply_preconditioner( const static_storage * const workspace,
     {
         if ( x != y )
         {
-            Vector_Copy( x, y, workspace->H->n );
+            Vector_Copy( x, y, workspace->H.n );
         }
     }
     else
@@ -2780,19 +2779,19 @@ static void apply_preconditioner( const static_storage * const workspace,
                 switch ( control->cm_solver_pre_comp_type )
                 {
                 case JACOBI_PC:
-                    jacobi_app( workspace->Hdia_inv, y, x, workspace->H->n );
+                    jacobi_app( workspace->Hdia_inv, y, x, workspace->H.n );
                     break;
                 case ICHOLT_PC:
                 case ILUT_PC:
                 case FG_ILUT_PC:
-                    tri_solve( workspace->L, y, x, LOWER );
+                    tri_solve( &workspace->L, y, x, LOWER );
                     break;
                 case ILUTP_PC:
-                    permute_vector( workspace->y_p, y, workspace->perm_ilutp, workspace->H->n );
-                    tri_solve( workspace->L, workspace->y_p, x, LOWER );
+                    permute_vector( workspace->y_p, y, workspace->perm_ilutp, workspace->H.n );
+                    tri_solve( &workspace->L, workspace->y_p, x, LOWER );
                     break;
                 case SAI_PC:
-                    sparse_matvec_full( workspace->H_app_inv, y, x );
+                    sparse_matvec_full( &workspace->H_app_inv, y, x );
                     break;
                 default:
                     fprintf( stderr, "[ERROR] Unrecognized preconditioner application method. Terminating...\n" );
@@ -2804,21 +2803,21 @@ static void apply_preconditioner( const static_storage * const workspace,
                 switch ( control->cm_solver_pre_comp_type )
                 {
                 case JACOBI_PC:
-                    jacobi_app( workspace->Hdia_inv, y, x, workspace->H->n );
+                    jacobi_app( workspace->Hdia_inv, y, x, workspace->H.n );
                     break;
                 case ICHOLT_PC:
                 case ILUT_PC:
                 case FG_ILUT_PC:
                     tri_solve_level_sched( (static_storage *) workspace,
-                            workspace->L, y, x, LOWER, fresh_pre );
+                            &workspace->L, y, x, LOWER, fresh_pre );
                     break;
                 case ILUTP_PC:
-                    permute_vector( workspace->y_p, y, workspace->perm_ilutp, workspace->L->n );
+                    permute_vector( workspace->y_p, y, workspace->perm_ilutp, workspace->L.n );
                     tri_solve_level_sched( (static_storage *) workspace,
-                            workspace->L, workspace->y_p, x, LOWER, fresh_pre );
+                            &workspace->L, workspace->y_p, x, LOWER, fresh_pre );
                     break;
                 case SAI_PC:
-                    sparse_matvec_full( workspace->H_app_inv, y, x );
+                    sparse_matvec_full( &workspace->H_app_inv, y, x );
                     break;
                 default:
                     fprintf( stderr, "[ERROR] Unrecognized preconditioner application method. Terminating...\n" );
@@ -2837,15 +2836,15 @@ static void apply_preconditioner( const static_storage * const workspace,
                 case ICHOLT_PC:
                 case ILUT_PC:
                 case FG_ILUT_PC:
-                    permute_vector( workspace->y_p, y, workspace->permuted_row_col, workspace->L->n );
+                    permute_vector( workspace->y_p, y, workspace->permuted_row_col, workspace->L.n );
                     tri_solve_level_sched( (static_storage *) workspace,
-                            workspace->L, workspace->y_p, x, LOWER, fresh_pre );
+                            &workspace->L, workspace->y_p, x, LOWER, fresh_pre );
                     break;
                 case ILUTP_PC:
-                    permute_vector( workspace->y_p, y, workspace->permuted_row_col, workspace->L->n );
-                    permute_vector( workspace->x_p, workspace->y_p, workspace->perm_ilutp, workspace->L->n );
+                    permute_vector( workspace->y_p, y, workspace->permuted_row_col, workspace->L.n );
+                    permute_vector( workspace->x_p, workspace->y_p, workspace->perm_ilutp, workspace->L.n );
                     tri_solve_level_sched( (static_storage *) workspace,
-                            workspace->L, workspace->x_p, x, LOWER, fresh_pre );
+                            &workspace->L, workspace->x_p, x, LOWER, fresh_pre );
                     break;
                 default:
                     fprintf( stderr, "[ERROR] Unrecognized preconditioner application method. Terminating...\n" );
@@ -2870,18 +2869,18 @@ static void apply_preconditioner( const static_storage * const workspace,
 #if defined(_OPENMP)
                         #pragma omp for schedule(static)
 #endif
-                        for ( i = 0; i < workspace->L->n; ++i )
+                        for ( i = 0; i < workspace->L.n; ++i )
                         {
-                            si = workspace->L->start[i + 1] - 1;
-                            workspace->Dinv_L[i] = 1.0 / workspace->L->val[si];
+                            si = workspace->L.start[i + 1] - 1;
+                            workspace->Dinv_L[i] = 1.0 / workspace->L.val[si];
                         }
                     }
 
-                    jacobi_iter( workspace, workspace->L, workspace->Dinv_L,
+                    jacobi_iter( workspace, &workspace->L, workspace->Dinv_L,
                             y, x, LOWER, control->cm_solver_pre_app_jacobi_iters );
                     break;
                 case ILUTP_PC:
-                    permute_vector( workspace->y_p, y, workspace->perm_ilutp, workspace->H->n );
+                    permute_vector( workspace->y_p, y, workspace->perm_ilutp, workspace->H.n );
 
                     /* construct D^{-1}_L */
                     if ( fresh_pre == TRUE )
@@ -2889,14 +2888,14 @@ static void apply_preconditioner( const static_storage * const workspace,
 #if defined(_OPENMP)
                         #pragma omp for schedule(static)
 #endif
-                        for ( i = 0; i < workspace->L->n; ++i )
+                        for ( i = 0; i < workspace->L.n; ++i )
                         {
-                            si = workspace->L->start[i + 1] - 1;
-                            workspace->Dinv_L[i] = 1.0 / workspace->L->val[si];
+                            si = workspace->L.start[i + 1] - 1;
+                            workspace->Dinv_L[i] = 1.0 / workspace->L.val[si];
                         }
                     }
 
-                    jacobi_iter( workspace, workspace->L, workspace->Dinv_L,
+                    jacobi_iter( workspace, &workspace->L, workspace->Dinv_L,
                             workspace->y_p, x, LOWER, control->cm_solver_pre_app_jacobi_iters );
                     break;
                 default:
@@ -2923,14 +2922,14 @@ static void apply_preconditioner( const static_storage * const workspace,
                 case SAI_PC:
                     if ( x != y )
                     {
-                        Vector_Copy( x, y, workspace->H->n );
+                        Vector_Copy( x, y, workspace->H.n );
                     }
                     break;
                 case ICHOLT_PC:
                 case ILUT_PC:
                 case ILUTP_PC:
                 case FG_ILUT_PC:
-                    tri_solve( workspace->U, y, x, UPPER );
+                    tri_solve( &workspace->U, y, x, UPPER );
                     break;
                 default:
                     fprintf( stderr, "[ERROR] Unrecognized preconditioner application method. Terminating...\n" );
@@ -2945,7 +2944,7 @@ static void apply_preconditioner( const static_storage * const workspace,
                 case SAI_PC:
                     if ( x != y )
                     {
-                        Vector_Copy( x, y, workspace->H->n );
+                        Vector_Copy( x, y, workspace->H.n );
                     }
                     break;
                 case ICHOLT_PC:
@@ -2953,7 +2952,7 @@ static void apply_preconditioner( const static_storage * const workspace,
                 case ILUTP_PC:
                 case FG_ILUT_PC:
                     tri_solve_level_sched( (static_storage *) workspace,
-                            workspace->U, y, x, UPPER, fresh_pre );
+                            &workspace->U, y, x, UPPER, fresh_pre );
                     break;
                 default:
                     fprintf( stderr, "[ERROR] Unrecognized preconditioner application method. Terminating...\n" );
@@ -2974,9 +2973,9 @@ static void apply_preconditioner( const static_storage * const workspace,
                 case ILUTP_PC:
                 case FG_ILUT_PC:
                     tri_solve_level_sched( (static_storage *) workspace,
-                            workspace->U, y, x, UPPER, fresh_pre );
-                    permute_vector( workspace->x_p, x, workspace->permuted_row_col_inv, workspace->U->n );
-                    Vector_Copy( x, workspace->x_p, workspace->U->n );
+                            &workspace->U, y, x, UPPER, fresh_pre );
+                    permute_vector( workspace->x_p, x, workspace->permuted_row_col_inv, workspace->U.n );
+                    Vector_Copy( x, workspace->x_p, workspace->U.n );
                     break;
                 default:
                     fprintf( stderr, "[ERROR] Unrecognized preconditioner application method. Terminating...\n" );
@@ -3002,14 +3001,14 @@ static void apply_preconditioner( const static_storage * const workspace,
 #if defined(_OPENMP)
                         #pragma omp for schedule(static)
 #endif
-                        for ( i = 0; i < workspace->U->n; ++i )
+                        for ( i = 0; i < workspace->U.n; ++i )
                         {
-                            si = workspace->U->start[i];
-                            workspace->Dinv_U[i] = 1.0 / workspace->U->val[si];
+                            si = workspace->U.start[i];
+                            workspace->Dinv_U[i] = 1.0 / workspace->U.val[si];
                         }
                     }
 
-                    jacobi_iter( workspace, workspace->U, workspace->Dinv_U,
+                    jacobi_iter( workspace, &workspace->U, workspace->Dinv_U,
                             y, x, UPPER, control->cm_solver_pre_app_jacobi_iters );
                     break;
                 default:

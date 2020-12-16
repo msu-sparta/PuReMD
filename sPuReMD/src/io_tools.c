@@ -728,7 +728,7 @@ void Print_Linear_System( reax_system *system, control_params *control,
 
     snprintf( fname, 100, "%.*s.H%10d.out", 83, control->sim_name, step );
     out = sfopen( fname, "w" );
-    H = workspace->H;
+    H = &workspace->H;
 
     for ( i = 0; i < system->N_cm; ++i )
     {
@@ -751,7 +751,7 @@ void Print_Linear_System( reax_system *system, control_params *control,
 
     snprintf( fname, 100, "%.*s.H_sp%10d.out", 80, control->sim_name, step );
     out = sfopen( fname, "w" );
-    H = workspace->H_sp;
+    H = &workspace->H_sp;
 
     for ( i = 0; i < system->N_cm; ++i )
     {

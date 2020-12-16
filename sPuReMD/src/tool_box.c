@@ -311,19 +311,22 @@ void Deallocate_Tokenizer_Space( char **line, char **backup,
 
 int Tokenize( char* s, char*** tok, size_t token_len )
 {
-    int count = 0;
+    int count, word_len;
     char test[MAX_LINE];
     char *sep = "\t \n!=";
     char *word, *saveptr;
 
-    strncpy( test, s, sizeof(test) - 1 );
+    count = 0;
+
+    strncpy( test, s, sizeof(test) );
     test[sizeof(test) - 1] = '\0';
 
     for ( word = strtok_r(test, sep, &saveptr); word != NULL;
             word = strtok_r(NULL, sep, &saveptr) )
     {
-        strncpy( (*tok)[count], word, token_len - 1 );
-        (*tok)[count][token_len - 1] = '\0';
+        word_len = MIN( strlen(word), token_len - 1 );
+        strncpy( (*tok)[count], word, word_len );
+        (*tok)[count][word_len] = '\0';
         count++;
     }
 

@@ -25,7 +25,7 @@
 #include "reax_types.h"
 
 
-void Setup_Grid( reax_system *, int );
+void Setup_Grid( reax_system * );
 
 void Update_Grid( reax_system * );
 

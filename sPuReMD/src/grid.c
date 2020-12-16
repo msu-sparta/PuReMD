@@ -75,6 +75,7 @@ static void Allocate_Space_for_Grid( reax_system *system, int alloc )
     grid *g;
 
     g = &system->g;
+    g->allocated = TRUE;
     g->max_nbrs = (2 * g->spread[0] + 1)
         * (2 * g->spread[1] + 1) * (2 * g->spread[2] + 1) + 3;
 
@@ -85,105 +86,97 @@ static void Allocate_Space_for_Grid( reax_system *system, int alloc )
                 "Allocate_Space_for_Grid::g->atoms" );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
-        {
             g->atoms[i] = (int***) scalloc( g->ncell_max[1], sizeof( int** ),
                     "Allocate_Space_for_Grid::g->atoms[i]" );
 
+        for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
                 g->atoms[i][j] = (int**) scalloc( g->ncell_max[2], sizeof( int* ),
                         "Allocate_Space_for_Grid::g->atoms[i][j]" );
-
-        }
 
         g->top = (int***) scalloc( g->ncell_max[0], sizeof( int** ),
                 "Allocate_Space_for_Grid::g->top" );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
-        {
             g->top[i] = (int**) scalloc( g->ncell_max[1], sizeof( int* ),
                     "Allocate_Space_for_Grid::g->top[i]" );
 
+        for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
                 g->top[i][j] = (int*) scalloc( g->ncell_max[2], sizeof( int ),
                         "Allocate_Space_for_Grid::g->top[i][j]" );
-        }
 
         g->mark = (int***) scalloc( g->ncell_max[0], sizeof( int** ),
                 "Allocate_Space_for_Grid::g->mark" );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
-        {
             g->mark[i] = (int**) scalloc( g->ncell_max[1], sizeof( int* ),
                     "Allocate_Space_for_Grid::g->mark[i]" );
 
+        for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
                 g->mark[i][j] = (int*) scalloc( g->ncell_max[2], sizeof( int ),
                         "Allocate_Space_for_Grid::g->mark[i][j]" );
-        }
 
         g->start = (int***) scalloc( g->ncell_max[0], sizeof( int** ),
                 "Allocate_Space_for_Grid::g->start" );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
-        {
             g->start[i] = (int**) scalloc( g->ncell_max[1], sizeof( int* ),
                     "Allocate_Space_for_Grid::g->start[i]" );
 
+        for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
                 g->start[i][j] = (int*) scalloc( g->ncell_max[2], sizeof( int ),
                         "Allocate_Space_for_Grid::g->start[i][j]" );
-        }
 
         g->end = (int***) scalloc( g->ncell_max[0], sizeof( int** ),
                 "Allocate_Space_for_Grid::g->end" );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
-        {
             g->end[i] = (int**) scalloc( g->ncell_max[1], sizeof( int* ),
                     "Allocate_Space_for_Grid::g->end[i]" );
 
+        for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
                 g->end[i][j] = (int*) scalloc( g->ncell_max[2], sizeof( int ),
                         "Allocate_Space_for_Grid::g->end[i][j]" );
-        }
 
         g->nbrs = (ivec****) scalloc( g->ncell_max[0], sizeof( ivec*** ),
                 "Allocate_Space_for_Grid::g->nbrs" );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
-        {
             g->nbrs[i] = (ivec***) scalloc( g->ncell_max[1], sizeof( ivec** ),
                     "Allocate_Space_for_Grid::g->nbrs[i]" );
 
+        for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
-            {
                 g->nbrs[i][j] = (ivec**) scalloc( g->ncell_max[2], sizeof( ivec* ),
                         "Allocate_Space_for_Grid::g->nbrs[i][j]" );
 
+        for ( i = 0; i < g->ncell_max[0]; i++ )
+            for ( j = 0; j < g->ncell_max[1]; j++ )
                 for ( k = 0; k < g->ncell_max[2]; k++ )
                     g->nbrs[i][j][k] = (ivec*) smalloc( g->max_nbrs * sizeof( ivec ),
-                           "Allocate_Space_for_Grid::g->nbrs[i][j]][k]" );
-            }
-        }
+                           "Allocate_Space_for_Grid::g->nbrs[i][j][k]" );
 
         g->nbrs_cp = (rvec****) scalloc( g->ncell_max[0], sizeof( rvec*** ),
                 "Allocate_Space_for_Grid::g->nbrs_cp" );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
-        {
             g->nbrs_cp[i] = (rvec***) scalloc( g->ncell_max[1], sizeof( rvec** ),
                     "Allocate_Space_for_Grid::g->nbrs_cp[i]" );
 
+        for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
-            {
                 g->nbrs_cp[i][j] = (rvec**) scalloc( g->ncell_max[2], sizeof( rvec* ),
                         "Allocate_Space_for_Grid::g->nbrs_cp[i][j]" );
 
+        for ( i = 0; i < g->ncell_max[0]; i++ )
+            for ( j = 0; j < g->ncell_max[1]; j++ )
                 for ( k = 0; k < g->ncell_max[2]; k++ )
                     g->nbrs_cp[i][j][k] = (rvec*) smalloc( g->max_nbrs * sizeof( rvec ),
-                           "Allocate_Space_for_Grid::g->nbrs_cp[i][j]][k]" );
-            }
-        }
+                           "Allocate_Space_for_Grid::g->nbrs_cp[i][j][k]" );
     }
 
     for ( i = 0; i < g->ncell[0]; i++ )
@@ -236,7 +229,7 @@ static void Allocate_Space_for_Grid( reax_system *system, int alloc )
             for ( j = 0; j < g->ncell_max[1]; j++ )
                 for ( k = 0; k < g->ncell_max[2]; k++ )
                     g->atoms[i][j][k] = (int*) smalloc( g->max_atoms * sizeof( int ),
-                           "Allocate_Space_for_Grid::g->atoms[i][j]][k]" );
+                           "Allocate_Space_for_Grid::g->atoms[i][j][k]" );
     }
     /* case: grid large enough but max. atoms per grid cells insufficient */
     else if ( g->max_atoms > 0 && g->max_atoms < max_atoms )
@@ -246,13 +239,13 @@ static void Allocate_Space_for_Grid( reax_system *system, int alloc )
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
                 for ( k = 0; k < g->ncell_max[2]; k++ )
-                    sfree( g->atoms[i][j][k], "Allocate_Space_for_Grid::g->atoms[i][j]][k]" );
+                    sfree( g->atoms[i][j][k], "Allocate_Space_for_Grid::g->atoms[i][j][k]" );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
                 for ( k = 0; k < g->ncell_max[2]; k++ )
                     g->atoms[i][j][k] = (int*) smalloc( g->max_atoms * sizeof( int ),
-                           "Allocate_Space_for_Grid::g->atoms[i][j]][k]" );
+                           "Allocate_Space_for_Grid::g->atoms[i][j][k]" );
     }
 
     for ( i = 0; i < g->ncell[0]; i++ )
@@ -267,11 +260,11 @@ static void Deallocate_Grid_Space( grid *g )
 {
     int i, j, k;
 
+    g->allocated = FALSE;
+
     /* deallocate the old grid */
     for ( i = 0; i < g->ncell_max[0]; i++ )
-    {
         for ( j = 0; j < g->ncell_max[1]; j++ )
-        {
             for ( k = 0; k < g->ncell_max[2]; k++ )
             {
                 sfree( g->atoms[i][j][k], "Deallocate_Grid_Space::g->atoms[i][j][k]" );
@@ -279,6 +272,9 @@ static void Deallocate_Grid_Space( grid *g )
                 sfree( g->nbrs_cp[i][j][k], "Deallocate_Grid_Space::g->nbrs_cp[i][j][k]" );
             }
 
+    for ( i = 0; i < g->ncell_max[0]; i++ )
+        for ( j = 0; j < g->ncell_max[1]; j++ )
+        {
             sfree( g->atoms[i][j], "Deallocate_Grid_Space::g->atoms[i][j]" );
             sfree( g->top[i][j], "Deallocate_Grid_Space::g->top[i][j]" );
             sfree( g->mark[i][j], "Deallocate_Grid_Space::g->mark[i][j]" );
@@ -288,6 +284,8 @@ static void Deallocate_Grid_Space( grid *g )
             sfree( g->nbrs_cp[i][j], "Deallocate_Grid_Space::g->nbrs_cp[i][j]" );
         }
 
+    for ( i = 0; i < g->ncell_max[0]; i++ )
+    {
         sfree( g->atoms[i], "Deallocate_Grid_Space::g->atoms[i]" );
         sfree( g->top[i], "Deallocate_Grid_Space::g->top[i]" );
         sfree( g->mark[i], "Deallocate_Grid_Space::g->mark[i]" );
@@ -462,7 +460,7 @@ static void Find_Neighbor_Grid_Cells( grid *g )
 }
 
 
-void Setup_Grid( reax_system* system, int first_run )
+void Setup_Grid( reax_system* system )
 {
     int d, alloc;
     grid *g;
@@ -483,7 +481,7 @@ void Setup_Grid( reax_system* system, int first_run )
         }
     }
 
-    if ( first_run == TRUE )
+    if ( g->allocated == FALSE )
     {
         g->ncell_max[0] = (int) CEIL( SAFE_ZONE * g->ncell[0] );
         g->ncell_max[1] = (int) CEIL( SAFE_ZONE * g->ncell[1] );
@@ -492,14 +490,26 @@ void Setup_Grid( reax_system* system, int first_run )
 
         alloc = TRUE;
     }
-    else if ( first_run == FALSE && (g->ncell[0] > g->ncell_max[0]
-                || g->ncell[1] > g->ncell_max[1] || g->ncell[2] > g->ncell_max[2]) )
+    else if ( g->ncell[0] > g->ncell_max[0] || g->ncell[1] > g->ncell_max[1]
+            || g->ncell[2] > g->ncell_max[2] )
     {
-        Deallocate_Grid_Space( g );
+        if ( g->allocated == TRUE )
+        {
+            Deallocate_Grid_Space( g );
+        }
 
-        g->ncell_max[0] = (int) CEIL( SAFE_ZONE * MAX( g->ncell[0], g->ncell_max[0] ) );
-        g->ncell_max[1] = (int) CEIL( SAFE_ZONE * MAX( g->ncell[1], g->ncell_max[1] ) );
-        g->ncell_max[2] = (int) CEIL( SAFE_ZONE * MAX( g->ncell[2], g->ncell_max[2] ) );
+        if ( g->ncell[0] > g->ncell_max[0] )
+        {
+            g->ncell_max[0] = (int) CEIL( SAFE_ZONE * MAX( g->ncell[0], g->ncell_max[0] ) );
+        }
+        if ( g->ncell[1] > g->ncell_max[1] )
+        {
+            g->ncell_max[1] = (int) CEIL( SAFE_ZONE * MAX( g->ncell[1], g->ncell_max[1] ) );
+        }
+        if ( g->ncell[2] > g->ncell_max[2] )
+        {
+            g->ncell_max[2] = (int) CEIL( SAFE_ZONE * MAX( g->ncell[2], g->ncell_max[2] ) );
+        }
 
         alloc = TRUE;
     }
@@ -512,10 +522,10 @@ void Setup_Grid( reax_system* system, int first_run )
     Find_Neighbor_Grid_Cells( g );
 
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "setting up the grid: " );
-    fprintf( stderr, "ncell[%d %d %d] ", g->ncell[0], g->ncell[1], g->ncell[2] );
-    fprintf( stderr, "len[%5.2f %5.2f %5.2f] ", g->len[0], g->len[1], g->len[2] );
-    fprintf( stderr, "g->max_atoms = %d\n", g->max_atoms );
+    fprintf( stderr, "[INFO] g->ncell = (%d, %d, %d)\n", g->ncell[0], g->ncell[1], g->ncell[2] );
+    fprintf( stderr, "[INFO] g->ncell_max = (%d, %d, %d)\n", g->ncell_max[0], g->ncell_max[1], g->ncell_max[2] );
+    fprintf( stderr, "[INFO] g->len = (%5.2f, %5.2f, %5.2f)\n", g->len[0], g->len[1], g->len[2] );
+    fprintf( stderr, "[INFO] g->max_atoms = %d\n", g->max_atoms );
 #endif
 }
 
@@ -577,7 +587,10 @@ void Update_Grid( reax_system* system )
     /* at least one of ncell has changed */
     else
     {
-        Deallocate_Grid_Space( g );
+        if ( system->g.allocated == TRUE )
+        {
+            Deallocate_Grid_Space( g );
+        }
 
         /* update number of grid cells */
         ivec_Copy( g->ncell, ncell );
@@ -655,7 +668,10 @@ void Bin_Atoms( reax_system* system, static_storage *workspace )
 
 void Finalize_Grid( reax_system* system )
 {
-    Deallocate_Grid_Space( &system->g );
+    if ( system->g.allocated == TRUE )
+    {
+        Deallocate_Grid_Space( &system->g );
+    }
 }
 
 

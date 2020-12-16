@@ -99,7 +99,7 @@ static void Generate_Initial_Velocities( reax_system *system,
 
 
 static void Init_System( reax_system *system, control_params *control,
-        simulation_data *data, int first_run )
+        simulation_data *data )
 {
     int i;
     rvec dx;
@@ -154,7 +154,7 @@ static void Init_System( reax_system *system, control_params *control,
         Generate_Initial_Velocities( system, control, control->T_init );
     }
 
-    Setup_Grid( system, first_run );
+    Setup_Grid( system );
 }
 
 
@@ -392,17 +392,8 @@ static void Init_Workspace( reax_system *system, control_params *control,
 
     if ( realloc == TRUE )
     {
-        /* sparse matrices */
-        workspace->H = NULL;
-        workspace->H_full = NULL;
-        workspace->H_sp = NULL;
-        workspace->H_p = NULL;
-        workspace->H_spar_patt = NULL;
-        workspace->H_spar_patt_full = NULL;
-        workspace->H_app_inv = NULL;
-        workspace->L = NULL;
-        workspace->U = NULL;
         workspace->Hdia_inv = NULL;
+
         if ( control->cm_solver_pre_comp_type == ICHOLT_PC
                 || (control->cm_solver_pre_comp_type == ILUT_PC && control->cm_solver_pre_comp_droptol > 0.0 )
                 || control->cm_solver_pre_comp_type == ILUTP_PC
@@ -774,21 +765,23 @@ static void Init_Workspace( reax_system *system, control_params *control,
 
 static void Init_Lists( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        reax_list **lists, output_controls *out_control,
-        int first_run, int realloc )
+        reax_list **lists, output_controls *out_control, int realloc )
 {
     int i, num_nbrs, num_bonds, num_hbonds, num_3body, Htop, max_nnz;
     int *hb_top, *bond_top;
 
     num_nbrs = Estimate_Num_Neighbors( system, control, workspace, lists );
 
-    if ( first_run == TRUE )
+    if ( lists[FAR_NBRS]->allocated == FALSE )
     {
         Make_List( system->N, system->N_max, num_nbrs, TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
     }
     else if ( realloc == TRUE || lists[FAR_NBRS]->total_intrs < num_nbrs )
     {
-        Delete_List( TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
+        if ( lists[FAR_NBRS]->allocated == TRUE )
+        {
+            Delete_List( TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
+        }
         Make_List( system->N, system->N_max, num_nbrs, TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
     }
     else
@@ -823,21 +816,24 @@ static void Init_Lists( reax_system *system, control_params *control,
             break;
     }
 
-    if ( first_run == TRUE )
+    if ( workspace->H.allocated == FALSE )
     {
         Allocate_Matrix( &workspace->H, system->N_cm, system->N_cm_max, max_nnz );
     }
-    else if ( realloc == TRUE || workspace->H->m < max_nnz )
+    else if ( realloc == TRUE || workspace->H.m < max_nnz )
     {
-        Deallocate_Matrix( workspace->H );
+        if ( workspace->H.allocated == TRUE )
+        {
+            Deallocate_Matrix( &workspace->H );
+        }
         Allocate_Matrix( &workspace->H, system->N_cm, system->N_cm_max, max_nnz );
     }
     else
     {
-        workspace->H->n = system->N_cm;
+        workspace->H.n = system->N_cm;
     }
 
-    if ( first_run == TRUE )
+    if ( workspace->H_sp.allocated == FALSE )
     {
         /* TODO: better estimate for H_sp?
          *   If so, need to refactor Estimate_Storage_Sizes
@@ -845,9 +841,12 @@ static void Init_Lists( reax_system *system, control_params *control,
          *   (non-bonded, hydrogen, 3body, etc.) */
         Allocate_Matrix( &workspace->H_sp, system->N_cm, system->N_cm_max, max_nnz );
     }
-    else if ( realloc == TRUE || workspace->H_sp->m < max_nnz )
+    else if ( realloc == TRUE || workspace->H_sp.m < max_nnz )
     {
-        Deallocate_Matrix( workspace->H_sp );
+        if ( workspace->H_sp.allocated == TRUE )
+        {
+            Deallocate_Matrix( &workspace->H_sp );
+        }
         /* TODO: better estimate for H_sp?
          *   If so, need to refactor Estimate_Storage_Sizes
          *   to use various cut-off distances as parameters
@@ -856,7 +855,7 @@ static void Init_Lists( reax_system *system, control_params *control,
     }
     else
     {
-        workspace->H_sp->n = system->N_cm;
+        workspace->H_sp.n = system->N_cm;
     }
 
     workspace->num_H = 0;
@@ -887,7 +886,7 @@ static void Init_Lists( reax_system *system, control_params *control,
                 num_hbonds += hb_top[i];
             }
 
-            if ( first_run == TRUE || lists[HBONDS]->allocated == FALSE )
+            if ( lists[HBONDS]->allocated == FALSE )
             {
                 workspace->num_H_max = (int) CEIL( SAFE_ZONE * workspace->num_H );
 
@@ -902,7 +901,10 @@ static void Init_Lists( reax_system *system, control_params *control,
                     workspace->num_H_max = (int) CEIL( SAFE_ZONE * workspace->num_H );
                 }
 
-                Delete_List( TYP_HBOND, lists[HBONDS] );
+                if ( lists[HBONDS]->allocated == TRUE )
+                {
+                    Delete_List( TYP_HBOND, lists[HBONDS] );
+                }
                 Allocate_HBond_List( system->N, workspace->num_H, workspace->num_H_max,
                         workspace->hbond_index, hb_top, lists[HBONDS] );
             }
@@ -932,7 +934,10 @@ static void Init_Lists( reax_system *system, control_params *control,
     }
     else if ( realloc == TRUE || lists[BONDS]->total_intrs < num_bonds )
     {
-        Delete_List( TYP_BOND, lists[BONDS] );
+        if ( lists[BONDS]->allocated == TRUE )
+        {
+            Delete_List( TYP_BOND, lists[BONDS] );
+        }
         Allocate_Bond_List( system->N, system->N_max, bond_top, lists[BONDS] );
     }
     else
@@ -954,7 +959,11 @@ static void Init_Lists( reax_system *system, control_params *control,
     else if ( lists[THREE_BODIES]->n_max < num_bonds
             || lists[THREE_BODIES]->total_intrs < num_3body )
     {
-        Delete_List( TYP_THREE_BODY, lists[THREE_BODIES] );
+        if ( lists[THREE_BODIES]->allocated == TRUE )
+        {
+            Delete_List( TYP_THREE_BODY, lists[THREE_BODIES] );
+        }
+
         if ( lists[THREE_BODIES]->n_max < num_bonds )
         {
             Make_List( num_bonds, num_bonds, num_3body,
@@ -1265,7 +1274,7 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
 void Initialize( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control, evolve_function *Evolve,
-        int output_enabled, int first_run, int realloc )
+        int output_enabled, int realloc )
 {
 #if defined(_OPENMP)
     #pragma omp parallel default(none) shared(control)
@@ -1279,13 +1288,13 @@ void Initialize( reax_system *system, control_params *control,
 
     Randomize( );
 
-    Init_System( system, control, data, first_run );
+    Init_System( system, control, data );
 
     Init_Simulation_Data( system, control, data, out_control, Evolve, realloc );
 
     Init_Workspace( system, control, workspace, realloc );
 
-    Init_Lists( system, control, data, workspace, lists, out_control, first_run, realloc );
+    Init_Lists( system, control, data, workspace, lists, out_control, realloc );
 
     Init_Out_Controls( system, control, workspace, out_control, output_enabled );
 
@@ -1391,28 +1400,24 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
         sfree( workspace->map_serials, "Finalize_Workspace::workspace->map_serials" );
     }
 
-    Deallocate_Matrix( workspace->H );
-    Deallocate_Matrix( workspace->H_sp );
-    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
-            || control->cm_solver_pre_comp_type == ILUT_PC
-            || control->cm_solver_pre_comp_type == ILUTP_PC
-            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
-    {
-        Deallocate_Matrix( workspace->L );
-        Deallocate_Matrix( workspace->U );
-    }
-    if ( control->cm_solver_pre_comp_type == SAI_PC )
-    {
-        Deallocate_Matrix( workspace->H_full );
-        Deallocate_Matrix( workspace->H_spar_patt );
-        Deallocate_Matrix( workspace->H_spar_patt_full );
-        Deallocate_Matrix( workspace->H_app_inv );
-    }
-    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
-    {
-        Deallocate_Matrix( workspace->H_full );
-        Deallocate_Matrix( workspace->H_p );
-    }
+    if ( workspace->H.allocated == TRUE )
+        Deallocate_Matrix( &workspace->H );
+    if ( workspace->H_full.allocated == TRUE )
+        Deallocate_Matrix( &workspace->H_full );
+    if ( workspace->H_sp.allocated == TRUE )
+        Deallocate_Matrix( &workspace->H_sp );
+    if ( workspace->H_p.allocated == TRUE )
+        Deallocate_Matrix( &workspace->H_p );
+    if ( workspace->H_spar_patt.allocated == TRUE )
+        Deallocate_Matrix( &workspace->H_spar_patt );
+    if ( workspace->H_spar_patt_full.allocated == TRUE )
+        Deallocate_Matrix( &workspace->H_spar_patt_full );
+    if ( workspace->H_app_inv.allocated == TRUE )
+        Deallocate_Matrix( &workspace->H_app_inv );
+    if ( workspace->L.allocated == TRUE )
+        Deallocate_Matrix( &workspace->L );
+    if ( workspace->U.allocated == TRUE )
+        Deallocate_Matrix( &workspace->U );
 
     for ( i = 0; i < 5; ++i )
     {
@@ -1607,19 +1612,34 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
 }
 
 
-static void Finalize_Lists( control_params *control, reax_list **lists )
+static void Finalize_Lists( reax_list **lists )
 {
-    Delete_List( TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
-    if ( control->hbond_cut > 0.0 && lists[HBONDS]->index != NULL )
+    if ( lists[FAR_NBRS]->allocated == TRUE )
+    {
+        Delete_List( TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
+    }
+    if ( lists[HBONDS]->allocated == TRUE )
     {
         Delete_List( TYP_HBOND, lists[HBONDS] );
     }
-    Delete_List( TYP_BOND, lists[BONDS] );
-    Delete_List( TYP_THREE_BODY, lists[THREE_BODIES] );
+    if ( lists[BONDS]->allocated == TRUE )
+    {
+        Delete_List( TYP_BOND, lists[BONDS] );
+    }
+    if ( lists[THREE_BODIES]->allocated == TRUE )
+    {
+        Delete_List( TYP_THREE_BODY, lists[THREE_BODIES] );
+    }
 
 #if defined(TEST_FORCES)
-    Delete_List( TYP_DDELTA, lists[DDELTA] );
-    Delete_List( TYP_DBO, lists[DBO] );
+    if ( lists[DDELTA]->allocated == TRUE )
+    {
+        Delete_List( TYP_DDELTA, lists[DDELTA] );
+    }
+    if ( lists[DBO]->allocated == TRUE )
+    {
+        Delete_List( TYP_DBO, lists[DBO] );
+    }
 #endif
 }
 
@@ -1709,12 +1729,12 @@ void Finalize( reax_system *system, control_params *control,
         Finalize_LR_Lookup_Table( system, control, workspace );
     }
 
-    if ( output_enabled == TRUE )
+    if ( output_enabled == TRUE && reset == FALSE )
     {
         Finalize_Out_Controls( system, control, workspace, out_control );
     }
 
-    Finalize_Lists( control, lists );
+    Finalize_Lists( lists );
 
     Finalize_Workspace( system, control, workspace, reset );
 

@@ -144,19 +144,20 @@ void Read_Force_Field( FILE *fp, reax_interaction *reax, int first_run )
         else if ( reax->max_num_atom_types < n )
         {
             for ( i = 0; i < reax->max_num_atom_types; i++ )
-            {
+                for ( j = 0; j < reax->max_num_atom_types; j++ )
+                    for ( k = 0; k < reax->max_num_atom_types; k++ )
+                        sfree( reax->fbp[i][j][k], "Finalize_System::reax->fbp[i][j][k]" );
+
+            for ( i = 0; i < reax->max_num_atom_types; i++ )
                 for ( j = 0; j < reax->max_num_atom_types; j++ )
                 {
-                    for ( k = 0; k < reax->max_num_atom_types; k++ )
-                    {
-                        sfree( reax->fbp[i][j][k], "Finalize_System::reax->fbp[i][j][k]" );
-                    }
-
                     sfree( reax->thbp[i][j], "Finalize_System::reax->thbp[i][j]" );
                     sfree( reax->hbp[i][j], "Finalize_System::reax->hbp[i][j]" );
                     sfree( reax->fbp[i][j], "Finalize_System::reax->fbp[i][j]" );
                 }
 
+            for ( i = 0; i < reax->max_num_atom_types; i++ )
+            {
                 sfree( reax->tbp[i], "Finalize_System::reax->tbp[i]" );
                 sfree( reax->thbp[i], "Finalize_System::reax->thbp[i]" );
                 sfree( reax->hbp[i], "Finalize_System::reax->hbp[i]" );
@@ -240,19 +241,20 @@ void Read_Force_Field( FILE *fp, reax_interaction *reax, int first_run )
         //               3: inner wall+shielding
         reax->gp.vdw_type = 0;
 
-        /* reading single atom parameters */
-        /* there are 4 lines of each single atom parameters in ff files. these
-           parameters later determine some of the pair and triplet parameters using
-           combination rules. */
+        /* reading single atom parameters:
+         * there are 4 lines of each single atom parameters in ff files. these
+         * parameters later determine some of the pair and triplet parameters using
+         * combination rules. */
         for ( i = 0; i < reax->num_atom_types; i++ )
         {
             /* line one */
             fgets( s, MAX_LINE, fp );
             Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
-            for ( j = 0; j < strnlen( tmp[0], MAX_TOKEN_LEN ); ++j )
+            strncpy( reax->sbp[i].name, tmp[0], sizeof(reax->sbp[i].name) );
+            for ( j = 0; j < strlen( reax->sbp[i].name ); ++j )
             {
-                reax->sbp[i].name[j] = toupper( tmp[0][j] );
+                reax->sbp[i].name[j] = toupper( reax->sbp[i].name[j] );
             }
 
             val = atof(tmp[1]);
