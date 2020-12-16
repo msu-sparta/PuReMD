@@ -26,7 +26,8 @@
 #include "tool_box.h"
 
 
-void Read_Force_Field( FILE *fp, reax_interaction *reax, int first_run )
+void Read_Force_Field( FILE *fp, reax_system * const system,
+        reax_interaction * const reax )
 {
     char *s;
     char **tmp;
@@ -60,7 +61,7 @@ void Read_Force_Field( FILE *fp, reax_interaction *reax, int first_run )
             return;
         }
 
-        if ( first_run == TRUE )
+        if ( system->ffield_params_allocated == FALSE )
         {
             reax->gp.l = (real*) smalloc( sizeof(real) * n,
                    "Read_Force_Field::reax->gp-l" );
@@ -97,8 +98,10 @@ void Read_Force_Field( FILE *fp, reax_interaction *reax, int first_run )
         fgets( s, MAX_LINE, fp );
         fgets( s, MAX_LINE, fp );
 
-        if ( first_run == TRUE )
+        if ( system->ffield_params_allocated == FALSE )
         {
+            system->ffield_params_allocated = TRUE;
+
             /* Allocating structures in reax_interaction */
             reax->sbp = (single_body_parameters*) scalloc( n, sizeof(single_body_parameters),
                     "Read_Force_Field::reax->sbp" );

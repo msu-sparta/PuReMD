@@ -26,7 +26,7 @@
 
 
 void PreAllocate_Space( reax_system * const, control_params  const * const,
-        static_storage * const, int, int );
+        static_storage * const, int );
 
 void Reallocate( reax_system * const, control_params const * const,
         static_storage * const, reax_list ** const, int );

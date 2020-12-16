@@ -28,12 +28,14 @@
 /* allocate space for atoms */
 void PreAllocate_Space( reax_system * const system,
         control_params const  * const control,
-        static_storage * const workspace, int n, int first_run )
+        static_storage * const workspace, int n )
 {
     int i;
 
-    if ( first_run == TRUE )
+    if ( system->prealloc_allocated == FALSE )
     {
+        system->prealloc_allocated = TRUE;
+
         system->atoms = scalloc( n, sizeof(reax_atom),
                 "PreAllocate_Space::system->atoms" );
         workspace->orig_id = scalloc( n, sizeof(int),

@@ -854,6 +854,10 @@ struct grid
 
 struct reax_system
 {
+    /* 0 if struct members are NOT allocated, 1 otherwise */
+    int prealloc_allocated;
+    /* 0 if struct members are NOT allocated, 1 otherwise */
+    int ffield_params_allocated;
     /* number of local (non-periodic image) atoms for the current simulation */
     int N;
     /* max. number of local (non-periodic image) atoms across all simulations */
@@ -1765,8 +1769,6 @@ struct spuremd_handle
     reax_list **lists;
     /* Output controls */
     output_controls *out_control;
-    /* TRUE for first simulation, FALSE otherwise */
-    int first_run;
     /* TRUE if file I/O for simulation output enabled, FALSE otherwise */
     int output_enabled;
     /* TRUE if reallocation is required due to num. atoms increasing, FALSE otherwise */

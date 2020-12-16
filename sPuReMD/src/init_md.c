@@ -1318,6 +1318,9 @@ static void Finalize_System( reax_system *system, control_params *control,
     int i, j, k;
     reax_interaction *reax;
 
+    system->prealloc_allocated = FALSE;
+    system->ffield_params_allocated = FALSE;
+
     reax = &system->reax_param;
 
     Finalize_Grid( system );

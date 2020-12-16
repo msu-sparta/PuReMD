@@ -99,37 +99,37 @@ static void Read_Input_Files( const char * const geo_file,
         const char * const ffield_file, const char * const control_file,
         reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        output_controls * const out_control, int first_run )
+        output_controls * const out_control )
 {
     FILE *ffield, *ctrl;
 
     ffield = sfopen( ffield_file, "r" );
     ctrl = sfopen( control_file, "r" );
 
-    Read_Force_Field( ffield, &system->reax_param, first_run );
+    Read_Force_Field( ffield, system, &system->reax_param );
 
     Read_Control_File( ctrl, system, control, out_control );
 
     if ( control->geo_format == CUSTOM )
     {
-        Read_Geo( geo_file, system, control, data, workspace, first_run );
+        Read_Geo( geo_file, system, control, data, workspace );
     }
     else if ( control->geo_format == PDB )
     {
-        Read_PDB( geo_file, system, control, data, workspace, first_run );
+        Read_PDB( geo_file, system, control, data, workspace );
     }
     else if ( control->geo_format == BGF )
     {
-        Read_BGF( geo_file, system, control, data, workspace, first_run );
+        Read_BGF( geo_file, system, control, data, workspace );
     }
     else if ( control->geo_format == ASCII_RESTART )
     {
-        Read_ASCII_Restart( geo_file, system, control, data, workspace, first_run );
+        Read_ASCII_Restart( geo_file, system, control, data, workspace );
         control->restart = TRUE;
     }
     else if ( control->geo_format == BINARY_RESTART )
     {
-        Read_Binary_Restart( geo_file, system, control, data, workspace, first_run );
+        Read_Binary_Restart( geo_file, system, control, data, workspace );
         control->restart = TRUE;
     }
     else
@@ -167,6 +167,8 @@ void* setup( const char * const geo_file, const char * const ffield_file,
     /* second-level allocations */
     spmd_handle->system = smalloc( sizeof(reax_system),
            "Setup::spmd_handle->system" );
+    spmd_handle->system->prealloc_allocated = FALSE;
+    spmd_handle->system->ffield_params_allocated = FALSE;
     spmd_handle->system->g.allocated = FALSE;
 
     spmd_handle->control = smalloc( sizeof(control_params),
@@ -198,7 +200,6 @@ void* setup( const char * const geo_file, const char * const ffield_file,
     spmd_handle->out_control = smalloc( sizeof(output_controls),
            "Setup::spmd_handle->out_control" );
 
-    spmd_handle->first_run = TRUE;
     spmd_handle->output_enabled = TRUE;
     spmd_handle->realloc = TRUE;
     spmd_handle->callback = NULL;
@@ -207,7 +208,7 @@ void* setup( const char * const geo_file, const char * const ffield_file,
     Read_Input_Files( geo_file, ffield_file, control_file,
             spmd_handle->system, spmd_handle->control,
             spmd_handle->data, spmd_handle->workspace,
-            spmd_handle->out_control, spmd_handle->first_run );
+            spmd_handle->out_control );
 
     spmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * spmd_handle->system->N );
 
@@ -453,14 +454,13 @@ int reset( const void * const handle, const char * const geo_file,
                     spmd_handle->workspace, spmd_handle->out_control );
         }
 
-        spmd_handle->first_run = FALSE;
         spmd_handle->realloc = FALSE;
         spmd_handle->data->sim_id++;
 
         Read_Input_Files( geo_file, ffield_file, control_file,
                 spmd_handle->system, spmd_handle->control,
                 spmd_handle->data, spmd_handle->workspace,
-                spmd_handle->out_control, spmd_handle->first_run );
+                spmd_handle->out_control );
 
         if ( spmd_handle->system->N > spmd_handle->system->N_max )
         {

@@ -283,7 +283,7 @@ static int Count_Atoms( reax_system *system, FILE *fp, int geo_format )
 
 
 void Read_Geo( const char * const geo_file, reax_system* system, control_params *control,
-        simulation_data *data, static_storage *workspace, int first_run )
+        simulation_data *data, static_storage *workspace )
 {
     FILE *geo;
     int i, n, serial, top;
@@ -302,9 +302,9 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
 
     /* count atoms and allocate storage */
     n = Count_Atoms( system, geo, CUSTOM );
-    if ( first_run == TRUE || n > system->N )
+    if ( system->prealloc_allocated == FALSE || n > system->N )
     {
-        PreAllocate_Space( system, control, workspace, n, first_run );
+        PreAllocate_Space( system, control, workspace, n );
     }
     system->N = n;
 
@@ -339,7 +339,7 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
 
 
 void Read_PDB( const char * const pdb_file, reax_system* system, control_params *control,
-        simulation_data *data, static_storage *workspace, int first_run )
+        simulation_data *data, static_storage *workspace )
 {
     int i, n, c, c1, pdb_serial, top;
     FILE *pdb;
@@ -370,9 +370,9 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
     }
 
     n = Count_Atoms( system, pdb, PDB );
-    if ( first_run == TRUE || n > system->N )
+    if ( system->prealloc_allocated == FALSE || n > system->N )
     {
-        PreAllocate_Space( system, control, workspace, n, first_run );
+        PreAllocate_Space( system, control, workspace, n );
     }
     system->N = n;
 
@@ -613,7 +613,7 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
 
 
 void Read_BGF( const char * const bgf_file, reax_system* system, control_params *control,
-        simulation_data *data, static_storage *workspace, int first_run )
+        simulation_data *data, static_storage *workspace )
 {
     FILE *bgf;
     char **tokens;
@@ -662,9 +662,9 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
 
     sfclose( bgf, "Read_BGF::bgf" );
 
-    if ( first_run == TRUE || n > system->N )
+    if ( system->prealloc_allocated == FALSE || n > system->N )
     {
-        PreAllocate_Space( system, control, workspace, n, first_run );
+        PreAllocate_Space( system, control, workspace, n );
     }
     system->N = n;
 

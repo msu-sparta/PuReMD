@@ -25,7 +25,7 @@
 #include "reax_types.h"
 
 
-void Read_Force_Field( FILE *, reax_interaction *, int );
+void Read_Force_Field( FILE *, reax_system * const, reax_interaction * const );
 
 
 #endif
