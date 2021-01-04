@@ -642,7 +642,7 @@ void Output_Results( reax_system *system, control_params *control,
                  data->timing.nonb * f_update,
                  data->timing.cm * f_update,
                  data->timing.cm_sort_mat_rows * f_update,
-                 (double)data->timing.cm_solver_iters * f_update,
+                 (double) data->timing.cm_solver_iters * f_update,
                  data->timing.cm_solver_pre_comp * f_update,
                  data->timing.cm_solver_pre_app * f_update,
                  data->timing.cm_solver_spmv * f_update,
@@ -651,19 +651,19 @@ void Output_Results( reax_system *system, control_params *control,
                  data->timing.cm_solver_tri_solve * f_update );
 
         data->timing.total = Get_Time( );
-        data->timing.nbrs = 0;
-        data->timing.init_forces = 0;
-        data->timing.bonded = 0;
-        data->timing.nonb = 0;
-        data->timing.cm = ZERO;
-        data->timing.cm_sort_mat_rows = ZERO;
-        data->timing.cm_solver_pre_comp = ZERO;
-        data->timing.cm_solver_pre_app = ZERO;
+        data->timing.nbrs = 0.0;
+        data->timing.init_forces = 0.0;
+        data->timing.bonded = 0.0;
+        data->timing.nonb = 0.0;
+        data->timing.cm = 0.0;
+        data->timing.cm_sort_mat_rows = 0.0;
+        data->timing.cm_solver_pre_comp = 0.0;
+        data->timing.cm_solver_pre_app = 0.0;
         data->timing.cm_solver_iters = 0;
-        data->timing.cm_solver_spmv = ZERO;
-        data->timing.cm_solver_vector_ops = ZERO;
-        data->timing.cm_solver_orthog = ZERO;
-        data->timing.cm_solver_tri_solve = ZERO;
+        data->timing.cm_solver_spmv = 0.0;
+        data->timing.cm_solver_vector_ops = 0.0;
+        data->timing.cm_solver_orthog = 0.0;
+        data->timing.cm_solver_tri_solve = 0.0;
 
         fflush( out_control->out );
         fflush( out_control->pot );

@@ -1153,7 +1153,7 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
 #endif
     for ( i = 0; i < A->n; ++i )
     {
-        if ( A->val[A->start[i + 1] - 1] < ZERO )
+        if ( A->val[A->start[i + 1] - 1] < 0.0 )
         {
             gamma[i] = -1.0;
         }
@@ -1224,7 +1224,7 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
             y = U_T_temp.start[U_T_temp.j[pj]];
             ei_y = U_T_temp.start[U_T_temp.j[pj] + 1];
 
-            sum = ZERO;
+            sum = 0.0;
 
             /* sparse vector-sparse vector inner product for nonzero (i, j):
              *   dot( U^T(i,1:j-1), U^T(j,1:j-1) ) */
@@ -1252,7 +1252,7 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
             {
 #if defined(DEBUG_FOCUS)
                 /* sanity check */
-                if ( sum < ZERO )
+                if ( sum < 0.0 )
                 {
                     fprintf( stderr, "[ERROR] Numeric breakdown in FG_ICHOLT. Terminating.\n");
                     fprintf( stderr, "  [INFO] DAD(%5d,%5d) = %10.3f\n",
@@ -1362,7 +1362,7 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
 #endif
     for ( i = 0; i < A->n; ++i )
     {
-        if ( A->val[A->start[i + 1] - 1] < ZERO )
+        if ( A->val[A->start[i + 1] - 1] < 0.0 )
         {
             gamma[i] = -1.0;
         }
@@ -1452,7 +1452,7 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
                 y = L_temp.start[L_temp.j[pj]];
                 ei_y = L_temp.start[L_temp.j[pj] + 1];
 
-                sum = ZERO;
+                sum = 0.0;
 
                 /* sparse vector-sparse vector inner products for nonzero (i, j):
                  *   dot( L(i,1:j-1), U^T(j,1:j-1) )
@@ -1505,7 +1505,7 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
             y = L_temp.start[L_temp.j[pj]];
             ei_y = L_temp.start[L_temp.j[pj] + 1];
 
-            sum = ZERO;
+            sum = 0.0;
 
             /* sparse vector-sparse vector inner products for nonzero (i, j):
              *   dot( L(j,1:j-1), U^T(i,1:j-1) )

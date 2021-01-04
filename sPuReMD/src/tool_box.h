@@ -26,20 +26,20 @@
 
 
 /* from box.h */
-void Transform( rvec, simulation_box*, int, rvec );
+void Transform( rvec, simulation_box *, int, rvec );
 
-void Transform_to_UnitBox( rvec, simulation_box*, int, rvec );
+void Transform_to_UnitBox( rvec, simulation_box *, int, rvec );
 
-void Fit_to_Periodic_Box( simulation_box*, rvec );
+void Fit_to_Periodic_Box( simulation_box *, rvec );
 
-int is_Inside_Box( simulation_box*, rvec );
+int is_Inside_Box( simulation_box *, rvec );
 
 /* from geo_tools.h */
-void Make_Point( real, real, real, rvec* );
+void Make_Point( real, real, real, rvec * );
 
-int is_Valid_Serial( static_storage*, int );
+int is_Valid_Serial( static_storage *, int );
 
-int Check_Input_Range( int, int, int, char* );
+int Check_Input_Range( int, int, int, char * );
 
 void Trim_Spaces( char * const, const size_t );
 
@@ -49,31 +49,37 @@ real Get_Time( );
 real Get_Timing_Info( real );
 
 /* from io_tools.h */
-int Get_Atom_Type( reax_interaction*, char*, size_t );
+int Get_Atom_Type( reax_interaction *, char *, size_t );
 
-char *Get_Element( reax_system*, int );
+char * Get_Element( reax_system *, int );
 
-char *Get_Atom_Name( reax_system*, int );
+char * Get_Atom_Name( reax_system *, int );
 
-void Allocate_Tokenizer_Space( char**, size_t, char**, size_t, char***,
+void Allocate_Tokenizer_Space( char **, size_t, char **, size_t, char ***,
         size_t, size_t );
 
 void Deallocate_Tokenizer_Space( char **, char **, char ***,
         size_t );
 
-int Tokenize( char*, char***, size_t );
+int Tokenize( char *, char ***, size_t );
 
 /* from lammps */
-void *smalloc( size_t, const char * );
+void * smalloc( size_t, const char * );
 
-void* srealloc( void *, size_t, const char * );
+void * srealloc( void *, size_t, const char * );
 
-void* scalloc( size_t, size_t, const char * );
+void * scalloc( size_t, size_t, const char * );
 
 void sfree( void *, const char * );
 
 FILE * sfopen( const char *, const char * );
 
 void sfclose( FILE *, const char * );
+
+int sstrtol( const char * const,
+        const char * const, int );
+
+double sstrtod( const char * const,
+        const char * const, int );
 
 #endif

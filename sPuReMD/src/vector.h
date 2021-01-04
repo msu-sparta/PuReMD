@@ -73,7 +73,7 @@ static inline void Vector_MakeZero( real * const v, const unsigned int k )
 #endif
     for ( i = 0; i < k; ++i )
     {
-        v[i] = ZERO;
+        v[i] = 0.0;
     }
 }
 
@@ -146,7 +146,7 @@ static inline real Dot( const real * const v1, const real * const v2,
     #pragma omp single
 #endif
     {
-        ret2_omp = ZERO;
+        ret2_omp = 0.0;
     }
 
 #if defined(_OPENMP)
@@ -169,7 +169,7 @@ static inline real Norm( const real * const v1, const unsigned int k )
     #pragma omp single
 #endif
     {
-        ret2_omp = ZERO;
+        ret2_omp = 0.0;
     }
 
 #if defined(_OPENMP)
@@ -478,7 +478,7 @@ static inline void rvec_MakeZero( rvec v )
 #endif
     for ( i = 0; i < 3; ++i )
     {
-        v[i] = ZERO;
+        v[i] = 0.0;
     }
 }
 
@@ -662,7 +662,7 @@ static inline void rtensor_Identity( rtensor t )
     {
         for ( j = 0; j < 3; ++j )
         {
-            t[i][j] = (i == j ? 1.0 : ZERO);
+            t[i][j] = (i == j ? 1.0 : 0.0);
         }
     }
 }
@@ -676,7 +676,7 @@ static inline void rtensor_MakeZero( rtensor t )
     {
         for ( j = 0; j < 3; ++j )
         {
-            t[i][j] = ZERO;
+            t[i][j] = 0.0;
         }
     }
 }

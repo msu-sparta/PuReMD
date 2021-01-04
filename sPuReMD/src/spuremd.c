@@ -21,10 +21,9 @@
 
 #include "spuremd.h"
 
+#include "allocate.h"
 #include "analyze.h"
-#if defined(DEBUG_FOCUS)
-  #include "box.h"
-#endif
+#include "box.h"
 #include "control.h"
 #include "ffield.h"
 #include "forces.h"
@@ -101,45 +100,46 @@ static void Read_Input_Files( const char * const geo_file,
         simulation_data * const data, static_storage * const workspace,
         output_controls * const out_control )
 {
-    FILE *ffield, *ctrl;
-
-    ffield = sfopen( ffield_file, "r" );
-    ctrl = sfopen( control_file, "r" );
-
-    Read_Force_Field( ffield, system, &system->reax_param );
-
-    Read_Control_File( ctrl, system, control, out_control );
-
-    if ( control->geo_format == CUSTOM )
+    if ( ffield_file != NULL )
     {
-        Read_Geo( geo_file, system, control, data, workspace );
-    }
-    else if ( control->geo_format == PDB )
-    {
-        Read_PDB( geo_file, system, control, data, workspace );
-    }
-    else if ( control->geo_format == BGF )
-    {
-        Read_BGF( geo_file, system, control, data, workspace );
-    }
-    else if ( control->geo_format == ASCII_RESTART )
-    {
-        Read_ASCII_Restart( geo_file, system, control, data, workspace );
-        control->restart = TRUE;
-    }
-    else if ( control->geo_format == BINARY_RESTART )
-    {
-        Read_Binary_Restart( geo_file, system, control, data, workspace );
-        control->restart = TRUE;
-    }
-    else
-    {
-        fprintf( stderr, "[ERROR] unknown geo file format. terminating!\n" );
-        exit( INVALID_GEO );
+        Read_Force_Field( ffield_file, system, &system->reax_param );
     }
 
-    sfclose( ffield, "Read_Input_Files::ffield" );
-    sfclose( ctrl, "Read_Input_Files::ctrl" );
+    if ( control_file != NULL )
+    {
+        Read_Control_File( control_file, system, control, out_control );
+    }
+
+    if ( geo_file != NULL )
+    {
+        if ( control->geo_format == CUSTOM )
+        {
+            Read_Geo( geo_file, system, control, data, workspace );
+        }
+        else if ( control->geo_format == PDB )
+        {
+            Read_PDB( geo_file, system, control, data, workspace );
+        }
+        else if ( control->geo_format == BGF )
+        {
+            Read_BGF( geo_file, system, control, data, workspace );
+        }
+        else if ( control->geo_format == ASCII_RESTART )
+        {
+            Read_ASCII_Restart( geo_file, system, control, data, workspace );
+            control->restart = TRUE;
+        }
+        else if ( control->geo_format == BINARY_RESTART )
+        {
+            Read_Binary_Restart( geo_file, system, control, data, workspace );
+            control->restart = TRUE;
+        }
+        else
+        {
+            fprintf( stderr, "[ERROR] unknown geo file format. terminating!\n" );
+            exit( INVALID_GEO );
+        }
+    }
 
 #if defined(DEBUG_FOCUS)
     Print_Box( &system->box, stderr );
@@ -150,11 +150,157 @@ static void Read_Input_Files( const char * const geo_file,
 /* Allocate top-level data structures and parse input files
  * for the first simulation
  *
+ * qm_num_atoms: num. atoms in the QM region
+ * qm_types: element types for QM atoms
+ * qm_pos_x: x-coordinate of QM atom positions, in Angstroms
+ * qm_pos_y: y-coordinate of QM atom positions, in Angstroms
+ * qm_pos_z: z-coordinate of QM atom positions, in Angstroms
+ * mm_num_atoms: num. atoms in the MM region
+ * mm_types: element types for MM atoms
+ * mm_pos_x: x-coordinate of MM atom positions, in Angstroms
+ * mm_pos_y: y-coordinate of MM atom positions, in Angstroms
+ * mm_pos_z: z-coordinate of MM atom positions, in Angstroms
+ * mm_q: charge of MM atom, in Coulombs
+ * sim_box: simulation box information, where the entries are
+ *  - box length per dimension (3 entries)
+ *  - angles per dimension (3 entries)
+ * ffield_file: file containing force field parameters
+ * control_file: file containing simulation parameters
+ */
+void * setup_qmmm_( int qm_num_atoms, const int * const qm_types,
+        const double * const qm_pos_x, const double * const qm_pos_y,
+        const double * const qm_pos_z,
+        int mm_num_atoms, const int * const mm_types,
+        const double * const mm_pos_x, const double * const mm_pos_y,
+        const double * const mm_pos_z, const double * const mm_q,
+        const double * const sim_box,
+        const char * const ffield_file,
+        const char * const control_file )
+{
+    int i;
+//    char atom_name[9];
+    rvec x;
+    spuremd_handle *spmd_handle;
+
+    /* top-level allocation */
+    spmd_handle = (spuremd_handle*) smalloc( sizeof(spuremd_handle),
+            "setup::spmd_handle" );
+
+    /* second-level allocations */
+    spmd_handle->system = smalloc( sizeof(reax_system),
+           "Setup::spmd_handle->system" );
+    spmd_handle->system->prealloc_allocated = FALSE;
+    spmd_handle->system->ffield_params_allocated = FALSE;
+    spmd_handle->system->g.allocated = FALSE;
+
+    spmd_handle->control = smalloc( sizeof(control_params),
+           "Setup::spmd_handle->control" );
+
+    spmd_handle->data = smalloc( sizeof(simulation_data),
+           "Setup::spmd_handle->data" );
+
+    spmd_handle->workspace = smalloc( sizeof(static_storage),
+           "Setup::spmd_handle->workspace" );
+    spmd_handle->workspace->H.allocated = FALSE;
+    spmd_handle->workspace->H_full.allocated = FALSE;
+    spmd_handle->workspace->H_sp.allocated = FALSE;
+    spmd_handle->workspace->H_p.allocated = FALSE;
+    spmd_handle->workspace->H_spar_patt.allocated = FALSE;
+    spmd_handle->workspace->H_spar_patt_full.allocated = FALSE;
+    spmd_handle->workspace->H_app_inv.allocated = FALSE;
+    spmd_handle->workspace->L.allocated = FALSE;
+    spmd_handle->workspace->U.allocated = FALSE;
+
+    spmd_handle->lists = smalloc( sizeof(reax_list *) * LIST_N,
+           "Setup::spmd_handle->lists" );
+    for ( i = 0; i < LIST_N; ++i )
+    {
+        spmd_handle->lists[i] = smalloc( sizeof(reax_list),
+                "Setup::spmd_handle->lists[i]" );
+        spmd_handle->lists[i]->allocated = FALSE;
+    }
+    spmd_handle->out_control = smalloc( sizeof(output_controls),
+           "Setup::spmd_handle->out_control" );
+
+    spmd_handle->output_enabled = FALSE;
+    spmd_handle->realloc = TRUE;
+    spmd_handle->callback = NULL;
+    spmd_handle->data->sim_id = 0;
+
+    spmd_handle->system->N = qm_num_atoms + mm_num_atoms;
+
+    PreAllocate_Space( spmd_handle->system, spmd_handle->control,
+            spmd_handle->workspace, spmd_handle->system->N );
+
+    Setup_Box( sim_box[0], sim_box[1], sim_box[2],
+            sim_box[3], sim_box[4], sim_box[5],
+            &spmd_handle->system->box );
+
+    for ( i = 0; i < qm_num_atoms; ++i )
+    {
+        x[0] = qm_pos_x[i];
+        x[1] = qm_pos_y[i];
+        x[2] = qm_pos_z[i];
+
+        Fit_to_Periodic_Box( &spmd_handle->system->box, x );
+
+        spmd_handle->workspace->orig_id[i] = i + 1;
+//        spmd_handle->system->atoms[i].type = Get_Atom_Type( &system->reax_param,
+//                element, sizeof(element) );
+        spmd_handle->system->atoms[i].type = qm_types[i];
+//        strncpy( spmd_handle->system->atoms[i].name, atom_name,
+//                sizeof(spmd_handle->system->atoms[i].name) - 1 );
+//        spmd_handle->system->atoms[i].name[sizeof(spmd_handle->system->atoms[i].name) - 1] = '\0';
+        rvec_Copy( spmd_handle->system->atoms[i].x, x );
+        rvec_MakeZero( spmd_handle->system->atoms[i].v );
+        rvec_MakeZero( spmd_handle->system->atoms[i].f );
+        spmd_handle->system->atoms[i].q = 0.0;
+
+//        mask[i] = 1;
+    }
+
+    for ( i = qm_num_atoms; i < qm_num_atoms + mm_num_atoms; ++i )
+    {
+        x[0] = mm_pos_x[i - qm_num_atoms];
+        x[1] = mm_pos_y[i - qm_num_atoms];
+        x[2] = mm_pos_z[i - qm_num_atoms];
+
+        Fit_to_Periodic_Box( &spmd_handle->system->box, x );
+
+        spmd_handle->workspace->orig_id[i] = i + 1;
+//        spmd_handle->system->atoms[i].type = Get_Atom_Type( &system->reax_param,
+//                element, sizeof(element) );
+        spmd_handle->system->atoms[i].type = mm_types[i - qm_num_atoms];
+//        strncpy( spmd_handle->system->atoms[i].name, atom_name,
+//                sizeof(spmd_handle->system->atoms[i].name) - 1 );
+//        spmd_handle->system->atoms[i].name[sizeof(spmd_handle->system->atoms[i].name) - 1] = '\0';
+        rvec_Copy( spmd_handle->system->atoms[i].x, x );
+        rvec_MakeZero( spmd_handle->system->atoms[i].v );
+        rvec_MakeZero( spmd_handle->system->atoms[i].f );
+        spmd_handle->system->atoms[i].q = mm_q[i - qm_num_atoms];
+
+//        mask[i] = 0;
+    }
+
+    Read_Input_Files( NULL, ffield_file, control_file,
+            spmd_handle->system, spmd_handle->control,
+            spmd_handle->data, spmd_handle->workspace,
+            spmd_handle->out_control );
+
+    spmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * spmd_handle->system->N );
+
+    return (void *) spmd_handle;
+}
+
+
+/* Allocate top-level data structures and parse input files
+ * for the first simulation
+ *
  * geo_file: file containing geometry info of the structure to simulate
  * ffield_file: file containing force field parameters
  * control_file: file containing simulation parameters
  */
-void* setup( const char * const geo_file, const char * const ffield_file,
+void * setup( const char * const geo_file, const char * const ffield_file,
         const char * const control_file )
 {
     int i;
@@ -212,7 +358,7 @@ void* setup( const char * const geo_file, const char * const ffield_file,
 
     spmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * spmd_handle->system->N );
 
-    return (void*) spmd_handle;
+    return (void *) spmd_handle;
 }
 
 
@@ -220,6 +366,8 @@ void* setup( const char * const geo_file, const char * const ffield_file,
  *
  * handle: pointer to wrapper struct with top-level data structures
  * callback: function pointer to attach for callback
+ *
+ * returns: SPUREMD_SUCCESS upon success, SPUREMD_FAILURE otherwise
  */
 int setup_callback( const void * const handle, const callback_function callback  )
 {
@@ -243,6 +391,8 @@ int setup_callback( const void * const handle, const callback_function callback 
 /* Run the simulation according to the prescribed parameters
  *
  * handle: pointer to wrapper struct with top-level data structures
+ *
+ * returns: SPUREMD_SUCCESS upon success, SPUREMD_FAILURE otherwise
  */
 int simulate( const void * const handle )
 {
@@ -391,6 +541,8 @@ int simulate( const void * const handle )
 /* Deallocate all data structures post-simulation
  *
  * handle: pointer to wrapper struct with top-level data structures
+ *
+ * returns: SPUREMD_SUCCESS upon success, SPUREMD_FAILURE otherwise
  */
 int cleanup( const void * const handle )
 {
@@ -431,9 +583,144 @@ int cleanup( const void * const handle )
  * reallocation if more space is needed
  *
  * handle: pointer to wrapper struct with top-level data structures
+ * qm_num_atoms: num. atoms in the QM region
+ * qm_types: element types for QM atoms
+ * qm_pos_x: x-coordinate of QM atom positions, in Angstroms
+ * qm_pos_y: y-coordinate of QM atom positions, in Angstroms
+ * qm_pos_z: z-coordinate of QM atom positions, in Angstroms
+ * mm_num_atoms: num. atoms in the MM region
+ * mm_types: element types for MM atoms
+ * mm_pos_x: x-coordinate of MM atom positions, in Angstroms
+ * mm_pos_y: y-coordinate of MM atom positions, in Angstroms
+ * mm_pos_z: z-coordinate of MM atom positions, in Angstroms
+ * mm_q: charge of MM atom, in Coulombs
+ * sim_box: simulation box information, where the entries are
+ *  - box length per dimension (3 entries)
+ *  - angles per dimension (3 entries)
+ * ffield_file: file containing force field parameters
+ * control_file: file containing simulation parameters
+ *
+ * returns: SPUREMD_SUCCESS upon success, SPUREMD_FAILURE otherwise
+ */
+int reset_qmmm_( const void * const handle,
+        int qm_num_atoms, const int * const qm_types,
+        const double * const qm_pos_x, const double * const qm_pos_y,
+        const double * const qm_pos_z,
+        int mm_num_atoms, const int * const mm_types,
+        const double * const mm_pos_x, const double * const mm_pos_y,
+        const double * const mm_pos_z, const double * const mm_q,
+        const double * const sim_box,
+        const char * const ffield_file, const char * const control_file )
+{
+    int i, ret;
+    rvec x;
+    spuremd_handle *spmd_handle;
+
+    ret = SPUREMD_FAILURE;
+
+    if ( handle != NULL )
+    {
+        spmd_handle = (spuremd_handle*) handle;
+
+        /* close files used in previous simulation */
+        if ( spmd_handle->output_enabled == TRUE )
+        {
+            Finalize_Out_Controls( spmd_handle->system, spmd_handle->control,
+                    spmd_handle->workspace, spmd_handle->out_control );
+        }
+
+        spmd_handle->realloc = FALSE;
+        spmd_handle->data->sim_id++;
+
+        spmd_handle->system->N = qm_num_atoms + mm_num_atoms;
+
+        PreAllocate_Space( spmd_handle->system, spmd_handle->control,
+                spmd_handle->workspace, spmd_handle->system->N );
+
+        Setup_Box( sim_box[0], sim_box[1], sim_box[2],
+                sim_box[3], sim_box[4], sim_box[5],
+                &spmd_handle->system->box );
+
+        for ( i = 0; i < qm_num_atoms; ++i )
+        {
+            x[0] = qm_pos_x[i];
+            x[1] = qm_pos_y[i];
+            x[2] = qm_pos_z[i];
+
+            Fit_to_Periodic_Box( &spmd_handle->system->box, x );
+
+            spmd_handle->workspace->orig_id[i] = i + 1;
+//            spmd_handle->system->atoms[i].type = Get_Atom_Type( &system->reax_param,
+//                    element, sizeof(element) );
+            spmd_handle->system->atoms[i].type = qm_types[i];
+//            strncpy( spmd_handle->system->atoms[i].name, atom_name,
+//                    sizeof(spmd_handle->system->atoms[i].name) - 1 );
+//            spmd_handle->system->atoms[i].name[sizeof(spmd_handle->system->atoms[i].name) - 1] = '\0';
+            rvec_Copy( spmd_handle->system->atoms[i].x, x );
+            rvec_MakeZero( spmd_handle->system->atoms[i].v );
+            rvec_MakeZero( spmd_handle->system->atoms[i].f );
+            spmd_handle->system->atoms[i].q = 0.0;
+
+//            mask[i] = 1;
+        }
+
+        for ( i = qm_num_atoms; i < qm_num_atoms + mm_num_atoms; ++i )
+        {
+            x[0] = mm_pos_x[i - qm_num_atoms];
+            x[1] = mm_pos_y[i - qm_num_atoms];
+            x[2] = mm_pos_z[i - qm_num_atoms];
+
+            Fit_to_Periodic_Box( &spmd_handle->system->box, x );
+
+            spmd_handle->workspace->orig_id[i] = i + 1;
+//            spmd_handle->system->atoms[i].type = Get_Atom_Type( &system->reax_param,
+//                    element, sizeof(element) );
+            spmd_handle->system->atoms[i].type = mm_types[i - qm_num_atoms];
+//            strncpy( spmd_handle->system->atoms[i].name, atom_name,
+//                    sizeof(spmd_handle->system->atoms[i].name) - 1 );
+//            spmd_handle->system->atoms[i].name[sizeof(spmd_handle->system->atoms[i].name) - 1] = '\0';
+            rvec_Copy( spmd_handle->system->atoms[i].x, x );
+            rvec_MakeZero( spmd_handle->system->atoms[i].v );
+            rvec_MakeZero( spmd_handle->system->atoms[i].f );
+            spmd_handle->system->atoms[i].q = mm_q[i - qm_num_atoms];
+
+//            mask[i] = 0;
+        }
+
+        Read_Input_Files( NULL, ffield_file, control_file,
+                spmd_handle->system, spmd_handle->control,
+                spmd_handle->data, spmd_handle->workspace,
+                spmd_handle->out_control );
+
+        if ( spmd_handle->system->N > spmd_handle->system->N_max )
+        {
+            /* deallocate everything which needs more space
+             * (i.e., structures whose space is a function of the number of atoms),
+             * except for data structures allocated while parsing input files */
+            Finalize( spmd_handle->system, spmd_handle->control, spmd_handle->data,
+                    spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control,
+                    spmd_handle->output_enabled, TRUE );
+
+            spmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * spmd_handle->system->N );
+            spmd_handle->realloc = TRUE;
+        }
+
+        ret = SPUREMD_SUCCESS;
+    }
+
+    return ret;
+}
+
+
+/* Reset for the next simulation by parsing input files and triggering
+ * reallocation if more space is needed
+ *
+ * handle: pointer to wrapper struct with top-level data structures
  * geo_file: file containing geometry info of the structure to simulate
  * ffield_file: file containing force field parameters
  * control_file: file containing simulation parameters
+ *
+ * returns: SPUREMD_SUCCESS upon success, SPUREMD_FAILURE otherwise
  */
 int reset( const void * const handle, const char * const geo_file,
         const char * const ffield_file, const char * const control_file )
@@ -485,9 +772,11 @@ int reset( const void * const handle, const char * const geo_file,
 /* Getter for atom positions
  *
  * handle: pointer to wrapper struct with top-level data structures
- * pos_x: x-coordinate of atom positions (allocated by caller)
- * pos_y: y-coordinate of atom positions (allocated by caller)
- * pos_z: z-coordinate of atom positions (allocated by caller)
+ * pos_x: x-coordinate of atom positions, in Angstroms (allocated by caller)
+ * pos_y: y-coordinate of atom positions, in Angstroms (allocated by caller)
+ * pos_z: z-coordinate of atom positions, in Angstroms (allocated by caller)
+ *
+ * returns: SPUREMD_SUCCESS upon success, SPUREMD_FAILURE otherwise
  */
 int get_atom_positions( const void * const handle, double * const pos_x,
         double * const pos_y, double * const pos_z )
@@ -515,10 +804,82 @@ int get_atom_positions( const void * const handle, double * const pos_x,
 }
 
 
+/* Getter for atom velocities
+ *
+ * handle: pointer to wrapper struct with top-level data structures
+ * vel_x: x-coordinate of atom velocities, in Angstroms / ps (allocated by caller)
+ * vel_y: y-coordinate of atom velocities, in Angstroms / ps (allocated by caller)
+ * vel_z: z-coordinate of atom velocities, in Angstroms / ps (allocated by caller)
+ *
+ * returns: SPUREMD_SUCCESS upon success, SPUREMD_FAILURE otherwise
+ */
+int get_atom_velocities( const void * const handle, double * const vel_x,
+        double * const vel_y, double * const vel_z )
+{
+    int i, ret;
+    spuremd_handle *spmd_handle;
+
+    ret = SPUREMD_FAILURE;
+
+    if ( handle != NULL )
+    {
+        spmd_handle = (spuremd_handle*) handle;
+
+        for ( i = 0; i < spmd_handle->system->N; ++i )
+        {
+            vel_x[i] = spmd_handle->system->atoms[i].v[0];
+            vel_y[i] = spmd_handle->system->atoms[i].v[1];
+            vel_z[i] = spmd_handle->system->atoms[i].v[2];
+        }
+
+        ret = SPUREMD_SUCCESS;
+    }
+
+    return ret;
+}
+
+
+/* Getter for atom forces
+ *
+ * handle: pointer to wrapper struct with top-level data structures
+ * f_x: x-coordinate of atom forces, in Angstroms * Daltons / ps^2 (allocated by caller)
+ * f_y: y-coordinate of atom forces, in Angstroms * Daltons / ps^2 (allocated by caller)
+ * f_z: z-coordinate of atom forces, in Angstroms * Daltons / ps^2 (allocated by caller)
+ *
+ * returns: SPUREMD_SUCCESS upon success, SPUREMD_FAILURE otherwise
+ */
+int get_atom_forces( const void * const handle, double * const f_x,
+        double * const f_y, double * const f_z )
+{
+    int i, ret;
+    spuremd_handle *spmd_handle;
+
+    ret = SPUREMD_FAILURE;
+
+    if ( handle != NULL )
+    {
+        spmd_handle = (spuremd_handle*) handle;
+
+        for ( i = 0; i < spmd_handle->system->N; ++i )
+        {
+            f_x[i] = spmd_handle->system->atoms[i].f[0];
+            f_y[i] = spmd_handle->system->atoms[i].f[1];
+            f_z[i] = spmd_handle->system->atoms[i].f[2];
+        }
+
+        ret = SPUREMD_SUCCESS;
+    }
+
+    return ret;
+}
+
+
 /* Getter for atom charges
  *
  * handle: pointer to wrapper struct with top-level data structures
- * q: atom charges (allocated by caller)
+ * q: atom charges, in Coulombs (allocated by caller)
+ *
+ * returns: SPUREMD_SUCCESS upon success, SPUREMD_FAILURE otherwise
  */
 int get_atom_charges( const void * const handle, double * const q )
 {
@@ -543,10 +904,52 @@ int get_atom_charges( const void * const handle, double * const q )
 }
 
 
+/* Getter for system energies
+ *
+ * handle: pointer to wrapper struct with top-level data structures
+ * e_pot: system potential energy, in kcal / mol (reference from caller)
+ * e_kin: system kinetic energy, in kcal / mol (reference from caller)
+ * e_tot: system total energy, in kcal / mol (reference from caller)
+ * t_scalar: temperature scalar, in K (reference from caller)
+ * vol: volume of the simulation box, in Angstroms^3 (reference from caller)
+ * pres: average pressure, in K (reference from caller)
+ *
+ * returns: SPUREMD_SUCCESS upon success, SPUREMD_FAILURE otherwise
+ */
+int get_system_info( const void * const handle, double * const e_pot,
+        double * const e_kin, double * const e_tot, double * const temp,
+        double * const vol, double * const pres )
+{
+    int ret;
+    spuremd_handle *spmd_handle;
+
+    ret = SPUREMD_FAILURE;
+
+    if ( handle != NULL )
+    {
+        spmd_handle = (spuremd_handle*) handle;
+
+        *e_pot = spmd_handle->data->E_Pot;
+        *e_kin = spmd_handle->data->E_Kin;
+        *e_tot = spmd_handle->data->E_Tot;
+        *temp = spmd_handle->data->therm.T;
+        *vol = spmd_handle->system->box.volume;
+        *pres = (spmd_handle->control->P[0] + spmd_handle->control->P[1]
+                + spmd_handle->control->P[2]) / 3.0;
+
+        ret = SPUREMD_SUCCESS;
+    }
+
+    return ret;
+}
+
+
 /* Setter for writing output to files
  *
  * handle: pointer to wrapper struct with top-level data structures
  * enabled: TRUE enables writing output to files, FALSE otherwise
+ *
+ * returns: SPUREMD_SUCCESS upon success, SPUREMD_FAILURE otherwise
  */
 int set_output_enabled( const void * const handle, const int enabled )
 {
@@ -560,6 +963,37 @@ int set_output_enabled( const void * const handle, const int enabled )
         spmd_handle = (spuremd_handle*) handle;
         spmd_handle->output_enabled = enabled;
         ret = SPUREMD_SUCCESS;
+    }
+
+    return ret;
+}
+
+
+/* Setter for simulation parameter values as defined in the input control file
+ *
+ * handle: pointer to wrapper struct with top-level data structures
+ * control_keyword: keyword from the control file to set the value for
+ * control_value: value to set
+ *
+ * returns: SPUREMD_SUCCESS upon success, SPUREMD_FAILURE otherwise
+ */
+int set_control_parameter( const void * const handle, const char * const keyword,
+       const char ** const values )
+{
+    int ret, ret_;
+    spuremd_handle *spmd_handle;
+
+    ret = SPUREMD_FAILURE;
+
+    if ( handle != NULL )
+    {
+        spmd_handle = (spuremd_handle*) handle;
+        ret_ = Set_Control_Parameter( keyword, values, spmd_handle->control,
+                spmd_handle->out_control );
+        if ( ret_ == SUCCESS )
+        {
+            ret = SPUREMD_SUCCESS;
+        }
     }
 
     return ret;

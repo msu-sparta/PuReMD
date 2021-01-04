@@ -195,7 +195,6 @@
 /* min. temperature scaler for atomic positions and velocities in NPT ensembles */
 #define MIN_dT (0.0)
 
-#define ZERO (0.000000000000000e+00)
 #define ALMOST_ZERO (1.0e-10)
 #define NEG_INF (-1.0e10)
 #define NO_BOND (1.0e-3)
@@ -1073,7 +1072,7 @@ struct control_params
 
 struct thermostat
 {
-    /* temperature scaler of the system at the current simulation step */
+    /* temperature scalar of the system at the current simulation step */
     real T;
     /* temperature tensor of the system at the current simulation step */
     rtensor Temp;

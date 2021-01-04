@@ -588,7 +588,7 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
     //if ( control->cm_solver_pre_comp_refactor == -1 )
     //{
     //    data->timing.cm_last_pre_comp = data->timing.cm_solver_pre_comp;
-    //    data->timing.cm_total_loss = ZERO;
+    //    data->timing.cm_total_loss = 0.0;
     //}
 
 #if defined(DEBUG)
@@ -710,7 +710,7 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
     //if ( control->cm_solver_pre_comp_refactor == -1 )
     //{
     //    data->timing.cm_last_pre_comp = data->timing.cm_solver_pre_comp;
-    //    data->timing.cm_total_loss = ZERO;
+    //    data->timing.cm_total_loss = 0.0;
     //}
 
     if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
@@ -851,7 +851,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
     //if ( control->cm_solver_pre_comp_refactor == -1 )
     //{
     //    data->timing.cm_last_pre_comp = data->timing.cm_solver_pre_comp;
-    //    data->timing.cm_total_loss = ZERO;
+    //    data->timing.cm_total_loss = 0.0;
     //}
 
     if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )

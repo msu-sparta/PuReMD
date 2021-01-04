@@ -351,11 +351,8 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
     char occupancy[7], temp_factor[7];
     char seg_id[5], element[3], charge[3];
     char alt_loc, chain_id, icode;
-    char *endptr;
     rvec x;
     reax_atom *atom;
-
-    endptr = NULL;
 
     pdb = sfopen( pdb_file, "r" );
 
@@ -459,8 +456,9 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
             }
 
             /* if the point is inside my_box, add it to my lists */
-            Make_Point( strtod( s_x, &endptr ), strtod( s_y, &endptr ),
-                    strtod( s_z, &endptr ), &x );
+            Make_Point( sstrtod( s_x, __FILE__, __LINE__ ),
+                    sstrtod( s_y, __FILE__, __LINE__ ),
+                    sstrtod( s_z, __FILE__, __LINE__ ), &x );
 
             Fit_to_Periodic_Box( &system->box, x );
 
@@ -468,7 +466,7 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
             {
                 /* store orig_id, type, name and coord info of the new atom */
                 atom = &system->atoms[top];
-                pdb_serial = (int) strtod( serial, &endptr );
+                pdb_serial = (int) sstrtod( serial, __FILE__, __LINE__ );
                 workspace->orig_id[top] = pdb_serial;
 
                 Trim_Spaces( element, sizeof(element) );
@@ -508,13 +506,13 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
 //                        "CONECT line exceeds max num restrictions allowed.\n" );
 
                 /* read bond restrictions */
-                // if( is_Valid_Serial( workspace, pdb_serial = atoi(tmp[1]) ) )
+                // if( is_Valid_Serial( workspace, pdb_serial = sstrtol( tmp[1]), __FILE__, __LINE__ ) )
                 //   ratom = workspace->map_serials[ pdb_serial ];
 
                 // workspace->restricted[ ratom ] = c1 - 2;
                 // for( i = 2; i < c1; ++i )
                 //  {
-                //    if( is_Valid_Serial(workspace, pdb_serial = atoi(tmp[i])) )
+                //    if( is_Valid_Serial(workspace, pdb_serial = sstrtol( tmp[i], __FILE__, __LINE__ )) )
                 //        workspace->restricted_list[ ratom ][ i-2 ] =
                 //          workspace->map_serials[ pdb_serial ];
                 //  }
@@ -625,10 +623,8 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
     char element[6], charge[9];
     char chain_id;
     char s_a[12], s_b[12], s_c[12], s_alpha[12], s_beta[12], s_gamma[12];
-    char *endptr;
     int i, n, atom_cnt, token_cnt, bgf_serial, ratom, crystx_found;
 
-    endptr = NULL;
     ratom = 0;
     crystx_found = FALSE;
 
@@ -727,15 +723,15 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
 //                    occupancy, temp_factor, charge );
 
             /* add to mapping */
-            bgf_serial = strtod( serial, &endptr );
+            bgf_serial = sstrtod( serial, __FILE__, __LINE__ );
             Check_Input_Range( bgf_serial, 0, MAX_ATOM_ID, "Invalid bgf serial" );
             workspace->map_serials[ bgf_serial ] = atom_cnt;
             workspace->orig_id[ atom_cnt ] = bgf_serial;
 
             /* copy atomic positions */
-            system->atoms[atom_cnt].x[0] = strtod( s_x, &endptr );
-            system->atoms[atom_cnt].x[1] = strtod( s_y, &endptr );
-            system->atoms[atom_cnt].x[2] = strtod( s_z, &endptr );
+            system->atoms[atom_cnt].x[0] = sstrtod( s_x, __FILE__, __LINE__ );
+            system->atoms[atom_cnt].x[1] = sstrtod( s_y, __FILE__, __LINE__ );
+            system->atoms[atom_cnt].x[2] = sstrtod( s_z, __FILE__, __LINE__ );
 
             /* atom name and type */
             strncpy( system->atoms[atom_cnt].name, atom_name,
@@ -763,8 +759,12 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
                     s_a, s_b, s_c, s_alpha, s_beta, s_gamma );
 
             /* compute full volume tensor from the angles */
-            Setup_Box( atof(s_a), atof(s_b), atof(s_c),
-                    atof(s_alpha), atof(s_beta), atof(s_gamma),
+            Setup_Box( sstrtod( s_a, __FILE__, __LINE__ ),
+                    sstrtod( s_b, __FILE__, __LINE__ ),
+                    sstrtod( s_c, __FILE__, __LINE__ ),
+                    sstrtod( s_alpha, __FILE__, __LINE__ ),
+                    sstrtod( s_beta, __FILE__, __LINE__ ),
+                    sstrtod( s_gamma, __FILE__, __LINE__ ),
                     &system->box );
 
             crystx_found = TRUE;
@@ -778,7 +778,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
                         "CONECT line exceeds max restrictions allowed.\n" );
 
                 /* read bond restrictions */
-                bgf_serial = atoi(tokens[1]);
+                bgf_serial = sstrtol( tokens[1], __FILE__, __LINE__ );
                 if ( is_Valid_Serial( workspace, bgf_serial ) )
                 {
                     ratom = workspace->map_serials[ bgf_serial ];
@@ -787,7 +787,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
                 workspace->restricted[ ratom ] = token_cnt - 2;
                 for ( i = 2; i < token_cnt; ++i )
                 {
-                    if ( is_Valid_Serial( workspace, bgf_serial = atoi(tokens[i]) ) )
+                    if ( is_Valid_Serial( workspace, bgf_serial = sstrtol( tokens[i], __FILE__, __LINE__ )) )
                     {
                         workspace->restricted_list[ratom][i - 2] =
                             workspace->map_serials[bgf_serial];

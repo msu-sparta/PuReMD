@@ -168,7 +168,7 @@ static void Compute_NonBonded_Forces( reax_system *system, control_params *contr
                 + data->timing.cm_solver_vector_ops
                 + data->timing.cm_solver_orthog
                 + data->timing.cm_solver_tri_solve;
-            data->timing.cm_total_loss = ZERO;
+            data->timing.cm_total_loss = 0.0;
         }
         else
         {

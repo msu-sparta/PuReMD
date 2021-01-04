@@ -26,14 +26,17 @@
 #include "tool_box.h"
 
 
-void Read_Force_Field( FILE *fp, reax_system * const system,
-        reax_interaction * const reax )
+void Read_Force_Field( const char * const ffield_file,
+        reax_system * const system, reax_interaction * const reax )
 {
     char *s;
     char **tmp;
     char ****tor_flag;
     int i, j, k, l, m, n, o, p, cnt;
     real val;
+    FILE *fp;
+
+    fp = sfopen( ffield_file, "r" );
 
     assert( fp != NULL );
 
@@ -54,7 +57,7 @@ void Read_Force_Field( FILE *fp, reax_system * const system,
         Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         /* reading the number of global parameters */
-        n = atoi(tmp[0]);
+        n = sstrtol( tmp[0], __FILE__, __LINE__ );
         if ( n < 1 )
         {
             fprintf( stderr, "[WARNING] number of globals in ffield file is 0!\n" );
@@ -83,7 +86,7 @@ void Read_Force_Field( FILE *fp, reax_system * const system,
             fgets( s, MAX_LINE, fp );
             Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
-            val = (real) atof(tmp[0]);
+            val = (real) sstrtod( tmp[0], __FILE__, __LINE__ );
 
             reax->gp.l[i] = val;
         }
@@ -91,7 +94,7 @@ void Read_Force_Field( FILE *fp, reax_system * const system,
         /* next line is number of atom types and some comments */
         fgets( s, MAX_LINE, fp );
         Tokenize( s, &tmp, MAX_TOKEN_LEN );
-        n = atoi(tmp[0]);
+        n = sstrtol( tmp[0], __FILE__, __LINE__ );
 
         /* 3 lines of comments */
         fgets( s, MAX_LINE, fp );
@@ -260,21 +263,21 @@ void Read_Force_Field( FILE *fp, reax_system * const system,
                 reax->sbp[i].name[j] = toupper( reax->sbp[i].name[j] );
             }
 
-            val = atof(tmp[1]);
+            val = sstrtod( tmp[1], __FILE__, __LINE__ );
             reax->sbp[i].r_s = val;
-            val = atof(tmp[2]);
+            val = sstrtod( tmp[2], __FILE__, __LINE__ );
             reax->sbp[i].valency = val;
-            val = atof(tmp[3]);
+            val = sstrtod( tmp[3], __FILE__, __LINE__ );
             reax->sbp[i].mass = val;
-            val = atof(tmp[4]);
+            val = sstrtod( tmp[4], __FILE__, __LINE__ );
             reax->sbp[i].r_vdw = val;
-            val = atof(tmp[5]);
+            val = sstrtod( tmp[5], __FILE__, __LINE__ );
             reax->sbp[i].epsilon = val;
-            val = atof(tmp[6]);
+            val = sstrtod( tmp[6], __FILE__, __LINE__ );
             reax->sbp[i].gamma = val;
-            val = atof(tmp[7]);
+            val = sstrtod( tmp[7], __FILE__, __LINE__ );
             reax->sbp[i].r_pi = val;
-            val = atof(tmp[8]);
+            val = sstrtod( tmp[8], __FILE__, __LINE__ );
             reax->sbp[i].valency_e  = val;
             reax->sbp[i].nlp_opt = 0.5 * (reax->sbp[i].valency_e - reax->sbp[i].valency);
 
@@ -282,23 +285,23 @@ void Read_Force_Field( FILE *fp, reax_system * const system,
             fgets( s, MAX_LINE, fp );
             Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
-            val = atof(tmp[0]);
+            val = sstrtod( tmp[0], __FILE__, __LINE__ );
             reax->sbp[i].alpha = val;
-            val = atof(tmp[1]);
+            val = sstrtod( tmp[1], __FILE__, __LINE__ );
             reax->sbp[i].gamma_w = val;
-            val = atof(tmp[2]);
+            val = sstrtod( tmp[2], __FILE__, __LINE__ );
             reax->sbp[i].valency_boc = val;
-            val = atof(tmp[3]);
+            val = sstrtod( tmp[3], __FILE__, __LINE__ );
             reax->sbp[i].p_ovun5 = val;
-            val = atof(tmp[4]);
-            val = atof(tmp[5]);
+            val = sstrtod( tmp[4], __FILE__, __LINE__ );
+            val = sstrtod( tmp[5], __FILE__, __LINE__ );
             reax->sbp[i].chi = val;
-            val = atof(tmp[6]);
+            val = sstrtod( tmp[6], __FILE__, __LINE__ );
             reax->sbp[i].eta = 2.0 * val;
             /* this is the parameter that is used to determine
              * which type of atoms participate in h-bonds.
              * 1 is for H - 2 for O, N, S - 0 for all others.*/
-            val = atof(tmp[7]);
+            val = sstrtod( tmp[7], __FILE__, __LINE__ );
             reax->sbp[i].p_hbond = (int)(val + 0.1);
             //0.1 is to avoid from truncating down!
 
@@ -306,39 +309,39 @@ void Read_Force_Field( FILE *fp, reax_system * const system,
             fgets( s, MAX_LINE, fp );
             Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
-            val = atof(tmp[0]);
+            val = sstrtod( tmp[0], __FILE__, __LINE__ );
             reax->sbp[i].r_pi_pi = val;
-            val = atof(tmp[1]);
+            val = sstrtod( tmp[1], __FILE__, __LINE__ );
             reax->sbp[i].p_lp2 = val;
-            val = atof(tmp[2]);
-            val = atof(tmp[3]);
+            val = sstrtod( tmp[2], __FILE__, __LINE__ );
+            val = sstrtod( tmp[3], __FILE__, __LINE__ );
             reax->sbp[i].b_o_131 = val;
-            val = atof(tmp[4]);
+            val = sstrtod( tmp[4], __FILE__, __LINE__ );
             reax->sbp[i].b_o_132 = val;
-            val = atof(tmp[5]);
+            val = sstrtod( tmp[5], __FILE__, __LINE__ );
             reax->sbp[i].b_o_133 = val;
-            val = atof(tmp[6]);
+            val = sstrtod( tmp[6], __FILE__, __LINE__ );
             reax->sbp[i].b_s_acks2 = val;
-            val = atof(tmp[7]);
+            val = sstrtod( tmp[7], __FILE__, __LINE__ );
 
             /* line 4  */
             fgets( s, MAX_LINE, fp );
             Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
-            val = atof(tmp[0]);
+            val = sstrtod( tmp[0], __FILE__, __LINE__ );
             reax->sbp[i].p_ovun2 = val;
-            val = atof(tmp[1]);
+            val = sstrtod( tmp[1], __FILE__, __LINE__ );
             reax->sbp[i].p_val3 = val;
-            val = atof(tmp[2]);
-            val = atof(tmp[3]);
+            val = sstrtod( tmp[2], __FILE__, __LINE__ );
+            val = sstrtod( tmp[3], __FILE__, __LINE__ );
             reax->sbp[i].valency_val = val;
-            val = atof(tmp[4]);
+            val = sstrtod( tmp[4], __FILE__, __LINE__ );
             reax->sbp[i].p_val5 = val;
-            val = atof(tmp[5]);
+            val = sstrtod( tmp[5], __FILE__, __LINE__ );
             reax->sbp[i].rcore2 = val;
-            val = atof(tmp[6]);
+            val = sstrtod( tmp[6], __FILE__, __LINE__ );
             reax->sbp[i].ecore2 = val;
-            val = atof(tmp[7]);
+            val = sstrtod( tmp[7], __FILE__, __LINE__ );
             reax->sbp[i].acore2 = val;
 
             /* inner-wall parameters present */
@@ -442,7 +445,7 @@ void Read_Force_Field( FILE *fp, reax_system * const system,
         /* next line is number of two body combination and some comments */
         fgets( s, MAX_LINE, fp );
         Tokenize( s, &tmp, MAX_TOKEN_LEN );
-        l = atoi(tmp[0]);
+        l = sstrtol( tmp[0], __FILE__, __LINE__ );
 
         /* a line of comments */
         fgets(s, MAX_LINE, fp);
@@ -453,35 +456,35 @@ void Read_Force_Field( FILE *fp, reax_system * const system,
             fgets( s, MAX_LINE, fp );
             Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
-            j = atoi(tmp[0]) - 1;
-            k = atoi(tmp[1]) - 1;
+            j = sstrtol( tmp[0], __FILE__, __LINE__ ) - 1;
+            k = sstrtol( tmp[1], __FILE__, __LINE__ ) - 1;
 
             if ( j < reax->num_atom_types && k < reax->num_atom_types )
             {
 
-                val = atof(tmp[2]);
+                val = sstrtod( tmp[2], __FILE__, __LINE__ );
                 reax->tbp[j][k].De_s = val;
                 reax->tbp[k][j].De_s = val;
-                val = atof(tmp[3]);
+                val = sstrtod( tmp[3], __FILE__, __LINE__ );
                 reax->tbp[j][k].De_p = val;
                 reax->tbp[k][j].De_p = val;
-                val = atof(tmp[4]);
+                val = sstrtod( tmp[4], __FILE__, __LINE__ );
                 reax->tbp[j][k].De_pp = val;
                 reax->tbp[k][j].De_pp = val;
-                val = atof(tmp[5]);
+                val = sstrtod( tmp[5], __FILE__, __LINE__ );
                 reax->tbp[j][k].p_be1 = val;
                 reax->tbp[k][j].p_be1 = val;
-                val = atof(tmp[6]);
+                val = sstrtod( tmp[6], __FILE__, __LINE__ );
                 reax->tbp[j][k].p_bo5 = val;
                 reax->tbp[k][j].p_bo5 = val;
-                val = atof(tmp[7]);
+                val = sstrtod( tmp[7], __FILE__, __LINE__ );
                 reax->tbp[j][k].v13cor = val;
                 reax->tbp[k][j].v13cor = val;
 
-                val = atof(tmp[8]);
+                val = sstrtod( tmp[8], __FILE__, __LINE__ );
                 reax->tbp[j][k].p_bo6 = val;
                 reax->tbp[k][j].p_bo6 = val;
-                val = atof(tmp[9]);
+                val = sstrtod( tmp[9], __FILE__, __LINE__ );
                 reax->tbp[j][k].p_ovun1 = val;
                 reax->tbp[k][j].p_ovun1 = val;
 
@@ -489,28 +492,28 @@ void Read_Force_Field( FILE *fp, reax_system * const system,
                 fgets( s, MAX_LINE, fp );
                 Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
-                val = atof(tmp[0]);
+                val = sstrtod( tmp[0], __FILE__, __LINE__ );
                 reax->tbp[j][k].p_be2 = val;
                 reax->tbp[k][j].p_be2 = val;
-                val = atof(tmp[1]);
+                val = sstrtod( tmp[1], __FILE__, __LINE__ );
                 reax->tbp[j][k].p_bo3 = val;
                 reax->tbp[k][j].p_bo3 = val;
-                val = atof(tmp[2]);
+                val = sstrtod( tmp[2], __FILE__, __LINE__ );
                 reax->tbp[j][k].p_bo4 = val;
                 reax->tbp[k][j].p_bo4 = val;
-                val = atof(tmp[3]);
+                val = sstrtod( tmp[3], __FILE__, __LINE__ );
 
-                val = atof(tmp[4]);
+                val = sstrtod( tmp[4], __FILE__, __LINE__ );
                 reax->tbp[j][k].p_bo1 = val;
                 reax->tbp[k][j].p_bo1 = val;
-                val = atof(tmp[5]);
+                val = sstrtod( tmp[5], __FILE__, __LINE__ );
                 reax->tbp[j][k].p_bo2 = val;
                 reax->tbp[k][j].p_bo2 = val;
-                val = atof(tmp[6]);
+                val = sstrtod( tmp[6], __FILE__, __LINE__ );
                 reax->tbp[j][k].ovc = val;
                 reax->tbp[k][j].ovc = val;
 
-                val = atof(tmp[7]);
+                val = sstrtod( tmp[7], __FILE__, __LINE__ );
             }
         }
 
@@ -568,54 +571,54 @@ void Read_Force_Field( FILE *fp, reax_system * const system,
          * combination rules defined above */
         fgets( s, MAX_LINE, fp );
         Tokenize( s, &tmp, MAX_TOKEN_LEN );
-        l = atoi(tmp[0]);
+        l = sstrtol( tmp[0], __FILE__, __LINE__ );
 
         for ( i = 0; i < l; i++ )
         {
             fgets( s, MAX_LINE, fp );
             Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
-            j = atoi(tmp[0]) - 1;
-            k = atoi(tmp[1]) - 1;
+            j = sstrtol( tmp[0], __FILE__, __LINE__ ) - 1;
+            k = sstrtol( tmp[1], __FILE__, __LINE__ ) - 1;
 
             if ( j < reax->num_atom_types && k < reax->num_atom_types )
             {
-                val = atof(tmp[2]);
+                val = sstrtod( tmp[2], __FILE__, __LINE__ );
                 if ( val > 0.0 )
                 {
                     reax->tbp[j][k].D = val;
                     reax->tbp[k][j].D = val;
                 }
 
-                val = atof(tmp[3]);
+                val = sstrtod( tmp[3], __FILE__, __LINE__ );
                 if ( val > 0.0 )
                 {
                     reax->tbp[j][k].r_vdW = 2.0 * val;
                     reax->tbp[k][j].r_vdW = 2.0 * val;
                 }
 
-                val = atof(tmp[4]);
+                val = sstrtod( tmp[4], __FILE__, __LINE__ );
                 if ( val > 0.0 )
                 {
                     reax->tbp[j][k].alpha = val;
                     reax->tbp[k][j].alpha = val;
                 }
 
-                val = atof(tmp[5]);
+                val = sstrtod( tmp[5], __FILE__, __LINE__ );
                 if ( val > 0.0 )
                 {
                     reax->tbp[j][k].r_s = val;
                     reax->tbp[k][j].r_s = val;
                 }
 
-                val = atof(tmp[6]);
+                val = sstrtod( tmp[6], __FILE__, __LINE__ );
                 if ( val > 0.0 )
                 {
                     reax->tbp[j][k].r_p = val;
                     reax->tbp[k][j].r_p = val;
                 }
 
-                val = atof(tmp[7]);
+                val = sstrtod( tmp[7], __FILE__, __LINE__ );
                 if ( val > 0.0 )
                 {
                     reax->tbp[j][k].r_pp = val;
@@ -641,16 +644,16 @@ void Read_Force_Field( FILE *fp, reax_system * const system,
         /* next line is number of 3-body params and some comments */
         fgets( s, MAX_LINE, fp );
         Tokenize( s, &tmp, MAX_TOKEN_LEN );
-        l = atoi( tmp[0] );
+        l = sstrtol( tmp[0], __FILE__, __LINE__ );
 
         for ( i = 0; i < l; i++ )
         {
             fgets( s, MAX_LINE, fp );
             Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
-            j = atoi(tmp[0]) - 1;
-            k = atoi(tmp[1]) - 1;
-            m = atoi(tmp[2]) - 1;
+            j = sstrtol( tmp[0], __FILE__, __LINE__ ) - 1;
+            k = sstrtol( tmp[1], __FILE__, __LINE__ ) - 1;
+            m = sstrtol( tmp[2], __FILE__, __LINE__ ) - 1;
 
             if ( j < reax->num_atom_types
                     && k < reax->num_atom_types
@@ -660,31 +663,31 @@ void Read_Force_Field( FILE *fp, reax_system * const system,
                 reax->thbp[j][k][m].cnt++;
                 reax->thbp[m][k][j].cnt++;
 
-                val = atof(tmp[3]);
+                val = sstrtod( tmp[3], __FILE__, __LINE__ );
                 reax->thbp[j][k][m].prm[cnt].theta_00 = val;
                 reax->thbp[m][k][j].prm[cnt].theta_00 = val;
 
-                val = atof(tmp[4]);
+                val = sstrtod( tmp[4], __FILE__, __LINE__ );
                 reax->thbp[j][k][m].prm[cnt].p_val1 = val;
                 reax->thbp[m][k][j].prm[cnt].p_val1 = val;
 
-                val = atof(tmp[5]);
+                val = sstrtod( tmp[5], __FILE__, __LINE__ );
                 reax->thbp[j][k][m].prm[cnt].p_val2 = val;
                 reax->thbp[m][k][j].prm[cnt].p_val2 = val;
 
-                val = atof(tmp[6]);
+                val = sstrtod( tmp[6], __FILE__, __LINE__ );
                 reax->thbp[j][k][m].prm[cnt].p_coa1 = val;
                 reax->thbp[m][k][j].prm[cnt].p_coa1 = val;
 
-                val = atof(tmp[7]);
+                val = sstrtod( tmp[7], __FILE__, __LINE__ );
                 reax->thbp[j][k][m].prm[cnt].p_val7 = val;
                 reax->thbp[m][k][j].prm[cnt].p_val7 = val;
 
-                val = atof(tmp[8]);
+                val = sstrtod( tmp[8], __FILE__, __LINE__ );
                 reax->thbp[j][k][m].prm[cnt].p_pen1 = val;
                 reax->thbp[m][k][j].prm[cnt].p_pen1 = val;
 
-                val = atof(tmp[9]);
+                val = sstrtod( tmp[9], __FILE__, __LINE__ );
                 reax->thbp[j][k][m].prm[cnt].p_val4 = val;
                 reax->thbp[m][k][j].prm[cnt].p_val4 = val;
             }
@@ -717,17 +720,17 @@ void Read_Force_Field( FILE *fp, reax_system * const system,
         /* next line is number of 4-body params and some comments */
         fgets( s, MAX_LINE, fp );
         Tokenize( s, &tmp, MAX_TOKEN_LEN );
-        l = atoi( tmp[0] );
+        l = sstrtol( tmp[0], __FILE__, __LINE__ );
 
         for ( i = 0; i < l; i++ )
         {
             fgets( s, MAX_LINE, fp );
             Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
-            j = atoi(tmp[0]) - 1;
-            k = atoi(tmp[1]) - 1;
-            m = atoi(tmp[2]) - 1;
-            n = atoi(tmp[3]) - 1;
+            j = sstrtol( tmp[0], __FILE__, __LINE__ ) - 1;
+            k = sstrtol( tmp[1], __FILE__, __LINE__ ) - 1;
+            m = sstrtol( tmp[2], __FILE__, __LINE__ ) - 1;
+            n = sstrtol( tmp[3], __FILE__, __LINE__ ) - 1;
 
             /* this means the entry is not in compact form */
             if ( j >= 0 && n >= 0 )
@@ -749,23 +752,23 @@ void Read_Force_Field( FILE *fp, reax_system * const system,
     //                reax->fbp[j][k][m][n].cnt++;
     //                reax->fbp[n][m][k][j].cnt++;
 
-                    val = atof(tmp[4]);
+                    val = sstrtod( tmp[4], __FILE__, __LINE__ );
                     reax->fbp[j][k][m][n].prm[0].V1 = val;
                     reax->fbp[n][m][k][j].prm[0].V1 = val;
 
-                    val = atof(tmp[5]);
+                    val = sstrtod( tmp[5], __FILE__, __LINE__ );
                     reax->fbp[j][k][m][n].prm[0].V2 = val;
                     reax->fbp[n][m][k][j].prm[0].V2 = val;
 
-                    val = atof(tmp[6]);
+                    val = sstrtod( tmp[6], __FILE__, __LINE__ );
                     reax->fbp[j][k][m][n].prm[0].V3 = val;
                     reax->fbp[n][m][k][j].prm[0].V3 = val;
 
-                    val = atof(tmp[7]);
+                    val = sstrtod( tmp[7], __FILE__, __LINE__ );
                     reax->fbp[j][k][m][n].prm[0].p_tor1 = val;
                     reax->fbp[n][m][k][j].prm[0].p_tor1 = val;
 
-                    val = atof(tmp[8]);
+                    val = sstrtod( tmp[8], __FILE__, __LINE__ );
                     reax->fbp[j][k][m][n].prm[0].p_cot1 = val;
                     reax->fbp[n][m][k][j].prm[0].p_cot1 = val;
                 }
@@ -788,20 +791,20 @@ void Read_Force_Field( FILE *fp, reax_system * const system,
 
                             if ( tor_flag[p][k][m][o] == 0 )
                             {
-                                reax->fbp[p][k][m][o].prm[0].V1 = atof(tmp[4]);
-                                reax->fbp[p][k][m][o].prm[0].V2 = atof(tmp[5]);
-                                reax->fbp[p][k][m][o].prm[0].V3 = atof(tmp[6]);
-                                reax->fbp[p][k][m][o].prm[0].p_tor1 = atof(tmp[7]);
-                                reax->fbp[p][k][m][o].prm[0].p_cot1 = atof(tmp[8]);
+                                reax->fbp[p][k][m][o].prm[0].V1 = sstrtod( tmp[4], __FILE__, __LINE__ );
+                                reax->fbp[p][k][m][o].prm[0].V2 = sstrtod( tmp[5], __FILE__, __LINE__ );
+                                reax->fbp[p][k][m][o].prm[0].V3 = sstrtod( tmp[6], __FILE__, __LINE__ );
+                                reax->fbp[p][k][m][o].prm[0].p_tor1 = sstrtod( tmp[7], __FILE__, __LINE__ );
+                                reax->fbp[p][k][m][o].prm[0].p_cot1 = sstrtod( tmp[8], __FILE__, __LINE__ );
                             }
 
                             if ( tor_flag[o][m][k][p] == 0 )
                             {
-                                reax->fbp[o][m][k][p].prm[0].V1 = atof(tmp[4]);
-                                reax->fbp[o][m][k][p].prm[0].V2 = atof(tmp[5]);
-                                reax->fbp[o][m][k][p].prm[0].V3 = atof(tmp[6]);
-                                reax->fbp[o][m][k][p].prm[0].p_tor1 = atof(tmp[7]);
-                                reax->fbp[o][m][k][p].prm[0].p_cot1 = atof(tmp[8]);
+                                reax->fbp[o][m][k][p].prm[0].V1 = sstrtod( tmp[4], __FILE__, __LINE__ );
+                                reax->fbp[o][m][k][p].prm[0].V2 = sstrtod( tmp[5], __FILE__, __LINE__ );
+                                reax->fbp[o][m][k][p].prm[0].V3 = sstrtod( tmp[6], __FILE__, __LINE__ );
+                                reax->fbp[o][m][k][p].prm[0].p_tor1 = sstrtod( tmp[7], __FILE__, __LINE__ );
+                                reax->fbp[o][m][k][p].prm[0].p_cot1 = sstrtod( tmp[8], __FILE__, __LINE__ );
                             }
                         }
                     }
@@ -812,29 +815,29 @@ void Read_Force_Field( FILE *fp, reax_system * const system,
         /* next line is number of hydrogen bond params and some comments */
         fgets( s, MAX_LINE, fp );
         Tokenize( s, &tmp, MAX_TOKEN_LEN );
-        l = atoi( tmp[0] );
+        l = sstrtol( tmp[0], __FILE__, __LINE__ );
 
         for ( i = 0; i < l; i++ )
         {
             fgets( s, MAX_LINE, fp );
             Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
-            j = atoi(tmp[0]) - 1;
-            k = atoi(tmp[1]) - 1;
-            m = atoi(tmp[2]) - 1;
+            j = sstrtol( tmp[0], __FILE__, __LINE__ ) - 1;
+            k = sstrtol( tmp[1], __FILE__, __LINE__ ) - 1;
+            m = sstrtol( tmp[2], __FILE__, __LINE__ ) - 1;
 
             if ( j < reax->num_atom_types && m < reax->num_atom_types )
             {
-                val = atof(tmp[3]);
+                val = sstrtod( tmp[3], __FILE__, __LINE__ );
                 reax->hbp[j][k][m].r0_hb = val;
 
-                val = atof(tmp[4]);
+                val = sstrtod( tmp[4], __FILE__, __LINE__ );
                 reax->hbp[j][k][m].p_hb1 = val;
 
-                val = atof(tmp[5]);
+                val = sstrtod( tmp[5], __FILE__, __LINE__ );
                 reax->hbp[j][k][m].p_hb2 = val;
 
-                val = atof(tmp[6]);
+                val = sstrtod( tmp[6], __FILE__, __LINE__ );
                 reax->hbp[j][k][m].p_hb3 = val;
 
             }
@@ -866,4 +869,6 @@ void Read_Force_Field( FILE *fp, reax_system * const system,
 
         sfree( tor_flag, "Read_Force_Field::tor_flag" );
     }
+
+    sfclose( fp, "Read_Force_Field::fp" );
 }

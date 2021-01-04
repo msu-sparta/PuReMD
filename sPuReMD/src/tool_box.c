@@ -21,8 +21,14 @@
 
 #include "tool_box.h"
 
+#include <stdlib.h>
 #include <ctype.h>
+#include <limits.h>
+#include <errno.h>
 #include <time.h>
+
+/* base 10 for result of string-to-integer conversion */
+#define INTBASE (10)
 
 
 /************** taken from box.c **************/
@@ -552,4 +558,136 @@ void sfclose( FILE * fp, const char * msg )
         fprintf( stderr, "  [INFO] %s\n", msg );
         exit( INVALID_INPUT );
     }
+}
+
+
+/* Safe wrapper around strtol
+ *
+ * str: string to be converted
+ * filename: source filename of caller
+ * line: source line of caller
+ *
+ * returns: result of conversion (integer)
+ * */
+int sstrtol( const char * const str,
+        const char * const filename, int line )
+{
+    long ret;
+    char *endptr;
+
+    if ( str[0] == '\0' )
+    {
+        fprintf( stderr, "[ERROR] sstrtol: NULL string\n" );
+        /* strlen safe here only if filename is NULL-terminated
+         * before calling sconvert_string_to_int */
+        fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
+                line, (int) strlen(filename), filename );
+        exit( INVALID_INPUT );
+    }
+
+    errno = 0;
+    ret = strtol( str, &endptr, INTBASE );
+
+    if ( (errno == ERANGE && (ret == LONG_MAX || ret == LONG_MIN) )
+            || (errno != 0 && ret == 0) )
+    {
+        fprintf( stderr, "[ERROR] strtol: invalid string\n" );
+        /* strlen safe here only if filename is NULL-terminated
+         * before calling sconvert_string_to_int */
+        fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
+                line, (int) strlen(filename), filename );
+        fprintf( stderr, "    [INFO] str: %.*s\n",
+                (int) strlen(str), str );
+        exit( INVALID_INPUT );
+    }
+    else if ( endptr == str )
+    {
+        fprintf( stderr, "[ERROR] strtol: no digits found\n" );
+        /* strlen safe here only if filename is NULL-terminated
+         * before calling sconvert_string_to_int */
+        fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
+                line, (int) strlen(filename), filename );
+        fprintf( stderr, "    [INFO] str: %.*s\n",
+                (int) strlen(str), str );
+        exit( INVALID_INPUT );
+    }
+    else if ( *endptr != '\0' )
+    {
+        fprintf( stderr, "[ERROR] strtol: non-numeric trailing characters\n" );
+        /* strlen safe here only if filename is NULL-terminated
+         * before calling sconvert_string_to_int */
+        fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
+                line, (int) strlen(filename), filename );
+        fprintf( stderr, "    [INFO] str: %.*s\n",
+                (int) strlen(str), str );
+        exit( INVALID_INPUT );
+    }
+
+    return (int) ret;
+}
+
+
+/* Safe wrapper around strtod
+ *
+ * str: string to be converted
+ * filename: source filename of caller
+ * line: source line of caller
+ *
+ * returns: result of conversion (double)
+ * */
+double sstrtod( const char * const str,
+        const char * const filename, int line )
+{
+    double ret;
+    char *endptr;
+
+    if ( str[0] == '\0' )
+    {
+        fprintf( stderr, "[ERROR] sstrtod: NULL string\n" );
+        /* strlen safe here only if filename is NULL-terminated
+         * before calling sconvert_string_to_int */
+        fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
+                line, (int) strlen(filename), filename );
+        exit( INVALID_INPUT );
+    }
+
+    errno = 0;
+    ret = strtod( str, &endptr );
+
+    if ( (errno == ERANGE && (ret == LONG_MAX || ret == LONG_MIN) )
+            || (errno != 0 && ret == 0) )
+    {
+        fprintf( stderr, "[ERROR] strtod: invalid string\n" );
+        /* strlen safe here only if filename is NULL-terminated
+         * before calling sconvert_string_to_int */
+        fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
+                line, (int) strlen(filename), filename );
+        fprintf( stderr, "    [INFO] str: %.*s\n",
+                (int) strlen(str), str );
+        exit( INVALID_INPUT );
+    }
+    else if ( endptr == str )
+    {
+        fprintf( stderr, "[ERROR] strtod: no digits found\n" );
+        /* strlen safe here only if filename is NULL-terminated
+         * before calling sconvert_string_to_int */
+        fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
+                line, (int) strlen(filename), filename );
+        fprintf( stderr, "    [INFO] str: %.*s\n",
+                (int) strlen(str), str );
+        exit( INVALID_INPUT );
+    }
+    else if ( *endptr != '\0' )
+    {
+        fprintf( stderr, "[ERROR] strtod: non-numeric trailing characters\n" );
+        /* strlen safe here only if filename is NULL-terminated
+         * before calling sconvert_string_to_int */
+        fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
+                line, (int) strlen(filename), filename );
+        fprintf( stderr, "    [INFO] str: %.*s\n",
+                (int) strlen(str), str );
+        exit( INVALID_INPUT );
+    }
+
+    return ret;
 }

@@ -24,7 +24,10 @@
 
 #include "reax_types.h"
 
+int Set_Control_Parameter( const char * const, const char ** const,
+        control_params * const, output_controls * const );
 
-void Read_Control_File( FILE*, reax_system*, control_params*, output_controls* );
+void Read_Control_File( const char * const, reax_system * const, control_params * const,
+        output_controls * const );
 
 #endif
