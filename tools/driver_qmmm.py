@@ -393,19 +393,21 @@ if __name__ == '__main__':
     set_control_parameter.argtypes = [c_void_p, c_char_p, POINTER(c_char_p)]
     set_control_parameter.restype = c_int
 
-    get_atom_positions = lib.get_atom_positions
-    get_atom_positions.argtypes = [c_void_p, POINTER(c_double),
-            POINTER(c_double), POINTER(c_double)]
-    get_atom_positions.restype = c_int
+    get_atom_positions_qmmm = lib.get_atom_positions_qmmm_
+    get_atom_positions_qmmm.argtypes = [c_void_p,
+            POINTER(c_double), POINTER(c_double), POINTER(c_double),
+            POINTER(c_double), POINTER(c_double), POINTER(c_double)]
+    get_atom_positions_qmmm.restype = c_int
 
-    get_atom_forces = lib.get_atom_forces
-    get_atom_forces.argtypes = [c_void_p, POINTER(c_double),
-            POINTER(c_double), POINTER(c_double)]
-    get_atom_forces.restype = c_int
+    get_atom_forces_qmmm = lib.get_atom_forces_qmmm_
+    get_atom_forces_qmmm.argtypes = [c_void_p,
+            POINTER(c_double), POINTER(c_double), POINTER(c_double),
+            POINTER(c_double), POINTER(c_double), POINTER(c_double)]
+    get_atom_forces_qmmm.restype = c_int
 
-    get_atom_charges = lib.get_atom_charges
-    get_atom_charges.argtypes = [c_void_p, POINTER(c_double)]
-    get_atom_charges.restype = c_int
+    get_atom_charges_qmmm = lib.get_atom_charges_qmmm_
+    get_atom_charges_qmmm.argtypes = [c_void_p, POINTER(c_double), POINTER(c_double)]
+    get_atom_charges_qmmm.restype = c_int
 
     def get_simulation_step_results(num_atoms, atoms, data):
         print("{0:24.15f} {1:24.15f} {2:24.15f}".format(
@@ -450,27 +452,35 @@ if __name__ == '__main__':
     if ret != 0:
         print("[ERROR] simulate returned {0}".format(ret))
 
-    p_x = (c_double * num_atoms)()
-    p_y = (c_double * num_atoms)()
-    p_z = (c_double * num_atoms)()
-    ret = get_atom_positions(handle, p_x, p_y, p_z)
+    qm_p_x = (c_double * num_qm_atoms)()
+    qm_p_y = (c_double * num_qm_atoms)()
+    qm_p_z = (c_double * num_qm_atoms)()
+    mm_p_x = (c_double * num_mm_atoms)()
+    mm_p_y = (c_double * num_mm_atoms)()
+    mm_p_z = (c_double * num_mm_atoms)()
+    ret = get_atom_positions_qmmm(handle, qm_p_x, qm_p_y, qm_p_z,
+            mm_p_x, mm_p_y, mm_p_z)
 
     if ret != 0:
-        print("[ERROR] get_atom_positions returned {0}".format(ret))
+        print("[ERROR] get_atom_positions_qmmm returned {0}".format(ret))
 
-    f_x = (c_double * num_atoms)()
-    f_y = (c_double * num_atoms)()
-    f_z = (c_double * num_atoms)()
-    ret = get_atom_forces(handle, f_x, f_y, f_z)
-
-    if ret != 0:
-        print("[ERROR] get_atom_forces returned {0}".format(ret))
-
-    q = (c_double * num_atoms)()
-    ret = get_atom_charges(handle, q)
+    qm_f_x = (c_double * num_qm_atoms)()
+    qm_f_y = (c_double * num_qm_atoms)()
+    qm_f_z = (c_double * num_qm_atoms)()
+    mm_f_x = (c_double * num_mm_atoms)()
+    mm_f_y = (c_double * num_mm_atoms)()
+    mm_f_z = (c_double * num_mm_atoms)()
+    ret = get_atom_forces_qmmm(handle, qm_f_x, qm_f_y, qm_f_z, mm_f_x, mm_f_y, mm_f_z)
 
     if ret != 0:
-        print("[ERROR] get_atom_charges returned {0}".format(ret))
+        print("[ERROR] get_atom_forces_qmmm returned {0}".format(ret))
+
+    qm_q = (c_double * num_qm_atoms)()
+    mm_q = (c_double * num_mm_atoms)()
+    ret = get_atom_charges_qmmm(handle, qm_q, mm_q)
+
+    if ret != 0:
+        print("[ERROR] get_atom_charges_qmmm returned {0}".format(ret))
 
     # silica
     sim_box = (c_double * 6)(36.477, 50.174, 52.110, 90.0, 90.0, 90.0)
@@ -499,26 +509,34 @@ if __name__ == '__main__':
     if ret != 0:
         print("[ERROR] simulate returned {0}".format(ret))
 
-    p_x = (c_double * num_atoms)()
-    p_y = (c_double * num_atoms)()
-    p_z = (c_double * num_atoms)()
-    ret = get_atom_positions(handle, p_x, p_y, p_z)
+    qm_p_x = (c_double * num_qm_atoms)()
+    qm_p_y = (c_double * num_qm_atoms)()
+    qm_p_z = (c_double * num_qm_atoms)()
+    mm_p_x = (c_double * num_mm_atoms)()
+    mm_p_y = (c_double * num_mm_atoms)()
+    mm_p_z = (c_double * num_mm_atoms)()
+    ret = get_atom_positions_qmmm(handle, qm_p_x, qm_p_y, qm_p_z,
+            mm_p_x, mm_p_y, mm_p_z)
 
     if ret != 0:
-        print("[ERROR] get_atom_positions returned {0}".format(ret))
+        print("[ERROR] get_atom_positions_qmmm returned {0}".format(ret))
 
-    f_x = (c_double * num_atoms)()
-    f_y = (c_double * num_atoms)()
-    f_z = (c_double * num_atoms)()
-    ret = get_atom_forces(handle, f_x, f_y, f_z)
-
-    if ret != 0:
-        print("[ERROR] get_atom_forces returned {0}".format(ret))
-
-    q = (c_double * num_atoms)()
-    ret = get_atom_charges(handle, q)
+    qm_f_x = (c_double * num_qm_atoms)()
+    qm_f_y = (c_double * num_qm_atoms)()
+    qm_f_z = (c_double * num_qm_atoms)()
+    mm_f_x = (c_double * num_mm_atoms)()
+    mm_f_y = (c_double * num_mm_atoms)()
+    mm_f_z = (c_double * num_mm_atoms)()
+    ret = get_atom_forces_qmmm(handle, qm_f_x, qm_f_y, qm_f_z, mm_f_x, mm_f_y, mm_f_z)
 
     if ret != 0:
-        print("[ERROR] get_atom_charges returned {0}".format(ret))
+        print("[ERROR] get_atom_forces_qmmm returned {0}".format(ret))
+
+    qm_q = (c_double * num_qm_atoms)()
+    mm_q = (c_double * num_mm_atoms)()
+    ret = get_atom_charges_qmmm(handle, qm_q, mm_q)
+
+    if ret != 0:
+        print("[ERROR] get_atom_charges_qmmm returned {0}".format(ret))
 
     cleanup(handle)

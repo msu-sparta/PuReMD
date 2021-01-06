@@ -859,6 +859,10 @@ struct reax_system
     int ffield_params_allocated;
     /* number of local (non-periodic image) atoms for the current simulation */
     int N;
+    /* number of local (non-periodic image) QM atoms for the current simulation in QMMM mode */
+    int N_qm;
+    /* number of local (non-periodic image) MM atoms for the current simulation in QMMM mode */
+    int N_mm;
     /* max. number of local (non-periodic image) atoms across all simulations */
     int N_max;
     /* dimension of the N x N sparse charge method matrix H */

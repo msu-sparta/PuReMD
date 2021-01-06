@@ -227,6 +227,8 @@ void * setup_qmmm_( int qm_num_atoms, const int * const qm_types,
     spmd_handle->callback = NULL;
     spmd_handle->data->sim_id = 0;
 
+    spmd_handle->system->N_qm = qm_num_atoms;
+    spmd_handle->system->N_mm = mm_num_atoms;
     spmd_handle->system->N = qm_num_atoms + mm_num_atoms;
 
     PreAllocate_Space( spmd_handle->system, spmd_handle->control,
@@ -632,6 +634,8 @@ int reset_qmmm_( const void * const handle,
         spmd_handle->realloc = FALSE;
         spmd_handle->data->sim_id++;
 
+        spmd_handle->system->N_qm = qm_num_atoms;
+        spmd_handle->system->N_mm = mm_num_atoms;
         spmd_handle->system->N = qm_num_atoms + mm_num_atoms;
 
         PreAllocate_Space( spmd_handle->system, spmd_handle->control,
@@ -760,6 +764,181 @@ int reset( const void * const handle, const char * const geo_file,
 
             spmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * spmd_handle->system->N );
             spmd_handle->realloc = TRUE;
+        }
+
+        ret = SPUREMD_SUCCESS;
+    }
+
+    return ret;
+}
+
+
+/* Getter for atom positions in QMMM mode
+ *
+ * handle: pointer to wrapper struct with top-level data structures
+ * qm_pos_x: x-coordinate of QM atom positions, in Angstroms (allocated by caller)
+ * qm_pos_y: y-coordinate of QM atom positions, in Angstroms (allocated by caller)
+ * qm_pos_z: z-coordinate of QM atom positions, in Angstroms (allocated by caller)
+ * mm_pos_x: x-coordinate of MM atom positions, in Angstroms (allocated by caller)
+ * mm_pos_y: y-coordinate of MM atom positions, in Angstroms (allocated by caller)
+ * mm_pos_z: z-coordinate of MM atom positions, in Angstroms (allocated by caller)
+ *
+ * returns: SPUREMD_SUCCESS upon success, SPUREMD_FAILURE otherwise
+ */
+int get_atom_positions_qmmm_( const void * const handle, double * const qm_pos_x,
+        double * const qm_pos_y, double * const qm_pos_z, double * const mm_pos_x,
+        double * const mm_pos_y, double * const mm_pos_z )
+{
+    int i, ret;
+    spuremd_handle *spmd_handle;
+
+    ret = SPUREMD_FAILURE;
+
+    if ( handle != NULL )
+    {
+        spmd_handle = (spuremd_handle*) handle;
+
+        for ( i = 0; i < spmd_handle->system->N_qm; ++i )
+        {
+            qm_pos_x[i] = spmd_handle->system->atoms[i].x[0];
+            qm_pos_y[i] = spmd_handle->system->atoms[i].x[1];
+            qm_pos_z[i] = spmd_handle->system->atoms[i].x[2];
+        }
+
+        for ( i = spmd_handle->system->N_qm; i < spmd_handle->system->N; ++i )
+        {
+            mm_pos_x[i - spmd_handle->system->N_qm] = spmd_handle->system->atoms[i].x[0];
+            mm_pos_y[i - spmd_handle->system->N_qm] = spmd_handle->system->atoms[i].x[1];
+            mm_pos_z[i - spmd_handle->system->N_qm] = spmd_handle->system->atoms[i].x[2];
+        }
+
+        ret = SPUREMD_SUCCESS;
+    }
+
+    return ret;
+}
+
+
+/* Getter for atom velocities in QMMM mode
+ *
+ * handle: pointer to wrapper struct with top-level data structures
+ * qm_vel_x: x-coordinate of QM atom velocities, in Angstroms / ps (allocated by caller)
+ * qm_vel_y: y-coordinate of QM atom velocities, in Angstroms / ps (allocated by caller)
+ * qm_vel_z: z-coordinate of QM atom velocities, in Angstroms / ps (allocated by caller)
+ * mm_vel_x: x-coordinate of MM atom velocities, in Angstroms / ps (allocated by caller)
+ * mm_vel_y: y-coordinate of MM atom velocities, in Angstroms / ps (allocated by caller)
+ * mm_vel_z: z-coordinate of MM atom velocities, in Angstroms / ps (allocated by caller)
+ *
+ * returns: SPUREMD_SUCCESS upon success, SPUREMD_FAILURE otherwise
+ */
+int get_atom_velocities_qmmm_( const void * const handle, double * const qm_vel_x,
+        double * const qm_vel_y, double * const qm_vel_z, double * const mm_vel_x,
+        double * const mm_vel_y, double * const mm_vel_z )
+{
+    int i, ret;
+    spuremd_handle *spmd_handle;
+
+    ret = SPUREMD_FAILURE;
+
+    if ( handle != NULL )
+    {
+        spmd_handle = (spuremd_handle*) handle;
+
+        for ( i = 0; i < spmd_handle->system->N_qm; ++i )
+        {
+            qm_vel_x[i] = spmd_handle->system->atoms[i].v[0];
+            qm_vel_y[i] = spmd_handle->system->atoms[i].v[1];
+            qm_vel_z[i] = spmd_handle->system->atoms[i].v[2];
+        }
+
+        for ( i = spmd_handle->system->N_qm; i < spmd_handle->system->N; ++i )
+        {
+            mm_vel_x[i - spmd_handle->system->N_qm] = spmd_handle->system->atoms[i].v[0];
+            mm_vel_y[i - spmd_handle->system->N_qm] = spmd_handle->system->atoms[i].v[1];
+            mm_vel_z[i - spmd_handle->system->N_qm] = spmd_handle->system->atoms[i].v[2];
+        }
+
+        ret = SPUREMD_SUCCESS;
+    }
+
+    return ret;
+}
+
+
+/* Getter for atom forces in QMMM mode
+ *
+ * handle: pointer to wrapper struct with top-level data structures
+ * qm_f_x: x-coordinate of QM atom forces, in Angstroms * Daltons / ps^2 (allocated by caller)
+ * qm_f_y: y-coordinate of QM atom forces, in Angstroms * Daltons / ps^2 (allocated by caller)
+ * qm_f_z: z-coordinate of QM atom forces, in Angstroms * Daltons / ps^2 (allocated by caller)
+ * mm_f_x: x-coordinate of MM atom forces, in Angstroms * Daltons / ps^2 (allocated by caller)
+ * mm_f_y: y-coordinate of MM atom forces, in Angstroms * Daltons / ps^2 (allocated by caller)
+ * mm_f_z: z-coordinate of MM atom forces, in Angstroms * Daltons / ps^2 (allocated by caller)
+ *
+ * returns: SPUREMD_SUCCESS upon success, SPUREMD_FAILURE otherwise
+ */
+int get_atom_forces_qmmm_( const void * const handle, double * const qm_f_x,
+        double * const qm_f_y, double * const qm_f_z, double * const mm_f_x,
+        double * const mm_f_y, double * const mm_f_z )
+{
+    int i, ret;
+    spuremd_handle *spmd_handle;
+
+    ret = SPUREMD_FAILURE;
+
+    if ( handle != NULL )
+    {
+        spmd_handle = (spuremd_handle*) handle;
+
+        for ( i = 0; i < spmd_handle->system->N_qm; ++i )
+        {
+            qm_f_x[i] = spmd_handle->system->atoms[i].f[0];
+            qm_f_y[i] = spmd_handle->system->atoms[i].f[1];
+            qm_f_z[i] = spmd_handle->system->atoms[i].f[2];
+        }
+
+        for ( i = spmd_handle->system->N_qm; i < spmd_handle->system->N; ++i )
+        {
+            mm_f_x[i - spmd_handle->system->N_qm] = spmd_handle->system->atoms[i].f[0];
+            mm_f_y[i - spmd_handle->system->N_qm] = spmd_handle->system->atoms[i].f[1];
+            mm_f_z[i - spmd_handle->system->N_qm] = spmd_handle->system->atoms[i].f[2];
+        }
+
+        ret = SPUREMD_SUCCESS;
+    }
+
+    return ret;
+}
+
+
+/* Getter for atom charges in QMMM mode
+ *
+ * handle: pointer to wrapper struct with top-level data structures
+ * qm_q: QM atom charges, in Coulombs (allocated by caller)
+ * mm_q: MM atom charges, in Coulombs (allocated by caller)
+ *
+ * returns: SPUREMD_SUCCESS upon success, SPUREMD_FAILURE otherwise
+ */
+int get_atom_charges_qmmm_( const void * const handle, double * const qm_q,
+        double * const mm_q )
+{
+    int i, ret;
+    spuremd_handle *spmd_handle;
+
+    ret = SPUREMD_FAILURE;
+
+    if ( handle != NULL )
+    {
+        spmd_handle = (spuremd_handle*) handle;
+
+        for ( i = 0; i < spmd_handle->system->N_qm; ++i )
+        {
+            qm_q[i] = spmd_handle->system->atoms[i].q;
+        }
+
+        for ( i = spmd_handle->system->N_qm; i < spmd_handle->system->N; ++i )
+        {
+            mm_q[i - spmd_handle->system->N_qm] = spmd_handle->system->atoms[i].q;
         }
 
         ret = SPUREMD_SUCCESS;

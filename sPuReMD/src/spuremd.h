@@ -62,6 +62,20 @@ int reset_qmmm_( const void * const, int,
 int reset( const void * const, const char * const,
         const char * const, const char * const );
 
+int get_atom_positions_qmmm_( const void * const, double * const,
+        double * const, double * const, double * const,
+        double * const, double * const );
+
+int get_atom_velocities_qmmm_( const void * const, double * const,
+        double * const, double * const, double * const,
+        double * const, double * const );
+
+int get_atom_forces_qmmm_( const void * const, double * const,
+        double * const, double * const, double * const,
+        double * const, double * const );
+
+int get_atom_charges_qmmm_( const void * const, double * const, double * const );
+
 int get_atom_positions( const void * const, double * const,
         double * const, double * const );
 
