@@ -684,6 +684,10 @@ static inline void reax_atom_Copy( reax_atom *dest, reax_atom *src )
     rvec_Copy( dest->v, src->v );
     rvec_Copy( dest->f, src->f );
     dest->q = src->q;
+#if defined(QMMM)
+    dest->qmmm_mask = src->qmmm_mask;
+    dest->q_init = src->q_init;
+#endif
 }
 
 

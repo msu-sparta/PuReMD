@@ -105,10 +105,14 @@ static void Read_Input_Files( const char * const geo_file,
         Read_Force_Field( ffield_file, system, &system->reax_param );
     }
 
+    Set_Control_Defaults( system, control, out_control );
+
     if ( control_file != NULL )
     {
         Read_Control_File( control_file, system, control, out_control );
     }
+
+    Set_Control_Derived_Values( system, control );
 
     if ( geo_file != NULL )
     {
@@ -147,6 +151,7 @@ static void Read_Input_Files( const char * const geo_file,
 }
 
 
+#if defined(QMMM)
 /* Allocate top-level data structures and parse input files
  * for the first simulation
  *
@@ -161,7 +166,7 @@ static void Read_Input_Files( const char * const geo_file,
  * mm_pos_y: y-coordinate of MM atom positions, in Angstroms
  * mm_pos_z: z-coordinate of MM atom positions, in Angstroms
  * mm_q: charge of MM atom, in Coulombs
- * sim_box: simulation box information, where the entries are
+ * sim_box_info: simulation box information, where the entries are
  *  - box length per dimension (3 entries)
  *  - angles per dimension (3 entries)
  * ffield_file: file containing force field parameters
@@ -169,12 +174,10 @@ static void Read_Input_Files( const char * const geo_file,
  */
 void * setup_qmmm_( int qm_num_atoms, const int * const qm_types,
         const double * const qm_pos_x, const double * const qm_pos_y,
-        const double * const qm_pos_z,
-        int mm_num_atoms, const int * const mm_types,
+        const double * const qm_pos_z, int mm_num_atoms, const int * const mm_types,
         const double * const mm_pos_x, const double * const mm_pos_y,
         const double * const mm_pos_z, const double * const mm_q,
-        const double * const sim_box,
-        const char * const ffield_file,
+        const double * const sim_box_info, const char * const ffield_file,
         const char * const control_file )
 {
     int i;
@@ -229,16 +232,16 @@ void * setup_qmmm_( int qm_num_atoms, const int * const qm_types,
 
     spmd_handle->system->N_qm = qm_num_atoms;
     spmd_handle->system->N_mm = mm_num_atoms;
-    spmd_handle->system->N = qm_num_atoms + mm_num_atoms;
+    spmd_handle->system->N = spmd_handle->system->N_qm + spmd_handle->system->N_mm;
 
     PreAllocate_Space( spmd_handle->system, spmd_handle->control,
             spmd_handle->workspace, spmd_handle->system->N );
 
-    Setup_Box( sim_box[0], sim_box[1], sim_box[2],
-            sim_box[3], sim_box[4], sim_box[5],
+    Setup_Box( sim_box_info[0], sim_box_info[1], sim_box_info[2],
+            sim_box_info[3], sim_box_info[4], sim_box_info[5],
             &spmd_handle->system->box );
 
-    for ( i = 0; i < qm_num_atoms; ++i )
+    for ( i = 0; i < spmd_handle->system->N_qm; ++i )
     {
         x[0] = qm_pos_x[i];
         x[1] = qm_pos_y[i];
@@ -257,31 +260,33 @@ void * setup_qmmm_( int qm_num_atoms, const int * const qm_types,
         rvec_MakeZero( spmd_handle->system->atoms[i].v );
         rvec_MakeZero( spmd_handle->system->atoms[i].f );
         spmd_handle->system->atoms[i].q = 0.0;
+        spmd_handle->system->atoms[i].q_init = 0.0;
 
-//        mask[i] = 1;
+        spmd_handle->system->atoms[i].qmmm_mask = TRUE;
     }
 
-    for ( i = qm_num_atoms; i < qm_num_atoms + mm_num_atoms; ++i )
+    for ( i = spmd_handle->system->N_qm; i < spmd_handle->system->N; ++i )
     {
-        x[0] = mm_pos_x[i - qm_num_atoms];
-        x[1] = mm_pos_y[i - qm_num_atoms];
-        x[2] = mm_pos_z[i - qm_num_atoms];
+        x[0] = mm_pos_x[i - spmd_handle->system->N_qm];
+        x[1] = mm_pos_y[i - spmd_handle->system->N_qm];
+        x[2] = mm_pos_z[i - spmd_handle->system->N_qm];
 
         Fit_to_Periodic_Box( &spmd_handle->system->box, x );
 
         spmd_handle->workspace->orig_id[i] = i + 1;
 //        spmd_handle->system->atoms[i].type = Get_Atom_Type( &system->reax_param,
 //                element, sizeof(element) );
-        spmd_handle->system->atoms[i].type = mm_types[i - qm_num_atoms];
+        spmd_handle->system->atoms[i].type = mm_types[i - spmd_handle->system->N_qm];
 //        strncpy( spmd_handle->system->atoms[i].name, atom_name,
 //                sizeof(spmd_handle->system->atoms[i].name) - 1 );
 //        spmd_handle->system->atoms[i].name[sizeof(spmd_handle->system->atoms[i].name) - 1] = '\0';
         rvec_Copy( spmd_handle->system->atoms[i].x, x );
         rvec_MakeZero( spmd_handle->system->atoms[i].v );
         rvec_MakeZero( spmd_handle->system->atoms[i].f );
-        spmd_handle->system->atoms[i].q = mm_q[i - qm_num_atoms];
+        spmd_handle->system->atoms[i].q = mm_q[i - spmd_handle->system->N_qm];
+        spmd_handle->system->atoms[i].q_init = mm_q[i - spmd_handle->system->N_qm];
 
-//        mask[i] = 0;
+        spmd_handle->system->atoms[i].qmmm_mask = FALSE;
     }
 
     Read_Input_Files( NULL, ffield_file, control_file,
@@ -293,6 +298,7 @@ void * setup_qmmm_( int qm_num_atoms, const int * const qm_types,
 
     return (void *) spmd_handle;
 }
+#endif
 
 
 /* Allocate top-level data structures and parse input files
@@ -528,7 +534,8 @@ int simulate( const void * const handle )
         spmd_handle->data->timing.end = Get_Time( );
         spmd_handle->data->timing.elapsed = Get_Timing_Info( spmd_handle->data->timing.start );
 
-        if ( spmd_handle->output_enabled == TRUE )
+        if ( spmd_handle->output_enabled == TRUE
+                && spmd_handle->out_control->log_update_freq > 0 )
         {
             fprintf( spmd_handle->out_control->log, "total: %.2f secs\n", spmd_handle->data->timing.elapsed );
         }
@@ -581,6 +588,7 @@ int cleanup( const void * const handle )
 }
 
 
+#if defined(QMMM)
 /* Reset for the next simulation by parsing input files and triggering
  * reallocation if more space is needed
  *
@@ -596,7 +604,7 @@ int cleanup( const void * const handle )
  * mm_pos_y: y-coordinate of MM atom positions, in Angstroms
  * mm_pos_z: z-coordinate of MM atom positions, in Angstroms
  * mm_q: charge of MM atom, in Coulombs
- * sim_box: simulation box information, where the entries are
+ * sim_box_info: simulation box information, where the entries are
  *  - box length per dimension (3 entries)
  *  - angles per dimension (3 entries)
  * ffield_file: file containing force field parameters
@@ -611,7 +619,7 @@ int reset_qmmm_( const void * const handle,
         int mm_num_atoms, const int * const mm_types,
         const double * const mm_pos_x, const double * const mm_pos_y,
         const double * const mm_pos_z, const double * const mm_q,
-        const double * const sim_box,
+        const double * const sim_box_info,
         const char * const ffield_file, const char * const control_file )
 {
     int i, ret;
@@ -636,16 +644,16 @@ int reset_qmmm_( const void * const handle,
 
         spmd_handle->system->N_qm = qm_num_atoms;
         spmd_handle->system->N_mm = mm_num_atoms;
-        spmd_handle->system->N = qm_num_atoms + mm_num_atoms;
+        spmd_handle->system->N = spmd_handle->system->N_qm + spmd_handle->system->N_mm;
 
         PreAllocate_Space( spmd_handle->system, spmd_handle->control,
                 spmd_handle->workspace, spmd_handle->system->N );
 
-        Setup_Box( sim_box[0], sim_box[1], sim_box[2],
-                sim_box[3], sim_box[4], sim_box[5],
+        Setup_Box( sim_box_info[0], sim_box_info[1], sim_box_info[2],
+                sim_box_info[3], sim_box_info[4], sim_box_info[5],
                 &spmd_handle->system->box );
 
-        for ( i = 0; i < qm_num_atoms; ++i )
+        for ( i = 0; i < spmd_handle->system->N_qm; ++i )
         {
             x[0] = qm_pos_x[i];
             x[1] = qm_pos_y[i];
@@ -665,30 +673,30 @@ int reset_qmmm_( const void * const handle,
             rvec_MakeZero( spmd_handle->system->atoms[i].f );
             spmd_handle->system->atoms[i].q = 0.0;
 
-//            mask[i] = 1;
+            spmd_handle->system->atoms[i].qmmm_mask = TRUE;
         }
 
-        for ( i = qm_num_atoms; i < qm_num_atoms + mm_num_atoms; ++i )
+        for ( i = spmd_handle->system->N_qm; i < spmd_handle->system->N; ++i )
         {
-            x[0] = mm_pos_x[i - qm_num_atoms];
-            x[1] = mm_pos_y[i - qm_num_atoms];
-            x[2] = mm_pos_z[i - qm_num_atoms];
+            x[0] = mm_pos_x[i - spmd_handle->system->N_qm];
+            x[1] = mm_pos_y[i - spmd_handle->system->N_qm];
+            x[2] = mm_pos_z[i - spmd_handle->system->N_qm];
 
             Fit_to_Periodic_Box( &spmd_handle->system->box, x );
 
             spmd_handle->workspace->orig_id[i] = i + 1;
 //            spmd_handle->system->atoms[i].type = Get_Atom_Type( &system->reax_param,
 //                    element, sizeof(element) );
-            spmd_handle->system->atoms[i].type = mm_types[i - qm_num_atoms];
+            spmd_handle->system->atoms[i].type = mm_types[i - spmd_handle->system->N_qm];
 //            strncpy( spmd_handle->system->atoms[i].name, atom_name,
 //                    sizeof(spmd_handle->system->atoms[i].name) - 1 );
 //            spmd_handle->system->atoms[i].name[sizeof(spmd_handle->system->atoms[i].name) - 1] = '\0';
             rvec_Copy( spmd_handle->system->atoms[i].x, x );
             rvec_MakeZero( spmd_handle->system->atoms[i].v );
             rvec_MakeZero( spmd_handle->system->atoms[i].f );
-            spmd_handle->system->atoms[i].q = mm_q[i - qm_num_atoms];
+            spmd_handle->system->atoms[i].q = mm_q[i - spmd_handle->system->N_qm];
 
-//            mask[i] = 0;
+            spmd_handle->system->atoms[i].qmmm_mask = FALSE;
         }
 
         Read_Input_Files( NULL, ffield_file, control_file,
@@ -714,6 +722,7 @@ int reset_qmmm_( const void * const handle,
 
     return ret;
 }
+#endif
 
 
 /* Reset for the next simulation by parsing input files and triggering
@@ -773,6 +782,7 @@ int reset( const void * const handle, const char * const geo_file,
 }
 
 
+#if defined(QMMM)
 /* Getter for atom positions in QMMM mode
  *
  * handle: pointer to wrapper struct with top-level data structures
@@ -946,6 +956,7 @@ int get_atom_charges_qmmm_( const void * const handle, double * const qm_q,
 
     return ret;
 }
+#endif
 
 
 /* Getter for atom positions

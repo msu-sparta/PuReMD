@@ -773,6 +773,12 @@ struct reax_atom
     rvec f;
     /* charge on this atom, in Coulombs */
     real q;
+#if defined(QMMM)
+    /* TRUE if the atom is in the QM region, FALSE otherwise (atom in MM region) */
+    int qmmm_mask;
+    /* inital charge on this atom, in Coulombs */
+    real q_init;
+#endif
 };
 
 
@@ -859,10 +865,12 @@ struct reax_system
     int ffield_params_allocated;
     /* number of local (non-periodic image) atoms for the current simulation */
     int N;
+#if defined(QMMM)
     /* number of local (non-periodic image) QM atoms for the current simulation in QMMM mode */
     int N_qm;
     /* number of local (non-periodic image) MM atoms for the current simulation in QMMM mode */
     int N_mm;
+#endif
     /* max. number of local (non-periodic image) atoms across all simulations */
     int N_max;
     /* dimension of the N x N sparse charge method matrix H */
@@ -1588,9 +1596,13 @@ struct static_storage
     /* for hydrogen bonds */
     int *hbond_index;
 
-    rvec *v_const;
-    rvec *f_old;
+#if defined(QMMM)
+    /* TRUE if the atom is in the QM region, FALSE otherwise (atom in MM region) */
+    int *mask_qmmm;
+#endif
     rvec *a; // used in integrators
+    rvec *f_old;
+    rvec *v_const;
 
     /* coefficient of dDelta for force calculations */
     real *CdDelta;

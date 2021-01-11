@@ -206,6 +206,10 @@ void Torsion_Angles( reax_system *system, control_params *control,
 #endif
         for ( j = 0; j < system->N; ++j )
         {
+#if defined(QMMM)
+            if ( system->atoms[j].qmmm_mask == TRUE )
+            {
+#endif
             type_j = system->atoms[j].type;
             Delta_j = workspace->Delta_boc[j];
             start_j = Start_Index(j, bonds);
@@ -226,6 +230,11 @@ void Torsion_Angles( reax_system *system, control_params *control,
             {
                 pbond_jk = &bonds->bond_list[pk];
                 k = pbond_jk->nbr;
+
+#if defined(QMMM)
+            if ( system->atoms[k].qmmm_mask == TRUE )
+            {
+#endif
                 bo_jk = &pbond_jk->bo_data;
                 BOA_jk = bo_jk->BO - control->thb_cut;
 #if defined(_OPENMP)
@@ -280,6 +289,11 @@ void Torsion_Angles( reax_system *system, control_params *control,
                             if ( bo_ij->BO > control->thb_cut )
                             {
                                 i = p_ijk->thb;
+
+#if defined(QMMM)
+                                if ( system->atoms[i].qmmm_mask == TRUE )
+                                {
+#endif
                                 type_i = system->atoms[i].type;
                                 r_ij = pbond_ij->d;
                                 BOA_ij = bo_ij->BO - control->thb_cut;
@@ -320,6 +334,11 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                 {
                                     p_jkl = &thb_intrs->three_body_list[pl];
                                     l = p_jkl->thb;
+
+#if defined(QMMM)
+                                    if ( system->atoms[l].qmmm_mask == TRUE )
+                                    {
+#endif
                                     plk = p_jkl->pthb; //pointer to l on k's bond_list!
                                     pbond_kl = &bonds->bond_list[plk];
                                     bo_kl = &pbond_kl->bo_data;
@@ -749,12 +768,24 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                         rvec_ScaledAdd( workspace->f_con[l], CEconj6, dcos_omega_dl );
 #endif
                                     } // pl check ends
+#if defined(QMMM)
+                                    }
+#endif
                                 } // pl loop ends
+#if defined(QMMM)
+                                }
+#endif
                             } // pi check ends
                         } // pi loop ends
                     } // k-j neighbor check ends
                 } // j<k && j-k neighbor check ends
+#if defined(QMMM)
+                }
+#endif
             } // pk loop ends
+#if defined(QMMM)
+            }
+#endif
         } // j loop
     }
 

@@ -1209,8 +1209,8 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
                 }
 
                 /* hydrogen bond lists */
-                if ( control->hbond_cut > 0
-                        &&(ihb == H_ATOM || ihb == H_BONDING_ATOM)
+                if ( control->hbond_cut > 0.0
+                        && (ihb == H_ATOM || ihb == H_BONDING_ATOM)
                         && nbr_pj->d <= control->hbond_cut )
                 {
                     jhb = sbp_j->p_hbond;

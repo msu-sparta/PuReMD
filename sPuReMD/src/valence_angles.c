@@ -250,6 +250,7 @@ void Valence_Angles( reax_system *system, control_params *control,
                 if ( BOA_ij >= 0.0 )
                 {
                     i = pbond_ij->nbr;
+
                     type_i = system->atoms[i].type;
 //#if defined(_OPENMP)
 //                    f_i = &workspace->f_local[tid * system->N + i];
@@ -306,6 +307,7 @@ void Valence_Angles( reax_system *system, control_params *control,
                         }
 
                         k = pbond_jk->nbr;
+
                         type_k = system->atoms[k].type;
                         p_ijk = &thb_list[num_thb_intrs];
 //#if defined(_OPENMP)
@@ -408,6 +410,11 @@ void Valence_Angles( reax_system *system, control_params *control,
                             CEval8 = CEval4 / sin_theta;
 
                             e_ang = f7_ij * f7_jk * f8_Dj * expval12theta;
+#if defined(QMMM)
+                            if ( system->atoms[i].qmmm_mask == TRUE
+                                    && system->atoms[j].qmmm_mask == TRUE
+                                    && system->atoms[k].qmmm_mask == TRUE )
+#endif
                             e_ang_total += e_ang;
 
 #if defined(DEBUG_FOCUS)
@@ -436,6 +443,11 @@ void Valence_Angles( reax_system *system, control_params *control,
                                         + p_pen4 * exp_pen4 )) / SQR( trm_pen34 );
 
                             e_pen = p_pen1 * f9_Dj * exp_pen2ij * exp_pen2jk;
+#if defined(QMMM)
+                            if ( system->atoms[i].qmmm_mask == TRUE
+                                    && system->atoms[j].qmmm_mask == TRUE
+                                    && system->atoms[k].qmmm_mask == TRUE )
+#endif
                             e_pen_total += e_pen;
 
 #if defined(DEBUG_FOCUS)
@@ -465,6 +477,11 @@ void Valence_Angles( reax_system *system, control_params *control,
                                 * EXP( -p_coa3 * SQR(workspace->total_bond_order[i] - BOA_ij) )
                                 * EXP( -p_coa3 * SQR(workspace->total_bond_order[k] - BOA_jk) )
                                 / (1.0 + exp_coa2);
+#if defined(QMMM)
+                            if ( system->atoms[i].qmmm_mask == TRUE
+                                    && system->atoms[j].qmmm_mask == TRUE
+                                    && system->atoms[k].qmmm_mask == TRUE )
+#endif
                             e_coa_total += e_coa;
 
                             CEcoa1 = -2.0 * p_coa4 * (BOA_ij - 1.5) * e_coa;
@@ -472,6 +489,12 @@ void Valence_Angles( reax_system *system, control_params *control,
                             CEcoa3 = -p_coa2 * exp_coa2 * e_coa / (1.0 + exp_coa2);
                             CEcoa4 = -2.0 * p_coa3 * (workspace->total_bond_order[i] - BOA_ij) * e_coa;
                             CEcoa5 = -2.0 * p_coa3 * (workspace->total_bond_order[k] - BOA_jk) * e_coa;
+#if defined(QMMM)
+                            if ( system->atoms[i].qmmm_mask == TRUE
+                                    && system->atoms[j].qmmm_mask == TRUE
+                                    && system->atoms[k].qmmm_mask == TRUE )
+                            {
+#endif
 
                             /* calculate force contributions */
 #if defined(_OPENMP)
@@ -676,6 +699,9 @@ void Valence_Angles( reax_system *system, control_params *control,
                             Add_dDelta( system, lists, i, CEcoa4, workspace->f_coa );
                             Add_dDelta( system, lists, k, CEcoa5, workspace->f_coa );
                             /* end coalition forces */
+#endif
+#if defined(QMMM)
+                            }
 #endif
                         }
                     }

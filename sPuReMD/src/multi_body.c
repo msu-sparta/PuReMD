@@ -59,6 +59,10 @@ void Atom_Energy( reax_system *system, control_params *control,
 
     for ( i = 0; i < system->N; ++i )
     {
+#if defined(QMMM)
+        if ( system->atoms[i].qmmm_mask == TRUE )
+        {
+#endif
         /* set the parameter pointer */
         type_i = system->atoms[i].type;
         sbp_i = &system->reax_param.sbp[ type_i ];
@@ -137,10 +141,17 @@ void Atom_Energy( reax_system *system, control_params *control,
                 }
             }
         }
+#if defined(QMMM)
+        }
+#endif
     }
 
     for ( i = 0; i < system->N; ++i )
     {
+#if defined(QMMM)
+        if ( system->atoms[i].qmmm_mask == TRUE )
+        {
+#endif
         type_i = system->atoms[i].type;
         sbp_i = &system->reax_param.sbp[ type_i ];
 
@@ -315,6 +326,9 @@ void Atom_Energy( reax_system *system, control_params *control,
 
         fprintf( out_control->eov, "%6d%15.8f%15.8f\n",
                  i + 1/*workspace->orig_id[i]+1*/, e_un, data->E_Ov + data->E_Un );
+#endif
+#if defined(QMMM)
+        }
 #endif
     }
 }

@@ -33,6 +33,7 @@
 extern "C"  {
 #endif
 
+#if defined(QMMM)
 void * setup_qmmm_( int, const int * const,
         const double * const, const double * const,
         const double * const, int, const int * const,
@@ -40,6 +41,7 @@ void * setup_qmmm_( int, const int * const,
         const double * const, const double * const,
         const double * const,
         const char * const, const char * const );
+#endif
 
 void * setup( const char * const, const char * const,
         const char * const );
@@ -50,6 +52,7 @@ int simulate( const void * const );
 
 int cleanup( const void * const );
 
+#if defined(QMMM)
 int reset_qmmm_( const void * const, int,
         const int * const,
         const double * const, const double * const,
@@ -58,10 +61,12 @@ int reset_qmmm_( const void * const, int,
         const double * const, const double * const,
         const double * const,
         const char * const, const char * const );
+#endif
 
 int reset( const void * const, const char * const,
         const char * const, const char * const );
 
+#if defined(QMMM)
 int get_atom_positions_qmmm_( const void * const, double * const,
         double * const, double * const, double * const,
         double * const, double * const );
@@ -75,6 +80,7 @@ int get_atom_forces_qmmm_( const void * const, double * const,
         double * const, double * const );
 
 int get_atom_charges_qmmm_( const void * const, double * const, double * const );
+#endif
 
 int get_atom_positions( const void * const, double * const,
         double * const, double * const );

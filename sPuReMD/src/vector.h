@@ -78,6 +78,23 @@ static inline void Vector_MakeZero( real * const v, const unsigned int k )
 }
 
 
+#if defined(QMMM)
+static inline void Vector_Mask_qmmm( real * const v, int const * const mask,
+        const unsigned int k )
+{
+    unsigned int i;
+
+#if defined(_OPENMP)
+    #pragma omp for simd schedule(simd:static)
+#endif
+    for ( i = 0; i < k; ++i )
+    {
+        v[i] = (mask[i] == TRUE ? v[i] : 0.0);
+    }
+}
+#endif
+
+
 static inline void Vector_Copy( real * const dest, const real * const v, const unsigned int k )
 {
     unsigned int i;

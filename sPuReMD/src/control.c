@@ -430,55 +430,68 @@ int Set_Control_Parameter( const char * const keyword,
 }
 
 
-void Read_Control_File( const char * const control_file, reax_system * const system,
+/* Assign default values to control parameters
+ *
+ * NOTE: force field file parameters must be parsed before this
+ * */
+void Set_Control_Defaults( reax_system * const system,
         control_params * const  control, output_controls * const out_control )
 {
-    char *s, **tmp;
-    int c, i, ret;
-    FILE *fp;
+    int i;
 
-    fp = sfopen( control_file, "r" );
-
-    assert( fp != NULL );
-
-    /* assign default values */
     strncpy( control->sim_name, "default.sim", sizeof(control->sim_name) - 1 );
     control->sim_name[sizeof(control->sim_name) - 1] = '\0';
 
+    strncpy( control->restart_from, "default.res", sizeof(control->restart_from) - 1 );
+    control->restart_from[sizeof(control->restart_from) - 1] = '\0';
     control->restart = FALSE;
     out_control->restart_format = WRITE_BINARY;
     out_control->restart_freq = 0;
-    strncpy( control->restart_from, "default.res", sizeof(control->restart_from) - 1 );
-    control->restart_from[sizeof(control->restart_from) - 1] = '\0';
     out_control->restart_freq = 0;
+
     control->random_vel = FALSE;
-
     control->reposition_atoms = 0;
-
     control->ensemble = NVE;
     control->nsteps = 0;
-    control->dt = 0.25;
-
-    control->geo_format = PDB;
-    control->restrict_bonds = FALSE;
-
     control->periodic_boundaries = TRUE;
-
+    control->restrict_bonds = FALSE;
+    control->tabulate = 0;
+    control->dt = 0.25;
     control->reneighbor = 1;
 
-    /* interaction cutoffs from force field global paramters */
-    control->bo_cut = 0.01 * system->reax_param.gp.l[29];
+    /* defaults values for other cutoffs */
+    control->vlist_cut = system->reax_param.gp.l[12] + 2.5;
+    control->bond_cut = 5.0;
     control->nonb_low = system->reax_param.gp.l[11];
     control->nonb_cut = system->reax_param.gp.l[12];
-
-    /* defaults values for other cutoffs */
-    control->vlist_cut = control->nonb_cut + 2.5;
-    control->bond_cut = 5.0;
-    control->bg_cut = 0.3;
+    control->bo_cut = 0.01 * system->reax_param.gp.l[29];
     control->thb_cut = 0.001;
     control->hbond_cut = 0.0;
 
-    control->tabulate = 0;
+    control->T_init = 0.0;
+    control->T_final = 300.0;
+    control->Tau_T = 1.0;
+    control->T_mode = 0;
+    control->T_rate = 1.0;
+    control->T_freq = 1.0;
+    control->P[0] = 0.000101325;
+    control->P[1] = 0.000101325;
+    control->P[2] = 0.000101325;
+    control->Tau_P[0] = 500.0;
+    control->Tau_P[1] = 500.0;
+    control->Tau_P[2] = 500.0;
+    control->Tau_PT = 500.0;
+    control->compressibility = 1.0;
+    control->press_mode = 0;
+    control->compute_pressure = FALSE;
+
+    control->remove_CoM_vel = 25;
+    control->geo_format = PDB;
+    control->dipole_anal = 0;
+    control->freq_dipole_anal = 0;
+    control->diffusion_coef = 0;
+    control->freq_diffusion_coef = 0;
+    control->restrict_type = 0;
 
     control->charge_method = QEQ_CM;
     control->cm_q_net = 0.0;
@@ -492,7 +505,8 @@ void Read_Control_File( const char * const control_file, reax_system * const sys
     control->cm_init_guess_extrap1 = 3;
     control->cm_init_guess_extrap2 = 2;
     /* assign default values */
-    strncpy( control->cm_init_guess_gd_model, "frozen_model.pb", sizeof(control->cm_init_guess_gd_model) - 1 );
+    strncpy( control->cm_init_guess_gd_model, "frozen_model.pb",
+            sizeof(control->cm_init_guess_gd_model) - 1 );
     control->cm_init_guess_gd_model[sizeof(control->cm_init_guess_gd_model) - 1] = '\0';
     control->cm_init_guess_win_size = 5;
     control->cm_solver_pre_comp_type = JACOBI_PC;
@@ -503,55 +517,40 @@ void Read_Control_File( const char * const control_file, reax_system * const sys
     control->cm_solver_pre_app_type = TRI_SOLVE_PA;
     control->cm_solver_pre_app_jacobi_iters = 50;
 
-    control->T_init = 0.0;
-    control->T_final = 300.0;
-    control->Tau_T = 1.0;
-    control->T_mode = 0.0;
-    control->T_rate = 1.0;
-    control->T_freq = 1.0;
-
-    control->P[0] = 0.000101325;
-    control->P[1] = 0.000101325;
-    control->P[2] = 0.000101325;
-    control->Tau_P[0] = 500.0;
-    control->Tau_P[1] = 500.0;
-    control->Tau_P[2] = 500.0;
-    control->Tau_PT = 500.0;
-    control->compressibility = 1.0;
-    control->press_mode = 0;
-    control->compute_pressure = FALSE;
-
-    control->remove_CoM_vel = 25;
-
-    out_control->log_update_freq = 0;
-
-    out_control->write_steps = 0;
-    out_control->traj_compress = 0;
-    out_control->write = &fprintf;
-    out_control->traj_format = 0;
-    out_control->write_header = &Write_Custom_Header;
-    out_control->append_traj_frame = &Append_Custom_Frame;
-
-    strncpy( out_control->traj_title, "default_title", sizeof(out_control->traj_title) - 1 );
-    out_control->traj_title[sizeof(out_control->traj_title) - 1] = '\0';
-    out_control->atom_format = 0;
-    out_control->bond_info = 0;
-    out_control->angle_info = 0;
-
     control->molec_anal = NO_ANALYSIS;
     control->freq_molec_anal = 0;
+    control->bg_cut = 0.3;
     control->num_ignored = 0;
     for ( i = 0; i < MAX_ATOM_TYPES; i++ )
     {
         control->ignore[i] = 0;
     }
 
-    control->dipole_anal = 0;
-    control->freq_dipole_anal = 0;
+    out_control->log_update_freq = 0;
+    out_control->write_steps = 0;
+    out_control->traj_compress = 0;
+    out_control->write = &fprintf;
+    out_control->traj_format = 0;
+    out_control->write_header = &Write_Custom_Header;
+    out_control->append_traj_frame = &Append_Custom_Frame;
+    strncpy( out_control->traj_title, "default_title", sizeof(out_control->traj_title) - 1 );
+    out_control->traj_title[sizeof(out_control->traj_title) - 1] = '\0';
+    out_control->atom_format = 0;
+    out_control->bond_info = 0;
+    out_control->angle_info = 0;
+}
 
-    control->diffusion_coef = 0;
-    control->freq_diffusion_coef = 0;
-    control->restrict_type = 0;
+
+void Read_Control_File( const char * const control_file, reax_system * const system,
+        control_params * const  control, output_controls * const out_control )
+{
+    char *s, **tmp;
+    int c, i, ret;
+    FILE *fp;
+
+    fp = sfopen( control_file, "r" );
+
+    assert( fp != NULL );
 
     if ( fp != NULL )
     {
@@ -594,6 +593,15 @@ void Read_Control_File( const char * const control_file, reax_system * const sys
         sfree( s, "Read_Control_File::s" );
     }
 
+    sfclose( fp, "Read_Control_File::fp" );
+}
+
+
+void Set_Control_Derived_Values( reax_system * const system,
+        control_params * const  control )
+{
+    int i;
+
     /* determine target T */
     if ( control->T_mode == 0 )
     {
@@ -625,15 +633,4 @@ void Read_Control_File( const char * const control_file, reax_system * const sys
     {
         system->g.spread[i] = 2;
     }
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr,
-             "en=%d steps=%d dt=%.5f opt=%d T=%.5f P=%.5f %.5f %.5f\n",
-             control->ensemble, control->nsteps, control->dt, control->tabulate,
-             control->T, control->P[0], control->P[1], control->P[2] );
-
-    fprintf( stderr, "control file read\n" );
-#endif
-
-    sfclose( fp, "Read_Control_File::fp" );
 }

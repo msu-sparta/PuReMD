@@ -683,6 +683,11 @@ static void Init_Workspace( reax_system *system, control_params *control,
             workspace->perm_ilutp = NULL;
         }
 
+#if defined(QMMM)
+        workspace->mask_qmmm = smalloc( system->N_max * sizeof( int ),
+               "Init_Workspace::workspace->mask_qmmm" );
+#endif
+
         /* integrator storage */
         workspace->a = smalloc( system->N_max * sizeof( rvec ),
                "Init_Workspace::workspace->a" );
@@ -1557,6 +1562,10 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
     {
         sfree( workspace->perm_ilutp, "Finalize_Workspace::workspace->perm_ilutp" );
     }
+
+#if defined(QMMM)
+    sfree( workspace->mask_qmmm, "Init_Workspace::workspace->mask_qmmm" );
+#endif
 
     /* integrator storage */
     sfree( workspace->a, "Finalize_Workspace::workspace->a" );

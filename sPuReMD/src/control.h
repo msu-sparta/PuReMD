@@ -27,7 +27,12 @@
 int Set_Control_Parameter( const char * const, const char ** const,
         control_params * const, output_controls * const );
 
+void Set_Control_Defaults( reax_system * const, control_params * const,
+        output_controls * const );
+
 void Read_Control_File( const char * const, reax_system * const, control_params * const,
         output_controls * const );
+
+void Set_Control_Derived_Values( reax_system * const, control_params * const );
 
 #endif

@@ -60,6 +60,10 @@ void Bonds( reax_system *system, control_params *control,
 #endif
         for ( i = 0; i < system->N; ++i )
         {
+#if defined(QMMM)
+            if ( system->atoms[i].qmmm_mask == TRUE )
+            {
+#endif
             start_i = Start_Index(i, bonds);
             end_i = End_Index(i, bonds);
 
@@ -68,6 +72,12 @@ void Bonds( reax_system *system, control_params *control,
                 if ( i < bonds->bond_list[pj].nbr )
                 {
                     j = bonds->bond_list[pj].nbr;
+
+#if defined(QMMM)
+                    if ( system->atoms[j].qmmm_mask == TRUE )
+                    {
+#endif
+
                     type_i = system->atoms[i].type;
                     type_j = system->atoms[j].type;
                     sbp_i = &system->reax_param.sbp[type_i];
@@ -156,8 +166,14 @@ void Bonds( reax_system *system, control_params *control,
 #endif
                         }
                     }
+#if defined(QMMM)
+                    }
+#endif
                 }
             }
+#if defined(QMMM)
+            }
+#endif
         }
     }
 

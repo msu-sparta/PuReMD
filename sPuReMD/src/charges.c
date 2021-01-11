@@ -1390,6 +1390,15 @@ static void QEq( reax_system * const system, control_params * const control,
         break;
     }
 
+#if defined(QMMM)
+    for ( int i = 0; i < system->N; ++i )
+    {
+        workspace->s[0][i] = system->atoms[i].q_init;
+        workspace->t[0][i] = system->atoms[i].q_init;
+        workspace->mask_qmmm[i] = system->atoms[i].qmmm_mask;
+    }
+#endif
+
     switch ( control->cm_solver_type )
     {
     case GMRES_S:
@@ -1502,6 +1511,14 @@ static void EE( reax_system * const system, control_params * const control,
         break;
     }
 
+#if defined(QMMM)
+    for ( int i = 0; i < system->N; ++i )
+    {
+        workspace->s[0][i] = system->atoms[i].q_init;
+        workspace->mask_qmmm[i] = system->atoms[i].qmmm_mask;
+    }
+#endif
+
     switch ( control->cm_solver_type )
     {
     case GMRES_S:
@@ -1611,6 +1628,14 @@ static void ACKS2( reax_system * const system, control_params * const control,
         sfclose( fp, "ACKS2::fp" );
     }
 #undef SIZE
+#endif
+
+#if defined(QMMM)
+    for ( int i = 0; i < system->N; ++i )
+    {
+        workspace->s[0][i] = system->atoms[i].q_init;
+        workspace->mask_qmmm[i] = system->atoms[i].qmmm_mask;
+    }
 #endif
 
     switch ( control->cm_solver_type )

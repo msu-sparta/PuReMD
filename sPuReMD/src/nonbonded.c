@@ -45,11 +45,18 @@ static void Compute_Polarization_Energy( reax_system* system,
 #endif
         for ( i = 0; i < system->N; i++ )
         {
+#if defined(QMMM)
+            if ( system->atoms[i].qmmm_mask == TRUE )
+            {
+#endif
             q = system->atoms[i].q;
             type_i = system->atoms[i].type;
 
             e_pol += KCALpMOL_to_EV * (system->reax_param.sbp[ type_i ].chi * q
                     + (system->reax_param.sbp[ type_i ].eta / 2.0) * SQR( q ));
+#if defined(QMMM)
+            }
+#endif
         }
     }
     else if ( control->charge_method == ACKS2_CM )
@@ -60,6 +67,10 @@ static void Compute_Polarization_Energy( reax_system* system,
 #endif
         for ( i = 0; i < system->N; i++ )
         {
+#if defined(QMMM)
+            if ( system->atoms[i].qmmm_mask == TRUE )
+            {
+#endif
             q = system->atoms[i].q;
             type_i = system->atoms[i].type;
 
@@ -69,6 +80,9 @@ static void Compute_Polarization_Energy( reax_system* system,
 
             /* energy due to coupling with kinetic energy potential */
             e_pol += KCALpMOL_to_EV * system->atoms[i].q * workspace->s[0][ system->N + i ];
+#if defined(QMMM)
+            }
+#endif
         }
     }
 
@@ -138,6 +152,11 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                 {
                     nbr_pj = &far_nbrs->far_nbr_list[pj];
                     j = nbr_pj->nbr;
+
+#if defined(QMMM)
+                    if ( system->atoms[i].qmmm_mask == TRUE || system->atoms[j].qmmm_mask == TRUE )
+                    {
+#endif
                     r_ij = nbr_pj->d;
                     twbp = &system->reax_param.tbp[ system->atoms[i].type ]
                              [ system->atoms[j].type ];
@@ -163,6 +182,10 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     dTap = dTap * r_ij + 2.0 * workspace->Tap[2];
                     dTap = dTap * r_ij + workspace->Tap[1];
 
+#if defined(QMMM)
+                    if ( system->atoms[i].qmmm_mask == TRUE && system->atoms[j].qmmm_mask == TRUE )
+                    {
+#endif
                     /* vdWaals Calculations */
                     if ( system->reax_param.gp.vdw_type == 1
                             || system->reax_param.gp.vdw_type == 3 )
@@ -214,6 +237,18 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
 
                     CEvd = self_coef * ( (de_base + de_core) * Tap
                             + (e_base + e_core) * dTap );
+#if defined(QMMM)
+                    }
+                    else
+                    {
+                        e_core = 0.0;
+                        de_core = 0.0;
+                        e_vdW = 0.0;
+                        e_base = 0.0;
+                        de_base = 0.0;
+                        CEvd = 0.0;
+                    }
+#endif
 
 #if defined(DEBUG_FOCUS)
                     fprintf( stderr, "%6d%6d%24.12f%24.12f%24.12f%24.12f\n",
@@ -221,6 +256,10 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                             e_base, de_base, e_core, de_core ); fflush( stderr );
 #endif
 
+#if defined(QMMM)
+                    if ( system->atoms[i].qmmm_mask == TRUE && system->atoms[j].qmmm_mask == TRUE )
+                    {
+#endif
                     /* Coulomb Calculations */
                     dr3gamij_1 = r_ij * r_ij * r_ij + POW( twbp->gamma, -3.0 );
                     dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
@@ -231,6 +270,16 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     de_clb = -C_ELE * (system->atoms[i].q * system->atoms[j].q)
                             * (r_ij * r_ij) / POW( dr3gamij_1, 4.0 / 3.0);
                     CEclmb = self_coef * (de_clb * Tap + e_clb * dTap);
+#if defined(QMMM)
+                    }
+                    else
+                    {
+                        e_clb = 0.0;
+                        e_ele = 0.0;
+                        de_clb = 0.0;
+                        CEclmb = 0.0;
+                    }
+#endif
 
 #if defined(DEBUG_FOCUS)
                     fprintf( stderr, "%6d%6d%24.12f%24.12f\n",
@@ -343,6 +392,9 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     rvec_ScaledAdd( workspace->f_vdw[j], +CEvd, nbr_pj->dvec );
                     rvec_ScaledAdd( workspace->f_ele[i], -CEclmb, nbr_pj->dvec );
                     rvec_ScaledAdd( workspace->f_ele[j], +CEclmb, nbr_pj->dvec );
+#endif
+#if defined(QMMM)
+                }
 #endif
                 }
             }
@@ -801,7 +853,7 @@ void LR_vdW_Coulomb( reax_system *system, control_params *control,
     /* Coulomb calculations */
     dr3gamij_1 = r_ij * r_ij * r_ij
         + POW( twbp->gamma, -3.0 );
-    dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
+    dr3gamij_3 = POW( dr3gamij_1, 1.0 / 3.0 );
 
     tmp = Tap / dr3gamij_3;
     lr->H = EV_to_KCALpMOL * tmp;
@@ -813,7 +865,7 @@ void LR_vdW_Coulomb( reax_system *system, control_params *control,
        twbp->gamma, Tap, dr3gamij_3,
        system->atoms[i].q, system->atoms[j].q ); */
 
-    lr->CEclmb = C_ELE * ( dTap - Tap * r_ij / dr3gamij_1 ) / dr3gamij_3;
+    lr->CEclmb = C_ELE * (dTap - Tap * r_ij / dr3gamij_1) / dr3gamij_3;
 
     /* fprintf( stdout, "%d %d\t%g\t%g  %g\t%g  %g\t%g  %g\n",
        i+1, j+1, r_ij, e_vdW, CEvd * r_ij,

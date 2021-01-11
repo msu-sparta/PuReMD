@@ -86,7 +86,11 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
         for ( j = 0; j < system->N; ++j )
         {
             /* j must be a hydrogen atom */
-            if ( system->reax_param.sbp[system->atoms[j].type].p_hbond == H_ATOM )
+            if ( system->reax_param.sbp[system->atoms[j].type].p_hbond == H_ATOM
+#if defined(QMMM)
+                    && system->atoms[j].qmmm_mask == TRUE
+#endif
+               )
             {
                 type_j = system->atoms[j].type;
                 start_j = Start_Index( j, bonds );
@@ -123,6 +127,12 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                 for ( pk = hb_start_j; pk < hb_end_j; ++pk )
                 {
                     k = hbond_list[pk].nbr;
+
+#if defined(QMMM)
+                    if ( system->atoms[k].qmmm_mask == TRUE )
+                    {
+#endif
+
                     type_k = system->atoms[k].type;
                     nbr_jk = hbond_list[pk].ptr;
                     r_jk = nbr_jk->d;
@@ -304,6 +314,9 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
 #endif
                         }
                     }
+#if defined(QMMM)
+                    }
+#endif
                 }
             }
         }
