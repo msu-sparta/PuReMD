@@ -684,7 +684,7 @@ static void Init_Workspace( reax_system *system, control_params *control,
         }
 
 #if defined(QMMM)
-        workspace->mask_qmmm = smalloc( system->N_max * sizeof( int ),
+        workspace->mask_qmmm = smalloc( system->N_cm_max * sizeof( int ),
                "Init_Workspace::workspace->mask_qmmm" );
 #endif
 

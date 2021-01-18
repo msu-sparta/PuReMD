@@ -67,6 +67,12 @@ AC_ARG_ENABLE([qmmm],
 			      [enable build for code in QM/MM mode @<:@default: no@:>@])],
 	      [qmmm=${enableval}], [qmmm=no])
 
+# Build code with Fortran interface in QM/MM mode.
+AC_ARG_ENABLE([qmmm_fortran],
+	      [AS_HELP_STRING([--enable-qmmm_fortran],
+			      [enable build for code in QM/MM mode @<:@default: no@:>@])],
+	      [qmmm_fortran=${enableval}], [qmmm_fortran=no])
+
 # Build LAMMPS/reaxc integration code.
 AC_ARG_ENABLE([lammps-reaxc],
 	      [AS_HELP_STRING([--enable-lammps-reaxc],
@@ -326,8 +332,12 @@ if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "
 	AC_SUBST([G_LIBS], ["${GSL_LIBS}"])
 
 	# Build code in QM/MM mode
-	AS_IF([test "x${qmmm}" = "xyes"],
+	AS_IF([test "x${qmmm}" = "xyes" || test "x${qmmm_fortran}" = "xyes"],
 	      [AC_DEFINE([QMMM], [1], [Define to 1 to build PuReMD code in QMMM mode.])])
+
+	# Build code with Fortran interface in QM/MM mode
+	AS_IF([test "x${qmmm_fortran}" = "xyes"],
+	      [AC_DEFINE([QMMM_FORTRAN], [1], [Define to 1 to build PuReMD code in QMMM mode.])])
 
 	AC_LANG_POP([C])
 fi

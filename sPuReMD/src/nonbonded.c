@@ -153,10 +153,6 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     nbr_pj = &far_nbrs->far_nbr_list[pj];
                     j = nbr_pj->nbr;
 
-#if defined(QMMM)
-                    if ( system->atoms[i].qmmm_mask == TRUE || system->atoms[j].qmmm_mask == TRUE )
-                    {
-#endif
                     r_ij = nbr_pj->d;
                     twbp = &system->reax_param.tbp[ system->atoms[i].type ]
                              [ system->atoms[j].type ];
@@ -243,9 +239,6 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     {
                         e_core = 0.0;
                         de_core = 0.0;
-                        e_vdW = 0.0;
-                        e_base = 0.0;
-                        de_base = 0.0;
                         CEvd = 0.0;
                     }
 #endif
@@ -256,11 +249,11 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                             e_base, de_base, e_core, de_core ); fflush( stderr );
 #endif
 
+                    /* Coulomb Calculations */
 #if defined(QMMM)
-                    if ( system->atoms[i].qmmm_mask == TRUE && system->atoms[j].qmmm_mask == TRUE )
+                    if ( system->atoms[i].qmmm_mask == TRUE || system->atoms[j].qmmm_mask == TRUE )
                     {
 #endif
-                    /* Coulomb Calculations */
                     dr3gamij_1 = r_ij * r_ij * r_ij + POW( twbp->gamma, -3.0 );
                     dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
                     e_clb = C_ELE * (system->atoms[i].q * system->atoms[j].q) / dr3gamij_3;
@@ -274,8 +267,6 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     }
                     else
                     {
-                        e_clb = 0.0;
-                        e_ele = 0.0;
                         de_clb = 0.0;
                         CEclmb = 0.0;
                     }
@@ -392,9 +383,6 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     rvec_ScaledAdd( workspace->f_vdw[j], +CEvd, nbr_pj->dvec );
                     rvec_ScaledAdd( workspace->f_ele[i], -CEclmb, nbr_pj->dvec );
                     rvec_ScaledAdd( workspace->f_ele[j], +CEclmb, nbr_pj->dvec );
-#endif
-#if defined(QMMM)
-                }
 #endif
                 }
             }

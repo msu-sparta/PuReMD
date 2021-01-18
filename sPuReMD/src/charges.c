@@ -1391,12 +1391,8 @@ static void QEq( reax_system * const system, control_params * const control,
     }
 
 #if defined(QMMM)
-    for ( int i = 0; i < system->N; ++i )
-    {
-        workspace->s[0][i] = system->atoms[i].q_init;
-        workspace->t[0][i] = system->atoms[i].q_init;
-        workspace->mask_qmmm[i] = system->atoms[i].qmmm_mask;
-    }
+    fprintf( stderr, "[ERROR] QEq charge method is not supported in QM/MM mode. Use EEM instead. Terminating...\n" );
+    exit( INVALID_INPUT );
 #endif
 
     switch ( control->cm_solver_type )
@@ -1412,7 +1408,7 @@ static void QEq( reax_system * const system, control_params * const control,
         iters = GMRES_HouseHolder( workspace, control, data, &workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0], refactor );
         iters += GMRES_HouseHolder( workspace, control, data, &workspace->H,
-                workspace->b_t, control->cm_solver_q_err, workspace->t[0], 0 );
+                workspace->b_t, control->cm_solver_q_err, workspace->t[0], FALSE );
         break;
 
     case CG_S:
@@ -1512,11 +1508,16 @@ static void EE( reax_system * const system, control_params * const control,
     }
 
 #if defined(QMMM)
-    for ( int i = 0; i < system->N; ++i )
+    for ( int i = 0; i < system->N_qm; ++i )
+    {
+        workspace->mask_qmmm[i] = system->atoms[i].qmmm_mask;
+    }
+    for ( int i = system->N_qm; i < system->N; ++i )
     {
         workspace->s[0][i] = system->atoms[i].q_init;
         workspace->mask_qmmm[i] = system->atoms[i].qmmm_mask;
     }
+    workspace->mask_qmmm[system->N_cm - 1] = 1;
 #endif
 
     switch ( control->cm_solver_type )
@@ -1631,11 +1632,22 @@ static void ACKS2( reax_system * const system, control_params * const control,
 #endif
 
 #if defined(QMMM)
-    for ( int i = 0; i < system->N; ++i )
+    /* TODO: further testing needed for QM/MM mode with ACKS2 */
+    for ( int i = 0; i < system->N_qm; ++i )
+    {
+        workspace->mask_qmmm[i] = system->atoms[i].qmmm_mask;
+    }
+    for ( int i = system->N_qm; i < system->N; ++i )
     {
         workspace->s[0][i] = system->atoms[i].q_init;
         workspace->mask_qmmm[i] = system->atoms[i].qmmm_mask;
     }
+    for ( int i = system->N; i < 2 * system->N; ++i )
+    {
+        workspace->mask_qmmm[i] = system->atoms[i - system->N].qmmm_mask;
+    }
+    workspace->mask_qmmm[2 * system->N_cm] = 1;
+    workspace->mask_qmmm[2 * system->N_cm + 1] = 1;
 #endif
 
     switch ( control->cm_solver_type )
