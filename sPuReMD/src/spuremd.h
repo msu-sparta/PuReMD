@@ -62,6 +62,17 @@ int set_output_enabled( const void * const, const int );
 int set_control_parameter( const void * const, const char * const,
        const char ** const );
 
+/* Added for fact calculations for ANI training data*/
+void * setup_ANI(int, const int * const,
+        const double * const,const double * const,
+         const char * const,const char * const);
+
+/* Added for fact calculations for ANI training data*/
+int reset_ANI( const void * const, int, const int * const,
+        const double * const,const double * const);
+
+double get_potential_energy( const void * const, double *);
+
 #if defined(QMMM)
 void * setup_qmmm( int, const int * const,
         const double * const, int, const int * const,

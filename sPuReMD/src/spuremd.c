@@ -292,6 +292,8 @@ int simulate( const void * const handle )
             Compute_Pressure_Isotropic( spmd_handle->system, spmd_handle->control,
                     spmd_handle->data, spmd_handle->out_control );
         }
+        //CAGRI update
+        Compute_Total_Energy( spmd_handle->data );
 
         if ( spmd_handle->output_enabled == TRUE || spmd_handle->callback != NULL )
         {
@@ -738,7 +740,194 @@ int set_control_parameter( const void * const handle, const char * const keyword
 
     return ret;
 }
+double get_potential_energy( const void * const handle, double * E_Tot) {
+    spuremd_handle *spmd_handle;
+    int ret;
+    ret = SPUREMD_FAILURE;
+    if ( handle != NULL )
+    {
+        spmd_handle = (spuremd_handle*) handle;
+        ret = get_system_info( handle, E_Tot, NULL, NULL, NULL, NULL, NULL );
+        if ( ret == SUCCESS )
+        {
+            ret = SPUREMD_SUCCESS;
+        }
+    }
+    return ret;
 
+}
+/* Added for fact calculations for ANI training data*/
+void * setup_ANI(int num_atoms, const int * const types,
+         const double * const positions, const double * const sim_box_info,
+         const char * const ffield_file,const char * const control_file)
+{
+    int i;
+    //    char atom_name[9];
+    rvec x;
+    spuremd_handle *spmd_handle;
+
+    /* top-level allocation */
+    spmd_handle = (spuremd_handle*) smalloc( sizeof(spuremd_handle),
+            "setup::spmd_handle" );
+
+    /* second-level allocations */
+    spmd_handle->system = smalloc( sizeof(reax_system),
+           "Setup::spmd_handle->system" );
+    spmd_handle->system->prealloc_allocated = FALSE;
+    spmd_handle->system->ffield_params_allocated = FALSE;
+    spmd_handle->system->g.allocated = FALSE;
+
+    spmd_handle->control = smalloc( sizeof(control_params),
+           "Setup::spmd_handle->control" );
+
+    spmd_handle->data = smalloc( sizeof(simulation_data),
+           "Setup::spmd_handle->data" );
+
+    spmd_handle->workspace = smalloc( sizeof(static_storage),
+           "Setup::spmd_handle->workspace" );
+    spmd_handle->workspace->H.allocated = FALSE;
+    spmd_handle->workspace->H_full.allocated = FALSE;
+    spmd_handle->workspace->H_sp.allocated = FALSE;
+    spmd_handle->workspace->H_p.allocated = FALSE;
+    spmd_handle->workspace->H_spar_patt.allocated = FALSE;
+    spmd_handle->workspace->H_spar_patt_full.allocated = FALSE;
+    spmd_handle->workspace->H_app_inv.allocated = FALSE;
+    spmd_handle->workspace->L.allocated = FALSE;
+    spmd_handle->workspace->U.allocated = FALSE;
+
+    spmd_handle->lists = smalloc( sizeof(reax_list *) * LIST_N,
+           "Setup::spmd_handle->lists" );
+    for ( i = 0; i < LIST_N; ++i )
+    {
+        spmd_handle->lists[i] = smalloc( sizeof(reax_list),
+                "Setup::spmd_handle->lists[i]" );
+        spmd_handle->lists[i]->allocated = FALSE;
+    }
+    spmd_handle->out_control = smalloc( sizeof(output_controls),
+           "Setup::spmd_handle->out_control" );
+
+    spmd_handle->output_enabled = FALSE;
+    spmd_handle->realloc = TRUE;
+    spmd_handle->callback = NULL;
+    spmd_handle->data->sim_id = 0;
+
+    spmd_handle->system->N = num_atoms;
+
+    PreAllocate_Space( spmd_handle->system, spmd_handle->control,
+            spmd_handle->workspace, spmd_handle->system->N );
+
+    Setup_Box( sim_box_info[0], sim_box_info[1], sim_box_info[2],
+            sim_box_info[3], sim_box_info[4], sim_box_info[5],
+            &spmd_handle->system->box );
+
+    for ( i = 0; i < spmd_handle->system->N; ++i )
+    {
+        x[0] = positions[3 * i];
+        x[1] = positions[3 * i + 1];
+        x[2] = positions[3 * i + 2];
+
+        Fit_to_Periodic_Box( &spmd_handle->system->box, x );
+
+        spmd_handle->workspace->orig_id[i] = i + 1;
+//        spmd_handle->system->atoms[i].type = Get_Atom_Type( &system->reax_param,
+//                element, sizeof(element) );
+        spmd_handle->system->atoms[i].type = types[i];
+//        strncpy( spmd_handle->system->atoms[i].name, atom_name,
+//                sizeof(spmd_handle->system->atoms[i].name) - 1 );
+//        spmd_handle->system->atoms[i].name[sizeof(spmd_handle->system->atoms[i].name) - 1] = '\0';
+        rvec_Copy( spmd_handle->system->atoms[i].x, x );
+        rvec_MakeZero( spmd_handle->system->atoms[i].v );
+        rvec_MakeZero( spmd_handle->system->atoms[i].f );
+        spmd_handle->system->atoms[i].q = 0.0;
+
+    }
+
+    Read_Input_Files( NULL, ffield_file, control_file,
+            spmd_handle->system, spmd_handle->control,
+            spmd_handle->data, spmd_handle->workspace,
+            spmd_handle->out_control );
+
+    spmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * spmd_handle->system->N );
+
+    return (void *) spmd_handle;
+}
+
+
+/* Added for fact calculations for ANI training data*/
+int reset_ANI( const void * const handle, int num_atoms, 
+        const int * const types,const double * const positions,
+        const double * const sim_box_info)
+{
+    int i, ret;
+    rvec x;
+    spuremd_handle *spmd_handle;
+
+    ret = SPUREMD_FAILURE;
+
+    if ( handle != NULL )
+    {
+        spmd_handle = (spuremd_handle*) handle;
+
+        /* close files used in previous simulation */
+        if ( spmd_handle->output_enabled == TRUE )
+        {
+            Finalize_Out_Controls( spmd_handle->system, spmd_handle->control,
+                    spmd_handle->workspace, spmd_handle->out_control );
+        }
+
+        spmd_handle->realloc = FALSE;
+        spmd_handle->data->sim_id++;
+
+        spmd_handle->system->N = num_atoms;
+
+        PreAllocate_Space( spmd_handle->system, spmd_handle->control,
+                spmd_handle->workspace, spmd_handle->system->N );
+
+        Setup_Box( sim_box_info[0], sim_box_info[1], sim_box_info[2],
+                sim_box_info[3], sim_box_info[4], sim_box_info[5],
+                &spmd_handle->system->box );
+
+        for ( i = 0; i < spmd_handle->system->N; ++i )
+        {
+            x[0] = positions[3 * i];
+            x[1] = positions[3 * i + 1];
+            x[2] = positions[3 * i + 2];
+
+            Fit_to_Periodic_Box( &spmd_handle->system->box, x );
+
+            spmd_handle->workspace->orig_id[i] = i + 1;
+//            spmd_handle->system->atoms[i].type = Get_Atom_Type( &system->reax_param,
+//                    element, sizeof(element) );
+            spmd_handle->system->atoms[i].type = types[i];
+//            strncpy( spmd_handle->system->atoms[i].name, atom_name,
+//                    sizeof(spmd_handle->system->atoms[i].name) - 1 );
+//            spmd_handle->system->atoms[i].name[sizeof(spmd_handle->system->atoms[i].name) - 1] = '\0';
+            rvec_Copy( spmd_handle->system->atoms[i].x, x );
+            rvec_MakeZero( spmd_handle->system->atoms[i].v );
+            rvec_MakeZero( spmd_handle->system->atoms[i].f );
+            spmd_handle->system->atoms[i].q = 0.0;
+
+        }
+
+
+        if ( spmd_handle->system->N > spmd_handle->system->N_max )
+        {
+            /* deallocate everything which needs more space
+             * (i.e., structures whose space is a function of the number of atoms),
+             * except for data structures allocated while parsing input files */
+            Finalize( spmd_handle->system, spmd_handle->control, spmd_handle->data,
+                    spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control,
+                    spmd_handle->output_enabled, TRUE );
+
+            spmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * spmd_handle->system->N );
+            spmd_handle->realloc = TRUE;
+        }
+
+        ret = SPUREMD_SUCCESS;
+    }
+
+    return ret;    
+}
 
 #if defined(QMMM)
 /* Allocate top-level data structures and parse input files
