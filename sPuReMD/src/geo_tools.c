@@ -624,6 +624,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
     char chain_id;
     char s_a[12], s_b[12], s_c[12], s_alpha[12], s_beta[12], s_gamma[12];
     int i, n, atom_cnt, token_cnt, bgf_serial, ratom, crystx_found;
+    rvec x;
 
     ratom = 0;
     crystx_found = FALSE;
@@ -729,9 +730,15 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             workspace->orig_id[ atom_cnt ] = bgf_serial;
 
             /* copy atomic positions */
-            system->atoms[atom_cnt].x[0] = sstrtod( s_x, __FILE__, __LINE__ );
-            system->atoms[atom_cnt].x[1] = sstrtod( s_y, __FILE__, __LINE__ );
-            system->atoms[atom_cnt].x[2] = sstrtod( s_z, __FILE__, __LINE__ );
+            x[0] = sstrtod( s_x, __FILE__, __LINE__ );
+            x[1] = sstrtod( s_y, __FILE__, __LINE__ );
+            x[2] = sstrtod( s_z, __FILE__, __LINE__ );
+
+            Fit_to_Periodic_Box( &system->box, x );
+
+            system->atoms[atom_cnt].x[0] = x[0];
+            system->atoms[atom_cnt].x[1] = x[1];
+            system->atoms[atom_cnt].x[2] = x[2];
 
             /* atom name and type */
             strncpy( system->atoms[atom_cnt].name, atom_name,

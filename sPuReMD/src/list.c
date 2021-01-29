@@ -29,7 +29,7 @@ void Make_List( int n, int n_max, int total_intrs, int type, reax_list* l )
     assert( n > 0 );
     assert( n_max > 0 );
     assert( n_max >= n );
-    assert( total_intrs > 0 );
+    assert( total_intrs >= 0 );
     assert( l != NULL );
 
     if ( l->allocated == TRUE )
@@ -50,48 +50,104 @@ void Make_List( int n, int n_max, int total_intrs, int type, reax_list* l )
     switch ( type )
     {
     case TYP_VOID:
-        l->v = smalloc( l->total_intrs * sizeof(void),
-                "Make_List::l->v" );
+        if ( l->total_intrs > 0 )
+        {
+            l->v = smalloc( l->total_intrs * sizeof(void),
+                    "Make_List::l->v" );
+        }
+        else
+        {
+            l->v = NULL;
+        }
         break;
 
     case TYP_THREE_BODY:
-        l->three_body_list = smalloc( l->total_intrs * sizeof(three_body_interaction_data),
-                "Make_List::l->three_body_list" );
+        if ( l->total_intrs > 0 )
+        {
+            l->three_body_list = smalloc( l->total_intrs * sizeof(three_body_interaction_data),
+                    "Make_List::l->three_body_list" );
+        }
+        else
+        {
+            l->three_body_list = NULL;
+        }
         break;
 
     case TYP_BOND:
-        l->bond_list = smalloc( l->total_intrs * sizeof(bond_data),
-                "Make_List::l->bond_list" );
+        if ( l->total_intrs > 0 )
+        {
+            l->bond_list = smalloc( l->total_intrs * sizeof(bond_data),
+                    "Make_List::l->bond_list" );
+        }
+        else
+        {
+            l->bond_list = NULL;
+        }
         break;
 
     case TYP_DBO:
-        l->dbo_list = smalloc( l->total_intrs * sizeof(dbond_data),
-                "Make_List::l->dbo_list" );
+        if ( l->total_intrs > 0 )
+        {
+            l->dbo_list = smalloc( l->total_intrs * sizeof(dbond_data),
+                    "Make_List::l->dbo_list" );
+        }
+        else
+        {
+            l->dbo_list = NULL;
+        }
         break;
 
     case TYP_DDELTA:
-        l->dDelta_list = smalloc( l->total_intrs * sizeof(dDelta_data),
-                "Make_List::l->dDelta_list" );
+        if ( l->total_intrs > 0 )
+        {
+            l->dDelta_list = smalloc( l->total_intrs * sizeof(dDelta_data),
+                    "Make_List::l->dDelta_list" );
+        }
+        else
+        {
+            l->dDelta_list = NULL;
+        }
         break;
 
     case TYP_FAR_NEIGHBOR:
-        l->far_nbr_list = smalloc( l->total_intrs * sizeof(far_neighbor_data),
-                "Make_List::l->far_nbr_list" );
+        if ( l->total_intrs > 0 )
+        {
+            l->far_nbr_list = smalloc( l->total_intrs * sizeof(far_neighbor_data),
+                    "Make_List::l->far_nbr_list" );
+        }
+        else
+        {
+            l->far_nbr_list = NULL;
+        }
         break;
 
     case TYP_NEAR_NEIGHBOR:
-        l->near_nbr_list = smalloc( l->total_intrs * sizeof(near_neighbor_data),
-                "Make_List::l->near_nbr_list" );
+        if ( l->total_intrs > 0 )
+        {
+            l->near_nbr_list = smalloc( l->total_intrs * sizeof(near_neighbor_data),
+                    "Make_List::l->near_nbr_list" );
+        }
+        else
+        {
+            l->near_nbr_list = NULL;
+        }
         break;
 
     case TYP_HBOND:
-        l->hbond_list = smalloc( l->total_intrs * sizeof(hbond_data),
-                "Make_List::l->hbond_list" );
+        if ( l->total_intrs > 0 )
+        {
+            l->hbond_list = smalloc( l->total_intrs * sizeof(hbond_data),
+                    "Make_List::l->hbond_list" );
+        }
+        else
+        {
+            l->hbond_list = NULL;
+        }
         break;
 
     default:
-        l->v = smalloc( l->total_intrs * sizeof(void),
-                "Make_List::l->v" );
+        fprintf( stderr, "[ERROR] unknown list type. Terminating...\n" );
+        exit( INVALID_INPUT );
         break;
     }
 }
@@ -119,35 +175,59 @@ void Delete_List( int type, reax_list* l )
     switch ( type )
     {
     case TYP_VOID:
-        sfree( l->v, "Delete_List::l->v" );
+        if ( l->v != NULL )
+        {
+            sfree( l->v, "Delete_List::l->v" );
+        }
         break;
 
     case TYP_THREE_BODY:
-        sfree( l->three_body_list, "Delete_List::l->three_body_list" );
+        if ( l->three_body_list != NULL )
+        {
+            sfree( l->three_body_list, "Delete_List::l->three_body_list" );
+        }
         break;
 
     case TYP_BOND:
-        sfree( l->bond_list, "Delete_List::l->bond_list" );
+        if ( l->bond_list != NULL )
+        {
+            sfree( l->bond_list, "Delete_List::l->bond_list" );
+        }
         break;
 
     case TYP_DBO:
-        sfree( l->dbo_list, "Delete_List::l->dbo_list" );
+        if ( l->dbo_list != NULL )
+        {
+            sfree( l->dbo_list, "Delete_List::l->dbo_list" );
+        }
         break;
 
     case TYP_DDELTA:
-        sfree( l->dDelta_list, "Delete_List::l->dDelta_list" );
+        if ( l->dDelta_list != NULL )
+        {
+            sfree( l->dDelta_list, "Delete_List::l->dDelta_list" );
+        }
         break;
 
     case TYP_FAR_NEIGHBOR:
-        sfree( l->far_nbr_list, "Delete_List::l->far_nbr_list" );
+        if ( l->far_nbr_list != NULL )
+        {
+            sfree( l->far_nbr_list, "Delete_List::l->far_nbr_list" );
+        }
         break;
 
     case TYP_NEAR_NEIGHBOR:
-        sfree( l->near_nbr_list, "Delete_List::l->near_nbr_list" );
+        if ( l->near_nbr_list != NULL )
+        {
+            sfree( l->near_nbr_list, "Delete_List::l->near_nbr_list" );
+        }
         break;
 
     case TYP_HBOND:
-        sfree( l->hbond_list, "Delete_List::l->hbond_list" );
+        if ( l->hbond_list != NULL )
+        {
+            sfree( l->hbond_list, "Delete_List::l->hbond_list" );
+        }
         break;
 
     default:
@@ -155,5 +235,4 @@ void Delete_List( int type, reax_list* l )
         exit( INVALID_INPUT );
         break;
     }
-
 }
