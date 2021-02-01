@@ -54,6 +54,8 @@ static void int_packer( void const * const dummy, mpi_out_data * const out_buf )
 
     for ( i = 0; i < out_buf->cnt; ++i )
     {
+        assert( out_buf->index[i] >= 0 );
+
         out[i] = buf[ out_buf->index[i] ];
     }
 }
@@ -69,6 +71,8 @@ static void real_packer( void const * const dummy, mpi_out_data * const out_buf 
 
     for ( i = 0; i < out_buf->cnt; ++i )
     {
+        assert( out_buf->index[i] >= 0 );
+
         out[i] = buf[ out_buf->index[i] ];
     }
 }
@@ -84,7 +88,12 @@ static void rvec_packer( void const * const dummy, mpi_out_data * const out_buf 
 
     for ( i = 0; i < out_buf->cnt; ++i )
     {
-        memcpy( &out[i], &buf[out_buf->index[i]], sizeof(rvec) );
+        assert( out_buf->index[i] >= 0 );
+
+//        memcpy( &out[i], &buf[out_buf->index[i]], sizeof(rvec) );
+        out[i][0] = buf[out_buf->index[i]][0];
+        out[i][1] = buf[out_buf->index[i]][1];
+        out[i][2] = buf[out_buf->index[i]][2];
     }
 }
 
@@ -99,7 +108,11 @@ static void rvec2_packer( void const * const dummy, mpi_out_data * const out_buf
 
     for ( i = 0; i < out_buf->cnt; ++i )
     {
-        memcpy( &out[i], &buf[out_buf->index[i]], sizeof(rvec2) );
+        assert( out_buf->index[i] >= 0 );
+
+//        memcpy( &out[i], &buf[out_buf->index[i]], sizeof(rvec2) );
+        out[i][0] = buf[out_buf->index[i]][0];
+        out[i][1] = buf[out_buf->index[i]][1];
     }
 }
 
@@ -114,6 +127,8 @@ static void int_unpacker( void const * const dummy_in, void * const dummy_buf,
 
     for ( i = 0; i < out_buf->cnt; ++i )
     {
+        assert( out_buf->index[i] >= 0 );
+
         //TODO: used in SAI, purpose?
         if ( buf[ out_buf->index[i] ] == -1 && in[i] != -1 )
         {
@@ -134,6 +149,8 @@ static void real_unpacker( void const * const dummy_in, void * const dummy_buf,
 
     for ( i = 0; i < out_buf->cnt; ++i )
     {
+        assert( out_buf->index[i] >= 0 );
+
         buf[ out_buf->index[i] ] += in[i];
     }
 }
@@ -150,6 +167,8 @@ static void rvec_unpacker( void const * const dummy_in, void * const dummy_buf,
 
     for ( i = 0; i < out_buf->cnt; ++i )
     {
+        assert( out_buf->index[i] >= 0 );
+
         rvec_Add( buf[ out_buf->index[i] ], in[i] );
     }
 }
@@ -166,6 +185,8 @@ static void rvec2_unpacker( void const * const dummy_in, void * const dummy_buf,
 
     for ( i = 0; i < out_buf->cnt; ++i )
     {
+        assert( out_buf->index[i] >= 0 );
+
         buf[ out_buf->index[i] ][0] += in[i][0];
         buf[ out_buf->index[i] ][1] += in[i][1];
     }
@@ -321,7 +342,8 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
 
     ret = MPI_Type_get_extent( type, &lower_bound, &extent );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
-    type_size = MPI_Aint_add( lower_bound, extent );
+//    type_size = MPI_Aint_add( lower_bound, extent );
+    type_size = extent;
 
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
@@ -374,14 +396,11 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
             fprintf( stderr, "[ERROR] MPI_Get_count returned MPI_UNDEFINED\n" );
             MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
         }
-
-#if defined(DEBUG)
-        if ( cnt1 + nbr1->atoms_str > system->total_cap )
+        else if ( cnt1 + nbr1->atoms_str > system->total_cap )
         {
             fprintf( stderr, "[ERROR] Dist: not enough space in recv buffer for nbr1 (dim = %d)\n", d );
             MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
         }
-#endif
 
         ret = MPI_Recv( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
                 cnt1, type, nbr1->rank, 2 * d + 1, comm, MPI_STATUS_IGNORE );
@@ -397,14 +416,11 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
             fprintf( stderr, "[ERROR] MPI_Get_count returned MPI_UNDEFINED\n" );
             MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
         }
-
-#if defined(DEBUG)
-        if ( cnt2 + nbr2->atoms_str > system->total_cap )
+        else if ( cnt2 + nbr2->atoms_str > system->total_cap )
         {
             fprintf( stderr, "[ERROR] Dist: not enough space in recv buffer for nbr2 (dim = %d)\n", d );
             MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
         }
-#endif
 
         ret = MPI_Recv( Get_Buffer_Offset( buf, nbr2->atoms_str, buf_type ),
                 cnt2, type, nbr2->rank, 2 * d, comm, MPI_STATUS_IGNORE );
@@ -434,7 +450,8 @@ void Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
 
     ret = MPI_Type_get_extent( type, &lower_bound, &extent );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
-    type_size = MPI_Aint_add( lower_bound, extent );
+//    type_size = MPI_Aint_add( lower_bound, extent );
+    type_size = extent;
 
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
@@ -569,7 +586,8 @@ void Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
 
     ret = MPI_Type_get_extent( type, &lower_bound, &extent );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
-    type_size = MPI_Aint_add( lower_bound, extent );
+//    type_size = MPI_Aint_add( lower_bound, extent );
+    type_size = extent;
 
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;
@@ -653,7 +671,8 @@ void Coll_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
 
     ret = MPI_Type_get_extent( type, &lower_bound, &extent );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
-    type_size = MPI_Aint_add( lower_bound, extent );
+//    type_size = MPI_Aint_add( lower_bound, extent );
+    type_size = extent;
 
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->out_buffers;

@@ -29,7 +29,9 @@ CUDA_GLOBAL void Cuda_Atom_Energy_Part1( reax_atom *, global_parameters,
         single_body_parameters *, two_body_parameters *, storage,
         reax_list, int, int, real *, real *, real *);
 
+#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
 CUDA_GLOBAL void Cuda_Atom_Energy_Part2( reax_list, storage, int );
+#endif
 
 
 #endif

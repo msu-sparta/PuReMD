@@ -828,6 +828,8 @@ void Cuda_Reallocate_Part2( reax_system *system, control_params *control,
 
     if ( nflag == TRUE )
     {
+//        fprintf( stderr, "[INFO] Cuda_Reallocate_Part2: p%d, local_cap_old = %d\n, local_cap = %d", system->my_rank, local_cap_old, system->local_cap );
+//        fflush( stderr );
         Cuda_Reallocate_System_Part1( system, workspace, local_cap_old );
 
         Cuda_Deallocate_Workspace_Part1( control, workspace );
@@ -837,6 +839,8 @@ void Cuda_Reallocate_Part2( reax_system *system, control_params *control,
 
     if ( Nflag == TRUE )
     {
+//        fprintf( stderr, "[INFO] Cuda_Reallocate_Part2: p%d, total_cap_old = %d\n, total_cap = %d", system->my_rank, total_cap_old, system->total_cap );
+//        fflush( stderr );
         Cuda_Reallocate_System_Part2( system, workspace, total_cap_old );
 
         Cuda_Deallocate_Workspace_Part2( control, workspace );

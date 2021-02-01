@@ -23,6 +23,13 @@ void Cuda_Print_Mem_Usage( );
 static inline void __cudaCheckError( const char *file, const int line )
 {
     cudaError err;
+#if defined(DEBUG_FOCUS)
+    int rank;
+
+    MPI_Comm_rank( MPI_COMM_WORLD, &rank );
+    fprintf( stderr, "[INFO] cudaCheckError: p%d, file %.*s, line %d\n", rank, (int) strlen(file), file, line );
+    fflush( stderr );
+#endif
 
 #if defined(DEBUG)
     /* Block until tasks in stream are complete in order to enable

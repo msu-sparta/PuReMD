@@ -176,6 +176,13 @@ void Check_MPI_Error( int code, const char * const filename, int line )
 {
     int len;
     char err_msg[MPI_MAX_ERROR_STRING];
+#if defined(DEBUG_FOCUS)
+    int rank;
+
+    MPI_Comm_rank( MPI_COMM_WORLD, &rank );
+    fprintf( stderr, "[INFO] Check_MPI_Error: p%d, file %.*s, line %d\n", rank, (int) strlen(filename), filename, line );
+    fflush( stderr );
+#endif
 
     if ( code != MPI_SUCCESS )
     {
@@ -627,7 +634,8 @@ int SendRecv( reax_system * const system, mpi_datatypes * const mpi_data,
 
     ret = MPI_Type_get_extent( type, &lower_bound, &extent );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
-    type_size = MPI_Aint_add( lower_bound, extent );
+//    type_size = MPI_Aint_add( lower_bound, extent );
+    type_size = extent;
 
     if ( clr == TRUE )
     {

@@ -602,13 +602,13 @@ static void Dual_Sparse_MatVec_Comm_Part1( const reax_system * const system,
     spad = (rvec2 *) workspace->host_scratch;
 
     copy_host_device( spad, (void *) x, sizeof(rvec2) * n,
-            cudaMemcpyDeviceToHost, "Dual_Sparse_MatVec_Comm_Part1::x" );
+            cudaMemcpyDeviceToHost, "Dual_Sparse_MatVec_Comm_Part1::x (d-to-h)" );
 
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
     Dist( system, mpi_data, spad, buf_type, mpi_type );
 
     copy_host_device( spad, (void *) x, sizeof(rvec2) * n,
-            cudaMemcpyHostToDevice, "Dual_Sparse_MatVec_Comm_Part1::x" );
+            cudaMemcpyHostToDevice, "Dual_Sparse_MatVec_Comm_Part1::x (h-to-d)" );
 #endif
 }
 
@@ -946,6 +946,8 @@ int Cuda_dual_CG( reax_system const * const system,
     time = Get_Time( );
 #endif
 
+//    fprintf( stderr, "[INFO] Dual_Sparse_MatVec: p%d, i = %d\n", system->my_rank, 0 );
+//    fflush( stderr );
     Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
             H, x, system->N, workspace->d_workspace->q2 );
 
@@ -993,6 +995,8 @@ int Cuda_dual_CG( reax_system const * const system,
             break;
         }
 
+//        fprintf( stderr, "[INFO] Dual_Sparse_MatVec: p%d, i = %d\n", system->my_rank, i );
+//        fflush( stderr );
         Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
                 H, workspace->d_workspace->d2, system->N, workspace->d_workspace->q2 );
 

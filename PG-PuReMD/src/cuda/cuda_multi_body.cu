@@ -229,19 +229,25 @@ CUDA_GLOBAL void Cuda_Atom_Energy_Part1( reax_atom *my_atoms, global_parameters 
                     num_atom_types) ];
 
         bo_ij->Cdbo += CEover1 * twbp->p_ovun1 * twbp->De_s;// OvCoor-1st 
-//        atomicAdd( &workspace.CdDelta[j], CEover4 * (1.0 - dfvl * workspace.dDelta_lp[j])
-//            * (bo_ij->BO_pi + bo_ij->BO_pi2) );
+#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
         pbond_ij->ae_CdDelta += CEover4 * (1.0 - dfvl * workspace.dDelta_lp[j])
             * (bo_ij->BO_pi + bo_ij->BO_pi2); // OvCoor-3a
+#else
+        atomicAdd( &workspace.CdDelta[j], CEover4 * (1.0 - dfvl * workspace.dDelta_lp[j])
+            * (bo_ij->BO_pi + bo_ij->BO_pi2) );
+#endif
         bo_ij->Cdbopi += CEover4 * (workspace.Delta[j] - dfvl
                 * workspace.Delta_lp_temp[j]); // OvCoor-3b
         bo_ij->Cdbopi2 += CEover4 * (workspace.Delta[j] - dfvl
                 * workspace.Delta_lp_temp[j]);  // OvCoor-3b
 
-//        atomicAdd( &workspace.CdDelta[j], CEunder4 * (1.0 - dfvl * workspace.dDelta_lp[j])
-//            * (bo_ij->BO_pi + bo_ij->BO_pi2) );
+#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
         pbond_ij->ae_CdDelta += CEunder4 * (1.0 - dfvl * workspace.dDelta_lp[j])
             * (bo_ij->BO_pi + bo_ij->BO_pi2);   // UnCoor - 2a
+#else
+        atomicAdd( &workspace.CdDelta[j], CEunder4 * (1.0 - dfvl * workspace.dDelta_lp[j])
+            * (bo_ij->BO_pi + bo_ij->BO_pi2) );
+#endif
         bo_ij->Cdbopi += CEunder4 * (workspace.Delta[j] - dfvl
                 * workspace.Delta_lp_temp[j]);  // UnCoor-2b
         bo_ij->Cdbopi2 += CEunder4 * (workspace.Delta[j] - dfvl
@@ -316,6 +322,7 @@ CUDA_GLOBAL void Cuda_Atom_Energy_Part1( reax_atom *my_atoms, global_parameters 
 }
 
 
+#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
 /* Traverse bond list and accumulate lone pair contributions from bonded neighbors */
 CUDA_GLOBAL void Cuda_Atom_Energy_Part2( reax_list bond_list, 
         storage workspace, int n )
@@ -335,3 +342,4 @@ CUDA_GLOBAL void Cuda_Atom_Energy_Part2( reax_list bond_list,
             bond_list.bond_list[ bond_list.bond_list[pj].sym_index ].ae_CdDelta;
     }
 }
+#endif

@@ -82,6 +82,8 @@
 #if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
   #define CUDA_DEVICE_PACK
 #endif
+/* aggregate atomic forces using atomic operations */
+#define CUDA_ACCUM_FORCE_ATOMIC
 
 /* disable assertions if NOT compiling with debug support --
  * the definition (or lack thereof) controls how the assert macro is defined */
@@ -1931,7 +1933,7 @@ struct hbond_data
     int scl;
     /* position of neighbor in far neighbor list */
     int ptr;
-#if defined(HAVE_CUDA)
+#if defined(HAVE_CUDA) && !defined(CUDA_ACCUM_FORCE_ATOMIC)
     /**/
     int sym_index;
     /**/
@@ -2033,7 +2035,7 @@ struct bond_data
     rvec dvec;
     /* bond order data */
     bond_order_data bo_data;
-#if defined(HAVE_CUDA)
+#if defined(HAVE_CUDA) && !defined(CUDA_ACCUM_FORCE_ATOMIC)
     /**/
     real ae_CdDelta;
     /**/

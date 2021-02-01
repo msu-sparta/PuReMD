@@ -221,9 +221,9 @@ CUDA_GLOBAL void k_print_hbond_info( reax_atom *my_atoms, single_body_parameters
  * in the far neighbors list if it's a NOT re-neighboring step */
 CUDA_GLOBAL void k_init_distance( reax_atom *my_atoms, reax_list far_nbr_list, int N )
 {
-    int i, j, pj;
-    int start_i, end_i;
-    reax_atom *atom_i, *atom_j;
+    int i, j, pj, start_i, end_i;
+    rvec x_i;
+    reax_atom *atom_j;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -232,9 +232,9 @@ CUDA_GLOBAL void k_init_distance( reax_atom *my_atoms, reax_list far_nbr_list, i
         return;
     }
 
-    atom_i = &my_atoms[i];
     start_i = Start_Index( i, &far_nbr_list );
     end_i = End_Index( i, &far_nbr_list );
+    rvec_Copy( x_i, my_atoms[i].x );
 
     /* update distance and displacement vector between atoms i and j (i-j) */
     for ( pj = start_i; pj < end_i; ++pj )
@@ -244,15 +244,61 @@ CUDA_GLOBAL void k_init_distance( reax_atom *my_atoms, reax_list far_nbr_list, i
 
         if ( i < j )
         {
-            far_nbr_list.far_nbr_list.dvec[pj][0] = atom_j->x[0] - atom_i->x[0];
-            far_nbr_list.far_nbr_list.dvec[pj][1] = atom_j->x[1] - atom_i->x[1];
-            far_nbr_list.far_nbr_list.dvec[pj][2] = atom_j->x[2] - atom_i->x[2];
+            far_nbr_list.far_nbr_list.dvec[pj][0] = atom_j->x[0] - x_i[0];
+            far_nbr_list.far_nbr_list.dvec[pj][1] = atom_j->x[1] - x_i[1];
+            far_nbr_list.far_nbr_list.dvec[pj][2] = atom_j->x[2] - x_i[2];
         }
         else
         {
-            far_nbr_list.far_nbr_list.dvec[pj][0] = atom_i->x[0] - atom_j->x[0];
-            far_nbr_list.far_nbr_list.dvec[pj][1] = atom_i->x[1] - atom_j->x[1];
-            far_nbr_list.far_nbr_list.dvec[pj][2] = atom_i->x[2] - atom_j->x[2];
+            far_nbr_list.far_nbr_list.dvec[pj][0] = x_i[0] - atom_j->x[0];
+            far_nbr_list.far_nbr_list.dvec[pj][1] = x_i[1] - atom_j->x[1];
+            far_nbr_list.far_nbr_list.dvec[pj][2] = x_i[2] - atom_j->x[2];
+        }
+        far_nbr_list.far_nbr_list.d[pj] = rvec_Norm( far_nbr_list.far_nbr_list.dvec[pj] );
+    }
+}
+
+
+/* Compute the distances and displacement vectors for entries
+ * in the far neighbors list if it's a NOT re-neighboring step */
+CUDA_GLOBAL void k_init_distance_opt( reax_atom *my_atoms, reax_list far_nbr_list, int N )
+{
+    int j, pj, start_i, end_i, thread_id, warp_id, lane_id;
+    __shared__ rvec x_i;
+
+    thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+    warp_id = thread_id >> 5;
+
+    if ( warp_id >= N )
+    {
+        return;
+    }
+
+    lane_id = thread_id & 0x0000001F; 
+    start_i = Start_Index( warp_id, &far_nbr_list );
+    end_i = End_Index( warp_id, &far_nbr_list );
+    if ( lane_id == 0 )
+    {
+        rvec_Copy( x_i, my_atoms[warp_id].x );
+    }
+    __syncthreads( );
+
+    /* update distance and displacement vector between atoms i and j (i-j) */
+    for ( pj = start_i + lane_id; pj < end_i; pj += 32 )
+    {
+        j = far_nbr_list.far_nbr_list.nbr[pj];
+
+        if ( warp_id < j )
+        {
+            far_nbr_list.far_nbr_list.dvec[pj][0] = my_atoms[j].x[0] - x_i[0];
+            far_nbr_list.far_nbr_list.dvec[pj][1] = my_atoms[j].x[1] - x_i[1];
+            far_nbr_list.far_nbr_list.dvec[pj][2] = my_atoms[j].x[2] - x_i[2];
+        }
+        else
+        {
+            far_nbr_list.far_nbr_list.dvec[pj][0] = x_i[0] - my_atoms[j].x[0];
+            far_nbr_list.far_nbr_list.dvec[pj][1] = x_i[1] - my_atoms[j].x[1];
+            far_nbr_list.far_nbr_list.dvec[pj][2] = x_i[2] - my_atoms[j].x[2];
         }
         far_nbr_list.far_nbr_list.d[pj] = rvec_Norm( far_nbr_list.far_nbr_list.dvec[pj] );
     }
@@ -648,9 +694,10 @@ CUDA_GLOBAL void k_init_bonds( reax_atom *my_atoms, single_body_parameters *sbp,
                 hbond_list.hbond_list[ihb_top].scl = -1;
                 hbond_list.hbond_list[ihb_top].ptr = pj;
 
-                /* CUDA-specific */
+#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
                 hbond_list.hbond_list[ihb_top].sym_index = -1;
                 rvec_MakeZero( hbond_list.hbond_list[ihb_top].hb_f );
+#endif
 
                 ++ihb_top;
             }
@@ -687,9 +734,10 @@ CUDA_GLOBAL void k_init_bonds( reax_atom *my_atoms, single_body_parameters *sbp,
                         }
                         hbond_list.hbond_list[ihb_top].ptr = pj;
 
-                        /* CUDA-specific */
+#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
                         hbond_list.hbond_list[ihb_top].sym_index = -1;
                         rvec_MakeZero( hbond_list.hbond_list[ihb_top].hb_f );
+#endif
 
                         ++ihb_top;
                     }
@@ -702,9 +750,10 @@ CUDA_GLOBAL void k_init_bonds( reax_atom *my_atoms, single_body_parameters *sbp,
                         hbond_list.hbond_list[ihb_top].scl = -1;
                         hbond_list.hbond_list[ihb_top].ptr = pj;
 
-                        /* CUDA-specific */
+#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
                         hbond_list.hbond_list[ihb_top].sym_index = -1;
                         rvec_MakeZero( hbond_list.hbond_list[ihb_top].hb_f );
+#endif
 
                         ++ihb_top;
                     }
@@ -1064,7 +1113,8 @@ CUDA_GLOBAL void k_update_sym_dbond_indices( reax_list bond_list, int N )
 }
 
 
-CUDA_GLOBAL void k_update_sym_hbond_indices( reax_atom *my_atoms,
+#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+CUDA_GLOBAL void k_update_sym_hbond_indices_opt( reax_atom *my_atoms,
         reax_list hbond_list, int N )
 {
     int i, j, k;
@@ -1110,6 +1160,7 @@ CUDA_GLOBAL void k_update_sym_hbond_indices( reax_atom *my_atoms,
         j += warpSize;
     }
 }
+#endif
 
 
 #if defined(DEBUG_FOCUS)
@@ -1149,11 +1200,16 @@ CUDA_GLOBAL void k_print_hbonds( reax_atom *my_atoms, reax_list hbond_list, int 
         k = hbond_list.hbond_list[pj].nbr;
         hbond_jk = &hbond_list.hbond_list[pj];
 
+#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
         printf( "p%03d, step %05d: %8d: %8d, %24.15f, %24.15f, %24.15f\n",
                 rank, step, my_atoms[i].Hindex, k,
                 hbond_jk->hb_f[0],
                 hbond_jk->hb_f[1],
                 hbond_jk->hb_f[2] );
+#else
+        printf( "p%03d, step %05d: %8d: %8d\n",
+                rank, step, my_atoms[i].Hindex, k );
+#endif
     }
 }
 #endif
@@ -1508,8 +1564,14 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
 
     if ( renbr == FALSE && dist_done == FALSE )
     {
+
+//        blocks = system->N * 32 / DEF_BLOCK_SIZE
+//            + (system->N * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+
         k_init_distance <<< control->blocks_n, control->block_size_n >>>
             ( system->d_my_atoms, *(lists[FAR_NBRS]), system->N );
+//        k_init_distance_opt <<< blocks, DEF_BLOCK_SIZE >>>
+//            ( system->d_my_atoms, *(lists[FAR_NBRS]), system->N );
         cudaCheckError( );
 
         dist_done = TRUE;
@@ -1651,16 +1713,18 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
             ( *(lists[BONDS]), system->N );
         cudaCheckError( );
 
+#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
         if ( control->hbond_cut > 0.0 && system->numH > 0 )
         {
             blocks = system->N * 32 / DEF_BLOCK_SIZE
                 + (system->N * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
             /* make hbond_list symmetric */
-            k_update_sym_hbond_indices <<< blocks, DEF_BLOCK_SIZE >>>
+            k_update_sym_hbond_indices_opt <<< blocks, DEF_BLOCK_SIZE >>>
                 ( system->d_my_atoms, *(lists[HBONDS]), system->N );
             cudaCheckError( );
         }
+#endif
 
         /* update bond_mark */
 //        k_bond_mark <<< control->blocks_n, control->block_size_n >>>
@@ -1773,9 +1837,11 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
               spad, &spad[system->n], &spad[2 * system->n] );
         cudaCheckError( );
 
+#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
         Cuda_Atom_Energy_Part2 <<< control->blocks, control->block_size >>>
             ( *(lists[BONDS]), *(workspace->d_workspace), system->n );
         cudaCheckError( );
+#endif
 
         if ( update_energy == TRUE )
         {
@@ -1864,10 +1930,12 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
 //                    system->N );
         }
 
+#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
         Cuda_Valence_Angles_Part2 <<< control->blocks_n, control->block_size_n >>>
             ( system->d_my_atoms, (control_params *) control->d_control_params,
               *(workspace->d_workspace), *(lists[BONDS]), system->N );
         cudaCheckError( );
+#endif
 
         /* 5. Torsion Angles Interactions */
         cuda_memset( spad, 0, (sizeof(real) * 2 + sizeof(rvec)) * system->n + sizeof(rvec) * control->blocks,
@@ -1915,10 +1983,12 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
 //                    system->n );
         }
 
+#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
         Cuda_Torsion_Angles_Part2 <<< control->blocks_n, control->block_size_n >>>
                 ( system->d_my_atoms, *(workspace->d_workspace), *(lists[BONDS]),
                   system->N );
         cudaCheckError( );
+#endif
 
         /* 6. Hydrogen Bonds Interactions */
         if ( control->hbond_cut > 0.0 && system->numH > 0 )
@@ -1971,6 +2041,7 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
 //                        system->n );
             }
 
+#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
             Cuda_Hydrogen_Bonds_Part2 <<< control->blocks, control->block_size >>>
                 ( system->d_my_atoms, *(workspace->d_workspace),
                   *(lists[BONDS]), system->n );
@@ -1985,6 +2056,7 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
 //                    HB_POST_PROC_BLOCK_SIZE * sizeof(rvec) >>>
 //                ( system->d_my_atoms, *(workspace->d_workspace), *(lists[HBONDS]), system->n );
             cudaCheckError( );
+#endif
         }
 
         compute_bonded_part1 = FALSE;

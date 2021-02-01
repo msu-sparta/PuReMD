@@ -21,6 +21,9 @@
 
 #include "cuda_valence_angles.h"
 
+#if defined(CUDA_ACCUM_FORCE_ATOMIC)
+#include "cuda_helpers.h"
+#endif
 #include "cuda_list.h"
 
 #include "../index_utils.h"
@@ -358,11 +361,19 @@ CUDA_GLOBAL void Cuda_Valence_Angles_Part1( reax_atom *my_atoms,
                         /* we must again check for pk < pi for entire forces part */
                         if ( pk < pi )
                         {
+#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
                             bo_ij->Cdbo += (CEval1 + CEpen2 + (CEcoa1 - CEcoa4));
                             bo_jk->Cdbo += (CEval2 + CEpen3 + (CEcoa2 - CEcoa5));
                             workspace.CdDelta[j] += ((CEval3 + CEval7) + CEpen1 + CEcoa3);
                             pbond_ij->va_CdDelta += CEcoa4;
                             pbond_jk->va_CdDelta += CEcoa5;
+#else
+                            atomicAdd( &bo_ij->Cdbo, CEval1 + CEpen2 + (CEcoa1 - CEcoa4) );
+                            atomicAdd( &bo_jk->Cdbo, CEval2 + CEpen3 + (CEcoa2 - CEcoa5) );
+                            atomicAdd( &workspace.CdDelta[j], (CEval3 + CEval7) + CEpen1 + CEcoa3 );
+                            atomicAdd( &workspace.CdDelta[i], CEcoa4 );
+                            atomicAdd( &workspace.CdDelta[k], CEcoa5 );
+#endif
 
                             for ( t = start_j; t < end_j; ++t )
                             {
@@ -372,19 +383,32 @@ CUDA_GLOBAL void Cuda_Valence_Angles_Part1( reax_atom *my_atoms,
                                 temp = CUBE( temp_bo_jt );
                                 pBOjt7 = temp * temp * temp_bo_jt;
 
+#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
                                 bo_jt->Cdbo += (CEval6 * pBOjt7);
                                 bo_jt->Cdbopi += CEval5;
                                 bo_jt->Cdbopi2 += CEval5;
+#else
+                                atomicAdd( &bo_jt->Cdbo, CEval6 * pBOjt7 );
+                                atomicAdd( &bo_jt->Cdbopi, CEval5 );
+                                atomicAdd( &bo_jt->Cdbopi2, CEval5 );
+#endif
                             }
 
                             if ( control->virial == 0 )
                             {
+#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
                                 rvec_ScaledAdd( pbond_ij->va_f, CEval8, p_ijk->dcos_di );
                                 rvec_ScaledAdd( workspace.f[j], CEval8, p_ijk->dcos_dj );
                                 rvec_ScaledAdd( pbond_jk->va_f, CEval8, p_ijk->dcos_dk );
+#else
+                                atomic_rvecScaledAdd( workspace.f[i], CEval8, p_ijk->dcos_di );
+                                atomic_rvecScaledAdd( workspace.f[j], CEval8, p_ijk->dcos_dj );
+                                atomic_rvecScaledAdd( workspace.f[k], CEval8, p_ijk->dcos_dk );
+#endif
                             }
                             else
                             {
+#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
                                 /* terms not related to bond order derivatives are
                                  * added directly into forces and pressure vector/tensor */
                                 rvec_Scale( force, CEval8, p_ijk->dcos_di );
@@ -398,6 +422,21 @@ CUDA_GLOBAL void Cuda_Valence_Angles_Part1( reax_atom *my_atoms,
                                 rvec_Add( pbond_jk->va_f, force );
                                 rvec_iMultiply( ext_press, pbond_jk->rel_box, force );
                                 rvec_Add( my_ext_press[j], ext_press );
+#else
+                                /* terms not related to bond order derivatives are
+                                 * added directly into forces and pressure vector/tensor */
+                                rvec_Scale( force, CEval8, p_ijk->dcos_di );
+                                atomic_rvecAdd( workspace.f[i], force );
+                                rvec_iMultiply( ext_press, pbond_ij->rel_box, force );
+                                rvec_Add( my_ext_press[j], ext_press );
+
+                                rvec_ScaledAdd( workspace.f[j], CEval8, p_ijk->dcos_dj );
+
+                                rvec_Scale( force, CEval8, p_ijk->dcos_dk );
+                                atomic_rvecAdd( workspace.f[k], force );
+                                rvec_iMultiply( ext_press, pbond_jk->rel_box, force );
+                                rvec_Add( my_ext_press[j], ext_press );
+#endif
                             }
                         }
 
@@ -510,6 +549,7 @@ CUDA_GLOBAL void Cuda_Valence_Angles_Part1( reax_atom *my_atoms,
 }
 
 
+#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
 CUDA_GLOBAL void Cuda_Valence_Angles_Part2( reax_atom *atoms,
         control_params *control, storage workspace,
         reax_list bond_list, int N )
@@ -536,6 +576,7 @@ CUDA_GLOBAL void Cuda_Valence_Angles_Part2( reax_atom *atoms,
         rvec_Add( workspace.f[i], sym_index_bond->va_f );
     }
 }
+#endif
 
 
 /* Estimate the num. of three-body interactions */
