@@ -35,10 +35,10 @@ void Allocate_Matrix( sparse_matrix * const , int, int, int );
 
 void Deallocate_Matrix( sparse_matrix * const  );
 
-void Allocate_HBond_List( int, int, int, int const * const, int * const,
+void Initialize_HBond_List( int, int const * const, int * const,
         reax_list * const );
 
-void Allocate_Bond_List( int, int, int * const, reax_list * const );
+void Initialize_Bond_List( int * const, reax_list * const );
 
 
 #endif

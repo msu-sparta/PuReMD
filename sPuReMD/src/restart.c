@@ -108,17 +108,12 @@ void Read_Binary_Restart( const char * const fname, reax_system *system,
              system->box.box[2][0], system->box.box[2][1], system->box.box[2][2] );
 #endif
 
-    if ( system->prealloc_allocated == FALSE || res_header.N > system->N )
+    if ( system->prealloc_allocated == FALSE || res_header.N > system->N_max )
     {
-        PreAllocate_Space( system, control, workspace, res_header.N );
+        PreAllocate_Space( system, control, workspace,
+                (int) CEIL( SAFE_ZONE * res_header.N ) );
     }
     system->N = res_header.N;
-
-    if ( system->prealloc_allocated == FALSE )
-    {
-        workspace->map_serials = scalloc( MAX_ATOM_ID, sizeof(int),
-                "Read_Binary_Restart::workspace->map_serials" );
-    }
 
     for ( i = 0; i < MAX_ATOM_ID; ++i )
     {
@@ -222,17 +217,11 @@ void Read_ASCII_Restart( const char * const fname, reax_system *system,
              system->box.box[2][0], system->box.box[2][1], system->box.box[2][2] );
 #endif
 
-    if ( system->prealloc_allocated == FALSE || n > system->N )
+    if ( system->prealloc_allocated == FALSE || n > system->N_max )
     {
-        PreAllocate_Space( system, control, workspace, n );
+        PreAllocate_Space( system, control, workspace, (int) CEIL( SAFE_ZONE * n ) );
     }
     system->N = n;
-
-    if ( system->prealloc_allocated == FALSE )
-    {
-        workspace->map_serials = scalloc( MAX_ATOM_ID, sizeof(int),
-                "Read_ASCII_Restart::workspace->map_serials" );
-    }
 
     for ( i = 0; i < MAX_ATOM_ID; ++i )
     {

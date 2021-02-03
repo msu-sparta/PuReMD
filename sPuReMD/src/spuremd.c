@@ -98,21 +98,27 @@ static void Read_Input_Files( const char * const geo_file,
         const char * const ffield_file, const char * const control_file,
         reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        output_controls * const out_control )
+        output_controls * const out_control, int reset )
 {
     if ( ffield_file != NULL )
     {
         Read_Force_Field( ffield_file, system, &system->reax_param );
     }
 
-    Set_Control_Defaults( system, control, out_control );
+    if ( reset == FALSE || control_file != NULL )
+    {
+        Set_Control_Defaults( system, control, out_control );
+    }
 
     if ( control_file != NULL )
     {
         Read_Control_File( control_file, system, control, out_control );
     }
 
-    Set_Control_Derived_Values( system, control );
+    if ( reset == FALSE || control_file != NULL )
+    {
+        Set_Control_Derived_Values( system, control );
+    }
 
     if ( geo_file != NULL )
     {
@@ -166,7 +172,7 @@ void * setup( const char * const geo_file, const char * const ffield_file,
 
     /* top-level allocation */
     spmd_handle = (spuremd_handle*) smalloc( sizeof(spuremd_handle),
-            "setup::spmd_handle" );
+            "Setup::spmd_handle" );
 
     /* second-level allocations */
     spmd_handle->system = smalloc( sizeof(reax_system),
@@ -209,10 +215,12 @@ void * setup( const char * const geo_file, const char * const ffield_file,
     spmd_handle->callback = NULL;
     spmd_handle->data->sim_id = 0;
 
+    spmd_handle->system->N_max = 0;
+
     Read_Input_Files( geo_file, ffield_file, control_file,
             spmd_handle->system, spmd_handle->control,
             spmd_handle->data, spmd_handle->workspace,
-            spmd_handle->out_control );
+            spmd_handle->out_control, FALSE );
 
     spmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * spmd_handle->system->N );
 
@@ -475,7 +483,7 @@ int reset( const void * const handle, const char * const geo_file,
         Read_Input_Files( geo_file, ffield_file, control_file,
                 spmd_handle->system, spmd_handle->control,
                 spmd_handle->data, spmd_handle->workspace,
-                spmd_handle->out_control );
+                spmd_handle->out_control, TRUE );
 
         if ( spmd_handle->system->N > spmd_handle->system->N_max )
         {
@@ -740,26 +748,27 @@ int set_control_parameter( const void * const handle, const char * const keyword
 
     return ret;
 }
-double get_potential_energy( const void * const handle, double * E_Tot) {
-    spuremd_handle *spmd_handle;
-    int ret;
-    ret = SPUREMD_FAILURE;
-    if ( handle != NULL )
-    {
-        spmd_handle = (spuremd_handle*) handle;
-        ret = get_system_info( handle, E_Tot, NULL, NULL, NULL, NULL, NULL );
-        if ( ret == SUCCESS )
-        {
-            ret = SPUREMD_SUCCESS;
-        }
-    }
-    return ret;
 
+
+double get_potential_energy( const void * const handle, double * E_Tot )
+{
+    int ret;
+
+    ret = get_system_info( handle, E_Tot, NULL, NULL, NULL, NULL, NULL );
+
+    if ( ret == SUCCESS )
+    {
+        ret = SPUREMD_SUCCESS;
+    }
+
+    return ret;
 }
+
+
 /* Added for fact calculations for ANI training data*/
-void * setup_ANI(int num_atoms, const int * const types,
-         const double * const positions, const double * const sim_box_info,
-         const char * const ffield_file,const char * const control_file)
+void * setup_ANI( int num_atoms, const int * const types,
+        const double * const positions, const double * const sim_box_info,
+        const char * const ffield_file, const char * const control_file )
 {
     int i;
     //    char atom_name[9];
@@ -768,7 +777,7 @@ void * setup_ANI(int num_atoms, const int * const types,
 
     /* top-level allocation */
     spmd_handle = (spuremd_handle*) smalloc( sizeof(spuremd_handle),
-            "setup::spmd_handle" );
+            "Setup::spmd_handle" );
 
     /* second-level allocations */
     spmd_handle->system = smalloc( sizeof(reax_system),
@@ -811,10 +820,16 @@ void * setup_ANI(int num_atoms, const int * const types,
     spmd_handle->callback = NULL;
     spmd_handle->data->sim_id = 0;
 
+    Read_Input_Files( NULL, ffield_file, control_file,
+            spmd_handle->system, spmd_handle->control,
+            spmd_handle->data, spmd_handle->workspace,
+            spmd_handle->out_control, FALSE );
+
     spmd_handle->system->N = num_atoms;
+    spmd_handle->system->N_max = 0;
 
     PreAllocate_Space( spmd_handle->system, spmd_handle->control,
-            spmd_handle->workspace, spmd_handle->system->N );
+            spmd_handle->workspace, (int) CEIL( SAFE_ZONE * spmd_handle->system->N ) );
 
     Setup_Box( sim_box_info[0], sim_box_info[1], sim_box_info[2],
             sim_box_info[3], sim_box_info[4], sim_box_info[5],
@@ -839,13 +854,7 @@ void * setup_ANI(int num_atoms, const int * const types,
         rvec_MakeZero( spmd_handle->system->atoms[i].v );
         rvec_MakeZero( spmd_handle->system->atoms[i].f );
         spmd_handle->system->atoms[i].q = 0.0;
-
     }
-
-    Read_Input_Files( NULL, ffield_file, control_file,
-            spmd_handle->system, spmd_handle->control,
-            spmd_handle->data, spmd_handle->workspace,
-            spmd_handle->out_control );
 
     spmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * spmd_handle->system->N );
 
@@ -854,9 +863,9 @@ void * setup_ANI(int num_atoms, const int * const types,
 
 
 /* Added for fact calculations for ANI training data*/
-int reset_ANI( const void * const handle, int num_atoms, 
-        const int * const types,const double * const positions,
-        const double * const sim_box_info)
+int reset_ANI( const void * const handle, int num_atoms,
+        const int * const types, const double * const positions,
+        const double * const sim_box_info )
 {
     int i, ret;
     rvec x;
@@ -880,8 +889,11 @@ int reset_ANI( const void * const handle, int num_atoms,
 
         spmd_handle->system->N = num_atoms;
 
-        PreAllocate_Space( spmd_handle->system, spmd_handle->control,
-                spmd_handle->workspace, spmd_handle->system->N );
+        if ( spmd_handle->system->prealloc_allocated == FALSE || spmd_handle->system->N > spmd_handle->system->N_max )
+        {
+            PreAllocate_Space( spmd_handle->system, spmd_handle->control,
+                    spmd_handle->workspace, (int) CEIL( SAFE_ZONE * spmd_handle->system->N ) );
+        }
 
         Setup_Box( sim_box_info[0], sim_box_info[1], sim_box_info[2],
                 sim_box_info[3], sim_box_info[4], sim_box_info[5],
@@ -906,9 +918,7 @@ int reset_ANI( const void * const handle, int num_atoms,
             rvec_MakeZero( spmd_handle->system->atoms[i].v );
             rvec_MakeZero( spmd_handle->system->atoms[i].f );
             spmd_handle->system->atoms[i].q = 0.0;
-
         }
-
 
         if ( spmd_handle->system->N > spmd_handle->system->N_max )
         {
@@ -1002,12 +1012,18 @@ void * setup_qmmm( int qm_num_atoms, const int * const qm_types,
     spmd_handle->callback = NULL;
     spmd_handle->data->sim_id = 0;
 
+    Read_Input_Files( NULL, ffield_file, control_file,
+            spmd_handle->system, spmd_handle->control,
+            spmd_handle->data, spmd_handle->workspace,
+            spmd_handle->out_control, FALSE );
+
     spmd_handle->system->N_qm = qm_num_atoms;
     spmd_handle->system->N_mm = mm_num_atoms;
     spmd_handle->system->N = spmd_handle->system->N_qm + spmd_handle->system->N_mm;
+    spmd_handle->system->N_max = 0;
 
     PreAllocate_Space( spmd_handle->system, spmd_handle->control,
-            spmd_handle->workspace, spmd_handle->system->N );
+            spmd_handle->workspace, (int) CEIL( SAFE_ZONE * spmd_handle->system->N ) );
 
     Setup_Box( sim_box_info[0], sim_box_info[1], sim_box_info[2],
             sim_box_info[3], sim_box_info[4], sim_box_info[5],
@@ -1060,11 +1076,6 @@ void * setup_qmmm( int qm_num_atoms, const int * const qm_types,
 
         spmd_handle->system->atoms[i].qmmm_mask = FALSE;
     }
-
-    Read_Input_Files( NULL, ffield_file, control_file,
-            spmd_handle->system, spmd_handle->control,
-            spmd_handle->data, spmd_handle->workspace,
-            spmd_handle->out_control );
 
     spmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * spmd_handle->system->N );
 
@@ -1119,12 +1130,20 @@ int reset_qmmm( const void * const handle,
         spmd_handle->realloc = FALSE;
         spmd_handle->data->sim_id++;
 
+        Read_Input_Files( NULL, ffield_file, control_file,
+                spmd_handle->system, spmd_handle->control,
+                spmd_handle->data, spmd_handle->workspace,
+                spmd_handle->out_control, TRUE );
+
         spmd_handle->system->N_qm = qm_num_atoms;
         spmd_handle->system->N_mm = mm_num_atoms;
         spmd_handle->system->N = spmd_handle->system->N_qm + spmd_handle->system->N_mm;
 
-        PreAllocate_Space( spmd_handle->system, spmd_handle->control,
-                spmd_handle->workspace, spmd_handle->system->N );
+        if ( spmd_handle->system->prealloc_allocated == FALSE || spmd_handle->system->N > spmd_handle->system->N_max )
+        {
+            PreAllocate_Space( spmd_handle->system, spmd_handle->control,
+                    spmd_handle->workspace, (int) CEIL( SAFE_ZONE * spmd_handle->system->N ) );
+        }
 
         Setup_Box( sim_box_info[0], sim_box_info[1], sim_box_info[2],
                 sim_box_info[3], sim_box_info[4], sim_box_info[5],
@@ -1175,11 +1194,6 @@ int reset_qmmm( const void * const handle,
 
             spmd_handle->system->atoms[i].qmmm_mask = FALSE;
         }
-
-        Read_Input_Files( NULL, ffield_file, control_file,
-                spmd_handle->system, spmd_handle->control,
-                spmd_handle->data, spmd_handle->workspace,
-                spmd_handle->out_control );
 
         if ( spmd_handle->system->N > spmd_handle->system->N_max )
         {
@@ -1459,12 +1473,18 @@ void setup_qmmm_( void ** handle, const int * const qm_num_atoms,
     spmd_handle->callback = NULL;
     spmd_handle->data->sim_id = 0;
 
+    Read_Input_Files( NULL, ffield_file, control_file,
+            spmd_handle->system, spmd_handle->control,
+            spmd_handle->data, spmd_handle->workspace,
+            spmd_handle->out_control, FALSE );
+
     spmd_handle->system->N_qm = *qm_num_atoms;
     spmd_handle->system->N_mm = *mm_num_atoms;
     spmd_handle->system->N = spmd_handle->system->N_qm + spmd_handle->system->N_mm;
+    spmd_handle->system->N_max = 0;
 
     PreAllocate_Space( spmd_handle->system, spmd_handle->control,
-            spmd_handle->workspace, spmd_handle->system->N );
+            spmd_handle->workspace, (int) CEIL( SAFE_ZONE * spmd_handle->system->N ) );
 
     Setup_Box( sim_box_info[0], sim_box_info[1], sim_box_info[2],
             sim_box_info[3], sim_box_info[4], sim_box_info[5],
@@ -1518,11 +1538,6 @@ void setup_qmmm_( void ** handle, const int * const qm_num_atoms,
         spmd_handle->system->atoms[i].qmmm_mask = FALSE;
     }
 
-    Read_Input_Files( NULL, ffield_file, control_file,
-            spmd_handle->system, spmd_handle->control,
-            spmd_handle->data, spmd_handle->workspace,
-            spmd_handle->out_control );
-
     spmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * spmd_handle->system->N );
 
     *handle = (void *) spmd_handle;
@@ -1572,12 +1587,20 @@ void reset_qmmm_( const void * const handle,
         spmd_handle->realloc = FALSE;
         spmd_handle->data->sim_id++;
 
+        Read_Input_Files( NULL, ffield_file, control_file,
+                spmd_handle->system, spmd_handle->control,
+                spmd_handle->data, spmd_handle->workspace,
+                spmd_handle->out_control, TRUE );
+
         spmd_handle->system->N_qm = *qm_num_atoms;
         spmd_handle->system->N_mm = *mm_num_atoms;
         spmd_handle->system->N = spmd_handle->system->N_qm + spmd_handle->system->N_mm;
 
-        PreAllocate_Space( spmd_handle->system, spmd_handle->control,
-                spmd_handle->workspace, spmd_handle->system->N );
+        if ( spmd_handle->system->prealloc_allocated == FALSE || spmd_handle->system->N > spmd_handle->system->N_max )
+        {
+            PreAllocate_Space( spmd_handle->system, spmd_handle->control,
+                    spmd_handle->workspace, (int) CEIL( SAFE_ZONE * spmd_handle->system->N ) );
+        }
 
         Setup_Box( sim_box_info[0], sim_box_info[1], sim_box_info[2],
                 sim_box_info[3], sim_box_info[4], sim_box_info[5],
@@ -1628,11 +1651,6 @@ void reset_qmmm_( const void * const handle,
 
             spmd_handle->system->atoms[i].qmmm_mask = FALSE;
         }
-
-        Read_Input_Files( NULL, ffield_file, control_file,
-                spmd_handle->system, spmd_handle->control,
-                spmd_handle->data, spmd_handle->workspace,
-                spmd_handle->out_control );
 
         if ( spmd_handle->system->N > spmd_handle->system->N_max )
         {

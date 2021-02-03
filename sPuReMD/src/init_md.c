@@ -787,7 +787,9 @@ static void Init_Lists( reax_system *system, control_params *control,
         {
             Delete_List( TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
         }
-        Make_List( system->N, system->N_max, num_nbrs, TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
+        Make_List( system->N, system->N_max, 
+                MAX( num_nbrs, lists[FAR_NBRS]->total_intrs ),
+                TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
     }
     else
     {
@@ -895,8 +897,9 @@ static void Init_Lists( reax_system *system, control_params *control,
             {
                 workspace->num_H_max = (int) CEIL( SAFE_ZONE * workspace->num_H );
 
-                Allocate_HBond_List( system->N, workspace->num_H, workspace->num_H_max,
-                        workspace->hbond_index, hb_top, lists[HBONDS] );
+                Make_List( workspace->num_H, workspace->num_H_max,
+                        (int) CEIL( SAFE_ZONE * num_hbonds ),
+                        TYP_HBOND, lists[HBONDS] );
             }
             else if ( workspace->num_H_max < workspace->num_H
                     || lists[HBONDS]->total_intrs < num_hbonds )
@@ -910,21 +913,24 @@ static void Init_Lists( reax_system *system, control_params *control,
                 {
                     Delete_List( TYP_HBOND, lists[HBONDS] );
                 }
-                Allocate_HBond_List( system->N, workspace->num_H, workspace->num_H_max,
-                        workspace->hbond_index, hb_top, lists[HBONDS] );
+                Make_List( workspace->num_H, workspace->num_H_max,
+                        MAX( num_hbonds, lists[HBONDS]->total_intrs ),
+                        TYP_HBOND, lists[HBONDS] );
             }
             else
             {
                 lists[HBONDS]->n = workspace->num_H;
             }
+
+            Initialize_HBond_List( system->N, workspace->hbond_index, hb_top, lists[HBONDS] );
         }
+    }
 
 #if defined(DEBUG_FOCUS)
-        fprintf( stderr, "estimated storage - num_hbonds: %d\n", num_hbonds );
-        fprintf( stderr, "memory allocated: hbonds = %ldMB\n",
-                 num_hbonds * sizeof(hbond_data) / (1024 * 1024) );
+    fprintf( stderr, "estimated storage - num_hbonds: %d\n", num_hbonds );
+    fprintf( stderr, "memory allocated: hbonds = %ldMB\n",
+             num_hbonds * sizeof(hbond_data) / (1024 * 1024) );
 #endif
-    }
 
     num_bonds = 0;
     for ( i = 0; i < system->N; ++i )
@@ -935,7 +941,8 @@ static void Init_Lists( reax_system *system, control_params *control,
     /* bonds list */
     if ( lists[BONDS]->allocated == FALSE )
     {
-        Allocate_Bond_List( system->N, system->N_max, bond_top, lists[BONDS] );
+        Make_List( system->N, system->N_max, (int) CEIL( num_bonds * SAFE_ZONE ),
+                TYP_BOND, lists[BONDS] );
     }
     else if ( realloc == TRUE || lists[BONDS]->total_intrs < num_bonds )
     {
@@ -943,12 +950,16 @@ static void Init_Lists( reax_system *system, control_params *control,
         {
             Delete_List( TYP_BOND, lists[BONDS] );
         }
-        Allocate_Bond_List( system->N, system->N_max, bond_top, lists[BONDS] );
+        Make_List( system->N, system->N_max,
+                MAX( num_bonds, lists[BONDS]->total_intrs ),
+                TYP_BOND, lists[BONDS] );
     }
     else
     {
         lists[BONDS]->n = system->N;
     }
+
+    Initialize_Bond_List( bond_top, lists[BONDS] );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "estimated storage - num_bonds: %d\n", num_bonds );
@@ -968,17 +979,10 @@ static void Init_Lists( reax_system *system, control_params *control,
         {
             Delete_List( TYP_THREE_BODY, lists[THREE_BODIES] );
         }
-
-        if ( lists[THREE_BODIES]->n_max < num_bonds )
-        {
-            Make_List( num_bonds, num_bonds, num_3body,
-                    TYP_THREE_BODY, lists[THREE_BODIES] );
-        }
-        else
-        {
-            Make_List( num_bonds, lists[THREE_BODIES]->n_max, num_3body,
-                    TYP_THREE_BODY, lists[THREE_BODIES] );
-        }
+        Make_List( MAX( num_bonds, lists[THREE_BODIES]->n_max),
+                MAX( num_bonds, lists[THREE_BODIES]->n_max),
+                MAX( num_3body, lists[THREE_BODIES]->total_intrs ),
+                TYP_THREE_BODY, lists[THREE_BODIES] );
     }
     else
     {
@@ -1409,23 +1413,41 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
     }
 
     if ( workspace->H.allocated == TRUE )
+    {
         Deallocate_Matrix( &workspace->H );
+    }
     if ( workspace->H_full.allocated == TRUE )
+    {
         Deallocate_Matrix( &workspace->H_full );
+    }
     if ( workspace->H_sp.allocated == TRUE )
+    {
         Deallocate_Matrix( &workspace->H_sp );
+    }
     if ( workspace->H_p.allocated == TRUE )
+    {
         Deallocate_Matrix( &workspace->H_p );
+    }
     if ( workspace->H_spar_patt.allocated == TRUE )
+    {
         Deallocate_Matrix( &workspace->H_spar_patt );
+    }
     if ( workspace->H_spar_patt_full.allocated == TRUE )
+    {
         Deallocate_Matrix( &workspace->H_spar_patt_full );
+    }
     if ( workspace->H_app_inv.allocated == TRUE )
+    {
         Deallocate_Matrix( &workspace->H_app_inv );
+    }
     if ( workspace->L.allocated == TRUE )
+    {
         Deallocate_Matrix( &workspace->L );
+    }
     if ( workspace->U.allocated == TRUE )
+    {
         Deallocate_Matrix( &workspace->U );
+    }
 
     for ( i = 0; i < 5; ++i )
     {
