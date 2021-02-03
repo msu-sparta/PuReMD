@@ -36,6 +36,10 @@ extern "C"  {
 void * setup( const char * const, const char * const,
         const char * const );
 
+void * setup2( int, const int * const,
+        const double * const, const double * const,
+        const char * const, const char * const );
+
 int setup_callback( const void * const, const callback_function );
 
 int simulate( const void * const );
@@ -43,6 +47,10 @@ int simulate( const void * const );
 int cleanup( const void * const );
 
 int reset( const void * const, const char * const,
+        const char * const, const char * const );
+
+int reset2( const void * const, int, const int * const,
+        const double * const, const double * const,
         const char * const, const char * const );
 
 int get_atom_positions( const void * const, double * const );
@@ -56,6 +64,8 @@ int get_atom_charges( const void * const, double * const );
 int get_system_info( const void * const, double * const,
         double * const, double * const, double * const,
         double * const, double * const );
+
+int get_total_energy( const void * const, double * const );
 
 int set_output_enabled( const void * const, const int );
 

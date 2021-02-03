@@ -302,9 +302,9 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
 
     /* count atoms and allocate storage */
     n = Count_Atoms( system, geo, CUSTOM );
-    if ( system->prealloc_allocated == FALSE || n > system->N )
+    if ( system->prealloc_allocated == FALSE || n > system->N_max )
     {
-        PreAllocate_Space( system, control, workspace, n );
+        PreAllocate_Space( system, control, workspace, (int) CEIL( SAFE_ZONE * n ) );
     }
     system->N = n;
 
@@ -367,9 +367,9 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
     }
 
     n = Count_Atoms( system, pdb, PDB );
-    if ( system->prealloc_allocated == FALSE || n > system->N )
+    if ( system->prealloc_allocated == FALSE || n > system->N_max )
     {
-        PreAllocate_Space( system, control, workspace, n );
+        PreAllocate_Space( system, control, workspace, (int) CEIL( SAFE_ZONE * n ) );
     }
     system->N = n;
 
@@ -506,13 +506,15 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
 //                        "CONECT line exceeds max num restrictions allowed.\n" );
 
                 /* read bond restrictions */
-                // if( is_Valid_Serial( workspace, pdb_serial = sstrtol( tmp[1]), __FILE__, __LINE__ ) )
+                // pdb_serial = sstrtol( tmp[1], __FILE__, __LINE__ );
+                // if ( is_Valid_Serial( workspace->map_serials[ pdb_serial ] ) == TRUE )
                 //   ratom = workspace->map_serials[ pdb_serial ];
 
                 // workspace->restricted[ ratom ] = c1 - 2;
-                // for( i = 2; i < c1; ++i )
+                // for ( i = 2; i < c1; ++i )
                 //  {
-                //    if( is_Valid_Serial(workspace, pdb_serial = sstrtol( tmp[i], __FILE__, __LINE__ )) )
+                //    pdb_serial = sstrtol( tmp[i], __FILE__, __LINE__ );
+                //    if ( is_Valid_Serial( workspace->map_serials[ pdb_serial ] ) == TRUE )
                 //        workspace->restricted_list[ ratom ][ i-2 ] =
                 //          workspace->map_serials[ pdb_serial ];
                 //  }
@@ -659,14 +661,12 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
 
     sfclose( bgf, "Read_BGF::bgf" );
 
-    if ( system->prealloc_allocated == FALSE || n > system->N )
+    if ( system->prealloc_allocated == FALSE || n > system->N_max )
     {
-        PreAllocate_Space( system, control, workspace, n );
+        PreAllocate_Space( system, control, workspace, (int) CEIL( SAFE_ZONE * n ) );
     }
     system->N = n;
 
-    workspace->map_serials = scalloc( MAX_ATOM_ID, sizeof(int),
-            "Read_BGF::workspace->map_serials" );
     for ( i = 0; i < MAX_ATOM_ID; ++i )
     {
         workspace->map_serials[i] = -1;
@@ -786,7 +786,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
 
                 /* read bond restrictions */
                 bgf_serial = sstrtol( tokens[1], __FILE__, __LINE__ );
-                if ( is_Valid_Serial( workspace, bgf_serial ) )
+                if ( is_Valid_Serial( workspace->map_serials[ bgf_serial ] ) == TRUE )
                 {
                     ratom = workspace->map_serials[ bgf_serial ];
                 }
@@ -794,7 +794,8 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
                 workspace->restricted[ ratom ] = token_cnt - 2;
                 for ( i = 2; i < token_cnt; ++i )
                 {
-                    if ( is_Valid_Serial( workspace, bgf_serial = sstrtol( tokens[i], __FILE__, __LINE__ )) )
+                    bgf_serial = sstrtol( tokens[i], __FILE__, __LINE__ );
+                    if ( is_Valid_Serial( workspace->map_serials[ bgf_serial ] ) == TRUE )
                     {
                         workspace->restricted_list[ratom][i - 2] =
                             workspace->map_serials[bgf_serial];

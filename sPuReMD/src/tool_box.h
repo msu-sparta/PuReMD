@@ -37,7 +37,7 @@ int is_Inside_Box( simulation_box *, rvec );
 /* from geo_tools.h */
 void Make_Point( real, real, real, rvec * );
 
-int is_Valid_Serial( static_storage *, int );
+int is_Valid_Serial( int );
 
 int Check_Input_Range( int, int, int, char * );
 

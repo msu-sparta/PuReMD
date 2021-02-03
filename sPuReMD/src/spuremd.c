@@ -72,13 +72,7 @@ static void Post_Evolve( reax_system * const system, control_params * const cont
         Compute_Kinetic_Energy( system, data );
     }
 
-    if ( (out_control->log_update_freq > 0
-                && data->step % out_control->log_update_freq == 0)
-            || (out_control->write_steps > 0
-                && data->step % out_control->write_steps == 0) )
-    {
-        Compute_Total_Energy( data );
-    }
+    Compute_Total_Energy( data );
 
     if ( control->compute_pressure == TRUE && control->ensemble != sNPT
             && control->ensemble != iNPT && control->ensemble != aNPT )
@@ -98,21 +92,27 @@ static void Read_Input_Files( const char * const geo_file,
         const char * const ffield_file, const char * const control_file,
         reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        output_controls * const out_control )
+        output_controls * const out_control, int reset )
 {
     if ( ffield_file != NULL )
     {
         Read_Force_Field( ffield_file, system, &system->reax_param );
     }
 
-    Set_Control_Defaults( system, control, out_control );
+    if ( reset == FALSE || control_file != NULL )
+    {
+        Set_Control_Defaults( system, control, out_control );
+    }
 
     if ( control_file != NULL )
     {
         Read_Control_File( control_file, system, control, out_control );
     }
 
-    Set_Control_Derived_Values( system, control );
+    if ( reset == FALSE || control_file != NULL )
+    {
+        Set_Control_Derived_Values( system, control );
+    }
 
     if ( geo_file != NULL )
     {
@@ -151,6 +151,70 @@ static void Read_Input_Files( const char * const geo_file,
 }
 
 
+static void Allocate_Top_Level_Structs( spuremd_handle ** handle )
+{
+    int i;
+
+    /* top-level allocation */
+    *handle = smalloc( sizeof(spuremd_handle), "Allocate_Top_Level_Structs::handle" );
+
+    /* second-level allocations */
+    (*handle)->system = smalloc( sizeof(reax_system),
+           "Allocate_Top_Level_Structs::handle->system" );
+
+    (*handle)->control = smalloc( sizeof(control_params),
+           "Allocate_Top_Level_Structs::handle->control" );
+
+    (*handle)->data = smalloc( sizeof(simulation_data),
+           "Allocate_Top_Level_Structs::handle->data" );
+
+    (*handle)->workspace = smalloc( sizeof(static_storage),
+           "Allocate_Top_Level_Structs::handle->workspace" );
+
+    (*handle)->lists = smalloc( sizeof(reax_list *) * LIST_N,
+           "Allocate_Top_Level_Structs::handle->lists" );
+    for ( i = 0; i < LIST_N; ++i )
+    {
+        (*handle)->lists[i] = smalloc( sizeof(reax_list),
+                "Allocate_Top_Level_Structs::handle->lists[i]" );
+    }
+    (*handle)->out_control = smalloc( sizeof(output_controls),
+           "Allocate_Top_Level_Structs::handle->out_control" );
+}
+
+
+static void Initialize_Top_Level_Structs( spuremd_handle * handle )
+{
+    int i;
+
+    /* top-level initializations */
+    handle->output_enabled = TRUE;
+    handle->realloc = TRUE;
+    handle->callback = NULL;
+    handle->data->sim_id = 0;
+
+    /* second-level initializations */
+    handle->system->prealloc_allocated = FALSE;
+    handle->system->ffield_params_allocated = FALSE;
+    handle->system->g.allocated = FALSE;
+
+    handle->workspace->H.allocated = FALSE;
+    handle->workspace->H_full.allocated = FALSE;
+    handle->workspace->H_sp.allocated = FALSE;
+    handle->workspace->H_p.allocated = FALSE;
+    handle->workspace->H_spar_patt.allocated = FALSE;
+    handle->workspace->H_spar_patt_full.allocated = FALSE;
+    handle->workspace->H_app_inv.allocated = FALSE;
+    handle->workspace->L.allocated = FALSE;
+    handle->workspace->U.allocated = FALSE;
+
+    for ( i = 0; i < LIST_N; ++i )
+    {
+        handle->lists[i]->allocated = FALSE;
+    }
+}
+
+
 /* Allocate top-level data structures and parse input files
  * for the first simulation
  *
@@ -161,58 +225,91 @@ static void Read_Input_Files( const char * const geo_file,
 void * setup( const char * const geo_file, const char * const ffield_file,
         const char * const control_file )
 {
-    int i;
     spuremd_handle *spmd_handle;
 
-    /* top-level allocation */
-    spmd_handle = (spuremd_handle*) smalloc( sizeof(spuremd_handle),
-            "setup::spmd_handle" );
+    Allocate_Top_Level_Structs( &spmd_handle );
+    Initialize_Top_Level_Structs( spmd_handle );
 
-    /* second-level allocations */
-    spmd_handle->system = smalloc( sizeof(reax_system),
-           "Setup::spmd_handle->system" );
-    spmd_handle->system->prealloc_allocated = FALSE;
-    spmd_handle->system->ffield_params_allocated = FALSE;
-    spmd_handle->system->g.allocated = FALSE;
-
-    spmd_handle->control = smalloc( sizeof(control_params),
-           "Setup::spmd_handle->control" );
-
-    spmd_handle->data = smalloc( sizeof(simulation_data),
-           "Setup::spmd_handle->data" );
-
-    spmd_handle->workspace = smalloc( sizeof(static_storage),
-           "Setup::spmd_handle->workspace" );
-    spmd_handle->workspace->H.allocated = FALSE;
-    spmd_handle->workspace->H_full.allocated = FALSE;
-    spmd_handle->workspace->H_sp.allocated = FALSE;
-    spmd_handle->workspace->H_p.allocated = FALSE;
-    spmd_handle->workspace->H_spar_patt.allocated = FALSE;
-    spmd_handle->workspace->H_spar_patt_full.allocated = FALSE;
-    spmd_handle->workspace->H_app_inv.allocated = FALSE;
-    spmd_handle->workspace->L.allocated = FALSE;
-    spmd_handle->workspace->U.allocated = FALSE;
-
-    spmd_handle->lists = smalloc( sizeof(reax_list *) * LIST_N,
-           "Setup::spmd_handle->lists" );
-    for ( i = 0; i < LIST_N; ++i )
-    {
-        spmd_handle->lists[i] = smalloc( sizeof(reax_list),
-                "Setup::spmd_handle->lists[i]" );
-        spmd_handle->lists[i]->allocated = FALSE;
-    }
-    spmd_handle->out_control = smalloc( sizeof(output_controls),
-           "Setup::spmd_handle->out_control" );
-
-    spmd_handle->output_enabled = TRUE;
-    spmd_handle->realloc = TRUE;
-    spmd_handle->callback = NULL;
-    spmd_handle->data->sim_id = 0;
+    /* note: assign here to avoid compiler warning
+     * of uninitialized usage in PreAllocate_Space */
+    spmd_handle->system->N_max = 0;
 
     Read_Input_Files( geo_file, ffield_file, control_file,
             spmd_handle->system, spmd_handle->control,
             spmd_handle->data, spmd_handle->workspace,
-            spmd_handle->out_control );
+            spmd_handle->out_control, FALSE );
+
+    spmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * spmd_handle->system->N );
+
+    return (void *) spmd_handle;
+}
+
+
+/* Allocate top-level data structures and parse input files
+ * for the first simulation
+ *
+ * num_atoms: num. atoms in this simulation
+ * types: integer representation of atom element (type)
+ *  NOTE: must match the 0-based index from section 2 in the ReaxFF parameter file
+ * sim_box_info: simulation box information, where the entries are
+ *  - box length per dimension (3 entries)
+ *  - angles per dimension (3 entries)
+ * pos: coordinates of atom positions (consecutively arranged), in Angstroms
+ * ffield_file: file containing force field parameters
+ * control_file: file containing simulation parameters
+ */
+void * setup2( int num_atoms, const int * const atom_type,
+        const double * const pos, const double * const sim_box_info,
+        const char * const ffield_file, const char * const control_file )
+{
+    int i;
+//    char atom_name[9];
+    rvec x;
+    spuremd_handle *spmd_handle;
+
+    Allocate_Top_Level_Structs( &spmd_handle );
+    Initialize_Top_Level_Structs( spmd_handle );
+
+    /* override default */
+    spmd_handle->output_enabled = FALSE;
+
+    Read_Input_Files( NULL, ffield_file, control_file,
+            spmd_handle->system, spmd_handle->control,
+            spmd_handle->data, spmd_handle->workspace,
+            spmd_handle->out_control, FALSE );
+
+    spmd_handle->system->N = num_atoms;
+    /* note: assign here to avoid compiler warning
+     * of uninitialized usage in PreAllocate_Space */
+    spmd_handle->system->N_max = 0;
+
+    PreAllocate_Space( spmd_handle->system, spmd_handle->control,
+            spmd_handle->workspace, (int) CEIL( SAFE_ZONE * spmd_handle->system->N ) );
+
+    Setup_Box( sim_box_info[0], sim_box_info[1], sim_box_info[2],
+            sim_box_info[3], sim_box_info[4], sim_box_info[5],
+            &spmd_handle->system->box );
+
+    for ( i = 0; i < spmd_handle->system->N; ++i )
+    {
+        x[0] = pos[3 * i];
+        x[1] = pos[3 * i + 1];
+        x[2] = pos[3 * i + 2];
+
+        Fit_to_Periodic_Box( &spmd_handle->system->box, x );
+
+        spmd_handle->workspace->orig_id[i] = i + 1;
+//        spmd_handle->system->atoms[i].type = Get_Atom_Type( &system->reax_param,
+//                element, sizeof(element) );
+        spmd_handle->system->atoms[i].type = atom_type[i];
+//        strncpy( spmd_handle->system->atoms[i].name, atom_name,
+//                sizeof(spmd_handle->system->atoms[i].name) - 1 );
+//        spmd_handle->system->atoms[i].name[sizeof(spmd_handle->system->atoms[i].name) - 1] = '\0';
+        rvec_Copy( spmd_handle->system->atoms[i].x, x );
+        rvec_MakeZero( spmd_handle->system->atoms[i].v );
+        rvec_MakeZero( spmd_handle->system->atoms[i].f );
+        spmd_handle->system->atoms[i].q = 0.0;
+    }
 
     spmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * spmd_handle->system->N );
 
@@ -293,17 +390,7 @@ int simulate( const void * const handle )
                     spmd_handle->data, spmd_handle->out_control );
         }
 
-        if ( spmd_handle->output_enabled == TRUE || spmd_handle->callback != NULL )
-        {
-            if ( ((spmd_handle->out_control->log_update_freq > 0
-                        && spmd_handle->data->step % spmd_handle->out_control->log_update_freq == 0)
-                    || (spmd_handle->out_control->write_steps > 0
-                        && spmd_handle->data->step % spmd_handle->out_control->write_steps == 0))
-                || spmd_handle->callback != NULL )
-            {
-                Compute_Total_Energy( spmd_handle->data );
-            }
-        }
+        Compute_Total_Energy( spmd_handle->data );
 
         if ( spmd_handle->output_enabled == TRUE )
         {
@@ -473,7 +560,7 @@ int reset( const void * const handle, const char * const geo_file,
         Read_Input_Files( geo_file, ffield_file, control_file,
                 spmd_handle->system, spmd_handle->control,
                 spmd_handle->data, spmd_handle->workspace,
-                spmd_handle->out_control );
+                spmd_handle->out_control, TRUE );
 
         if ( spmd_handle->system->N > spmd_handle->system->N_max )
         {
@@ -492,6 +579,104 @@ int reset( const void * const handle, const char * const geo_file,
     }
 
     return ret;
+}
+
+
+/* Allocate top-level data structures and parse input files
+ * for the first simulation
+ *
+ * handle: pointer to wrapper struct with top-level data structures
+ * num_atoms: num. atoms in this simulation
+ * types: integer representation of atom element (type)
+ *  NOTE: must match the 0-based index from section 2 in the ReaxFF parameter file
+ * sim_box_info: simulation box information, where the entries are
+ *  - box length per dimension (3 entries)
+ *  - angles per dimension (3 entries)
+ * pos: coordinates of atom positions (consecutively arranged), in Angstroms
+ * ffield_file: file containing force field parameters
+ * control_file: file containing simulation parameters
+ */
+int reset2( const void * const handle, int num_atoms,
+        const int * const atom_type, const double * const pos,
+        const double * const sim_box_info, const char * const ffield_file,
+        const char * const control_file )
+{
+    int i, ret;
+    rvec x;
+    spuremd_handle *spmd_handle;
+
+    ret = SPUREMD_FAILURE;
+
+    if ( handle != NULL )
+    {
+        spmd_handle = (spuremd_handle*) handle;
+
+        /* close files used in previous simulation */
+        if ( spmd_handle->output_enabled == TRUE )
+        {
+            Finalize_Out_Controls( spmd_handle->system, spmd_handle->control,
+                    spmd_handle->workspace, spmd_handle->out_control );
+        }
+
+        spmd_handle->realloc = FALSE;
+        spmd_handle->data->sim_id++;
+
+        Read_Input_Files( NULL, ffield_file, control_file,
+                spmd_handle->system, spmd_handle->control,
+                spmd_handle->data, spmd_handle->workspace,
+                spmd_handle->out_control, TRUE );
+
+        spmd_handle->system->N = num_atoms;
+
+        if ( spmd_handle->system->prealloc_allocated == FALSE
+                || spmd_handle->system->N > spmd_handle->system->N_max )
+        {
+            PreAllocate_Space( spmd_handle->system, spmd_handle->control,
+                    spmd_handle->workspace, (int) CEIL( SAFE_ZONE * spmd_handle->system->N ) );
+        }
+
+        Setup_Box( sim_box_info[0], sim_box_info[1], sim_box_info[2],
+                sim_box_info[3], sim_box_info[4], sim_box_info[5],
+                &spmd_handle->system->box );
+
+        for ( i = 0; i < spmd_handle->system->N; ++i )
+        {
+            x[0] = pos[3 * i];
+            x[1] = pos[3 * i + 1];
+            x[2] = pos[3 * i + 2];
+
+            Fit_to_Periodic_Box( &spmd_handle->system->box, x );
+
+            spmd_handle->workspace->orig_id[i] = i + 1;
+//            spmd_handle->system->atoms[i].type = Get_Atom_Type( &system->reax_param,
+//                    element, sizeof(element) );
+            spmd_handle->system->atoms[i].type = atom_type[i];
+//            strncpy( spmd_handle->system->atoms[i].name, atom_name,
+//                    sizeof(spmd_handle->system->atoms[i].name) - 1 );
+//            spmd_handle->system->atoms[i].name[sizeof(spmd_handle->system->atoms[i].name) - 1] = '\0';
+            rvec_Copy( spmd_handle->system->atoms[i].x, x );
+            rvec_MakeZero( spmd_handle->system->atoms[i].v );
+            rvec_MakeZero( spmd_handle->system->atoms[i].f );
+            spmd_handle->system->atoms[i].q = 0.0;
+        }
+
+        if ( spmd_handle->system->N > spmd_handle->system->N_max )
+        {
+            /* deallocate everything which needs more space
+             * (i.e., structures whose space is a function of the number of atoms),
+             * except for data structures allocated while parsing input files */
+            Finalize( spmd_handle->system, spmd_handle->control, spmd_handle->data,
+                    spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control,
+                    spmd_handle->output_enabled, TRUE );
+
+            spmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * spmd_handle->system->N );
+            spmd_handle->realloc = TRUE;
+        }
+
+        ret = SPUREMD_SUCCESS;
+    }
+
+    return ret;    
 }
 
 
@@ -684,6 +869,28 @@ int get_system_info( const void * const handle, double * const e_pot,
 }
 
 
+/* Getter for total energy
+ *
+ * handle: pointer to wrapper struct with top-level data structures
+ * e_tot: system total energy, in kcal / mol (reference from caller)
+ *
+ * returns: SPUREMD_SUCCESS upon success, SPUREMD_FAILURE otherwise
+ */
+int get_total_energy( const void * const handle, double * const e_tot )
+{
+    int ret;
+
+    ret = get_system_info( handle, e_tot, NULL, NULL, NULL, NULL, NULL );
+
+    if ( ret == SUCCESS )
+    {
+        ret = SPUREMD_SUCCESS;
+    }
+
+    return ret;
+}
+
+
 /* Setter for writing output to files
  *
  * handle: pointer to wrapper struct with top-level data structures
@@ -768,57 +975,26 @@ void * setup_qmmm( int qm_num_atoms, const int * const qm_types,
     rvec x;
     spuremd_handle *spmd_handle;
 
-    /* top-level allocation */
-    spmd_handle = (spuremd_handle*) smalloc( sizeof(spuremd_handle),
-            "setup::spmd_handle" );
+    Allocate_Top_Level_Structs( &spmd_handle );
+    Initialize_Top_Level_Structs( spmd_handle );
 
-    /* second-level allocations */
-    spmd_handle->system = smalloc( sizeof(reax_system),
-           "Setup::spmd_handle->system" );
-    spmd_handle->system->prealloc_allocated = FALSE;
-    spmd_handle->system->ffield_params_allocated = FALSE;
-    spmd_handle->system->g.allocated = FALSE;
-
-    spmd_handle->control = smalloc( sizeof(control_params),
-           "Setup::spmd_handle->control" );
-
-    spmd_handle->data = smalloc( sizeof(simulation_data),
-           "Setup::spmd_handle->data" );
-
-    spmd_handle->workspace = smalloc( sizeof(static_storage),
-           "Setup::spmd_handle->workspace" );
-    spmd_handle->workspace->H.allocated = FALSE;
-    spmd_handle->workspace->H_full.allocated = FALSE;
-    spmd_handle->workspace->H_sp.allocated = FALSE;
-    spmd_handle->workspace->H_p.allocated = FALSE;
-    spmd_handle->workspace->H_spar_patt.allocated = FALSE;
-    spmd_handle->workspace->H_spar_patt_full.allocated = FALSE;
-    spmd_handle->workspace->H_app_inv.allocated = FALSE;
-    spmd_handle->workspace->L.allocated = FALSE;
-    spmd_handle->workspace->U.allocated = FALSE;
-
-    spmd_handle->lists = smalloc( sizeof(reax_list *) * LIST_N,
-           "Setup::spmd_handle->lists" );
-    for ( i = 0; i < LIST_N; ++i )
-    {
-        spmd_handle->lists[i] = smalloc( sizeof(reax_list),
-                "Setup::spmd_handle->lists[i]" );
-        spmd_handle->lists[i]->allocated = FALSE;
-    }
-    spmd_handle->out_control = smalloc( sizeof(output_controls),
-           "Setup::spmd_handle->out_control" );
-
+    /* override default */
     spmd_handle->output_enabled = FALSE;
-    spmd_handle->realloc = TRUE;
-    spmd_handle->callback = NULL;
-    spmd_handle->data->sim_id = 0;
+
+    Read_Input_Files( NULL, ffield_file, control_file,
+            spmd_handle->system, spmd_handle->control,
+            spmd_handle->data, spmd_handle->workspace,
+            spmd_handle->out_control, FALSE );
 
     spmd_handle->system->N_qm = qm_num_atoms;
     spmd_handle->system->N_mm = mm_num_atoms;
     spmd_handle->system->N = spmd_handle->system->N_qm + spmd_handle->system->N_mm;
+    /* note: assign here to avoid compiler warning
+     * of uninitialized usage in PreAllocate_Space */
+    spmd_handle->system->N_max = 0;
 
     PreAllocate_Space( spmd_handle->system, spmd_handle->control,
-            spmd_handle->workspace, spmd_handle->system->N );
+            spmd_handle->workspace, (int) CEIL( SAFE_ZONE * spmd_handle->system->N ) );
 
     Setup_Box( sim_box_info[0], sim_box_info[1], sim_box_info[2],
             sim_box_info[3], sim_box_info[4], sim_box_info[5],
@@ -871,11 +1047,6 @@ void * setup_qmmm( int qm_num_atoms, const int * const qm_types,
 
         spmd_handle->system->atoms[i].qmmm_mask = FALSE;
     }
-
-    Read_Input_Files( NULL, ffield_file, control_file,
-            spmd_handle->system, spmd_handle->control,
-            spmd_handle->data, spmd_handle->workspace,
-            spmd_handle->out_control );
 
     spmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * spmd_handle->system->N );
 
@@ -930,12 +1101,21 @@ int reset_qmmm( const void * const handle,
         spmd_handle->realloc = FALSE;
         spmd_handle->data->sim_id++;
 
+        Read_Input_Files( NULL, ffield_file, control_file,
+                spmd_handle->system, spmd_handle->control,
+                spmd_handle->data, spmd_handle->workspace,
+                spmd_handle->out_control, TRUE );
+
         spmd_handle->system->N_qm = qm_num_atoms;
         spmd_handle->system->N_mm = mm_num_atoms;
         spmd_handle->system->N = spmd_handle->system->N_qm + spmd_handle->system->N_mm;
 
-        PreAllocate_Space( spmd_handle->system, spmd_handle->control,
-                spmd_handle->workspace, spmd_handle->system->N );
+        if ( spmd_handle->system->prealloc_allocated == FALSE
+                || spmd_handle->system->N > spmd_handle->system->N_max )
+        {
+            PreAllocate_Space( spmd_handle->system, spmd_handle->control,
+                    spmd_handle->workspace, (int) CEIL( SAFE_ZONE * spmd_handle->system->N ) );
+        }
 
         Setup_Box( sim_box_info[0], sim_box_info[1], sim_box_info[2],
                 sim_box_info[3], sim_box_info[4], sim_box_info[5],
@@ -986,11 +1166,6 @@ int reset_qmmm( const void * const handle,
 
             spmd_handle->system->atoms[i].qmmm_mask = FALSE;
         }
-
-        Read_Input_Files( NULL, ffield_file, control_file,
-                spmd_handle->system, spmd_handle->control,
-                spmd_handle->data, spmd_handle->workspace,
-                spmd_handle->out_control );
 
         if ( spmd_handle->system->N > spmd_handle->system->N_max )
         {
@@ -1225,57 +1400,26 @@ void setup_qmmm_( void ** handle, const int * const qm_num_atoms,
     rvec x;
     spuremd_handle *spmd_handle;
 
-    /* top-level allocation */
-    spmd_handle = (spuremd_handle*) smalloc( sizeof(spuremd_handle),
-            "setup::spmd_handle" );
+    Allocate_Top_Level_Structs( &spmd_handle );
+    Initialize_Top_Level_Structs( spmd_handle );
 
-    /* second-level allocations */
-    spmd_handle->system = smalloc( sizeof(reax_system),
-           "Setup::spmd_handle->system" );
-    spmd_handle->system->prealloc_allocated = FALSE;
-    spmd_handle->system->ffield_params_allocated = FALSE;
-    spmd_handle->system->g.allocated = FALSE;
-
-    spmd_handle->control = smalloc( sizeof(control_params),
-           "Setup::spmd_handle->control" );
-
-    spmd_handle->data = smalloc( sizeof(simulation_data),
-           "Setup::spmd_handle->data" );
-
-    spmd_handle->workspace = smalloc( sizeof(static_storage),
-           "Setup::spmd_handle->workspace" );
-    spmd_handle->workspace->H.allocated = FALSE;
-    spmd_handle->workspace->H_full.allocated = FALSE;
-    spmd_handle->workspace->H_sp.allocated = FALSE;
-    spmd_handle->workspace->H_p.allocated = FALSE;
-    spmd_handle->workspace->H_spar_patt.allocated = FALSE;
-    spmd_handle->workspace->H_spar_patt_full.allocated = FALSE;
-    spmd_handle->workspace->H_app_inv.allocated = FALSE;
-    spmd_handle->workspace->L.allocated = FALSE;
-    spmd_handle->workspace->U.allocated = FALSE;
-
-    spmd_handle->lists = smalloc( sizeof(reax_list *) * LIST_N,
-           "Setup::spmd_handle->lists" );
-    for ( i = 0; i < LIST_N; ++i )
-    {
-        spmd_handle->lists[i] = smalloc( sizeof(reax_list),
-                "Setup::spmd_handle->lists[i]" );
-        spmd_handle->lists[i]->allocated = FALSE;
-    }
-    spmd_handle->out_control = smalloc( sizeof(output_controls),
-           "Setup::spmd_handle->out_control" );
-
+    /* override default */
     spmd_handle->output_enabled = FALSE;
-    spmd_handle->realloc = TRUE;
-    spmd_handle->callback = NULL;
-    spmd_handle->data->sim_id = 0;
+
+    Read_Input_Files( NULL, ffield_file, control_file,
+            spmd_handle->system, spmd_handle->control,
+            spmd_handle->data, spmd_handle->workspace,
+            spmd_handle->out_control, FALSE );
 
     spmd_handle->system->N_qm = *qm_num_atoms;
     spmd_handle->system->N_mm = *mm_num_atoms;
     spmd_handle->system->N = spmd_handle->system->N_qm + spmd_handle->system->N_mm;
+    /* note: assign here to avoid compiler warning
+     * of uninitialized usage in PreAllocate_Space */
+    spmd_handle->system->N_max = 0;
 
     PreAllocate_Space( spmd_handle->system, spmd_handle->control,
-            spmd_handle->workspace, spmd_handle->system->N );
+            spmd_handle->workspace, (int) CEIL( SAFE_ZONE * spmd_handle->system->N ) );
 
     Setup_Box( sim_box_info[0], sim_box_info[1], sim_box_info[2],
             sim_box_info[3], sim_box_info[4], sim_box_info[5],
@@ -1329,11 +1473,6 @@ void setup_qmmm_( void ** handle, const int * const qm_num_atoms,
         spmd_handle->system->atoms[i].qmmm_mask = FALSE;
     }
 
-    Read_Input_Files( NULL, ffield_file, control_file,
-            spmd_handle->system, spmd_handle->control,
-            spmd_handle->data, spmd_handle->workspace,
-            spmd_handle->out_control );
-
     spmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * spmd_handle->system->N );
 
     *handle = (void *) spmd_handle;
@@ -1383,12 +1522,21 @@ void reset_qmmm_( const void * const handle,
         spmd_handle->realloc = FALSE;
         spmd_handle->data->sim_id++;
 
+        Read_Input_Files( NULL, ffield_file, control_file,
+                spmd_handle->system, spmd_handle->control,
+                spmd_handle->data, spmd_handle->workspace,
+                spmd_handle->out_control, TRUE );
+
         spmd_handle->system->N_qm = *qm_num_atoms;
         spmd_handle->system->N_mm = *mm_num_atoms;
         spmd_handle->system->N = spmd_handle->system->N_qm + spmd_handle->system->N_mm;
 
-        PreAllocate_Space( spmd_handle->system, spmd_handle->control,
-                spmd_handle->workspace, spmd_handle->system->N );
+        if ( spmd_handle->system->prealloc_allocated == FALSE
+                || spmd_handle->system->N > spmd_handle->system->N_max )
+        {
+            PreAllocate_Space( spmd_handle->system, spmd_handle->control,
+                    spmd_handle->workspace, (int) CEIL( SAFE_ZONE * spmd_handle->system->N ) );
+        }
 
         Setup_Box( sim_box_info[0], sim_box_info[1], sim_box_info[2],
                 sim_box_info[3], sim_box_info[4], sim_box_info[5],
@@ -1439,11 +1587,6 @@ void reset_qmmm_( const void * const handle,
 
             spmd_handle->system->atoms[i].qmmm_mask = FALSE;
         }
-
-        Read_Input_Files( NULL, ffield_file, control_file,
-                spmd_handle->system, spmd_handle->control,
-                spmd_handle->data, spmd_handle->workspace,
-                spmd_handle->out_control );
 
         if ( spmd_handle->system->N > spmd_handle->system->N_max )
         {

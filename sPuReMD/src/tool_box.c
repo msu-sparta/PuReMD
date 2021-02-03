@@ -154,9 +154,9 @@ void Make_Point( real x, real y, real z, rvec* p )
 }
 
 
-int is_Valid_Serial( static_storage *workspace, int serial )
+int is_Valid_Serial( int serial )
 {
-    if( workspace->map_serials[ serial ] < 0 )
+    if ( serial < 0 )
     {
         fprintf( stderr, "[ERROR] CONECT line includes invalid serial number %d.\n", serial );
         fprintf( stderr, "[ERROR] Please correct the input file. Terminating...\n" );

@@ -56,6 +56,14 @@ void PreAllocate_Space( reax_system * const system,
                         "PreAllocate_Space::workspace->restricted_list[i]" );
             }
         }
+
+        if ( control->geo_format == BGF
+                || control->geo_format == ASCII_RESTART
+                || control->geo_format == BINARY_RESTART )
+        {
+            workspace->map_serials = scalloc( MAX_ATOM_ID, sizeof(int),
+                    "Read_BGF::workspace->map_serials" );
+        }
     }
     else
     {
@@ -156,20 +164,16 @@ static void Reallocate_Matrix( sparse_matrix *H, int n, int n_max, int m )
 }
 
 
-void Allocate_HBond_List( int n, int num_h, int num_h_max,
-        int const * const h_index, int * const hb_top, reax_list * const hbond_list )
+void Initialize_HBond_List( int n, int const * const h_index,
+        int * const hb_top, reax_list * const hbond_list )
 {
-    int i, num_hbonds;
+    int i;
 
-    num_hbonds = 0;
     /* find starting indexes for each H and the total number of hbonds */
     for ( i = 1; i < n; ++i )
     {
         hb_top[i] += hb_top[i - 1];
     }
-    num_hbonds = hb_top[n - 1];
-
-    Make_List( num_h, num_h_max, num_hbonds, TYP_HBOND, hbond_list );
 
     for ( i = 0; i < n; ++i )
     {
@@ -187,18 +191,22 @@ void Allocate_HBond_List( int n, int num_h, int num_h_max,
 }
 
 
-static void Reallocate_HBonds_List( int n, int num_h, int num_h_max,
+static void Reallocate_Initialize_HBond_List( int n, int num_h, int num_h_max,
         int *h_index, reax_list *hbond_list )
 {
-    int i;
-    int *hb_top;
+    int i, num_hbonds, *hb_top;
 
-    hb_top = scalloc( n, sizeof(int), "Reallocate_HBonds_List::hb_top" );
+    hb_top = scalloc( n, sizeof(int),
+            "Reallocate_Initialize_HBond_List::hb_top" );
+    num_hbonds = 0;
+
     for ( i = 0; i < n; ++i )
     {
         if ( h_index[i] >= 0 )
         {
-            hb_top[i] = MAX(Num_Entries(h_index[i], hbond_list) * SAFE_HBONDS, MIN_HBONDS);
+            hb_top[i] = MAX( Num_Entries( h_index[i], hbond_list ) * SAFE_HBONDS,
+                    MIN_HBONDS );
+            num_hbonds += hb_top[i];
         }
     }
 
@@ -206,31 +214,28 @@ static void Reallocate_HBonds_List( int n, int num_h, int num_h_max,
     {
         Delete_List( TYP_HBOND, hbond_list );
     }
+    Make_List( num_h, num_h_max, num_hbonds, TYP_HBOND, hbond_list );
 
-    Allocate_HBond_List( n, num_h, num_h_max, h_index, hb_top, hbond_list );
+    Initialize_HBond_List( n, h_index, hb_top, hbond_list );
 
-    sfree( hb_top, "Reallocate_HBonds_List::hb_top" );
+    sfree( hb_top, "Reallocate_Initialize_HBond_List::hb_top" );
 }
 
 
-void Allocate_Bond_List( int n, int n_max, int * const bond_top,
+void Initialize_Bond_List( int * const bond_top,
         reax_list * const bond_list )
 {
-    int i, num_bonds;
+    int i;
 
-    num_bonds = 0;
     /* find starting indexes for each atom and the total number of bonds */
-    for ( i = 1; i < n; ++i )
+    for ( i = 1; i < bond_list->n; ++i )
     {
         bond_top[i] += bond_top[i - 1];
     }
-    num_bonds = bond_top[n - 1];
-
-    Make_List( n, n_max, num_bonds, TYP_BOND, bond_list );
 
     Set_Start_Index( 0, 0, bond_list );
     Set_End_Index( 0, 0, bond_list );
-    for ( i = 1; i < n; ++i )
+    for ( i = 1; i < bond_list->n; ++i )
     {
         Set_Start_Index( i, bond_top[i - 1], bond_list );
         Set_End_Index( i, bond_top[i - 1], bond_list );
@@ -238,30 +243,34 @@ void Allocate_Bond_List( int n, int n_max, int * const bond_top,
 }
 
 
-static void Reallocate_Bonds_List( int n, int n_max, reax_list *bond_list,
-        int *num_bonds, int *est_3body )
+static void Reallocate_Initialize_Bond_List( int n, int n_max,
+        reax_list *bond_list, int *num_bonds, int *est_3body )
 {
     int i;
     int *bond_top;
 
-    bond_top = (int *) scalloc( n, sizeof(int), "Reallocate_Bonds_List::hb_top" );
+    bond_top = (int *) scalloc( n, sizeof(int),
+            "Reallocate_Initialize_Bond_List::hb_top" );
+    *num_bonds = 0;
     *est_3body = 0;
 
     for ( i = 0; i < n; ++i )
     {
         *est_3body += SQR( Num_Entries( i, bond_list ) );
         bond_top[i] = MAX( Num_Entries( i, bond_list ) * 2, MIN_BONDS );
+        *num_bonds += bond_top[i];
     }
 
     if ( bond_list->allocated == TRUE )
     {
         Delete_List( TYP_BOND, bond_list );
     }
+    Make_List( n, n_max, (int) CEIL( *num_bonds * SAFE_ZONE ),
+            TYP_BOND, bond_list );
 
-    Allocate_Bond_List( n, n_max, bond_top, bond_list );
-    *num_bonds = bond_top[n - 1];
+    Initialize_Bond_List( bond_top, bond_list );
 
-    sfree( bond_top, "Reallocate_Bonds_List::bond_top" );
+    sfree( bond_top, "Reallocate_Initialize_Bond_List::bond_top" );
 }
 
 
@@ -296,15 +305,15 @@ void Reallocate( reax_system * const system, control_params const * const contro
 
     if ( control->hbond_cut > 0.0 && realloc->hbonds > 0 )
     {
-        Reallocate_HBonds_List( system->N, workspace->num_H, workspace->num_H_max,
-                workspace->hbond_index, lists[HBONDS] );
+        Reallocate_Initialize_HBond_List( system->N, workspace->num_H,
+                workspace->num_H_max, workspace->hbond_index, lists[HBONDS] );
         realloc->hbonds = -1;
     }
 
     num_bonds = est_3body = -1;
     if ( realloc->bonds > 0 )
     {
-        Reallocate_Bonds_List( system->N, system->N_max, lists[BONDS], &num_bonds, &est_3body );
+        Reallocate_Initialize_Bond_List( system->N, system->N_max, lists[BONDS], &num_bonds, &est_3body );
         realloc->bonds = -1;
         realloc->num_3body = MAX( realloc->num_3body, est_3body );
     }

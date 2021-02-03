@@ -526,7 +526,7 @@ void Set_Control_Defaults( reax_system * const system,
         control->ignore[i] = 0;
     }
 
-    out_control->log_update_freq = 0;
+    out_control->log_update_freq = 1;
     out_control->write_steps = 0;
     out_control->traj_compress = 0;
     out_control->write = &fprintf;
