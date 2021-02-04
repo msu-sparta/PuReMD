@@ -1,4 +1,3 @@
-
 /*----------------------------------------------------------------------
   SerialReax - Reax Force Field Simulator
 
@@ -30,16 +29,21 @@
 
 static void usage( char * argv[] )
 {
-    fprintf( stderr, "usage: ./%s geometry_file force_field_file control_file\n", argv[0] );
+    fprintf( stderr, "usage: ./%s geo_file ffield_param_file control_file [geo_file2 ffield_param_file2 control_file2 ...]\n",
+            argv[0] );
+    fprintf( stderr, "  geo_file, geo_file2, ...                    Geometry files containing simulation information. Format\n"
+            "                                              specified via geo_format keyword in respective simulation control file\n" );
+    fprintf( stderr, "  ffield_param_file, ffield_param_file2, ...  ReaxFF parameter files.\n" );
+    fprintf( stderr, "  control_file, control_file2, ...            PuReMD control files for simulation parameters.\n" );
 }
 
 
 int main( int argc, char* argv[] )
 {
+    int i, ret;
     void *handle;
-    int ret;
 
-    if ( argc != 4 )
+    if ( argc < 4 || argc % 3 != 1 )
     {
         usage( argv );
         exit( INVALID_INPUT );
@@ -51,6 +55,19 @@ int main( int argc, char* argv[] )
     if ( handle != NULL )
     {
         ret = simulate( handle );
+    }
+
+    for ( i = 1; i < argc / 3; ++i )
+    {
+        if ( ret == SPUREMD_SUCCESS )
+        {
+            ret = reset( handle, argv[3 * i + 1], argv[3 * i + 2], argv[3 * i + 3] );
+        }
+
+        if ( ret == SPUREMD_SUCCESS )
+        {
+            ret = simulate( handle );
+        }
     }
 
     if ( ret == SPUREMD_SUCCESS )
