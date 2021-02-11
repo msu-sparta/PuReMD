@@ -7,7 +7,7 @@
  80.000 axis1      a (for non-periodical systems)
  80.000 axis2      b (for non-periodical systems)
  80.000 axis3      c (for non-periodical systems)
- 0.0010 cutof2     BO-cutoff for valency angles and torsion angles
+ 0.0050 cutof2     BO-cutoff for valency angles and torsion angles
   0.300 cutof3     BO-cutoff for bond order for graphs
       4 icharg     Charges. 1:EEM 2:- 3: Shielded EEM (default for crystals) 4: Full system EEM 5: Fixed (unit 26) 6: Fragment EEM
       1 ichaen     Charges. 1:include charge energy 0: Do not include charge energy

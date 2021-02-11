@@ -360,12 +360,10 @@ def create_db(name='spuremd.db'):
 if __name__ == '__main__':
     lib = cdll.LoadLibrary("libspuremd.so.1")
 
-    setup_qmmm = lib.setup_qmmm_
-    setup_qmmm.argtypes = [c_int, POINTER(c_int),
-            POINTER(c_double), POINTER(c_double), POINTER(c_double),
+    setup_qmmm = lib.setup_qmmm
+    setup_qmmm.argtypes = [c_int, POINTER(c_int), POINTER(c_double),
             c_int, POINTER(c_int), POINTER(c_double), POINTER(c_double),
-            POINTER(c_double), POINTER(c_double), POINTER(c_double),
-            c_char_p, c_char_p]
+            POINTER(c_double), c_char_p, c_char_p]
     setup_qmmm.restype = c_void_p
 
     simulate = lib.simulate
@@ -376,12 +374,10 @@ if __name__ == '__main__':
     cleanup.argtypes = [c_void_p]
     cleanup.restype = c_int
 
-    reset_qmmm = lib.reset_qmmm_
-    reset_qmmm.argtypes = [c_void_p, c_int, POINTER(c_int),
-            POINTER(c_double), POINTER(c_double), POINTER(c_double),
+    reset_qmmm = lib.reset_qmmm
+    reset_qmmm.argtypes = [c_void_p, c_int, POINTER(c_int), POINTER(c_double),
             c_int, POINTER(c_int), POINTER(c_double), POINTER(c_double),
-            POINTER(c_double), POINTER(c_double), POINTER(c_double),
-            c_char_p, c_char_p]
+            POINTER(c_double), c_char_p, c_char_p]
     reset_qmmm.restype = c_int
 
     CALLBACKFUNC = CFUNCTYPE(None, c_int, POINTER(ReaxAtom),
@@ -399,19 +395,17 @@ if __name__ == '__main__':
     set_control_parameter.argtypes = [c_void_p, c_char_p, POINTER(c_char_p)]
     set_control_parameter.restype = c_int
 
-    get_atom_positions_qmmm = lib.get_atom_positions_qmmm_
-    get_atom_positions_qmmm.argtypes = [c_void_p,
-            POINTER(c_double), POINTER(c_double), POINTER(c_double),
-            POINTER(c_double), POINTER(c_double), POINTER(c_double)]
+    get_atom_positions_qmmm = lib.get_atom_positions_qmmm
+    get_atom_positions_qmmm.argtypes = [c_void_p, POINTER(c_double),
+            POINTER(c_double)]
     get_atom_positions_qmmm.restype = c_int
 
-    get_atom_forces_qmmm = lib.get_atom_forces_qmmm_
-    get_atom_forces_qmmm.argtypes = [c_void_p,
-            POINTER(c_double), POINTER(c_double), POINTER(c_double),
-            POINTER(c_double), POINTER(c_double), POINTER(c_double)]
+    get_atom_forces_qmmm = lib.get_atom_forces_qmmm
+    get_atom_forces_qmmm.argtypes = [c_void_p, POINTER(c_double),
+            POINTER(c_double)]
     get_atom_forces_qmmm.restype = c_int
 
-    get_atom_charges_qmmm = lib.get_atom_charges_qmmm_
+    get_atom_charges_qmmm = lib.get_atom_charges_qmmm
     get_atom_charges_qmmm.argtypes = [c_void_p, POINTER(c_double), POINTER(c_double)]
     get_atom_charges_qmmm.restype = c_int
 
@@ -420,12 +414,12 @@ if __name__ == '__main__':
             data[0].E_Tot, data[0].E_Kin, data[0].E_Pot))
 
     # data from Amber
-    sim_box = (c_double * 6)(80.0, 80.0, 80.0, 90.0, 90.0, 90.0)
+    sim_box_info = (c_double * 6)(80.0, 80.0, 80.0, 90.0, 90.0, 90.0)
     num_qm_atoms = 14
-    num_mm_atoms = 762
+    num_mm_atoms = 759
     num_atoms = num_qm_atoms + num_mm_atoms
 
-    df = pd.read_csv('AVE/fort.3', sep='\s+', skiprows=[0,1,2,779,780],
+    df = pd.read_csv('AVE/fort.3', sep='\s+', skiprows=[0,1,2,3,777,778],
             names=['Keyword', 'Num', 'Tag', 'P_x', 'P_y', 'P_z', 'Elem',
                 'Tag2', 'Tag3', 'Q'],
             dtype={'Keyword': str, 'Num': np.int,
@@ -436,24 +430,45 @@ if __name__ == '__main__':
     types_s = df['Elem'].to_list()
     elems = {'C': 0, 'H': 1, 'O': 2}
     types = [elems[t] for t in types_s]
-    p_x = df['P_x'].to_list()
-    p_y = df['P_y'].to_list()
-    p_z = df['P_z'].to_list()
+    p = df[['P_x', 'P_y', 'P_z']].values.flatten().tolist()
     q = df['Q'].to_list()
 
     qm_types = (c_int * num_qm_atoms)(*types[0:num_qm_atoms])
-    qm_p_x = (c_double * num_qm_atoms)(*p_x[0:num_qm_atoms])
-    qm_p_y = (c_double * num_qm_atoms)(*p_y[0:num_qm_atoms])
-    qm_p_z = (c_double * num_qm_atoms)(*p_z[0:num_qm_atoms])
+    qm_p = (c_double * (3 * num_qm_atoms))(*p[0:(3 * num_qm_atoms)])
     mm_types = (c_int * num_mm_atoms)(*types[num_qm_atoms:])
-    mm_p_x = (c_double * num_mm_atoms)(*p_x[num_qm_atoms:])
-    mm_p_y = (c_double * num_mm_atoms)(*p_y[num_qm_atoms:])
-    mm_p_z = (c_double * num_mm_atoms)(*p_z[num_qm_atoms:])
+    mm_p = (c_double * (3 * num_mm_atoms))(*p[(3 * num_qm_atoms):])
     mm_q = (c_double * num_mm_atoms)(*q[num_qm_atoms:])
 
-    handle = setup_qmmm(c_int(num_qm_atoms), qm_types, qm_p_x, qm_p_y, qm_p_z,
-            c_int(num_mm_atoms), mm_types, mm_p_x, mm_p_y, mm_p_z, mm_q, sim_box,
-            b"AVE/fort.4", None)
+    handle = setup_qmmm(c_int(num_qm_atoms), qm_types, qm_p,
+            c_int(num_mm_atoms), mm_types, mm_p, mm_q, sim_box_info,
+            b"AVE/ffield", None)
+
+    d = {
+            b"simulation_name": (c_char_p)(b"AVE"),
+            b"ensemble_type": (c_char_p)(b"0"),
+            b"nsteps": (c_char_p)(b"0"),
+            b"dt": (c_char_p)(b"0.25"),
+            b"periodic_boundaries": (c_char_p)(b"1"),
+            b"reposition_atoms": (c_char_p)(b"0"),
+            b"reneighbor": (c_char_p)(b"1"),
+            b"tabulate_long_range": (c_char_p)(b"0"),
+            b"energy_update_freq": (c_char_p)(b"1"),
+            b"vlist_buffer": (c_char_p)(b"2.5"),
+            b"nbrhood_cutoff": (c_char_p)(b"5.0"),
+            b"thb_cutoff": (c_char_p)(b"0.005"),
+            b"hbond_cutoff": (c_char_p)(b"7.5"),
+            b"bond_graph_cutoff": (c_char_p)(b"0.3"),
+            b"charge_method": (c_char_p)(b"1"),
+            b"cm_q_net": (c_char_p)(b"0.0"),
+            b"cm_solver_type": (c_char_p)(b"2"),
+            b"cm_solver_max_iters": (c_char_p)(b"200"),
+            b"cm_solver_q_err": (c_char_p)(b"1.0e-14"),
+            b"cm_solver_pre_comp_type": (c_char_p)(b"1"),
+            }
+    for keyword, values in d.items():
+        ret = set_control_parameter(handle, keyword, values)
+        if ret != 0:
+            print("[ERROR] set_control_parameter returned {0}".format(ret))
 
     ret = setup_callback(handle, CALLBACKFUNC(get_simulation_step_results))
     if ret != 0:
@@ -463,45 +478,15 @@ if __name__ == '__main__':
     if ret != 0:
         print("[ERROR] set_output_enabled returned {0}".format(ret))
 
-    d = {
-            b"ensemble_type": (c_char_p)(b"0"),
-            b"nsteps": (c_char_p)(b"0"),
-            b"dt": (c_char_p)(b"0.25"),
-            b"periodic_boundaries": (c_char_p)(b"1"),
-            b"reposition_atoms": (c_char_p)(b"0"),
-            b"reneighbor": (c_char_p)(b"1"),
-            b"tabulate_long_range": (c_char_p)(b"0"),
-            b"vlist_buffer": (c_char_p)(b"2.5"),
-            b"nbrhood_cutoff": (c_char_p)(b"5.0"),
-            b"thb_cutoff": (c_char_p)(b"0.001"),
-            b"hbond_cutoff": (c_char_p)(b"7.5"),
-            b"bond_graph_cutoff": (c_char_p)(b"0.3"),
-            b"charge_method": (c_char_p)(b"0"),
-            b"cm_q_net": (c_char_p)(b"0.0"),
-            b"cm_solver_type": (c_char_p)(b"2"),
-            b"cm_solver_max_iters": (c_char_p)(b"200"),
-            b"cm_solver_q_err": (c_char_p)(b"1.0e-14"),
-            b"cm_solver_pre_comp_type": (c_char_p)(b"1"),
-            b"write_freq": (c_char_p)(b"1"),
-            }
-    for keyword, values in d.items():
-        ret = set_control_parameter(handle, keyword, values)
-        if ret != 0:
-            print("[ERROR] set_control_parameter returned {0}".format(ret))
-
     print("{0:24}|{1:24}|{2:24}".format("Total Energy", "Kinetic Energy", "Potential Energy"))
 
     ret = simulate(handle)
     if ret != 0:
         print("[ERROR] simulate returned {0}".format(ret))
 
-    qm_f_x = (c_double * num_qm_atoms)()
-    qm_f_y = (c_double * num_qm_atoms)()
-    qm_f_z = (c_double * num_qm_atoms)()
-    mm_f_x = (c_double * num_mm_atoms)()
-    mm_f_y = (c_double * num_mm_atoms)()
-    mm_f_z = (c_double * num_mm_atoms)()
-    ret = get_atom_forces_qmmm(handle, qm_f_x, qm_f_y, qm_f_z, mm_f_x, mm_f_y, mm_f_z)
+    qm_f = (c_double * (3 * num_qm_atoms))()
+    mm_f = (c_double * (3 * num_mm_atoms))()
+    ret = get_atom_forces_qmmm(handle, qm_f, mm_f)
     if ret != 0:
         print("[ERROR] get_atom_forces_qmmm returned {0}".format(ret))
 
@@ -512,9 +497,11 @@ if __name__ == '__main__':
         print("[ERROR] get_atom_charges_qmmm returned {0}".format(ret))
 
     print("\n{0:6}|{1:24}|{2:24}|{3:24}|{4:24}".format("i", "F_x", "F_y", "F_z", "Q"))
-    for i, (f_x, f_y, f_z, q) in enumerate(zip(qm_f_x, qm_f_y, qm_f_z, qm_q)):
-        print("{0:6d} {1:24.12f} {2:24.12f} {3:24.12f} {4:24.12f}".format(i + 1, f_x, f_y, f_z, q))
-    for i, (f_x, f_y, f_z, q) in enumerate(zip(mm_f_x, mm_f_y, mm_f_z, mm_q)):
-        print("{0:6d} {1:24.12f} {2:24.12f} {3:24.12f} {4:24.12f}".format(i + num_qm_atoms + 1, f_x, f_y, f_z, q))
+    for i in range(num_qm_atoms):
+        print("{0:6d} {1:24.12f} {2:24.12f} {3:24.12f} {4:24.12f}".format(i + 1,
+            qm_f[3 * i], qm_f[3 * i + 1], qm_f[3 * i + 2], qm_q[i]))
+    for i in range(num_mm_atoms):
+        print("{0:6d} {1:24.12f} {2:24.12f} {3:24.12f} {4:24.12f}".format(i + num_qm_atoms + 1,
+            mm_f[3 * i], mm_f[3 * i + 1], mm_f[3 * i + 2], mm_q[i]))
 
     cleanup(handle)
