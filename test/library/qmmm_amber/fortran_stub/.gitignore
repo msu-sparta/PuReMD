@@ -1,0 +1,5 @@
+# Fortran object, module files
+*.o
+*.mod
+# Generatd executable
+driver

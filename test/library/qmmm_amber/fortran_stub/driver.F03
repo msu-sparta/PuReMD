@@ -95,7 +95,7 @@ end module driver_utils
 program driver
         use, intrinsic :: iso_c_binding
         use driver_utils
-        use puremd
+        use reaxff_puremd
 
         implicit none
 
@@ -109,11 +109,13 @@ program driver
 #define stderr 0
 #endif
 
+        integer, parameter :: max_sim_steps = 3
+
         character(len=1024), dimension(:), allocatable :: args
         character(len=1024) :: filename
         integer :: num_args, ix, num_atoms
         integer (c_int) :: num_qm_atoms, num_mm_atoms
-        real (c_double) :: sim_box_info(6), e_tot
+        real (c_double) :: sim_box_info(6), e_total
         real (c_double), dimension(:), allocatable :: qm_pos, qm_q, qm_f, mm_pos_q, mm_f
         character(len=5), dimension(:), allocatable :: qm_types, mm_types
         integer (c_int), dimension(:), allocatable :: qm_types_map, mm_types_map
@@ -180,9 +182,13 @@ program driver
         endif
         end do
 
-        call get_qc_forces( 100, 0, sim_box_info, num_qm_atoms, qm_pos, &
-                qm_types_map, qm_q, num_mm_atoms, mm_pos_q, mm_types_map, &
-                e_tot, qm_f, mm_f )
+        do ix = 1, max_sim_steps
+                call get_reaxff_puremd_forces( max_sim_steps, ix, sim_box_info, &
+                        num_qm_atoms, qm_pos, qm_types_map, qm_q, num_mm_atoms, &
+                        mm_pos_q, mm_types_map, e_total, qm_f, mm_f )
+
+                write (stdout, fmt=75) 'Sim. Step:', ix, 'Total energy:', e_total
+        end do
 
         deallocate(args)
         deallocate(qm_types)
@@ -194,4 +200,6 @@ program driver
         deallocate(mm_types_map)
         deallocate(mm_pos_q)
         deallocate(mm_f)
+
+        75 format (A10, 1X, I3, 1X, A13, 1X, ES24.15)
 end program driver

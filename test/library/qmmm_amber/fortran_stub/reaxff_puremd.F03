@@ -1,5 +1,5 @@
 ! module for interfacing with PuReMD code (ReaxFF+EEM in QM/MM mode)
-module puremd
+module reaxff_puremd
         implicit none
 
         interface
@@ -112,7 +112,7 @@ module puremd
         end interface
 
 contains
-        subroutine get_qc_forces( itermax, nstep, sim_box_info, num_qm_atoms, &
+        subroutine get_reaxff_puremd_forces( itermax, nstep, sim_box_info, num_qm_atoms, &
                         qm_pos, qm_types, qm_q, num_mm_atoms, mm_pos_q, &
                         mm_types, e_total, qm_f, mm_f )
                 use, intrinsic :: iso_c_binding
@@ -305,9 +305,10 @@ contains
                                 c_loc(e_total), c_null_ptr, c_null_ptr, c_null_ptr )
                         if ( ret /= 0_c_int ) stop "ERROR: get_system_info"
                 end if
-                if (nstep > itermax) then
+
+                if (nstep >= itermax) then
                         ret = cleanup( handle )
                         if ( ret /= 0_c_int ) stop "ERROR: cleanup"
                 end if
-        end subroutine get_qc_forces
-end module puremd
+        end subroutine get_reaxff_puremd_forces
+end module reaxff_puremd
