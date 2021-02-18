@@ -84,6 +84,8 @@
 #endif
 /* aggregate atomic forces using atomic operations */
 #define CUDA_ACCUM_FORCE_ATOMIC
+/* aggregate atomic energies using atomic operations */
+#define CUDA_ACCUM_ENERGY_ATOMIC
 
 /* disable assertions if NOT compiling with debug support --
  * the definition (or lack thereof) controls how the assert macro is defined */
@@ -131,7 +133,7 @@
 
 #if defined(USE_REF_FORTRAN_REAXFF_CONSTANTS)
   /* transcendental constant pi */
-  #define PI (3.14159265)
+//  #define PI (3.14159265)
   /* unit conversion from ??? to kcal / mol */
   #define C_ELE (332.0638)
   /* Boltzmann constant, AMU * A^2 / (ps^2 * K) */

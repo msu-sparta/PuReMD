@@ -69,7 +69,7 @@ contains
                                         ! Amber would set instead in real QM/MM simulation
                                         read (line, '(30x,3f10.5,1x,a5,6x,f10.5)', end=40, err=40) &
                                                 mm_pos_q(4*nmm+1), mm_pos_q(4*nmm+2), mm_pos_q(4*nmm+3), &
-                                                mm_types(nmm+1), mm_pos_q(4*nqm+4)
+                                                mm_types(nmm+1), mm_pos_q(4*nmm+4)
 
                                         nmm = nmm + 1
                                 endif
@@ -109,7 +109,7 @@ program driver
 #define stderr 0
 #endif
 
-        integer, parameter :: max_sim_steps = 3
+        integer, parameter :: max_sim_steps = 0
 
         character(len=1024), dimension(:), allocatable :: args
         character(len=1024) :: filename
@@ -182,12 +182,20 @@ program driver
         endif
         end do
 
-        do ix = 1, max_sim_steps
-                call get_reaxff_puremd_forces( max_sim_steps, ix, sim_box_info, &
-                        num_qm_atoms, qm_pos, qm_types_map, qm_q, num_mm_atoms, &
-                        mm_pos_q, mm_types_map, e_total, qm_f, mm_f )
+        call get_reaxff_puremd_forces( max_sim_steps, 0, sim_box_info, &
+                num_qm_atoms, qm_pos, qm_types_map, qm_q, num_mm_atoms, &
+                mm_pos_q, mm_types_map, e_total, qm_f, mm_f )
 
-                write (stdout, fmt=75) 'Sim. Step:', ix, 'Total energy:', e_total
+        write (stdout, fmt=75) 'Total energy:', e_total
+        write (stdout, *)
+        write (stdout, fmt=79) 'i', 'F_x', 'F_y', 'F_z', 'Q'
+        do ix = 1, num_qm_atoms
+                write (stdout, fmt=80) ix, qm_f(3 * (ix - 1) + 1), &
+                        qm_f(3 * (ix - 1) + 2), qm_f(3 * (ix - 1) + 3), qm_q(ix)
+        end do
+        do ix = 1, num_mm_atoms
+                write (stdout, fmt=80) ix + num_qm_atoms, mm_f(3 * (ix - 1) + 1), &
+                        mm_f(3 * (ix - 1) + 2), mm_f(3 * (ix - 1) + 3), mm_pos_q(4 * (ix - 1) + 3)
         end do
 
         deallocate(args)
@@ -201,5 +209,7 @@ program driver
         deallocate(mm_pos_q)
         deallocate(mm_f)
 
-        75 format (A10, 1X, I3, 1X, A13, 1X, ES24.15)
+        75 format (A13, 1X, F24.15)
+        79 format (A6, '|', A24, '|', A24, '|', A24, '|', A24)
+        80 format (I6, 1X, F24.15, 1X, F24.15, 1X, F24.15, 1X, F24.15)
 end program driver

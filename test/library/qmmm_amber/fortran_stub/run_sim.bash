@@ -7,5 +7,6 @@ PROG="./driver"
 BGF_FILE="../AVE/fort.3"
 NUM_QM_ATOMS="14"
 NUM_MM_ATOMS="759"
+LOG_FILE="forces_charges.txt"
 
-"${PROG}" "${BGF_FILE}" "${NUM_QM_ATOMS}" "${NUM_MM_ATOMS}"
+"${PROG}" "${BGF_FILE}" "${NUM_QM_ATOMS}" "${NUM_MM_ATOMS}" > "${LOG_FILE}"

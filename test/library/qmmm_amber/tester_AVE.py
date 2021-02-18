@@ -363,7 +363,7 @@ if __name__ == '__main__':
     setup_qmmm = lib.setup_qmmm
     setup_qmmm.argtypes = [c_int, POINTER(c_int), POINTER(c_double),
             c_int, POINTER(c_int), POINTER(c_double), POINTER(c_double),
-            POINTER(c_double), c_char_p, c_char_p]
+            c_char_p, c_char_p]
     setup_qmmm.restype = c_void_p
 
     simulate = lib.simulate
@@ -436,11 +436,16 @@ if __name__ == '__main__':
     qm_types = (c_int * num_qm_atoms)(*types[0:num_qm_atoms])
     qm_p = (c_double * (3 * num_qm_atoms))(*p[0:(3 * num_qm_atoms)])
     mm_types = (c_int * num_mm_atoms)(*types[num_qm_atoms:])
-    mm_p = (c_double * (3 * num_mm_atoms))(*p[(3 * num_qm_atoms):])
-    mm_q = (c_double * num_mm_atoms)(*q[num_qm_atoms:])
+    p_q = []
+    for i in range(num_mm_atoms):
+        p_q.append(p[3 * (num_qm_atoms + i)])
+        p_q.append(p[3 * (num_qm_atoms + i) + 1])
+        p_q.append(p[3 * (num_qm_atoms + i) + 2])
+        p_q.append(q[num_qm_atoms + i])
+    mm_p_q = (c_double * (4 * num_mm_atoms))(*p_q)
 
     handle = setup_qmmm(c_int(num_qm_atoms), qm_types, qm_p,
-            c_int(num_mm_atoms), mm_types, mm_p, mm_q, sim_box_info,
+            c_int(num_mm_atoms), mm_types, mm_p_q, sim_box_info,
             b"AVE/ffield", None)
 
     d = {

@@ -213,7 +213,7 @@ contains
 
                         ! 0.001 threshold for valence angle interactions
                         keyword = "thb_cutoff" // char(0)
-                        values = "0.001" // char(0)
+                        values = "0.005" // char(0)
                         ret = set_control_parameter( handle, c_loc(keyword), c_loc(values) )
                         if ( ret /= 0_c_int ) stop "ERROR: set_control_parameter"
 
