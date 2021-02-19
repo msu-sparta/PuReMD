@@ -261,7 +261,7 @@ CUDA_GLOBAL void k_init_distance( reax_atom *my_atoms, reax_list far_nbr_list, i
  * in the far neighbors list if it's a NOT re-neighboring step */
 CUDA_GLOBAL void k_init_distance_opt( reax_atom *my_atoms, reax_list far_nbr_list, int N )
 {
-    int j, pj, start_i, end_i, thread_id, warp_id, lane_id, itr;
+    int j, pj, start_i, end_i, thread_id, warp_id, lane_id;
     rvec x_i;
 
     thread_id = blockIdx.x * blockDim.x + threadIdx.x;
@@ -278,7 +278,7 @@ CUDA_GLOBAL void k_init_distance_opt( reax_atom *my_atoms, reax_list far_nbr_lis
     rvec_Copy( x_i, my_atoms[warp_id].x );
 
     /* update distance and displacement vector between atoms i and j (i-j) */
-    for ( itr = 0, pj = start_i + lane_id; itr < (end_i - start_i + 0x0000001F) >> 5; ++itr )
+    for ( pj = start_i + lane_id; pj < end_i; pj += warpSize )
     {
         j = far_nbr_list.far_nbr_list.nbr[pj];
 
@@ -295,8 +295,6 @@ CUDA_GLOBAL void k_init_distance_opt( reax_atom *my_atoms, reax_list far_nbr_lis
             far_nbr_list.far_nbr_list.dvec[pj][2] = x_i[2] - my_atoms[j].x[2];
         }
         far_nbr_list.far_nbr_list.d[pj] = rvec_Norm( far_nbr_list.far_nbr_list.dvec[pj] );
-
-        pj += warpSize;
     }
 }
 
