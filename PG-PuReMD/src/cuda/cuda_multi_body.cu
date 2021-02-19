@@ -30,16 +30,13 @@
 CUDA_GLOBAL void Cuda_Atom_Energy_Part1( reax_atom *my_atoms, global_parameters gp, 
         single_body_parameters *sbp, two_body_parameters *tbp, 
         storage workspace, reax_list bond_list, int n, int num_atom_types,
-        real *e_lp_g, real *e_ov_g, real *e_un_g )
+        real *data_e_lp, real *dat_e_ov, real *data_e_un )
 {
     int i, j, pj, type_i, type_j;
     real Delta_lpcorr, dfvl;
-    real expvd2, inv_expvd2, dElp, CElp, DlpVi;
-    real Di, vov3, deahu2dbo, deahu2dsbo;
-    real CEover1, CEover2, CEover3, CEover4;
-#if defined(CUDA_ACCUM_ENERGY_ATOMIC)
-    real e_lp_l;
-#endif
+    real e_lp, expvd2, inv_expvd2, dElp, CElp, DlpVi;
+    real e_lph, Di, vov3, deahu2dbo, deahu2dsbo;
+    real e_ov, CEover1, CEover2, CEover3, CEover4;
     real exp_ovun1, exp_ovun2, sum_ovun1, sum_ovun2;
     real exp_ovun2n, exp_ovun6, exp_ovun8;
     real inv_exp_ovun1, inv_exp_ovun2, inv_exp_ovun2n, inv_exp_ovun8;
@@ -74,17 +71,22 @@ CUDA_GLOBAL void Cuda_Atom_Energy_Part1( reax_atom *my_atoms, global_parameters 
     inv_expvd2 = 1.0 / (1.0 + expvd2 );
 
     /* calculate the energy */
-#if !defined(CUDA_ACCUM_ENERGY_ATOMIC)
-    e_lp_g[i] += p_lp2 * workspace.Delta_lp[i] * inv_expvd2;
-#else
-    e_lp_l = p_lp2 * workspace.Delta_lp[i] * inv_expvd2;
-#endif
+    e_lp = p_lp2 * workspace.Delta_lp[i] * inv_expvd2;
+    data_e_lp[i] += e_lp;
 
     dElp = p_lp2 * inv_expvd2 + 75.0 * p_lp2 * workspace.Delta_lp[i]
         * expvd2 * SQR(inv_expvd2);
     CElp = dElp * workspace.dDelta_lp[i];
 
     workspace.CdDelta[i] += CElp;  // lp - 1st term  
+
+#if defined(TEST_ENERGY)
+        fprintf( out_control->elp, "%23.15e%23.15e%23.15e%23.15e\n",
+                 p_lp2, workspace.Delta_lp_temp[i], expvd2, dElp );
+    fprintf( out_control->elp, "%6d%12.4f%12.4f%12.4f\n",
+            system->my_atoms[i].orig_id, workspace.nlp[i], 
+            e_lp, data->my_en.e_lp );
+#endif
 
 #if defined(TEST_FORCES)
     Add_dDelta( system, lists, i, CElp, workspace.f_lp );  // lp - 1st term
@@ -113,11 +115,8 @@ CUDA_GLOBAL void Cuda_Atom_Energy_Part1( reax_atom *my_atoms, global_parameters 
 
                     if ( vov3 > 3.0 )
                     {
-#if !defined(CUDA_ACCUM_ENERGY_ATOMIC)
-                        e_lp_g[i] += p_lp3 * SQR( vov3 - 3.0 );
-#else
-                        e_lp_l += p_lp3 * SQR( vov3 - 3.0 );
-#endif
+                        e_lph = p_lp3 * SQR( vov3 - 3.0 );
+                        data_e_lp[i] += e_lph;
 
                         deahu2dbo = 2.0 * p_lp3 * (vov3 - 3.0);
                         deahu2dsbo = 2.0 * p_lp3 * (vov3 - 3.0)
@@ -125,18 +124,25 @@ CUDA_GLOBAL void Cuda_Atom_Energy_Part1( reax_atom *my_atoms, global_parameters 
 
                         bo_ij->Cdbo += deahu2dbo;
                         workspace.CdDelta[i] += deahu2dsbo;
+
+#if defined(TEST_ENERGY)
+                        fprintf( out_control->elp,"C2cor%6d%6d%12.6f%12.6f%12.6f\n",
+                                system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
+                                e_lph, deahu2dbo, deahu2dsbo );
+#endif
+
+#if defined(TEST_FORCES)
+                        Add_dBO( system, lists, i, pj, deahu2dbo, workspace.f_lp );
+                        Add_dDelta( system, lists, i, deahu2dsbo, workspace.f_lp );
+#endif
                     }
                 }    
             }
         }
     }
 
-#if defined(CUDA_ACCUM_ENERGY_ATOMIC)
-    atomicAdd( (double *) e_lp_g, (double) e_lp_l );
-#endif
-
     /* over-coordination energy */
-    if ( sbp_i->mass > 21.0 ) 
+    if( sbp_i->mass > 21.0 ) 
     {
         dfvl = 0.0;
     }
@@ -173,11 +179,8 @@ CUDA_GLOBAL void Cuda_Atom_Energy_Part1( reax_atom *my_atoms, global_parameters 
     DlpVi = 1.0 / (Delta_lpcorr + sbp_i->valency + 1.0e-8);
     CEover1 = Delta_lpcorr * DlpVi * inv_exp_ovun2;
 
-#if !defined(CUDA_ACCUM_ENERGY_ATOMIC)
-    e_ov_g[i] += sum_ovun1 * CEover1;
-#else
-    atomicAdd( (double *) e_ov_g, (double) (sum_ovun1 * CEover1) );
-#endif
+    e_ov = sum_ovun1 * CEover1;
+    dat_e_ov[i] += e_ov;
 
     CEover2 = sum_ovun1 * DlpVi * inv_exp_ovun2 * (1.0 - Delta_lpcorr
             * ( DlpVi + p_ovun2 * exp_ovun2 * inv_exp_ovun2 ));
@@ -198,11 +201,7 @@ CUDA_GLOBAL void Cuda_Atom_Energy_Part1( reax_atom *my_atoms, global_parameters 
     inv_exp_ovun8 = 1.0 / (1.0 + exp_ovun8);
 
     e_un = -p_ovun5 * (1.0 - exp_ovun6) * inv_exp_ovun2n * inv_exp_ovun8;
-#if !defined(CUDA_ACCUM_ENERGY_ATOMIC)
-    e_un_g[i] += e_un;
-#else
-    atomicAdd( (double *) e_un_g, (double) e_un );
-#endif
+    data_e_un[i] += e_un;
 
     CEunder1 = inv_exp_ovun2n * ( p_ovun5 * p_ovun6 * exp_ovun6 * inv_exp_ovun8
             + p_ovun2 * e_un * exp_ovun2n );
@@ -303,6 +302,23 @@ CUDA_GLOBAL void Cuda_Atom_Energy_Part1( reax_atom *my_atoms, global_parameters 
                 workspace.f_un, workspace.f_un ); // UnCoor - 2b
 #endif
     }
+
+#if defined(TEST_ENERGY)
+    //fprintf( out_control->elp, "%6d%24.15e%24.15e%24.15e\n",
+    //fprintf( out_control->elp, "%6d%12.4f%12.4f%12.4f\n",
+    //     system->my_atoms[i].orig_id, workspace.nlp[i], 
+    //     e_lp, data->my_en.e_lp );
+
+    //fprintf( out_control->eov, "%6d%24.15e%24.15e\n", 
+    fprintf( out_control->eov, "%6d%12.4f%12.4f\n", 
+            system->my_atoms[i].orig_id, 
+            e_ov, data->my_en.e_ov + data->my_en.e_un );
+
+    //fprintf( out_control->eun, "%6d%24.15e%24.15e\n", 
+    fprintf( out_control->eun, "%6d%12.4f%12.4f\n", 
+            system->my_atoms[i].orig_id, 
+            e_un, data->my_en.e_ov + data->my_en.e_un );
+#endif
 }
 
 
