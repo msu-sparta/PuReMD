@@ -223,7 +223,6 @@ CUDA_GLOBAL void k_init_distance( reax_atom *my_atoms, reax_list far_nbr_list, i
 {
     int i, j, pj, start_i, end_i;
     rvec x_i;
-    reax_atom *atom_j;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -240,19 +239,18 @@ CUDA_GLOBAL void k_init_distance( reax_atom *my_atoms, reax_list far_nbr_list, i
     for ( pj = start_i; pj < end_i; ++pj )
     {
         j = far_nbr_list.far_nbr_list.nbr[pj];
-        atom_j = &my_atoms[j];
 
         if ( i < j )
         {
-            far_nbr_list.far_nbr_list.dvec[pj][0] = atom_j->x[0] - x_i[0];
-            far_nbr_list.far_nbr_list.dvec[pj][1] = atom_j->x[1] - x_i[1];
-            far_nbr_list.far_nbr_list.dvec[pj][2] = atom_j->x[2] - x_i[2];
+            far_nbr_list.far_nbr_list.dvec[pj][0] = my_atoms[j].x[0] - x_i[0];
+            far_nbr_list.far_nbr_list.dvec[pj][1] = my_atoms[j].x[1] - x_i[1];
+            far_nbr_list.far_nbr_list.dvec[pj][2] = my_atoms[j].x[2] - x_i[2];
         }
         else
         {
-            far_nbr_list.far_nbr_list.dvec[pj][0] = x_i[0] - atom_j->x[0];
-            far_nbr_list.far_nbr_list.dvec[pj][1] = x_i[1] - atom_j->x[1];
-            far_nbr_list.far_nbr_list.dvec[pj][2] = x_i[2] - atom_j->x[2];
+            far_nbr_list.far_nbr_list.dvec[pj][0] = x_i[0] - my_atoms[j].x[0];
+            far_nbr_list.far_nbr_list.dvec[pj][1] = x_i[1] - my_atoms[j].x[1];
+            far_nbr_list.far_nbr_list.dvec[pj][2] = x_i[2] - my_atoms[j].x[2];
         }
         far_nbr_list.far_nbr_list.d[pj] = rvec_Norm( far_nbr_list.far_nbr_list.dvec[pj] );
     }
@@ -263,7 +261,7 @@ CUDA_GLOBAL void k_init_distance( reax_atom *my_atoms, reax_list far_nbr_list, i
  * in the far neighbors list if it's a NOT re-neighboring step */
 CUDA_GLOBAL void k_init_distance_opt( reax_atom *my_atoms, reax_list far_nbr_list, int N )
 {
-    int j, pj, start_i, end_i, thread_id, warp_id, lane_id;
+    int j, pj, start_i, end_i, thread_id, warp_id, lane_id, itr;
     __shared__ rvec x_i;
 
     thread_id = blockIdx.x * blockDim.x + threadIdx.x;
@@ -284,7 +282,7 @@ CUDA_GLOBAL void k_init_distance_opt( reax_atom *my_atoms, reax_list far_nbr_lis
     __syncthreads( );
 
     /* update distance and displacement vector between atoms i and j (i-j) */
-    for ( pj = start_i + lane_id; pj < end_i; pj += 32 )
+    for ( itr = 0, pj = start_i + lane_id; itr < (end_i - start_i + 0x0000001F) >> 5; ++itr )
     {
         j = far_nbr_list.far_nbr_list.nbr[pj];
 
@@ -301,6 +299,8 @@ CUDA_GLOBAL void k_init_distance_opt( reax_atom *my_atoms, reax_list far_nbr_lis
             far_nbr_list.far_nbr_list.dvec[pj][2] = x_i[2] - my_atoms[j].x[2];
         }
         far_nbr_list.far_nbr_list.d[pj] = rvec_Norm( far_nbr_list.far_nbr_list.dvec[pj] );
+
+        pj += warpSize;
     }
 }
 
@@ -694,7 +694,7 @@ CUDA_GLOBAL void k_init_bonds( reax_atom *my_atoms, single_body_parameters *sbp,
                 hbond_list.hbond_list[ihb_top].scl = -1;
                 hbond_list.hbond_list[ihb_top].ptr = pj;
 
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
                 hbond_list.hbond_list[ihb_top].sym_index = -1;
                 rvec_MakeZero( hbond_list.hbond_list[ihb_top].hb_f );
 #endif
@@ -734,7 +734,7 @@ CUDA_GLOBAL void k_init_bonds( reax_atom *my_atoms, single_body_parameters *sbp,
                         }
                         hbond_list.hbond_list[ihb_top].ptr = pj;
 
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
                         hbond_list.hbond_list[ihb_top].sym_index = -1;
                         rvec_MakeZero( hbond_list.hbond_list[ihb_top].hb_f );
 #endif
@@ -750,7 +750,7 @@ CUDA_GLOBAL void k_init_bonds( reax_atom *my_atoms, single_body_parameters *sbp,
                         hbond_list.hbond_list[ihb_top].scl = -1;
                         hbond_list.hbond_list[ihb_top].ptr = pj;
 
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
                         hbond_list.hbond_list[ihb_top].sym_index = -1;
                         rvec_MakeZero( hbond_list.hbond_list[ihb_top].hb_f );
 #endif
@@ -1113,7 +1113,7 @@ CUDA_GLOBAL void k_update_sym_dbond_indices( reax_list bond_list, int N )
 }
 
 
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
 CUDA_GLOBAL void k_update_sym_hbond_indices_opt( reax_atom *my_atoms,
         reax_list hbond_list, int N )
 {
@@ -1125,7 +1125,6 @@ CUDA_GLOBAL void k_update_sym_hbond_indices_opt( reax_atom *my_atoms,
 
     thread_id = blockIdx.x * blockDim.x + threadIdx.x;
     warp_id = thread_id >> 5;
-    lane_id = thread_id & 0x0000001F; 
 
     if ( warp_id > N )
     {
@@ -1133,6 +1132,7 @@ CUDA_GLOBAL void k_update_sym_hbond_indices_opt( reax_atom *my_atoms,
     }
 
     i = warp_id;
+    lane_id = thread_id & 0x0000001F; 
     start = Start_Index( my_atoms[i].Hindex, &hbond_list );
     end = End_Index( my_atoms[i].Hindex, &hbond_list );
     j = start + lane_id;
@@ -1200,7 +1200,7 @@ CUDA_GLOBAL void k_print_hbonds( reax_atom *my_atoms, reax_list hbond_list, int 
         k = hbond_list.hbond_list[pj].nbr;
         hbond_jk = &hbond_list.hbond_list[pj];
 
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
         printf( "p%03d, step %05d: %8d: %8d, %24.15f, %24.15f, %24.15f\n",
                 rank, step, my_atoms[i].Hindex, k,
                 hbond_jk->hb_f[0],
@@ -1564,14 +1564,13 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
 
     if ( renbr == FALSE && dist_done == FALSE )
     {
+        blocks = system->N * 32 / DEF_BLOCK_SIZE
+            + (system->N * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
-//        blocks = system->N * 32 / DEF_BLOCK_SIZE
-//            + (system->N * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-
-        k_init_distance <<< control->blocks_n, control->block_size_n >>>
-            ( system->d_my_atoms, *(lists[FAR_NBRS]), system->N );
-//        k_init_distance_opt <<< blocks, DEF_BLOCK_SIZE >>>
+//        k_init_distance <<< control->blocks_n, control->block_size_n >>>
 //            ( system->d_my_atoms, *(lists[FAR_NBRS]), system->N );
+        k_init_distance_opt <<< blocks, DEF_BLOCK_SIZE >>>
+            ( system->d_my_atoms, *(lists[FAR_NBRS]), system->N );
         cudaCheckError( );
 
         dist_done = TRUE;
@@ -1713,7 +1712,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
             ( *(lists[BONDS]), system->N );
         cudaCheckError( );
 
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
         if ( control->hbond_cut > 0.0 && system->numH > 0 )
         {
             blocks = system->N * 32 / DEF_BLOCK_SIZE
@@ -1769,10 +1768,8 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
     static int compute_bonded_part1 = FALSE;
     real *spad;
     rvec *rvec_spad;
-#if defined(DEBUG_FOCUS)
-    real t_start, t_elapsed;
-#endif
 
+#if !defined(CUDA_ACCUM_ATOMIC)
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
             MAX( sizeof(real) * system->n,
                 MAX( sizeof(real) * 3 * system->n,
@@ -1781,6 +1778,7 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
                             (sizeof(real) + sizeof(rvec)) * system->n + sizeof(rvec) * control->blocks )))),
             "Cuda_Compute_Bonded_Forces::workspace->scratch" );
     spad = (real *) workspace->scratch;
+#endif
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
     ret = SUCCESS;
@@ -1810,55 +1808,76 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
         cudaCheckError( );
 
         /* 2. Bond Energy Interactions */
-        cuda_memset( spad, 0, sizeof(real) * system->n,
-                "Compute_Bonded_Forces::spad" );
+#if defined(CUDA_ACCUM_ATOMIC)
+        cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_bond,
+                0, sizeof(real), "Cuda_Compute_Bonded_Forces::e_bond" );
+#endif
 
         Cuda_Bonds <<< control->blocks, control->block_size, sizeof(real) * control->block_size >>>
             ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp, system->reax_param.d_tbp,
               *(workspace->d_workspace), *(lists[BONDS]), 
-              system->n, system->reax_param.num_atom_types, spad );
+              system->n, system->reax_param.num_atom_types,
+#if !defined(CUDA_ACCUM_ATOMIC)
+              spad
+#else
+              &((simulation_data *)data->d_simulation_data)->my_en.e_bond
+#endif
+            );
         cudaCheckError( );
 
-        /* reduction for E_BE */
+#if !defined(CUDA_ACCUM_ATOMIC)
         if ( update_energy == TRUE )
         {
             Cuda_Reduction_Sum( spad, &((simulation_data *)data->d_simulation_data)->my_en.e_bond,
                     system->n );
         }
+#endif
 
         /* 3. Atom Energy Interactions */
-        cuda_memset( spad, 0, sizeof(real) * 3 * system->n,
-                "Compute_Bonded_Forces::spad" );
+#if defined(CUDA_ACCUM_ATOMIC)
+        cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_lp,
+                0, sizeof(real), "Cuda_Compute_Bonded_Forces::e_lp" );
+        cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_ov,
+                0, sizeof(real), "Cuda_Compute_Bonded_Forces::e_ov" );
+        cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_un,
+                0, sizeof(real), "Cuda_Compute_Bonded_Forces::e_un" );
+#endif
 
         Cuda_Atom_Energy_Part1 <<< control->blocks, control->block_size >>>
             ( system->d_my_atoms, system->reax_param.d_gp,
               system->reax_param.d_sbp, system->reax_param.d_tbp, *(workspace->d_workspace),
               *(lists[BONDS]), system->n, system->reax_param.num_atom_types,
-              spad, &spad[system->n], &spad[2 * system->n] );
+#if !defined(CUDA_ACCUM_ATOMIC)
+              spad, &spad[system->n], &spad[2 * system->n]
+#else
+              &((simulation_data *)data->d_simulation_data)->my_en.e_lp,
+              &((simulation_data *)data->d_simulation_data)->my_en.e_ov,
+              &((simulation_data *)data->d_simulation_data)->my_en.e_un
+#endif
+             );
         cudaCheckError( );
 
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
         Cuda_Atom_Energy_Part2 <<< control->blocks, control->block_size >>>
             ( *(lists[BONDS]), *(workspace->d_workspace), system->n );
         cudaCheckError( );
 #endif
 
+#if !defined(CUDA_ACCUM_ATOMIC)
         if ( update_energy == TRUE )
         {
-            /* reduction for E_Lp */
             Cuda_Reduction_Sum( spad, &((simulation_data *)data->d_simulation_data)->my_en.e_lp,
                     system->n );
 
-            /* reduction for E_Ov */
             Cuda_Reduction_Sum( &spad[system->n],
                     &((simulation_data *)data->d_simulation_data)->my_en.e_ov,
                     system->n );
 
-            /* reduction for E_Un */
             Cuda_Reduction_Sum( &spad[2 * system->n],
                     &((simulation_data *)data->d_simulation_data)->my_en.e_un,
                     system->n );
         }
+#endif
 
         compute_bonded_part1 = TRUE;
     }
@@ -1869,7 +1888,8 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
             "Cuda_Compute_Bonded_Forces::workspace->scratch" );
 
     thbody = (int *) workspace->scratch;
-    spad = (real *) workspace->scratch; /* in case scratch gets reallocated above, changing the pointer */
+    /* in case scratch gets reallocated above, reassign scratch pointer */
+    spad = (real *) workspace->scratch;
 
     ret = Cuda_Estimate_Storage_Three_Body( system, control, data, workspace,
             lists, thbody );
@@ -1878,32 +1898,45 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
     {
         Cuda_Init_Three_Body_Indices( thbody, system->total_thbodies_indices, lists );
 
-        cuda_memset( spad, 0,
-                (sizeof(real) * 3 + sizeof(rvec)) * system->N + sizeof(rvec) * control->blocks_n,
-                "Cuda_Compute_Bonded_Forces::spad" );
+#if defined(CUDA_ACCUM_ATOMIC)
+        cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_ang,
+                0, sizeof(real), "Cuda_Compute_Bonded_Forces::e_ang" );
+        cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_pen,
+                0, sizeof(real), "Cuda_Compute_Bonded_Forces::e_pen" );
+        cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_coa,
+                0, sizeof(real), "Cuda_Compute_Bonded_Forces::e_coa" );
+        cuda_memset( &((simulation_data *)data->d_simulation_data)->my_ext_press,
+                0, sizeof(rvec), "Cuda_Compute_Bonded_Forces::my_ext_press" );
+#endif
 
         Cuda_Valence_Angles_Part1 <<< control->blocks_n, control->block_size_n >>>
-            ( system->d_my_atoms, system->reax_param.d_gp, 
+            ( system->d_my_atoms, system->reax_param.d_gp,
               system->reax_param.d_sbp, system->reax_param.d_thbp, 
               (control_params *) control->d_control_params,
               *(workspace->d_workspace), *(lists[BONDS]), *(lists[THREE_BODIES]),
               system->n, system->N, system->reax_param.num_atom_types, 
-              spad, &spad[system->N], &spad[2 * system->N], (rvec *) (&spad[3 * system->N]) );
+#if !defined(CUDA_ACCUM_ATOMIC)
+              spad, &spad[system->N], &spad[2 * system->N], (rvec *) (&spad[3 * system->N])
+#else
+              &((simulation_data *)data->d_simulation_data)->my_en.e_ang,
+              &((simulation_data *)data->d_simulation_data)->my_en.e_pen,
+              &((simulation_data *)data->d_simulation_data)->my_en.e_coa,
+              &((simulation_data *)data->d_simulation_data)->my_ext_press
+#endif
+            );
         cudaCheckError( );
 
+#if !defined(CUDA_ACCUM_ATOMIC)
         if ( update_energy == TRUE )
         {
-            /* reduction for E_Ang */
             Cuda_Reduction_Sum( spad,
                     &((simulation_data *)data->d_simulation_data)->my_en.e_ang,
                     system->N );
 
-            /* reduction for E_Pen */
             Cuda_Reduction_Sum( &spad[system->N],
                     &((simulation_data *)data->d_simulation_data)->my_en.e_pen,
                     system->N );
 
-            /* reduction for E_Coa */
             Cuda_Reduction_Sum( &spad[2 * system->N],
                     &((simulation_data *)data->d_simulation_data)->my_en.e_coa,
                     system->N );
@@ -1913,7 +1946,6 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
         {
             rvec_spad = (rvec *) (&spad[3 * system->N]);
 
-            /* reduction for ext_pres */
             k_reduction_rvec <<< control->blocks_n, control->block_size_n,
                              sizeof(rvec) * (control->block_size_n / 32) >>>
                 ( rvec_spad, &rvec_spad[system->N], system->N );
@@ -1929,8 +1961,9 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
 //                    &((simulation_data *)data->d_simulation_data)->my_ext_press,
 //                    system->N );
         }
+#endif
 
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
         Cuda_Valence_Angles_Part2 <<< control->blocks_n, control->block_size_n >>>
             ( system->d_my_atoms, (control_params *) control->d_control_params,
               *(workspace->d_workspace), *(lists[BONDS]), system->N );
@@ -1938,25 +1971,37 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
 #endif
 
         /* 5. Torsion Angles Interactions */
-        cuda_memset( spad, 0, (sizeof(real) * 2 + sizeof(rvec)) * system->n + sizeof(rvec) * control->blocks,
-                "Cuda_Compute_Bonded_Forces::spad" );
+#if defined(CUDA_ACCUM_ATOMIC)
+        cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_tor,
+                0, sizeof(real), "Cuda_Compute_Bonded_Forces::e_tor" );
+        cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_con,
+                0, sizeof(real), "Cuda_Compute_Bonded_Forces::e_con" );
+        cuda_memset( &((simulation_data *)data->d_simulation_data)->my_ext_press,
+                0, sizeof(rvec), "Cuda_Compute_Bonded_Forces::my_ext_press" );
+#endif
 
         Cuda_Torsion_Angles_Part1 <<< control->blocks, control->block_size >>>
             ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_fbp,
               (control_params *) control->d_control_params, *(lists[BONDS]),
               *(lists[THREE_BODIES]), *(workspace->d_workspace), system->n,
               system->reax_param.num_atom_types, 
-              spad, &spad[system->n], (rvec *) (&spad[2 * system->n]) );
+#if !defined(CUDA_ACCUM_ATOMIC)
+              spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
+#else
+              &((simulation_data *)data->d_simulation_data)->my_en.e_tor,
+              &((simulation_data *)data->d_simulation_data)->my_en.e_con,
+              &((simulation_data *)data->d_simulation_data)->my_ext_press
+#endif
+            );
         cudaCheckError( );
 
+#if !defined(CUDA_ACCUM_ATOMIC)
         if ( update_energy == TRUE )
         {
-            /* reduction for E_Tor */
             Cuda_Reduction_Sum( spad,
                     &((simulation_data *)data->d_simulation_data)->my_en.e_tor,
                     system->n );
 
-            /* reduction for E_Con */
             Cuda_Reduction_Sum( &spad[system->n],
                     &((simulation_data *)data->d_simulation_data)->my_en.e_con,
                     system->n );
@@ -1966,7 +2011,6 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
         {
             rvec_spad = (rvec *) (&spad[2 * system->n]);
 
-            /* reduction for ext_pres */
             k_reduction_rvec <<< control->blocks, control->block_size,
                              sizeof(rvec) * (control->block_size / 32) >>>
                 ( rvec_spad, &rvec_spad[system->n], system->n );
@@ -1982,8 +2026,9 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
 //                    &((simulation_data *)data->d_simulation_data)->my_ext_press,
 //                    system->n );
         }
+#endif
 
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
         Cuda_Torsion_Angles_Part2 <<< control->blocks_n, control->block_size_n >>>
                 ( system->d_my_atoms, *(workspace->d_workspace), *(lists[BONDS]),
                   system->N );
@@ -1993,9 +2038,12 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
         /* 6. Hydrogen Bonds Interactions */
         if ( control->hbond_cut > 0.0 && system->numH > 0 )
         {
-            cuda_memset( spad, 0,
-                    (sizeof(real) + sizeof(rvec)) * system->n + sizeof(rvec) * control->blocks,
-                    "Cuda_Compute_Bonded_Forces::spad" );
+#if defined(CUDA_ACCUM_ATOMIC)
+            cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_hb,
+                    0, sizeof(real), "Cuda_Compute_Bonded_Forces::e_hb" );
+            cuda_memset( &((simulation_data *)data->d_simulation_data)->my_ext_press,
+                    0, sizeof(rvec), "Cuda_Compute_Bonded_Forces::my_ext_press" );
+#endif
 
 //            hbs = (system->n * HB_KER_THREADS_PER_ATOM / HB_BLOCK_SIZE) + 
 //                (((system->n * HB_KER_THREADS_PER_ATOM) % HB_BLOCK_SIZE) == 0 ? 0 : 1);
@@ -2009,12 +2057,18 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
                       *(workspace->d_workspace),
                       *(lists[FAR_NBRS]), *(lists[BONDS]), *(lists[HBONDS]),
                       system->n, system->reax_param.num_atom_types,
-                      spad, (rvec *) (&spad[system->n]), system->my_rank );
+#if !defined(CUDA_ACCUM_ATOMIC)
+                      spad, (rvec *) (&spad[system->n]),
+#else
+                      &((simulation_data *)data->d_simulation_data)->my_en.e_hb,
+                      &((simulation_data *)data->d_simulation_data)->my_ext_press,
+#endif
+                      system->my_rank );
             cudaCheckError( );
 
+#if !defined(CUDA_ACCUM_ATOMIC)
             if ( update_energy == TRUE )
             {
-                /* reduction for E_HB */
                 Cuda_Reduction_Sum( spad,
                         &((simulation_data *)data->d_simulation_data)->my_en.e_hb,
                         system->n );
@@ -2024,7 +2078,6 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
             {
                 rvec_spad = (rvec *) (&spad[system->n]);
 
-                /* reduction for ext_pres */
                 k_reduction_rvec <<< control->blocks, control->block_size,
                                  sizeof(rvec) * (control->block_size / 32) >>>
                     ( rvec_spad, &rvec_spad[system->n], system->n );
@@ -2040,8 +2093,9 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
 //                        &((simulation_data *)data->d_simulation_data)->my_ext_press,
 //                        system->n );
             }
+#endif
 
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
             Cuda_Hydrogen_Bonds_Part2 <<< control->blocks, control->block_size >>>
                 ( system->d_my_atoms, *(workspace->d_workspace),
                   *(lists[BONDS]), system->n );

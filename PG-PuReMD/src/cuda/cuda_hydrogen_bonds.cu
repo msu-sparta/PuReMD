@@ -38,7 +38,7 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1( reax_atom *my_atoms, single_body_par
         hbond_parameters *d_hbp, global_parameters gp,
         control_params *control, storage workspace,
         reax_list far_nbr_list, reax_list bond_list, reax_list hbond_list, int n, 
-        int num_atom_types, real *data_e_hb, rvec *data_ext_press, int rank )
+        int num_atom_types, real *e_hb_g, rvec *ext_press_g, int rank )
 {
     int i, j, k, pi, pk;
     int type_i, type_j, type_k;
@@ -47,9 +47,12 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1( reax_atom *my_atoms, single_body_par
     int itr, top;
     ivec rel_jk;
     real r_ij, r_jk, theta, cos_theta, sin_xhz4, cos_xhz1, sin_theta2;
-    real e_hb, exp_hb2, exp_hb3, CEhb1, CEhb2, CEhb3;
+    real e_hb, e_hb_l, exp_hb2, exp_hb3, CEhb1, CEhb2, CEhb3;
     rvec dcos_theta_di, dcos_theta_dj, dcos_theta_dk;
-    rvec dvec_jk, force, ext_press;
+    rvec dvec_jk, temp, ext_press_l;
+#if defined(CUDA_ACCUM_ATOMIC)
+    rvec f_i_l, f_j_l, f_k_l;
+#endif
     hbond_parameters *hbp;
     bond_order_data *bo_ij;
     int nbr_jk;
@@ -62,6 +65,14 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1( reax_atom *my_atoms, single_body_par
     {
         return;
     }
+
+    e_hb_l = 0.0;
+    rvec_MakeZero( ext_press_l );
+#if defined(CUDA_ACCUM_ATOMIC)
+    rvec_MakeZero( f_i_l );
+    rvec_MakeZero( f_j_l );
+    rvec_MakeZero( f_k_l );
+#endif
 
     /* discover the Hydrogen bonds between i-j-k triplets.
      * here j is H atom and there has to be some bond between i and j.
@@ -115,7 +126,7 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1( reax_atom *my_atoms, single_body_par
             rvec_Scale( dvec_jk, hbond_list.hbond_list[pk].scl,
                     far_nbr_list.far_nbr_list.dvec[nbr_jk] );
 
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
             rvec_MakeZero( phbond_jk->hb_f );
 #endif
 
@@ -150,7 +161,7 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1( reax_atom *my_atoms, single_body_par
                                 + r_jk / hbp->r0_hb - 2.0 ) );
 
                     e_hb = hbp->p_hb1 * (1.0 - exp_hb2) * exp_hb3 * sin_xhz4;
-                    data_e_hb[j] += e_hb;
+                    e_hb_l += e_hb;
 
                     CEhb1 = hbp->p_hb1 * hbp->p_hb2 * exp_hb2 * exp_hb3 * sin_xhz4;
                     CEhb2 = -0.5 * hbp->p_hb1 * (1.0 - exp_hb2) * exp_hb3 * cos_xhz1;
@@ -163,116 +174,80 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1( reax_atom *my_atoms, single_body_par
 
                     if ( control->virial == 0 )
                     {
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
                         /* dcos terms */
                         rvec_ScaledAdd( pbond_ij->hb_f, CEhb2, dcos_theta_di ); 
-
                         rvec_ScaledAdd( workspace.f[j], CEhb2, dcos_theta_dj );
-
                         rvec_ScaledAdd( phbond_jk->hb_f, CEhb2, dcos_theta_dk );
 
                         /* dr terms */
                         rvec_ScaledAdd( workspace.f[j], -1.0 * CEhb3 / r_jk, dvec_jk ); 
-
                         rvec_ScaledAdd( phbond_jk->hb_f, CEhb3 / r_jk, dvec_jk );
 #else
                         /* dcos terms */
-                        atomic_rvecScaledAdd( workspace.f[i], CEhb2, dcos_theta_di );
-
-                        atomic_rvecScaledAdd( workspace.f[j], CEhb2, dcos_theta_dj );
-
-                        atomic_rvecScaledAdd( workspace.f[k], CEhb2, dcos_theta_dk );
+                        rvec_ScaledAdd( f_i_l, CEhb2, dcos_theta_di );
+                        rvec_ScaledAdd( f_j_l, CEhb2, dcos_theta_dj );
+                        rvec_ScaledAdd( f_k_l, CEhb2, dcos_theta_dk );
 
                         /* dr terms */
-                        atomic_rvecScaledAdd( workspace.f[j], -1.0 * CEhb3 / r_jk, dvec_jk );
-
-                        atomic_rvecScaledAdd( workspace.f[k], CEhb3 / r_jk, dvec_jk );
+                        rvec_ScaledAdd( f_j_l, -1.0 * CEhb3 / r_jk, dvec_jk );
+                        rvec_ScaledAdd( f_k_l, CEhb3 / r_jk, dvec_jk );
 #endif
                     }
                     else
                     {
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
                         /* for pressure coupling, terms that are not related to bond order
                          * derivatives are added directly into pressure vector/tensor */
                         /* dcos terms */
-                        rvec_Scale( force, CEhb2, dcos_theta_di );
-                        rvec_Add( pbond_ij->hb_f, force );
-                        rvec_iMultiply( ext_press, pbond_ij->rel_box, force );
-                        rvec_ScaledAdd( data_ext_press[j], 1.0, ext_press );
+                        rvec_Scale( temp, CEhb2, dcos_theta_di );
+                        rvec_Add( pbond_ij->hb_f, temp );
+                        rvec_iMultiply( temp, pbond_ij->rel_box, temp );
+                        rvec_Add( ext_press_l, temp );
 
                         rvec_ScaledAdd( workspace.f[j], CEhb2, dcos_theta_dj );
 
                         ivec_Scale( rel_jk, hbond_list.hbond_list[pk].scl,
                                 far_nbr_list.far_nbr_list.rel_box[nbr_jk] );
-                        rvec_Scale( force, CEhb2, dcos_theta_dk );
-                        rvec_Add( phbond_jk->hb_f, force );
-                        rvec_iMultiply( ext_press, rel_jk, force );
-                        rvec_ScaledAdd( data_ext_press[j], 1.0, ext_press );
+                        rvec_Scale( temp, CEhb2, dcos_theta_dk );
+                        rvec_Add( phbond_jk->hb_f, temp );
+                        rvec_iMultiply( temp, rel_jk, temp );
+                        rvec_Add( ext_press_l, temp );
 
                         /* dr terms */
                         rvec_ScaledAdd( workspace.f[j], -1.0 * CEhb3 / r_jk, dvec_jk ); 
 
-                        rvec_Scale( force, CEhb3 / r_jk, dvec_jk );
-                        rvec_Add( phbond_jk->hb_f, force );
-                        rvec_iMultiply( ext_press, rel_jk, force );
-                        rvec_ScaledAdd( data_ext_press[j], 1.0, ext_press );
+                        rvec_Scale( temp, CEhb3 / r_jk, dvec_jk );
+                        rvec_Add( phbond_jk->hb_f, temp );
+                        rvec_iMultiply( temp, rel_jk, temp );
+                        rvec_Add( ext_press_l, temp );
 #else
                         /* for pressure coupling, terms that are not related to bond order
                          * derivatives are added directly into pressure vector/tensor */
                         /* dcos terms */
-                        rvec_Scale( force, CEhb2, dcos_theta_di );
-                        atomic_rvecAdd( workspace.f[i], force );
-                        rvec_iMultiply( ext_press, pbond_ij->rel_box, force );
-                        rvec_ScaledAdd( data_ext_press[j], 1.0, ext_press );
+                        rvec_Scale( temp, CEhb2, dcos_theta_di );
+                        rvec_Add( f_i_l, temp );
+                        rvec_iMultiply( temp, pbond_ij->rel_box, temp );
+                        rvec_Add( ext_press_l, temp );
 
-                        atomic_rvecScaledAdd( workspace.f[j], CEhb2, dcos_theta_dj );
+                        rvec_ScaledAdd( f_j_l, CEhb2, dcos_theta_dj );
 
                         ivec_Scale( rel_jk, hbond_list.hbond_list[pk].scl,
                                 far_nbr_list.far_nbr_list.rel_box[nbr_jk] );
-                        rvec_Scale( force, CEhb2, dcos_theta_dk );
-                        atomic_rvecAdd( workspace.f[k], force );
-                        rvec_iMultiply( ext_press, rel_jk, force );
-                        rvec_ScaledAdd( data_ext_press[j], 1.0, ext_press );
+                        rvec_Scale( temp, CEhb2, dcos_theta_dk );
+                        rvec_Add( f_k_l, temp );
+                        rvec_iMultiply( temp, rel_jk, temp );
+                        rvec_Add( ext_press_l, temp );
 
                         /* dr terms */
-                        atomic_rvecScaledAdd( workspace.f[j], -1.0 * CEhb3 / r_jk, dvec_jk ); 
+                        rvec_ScaledAdd( f_j_l, -1.0 * CEhb3 / r_jk, dvec_jk ); 
 
-                        rvec_Scale( force, CEhb3 / r_jk, dvec_jk );
-                        atomic_rvecAdd( workspace.f[k], force );
-                        rvec_iMultiply( ext_press, rel_jk, force );
-                        rvec_ScaledAdd( data_ext_press[j], 1.0, ext_press );
+                        rvec_Scale( temp, CEhb3 / r_jk, dvec_jk );
+                        rvec_Add( f_k_l, temp );
+                        rvec_iMultiply( temp, rel_jk, temp );
+                        rvec_Add( ext_press_l, temp );
 #endif
                     }
-
-#if defined(TEST_ENERGY)
-                    /* fprintf( out_control->ehb, 
-                       "%24.15e%24.15e%24.15e\n%24.15e%24.15e%24.15e\n%24.15e%24.15e%24.15e\n",
-                       dcos_theta_di[0], dcos_theta_di[1], dcos_theta_di[2], 
-                       dcos_theta_dj[0], dcos_theta_dj[1], dcos_theta_dj[2], 
-                       dcos_theta_dk[0], dcos_theta_dk[1], dcos_theta_dk[2]);
-                       fprintf( out_control->ehb, "%24.15e%24.15e%24.15e\n",
-                       CEhb1, CEhb2, CEhb3 ); */
-                    fprintf( out_control->ehb, 
-                            //"%6d%6d%6d%24.15e%24.15e%24.15e%24.15e%24.15e\n",
-                            "%6d%6d%6d%12.4f%12.4f%12.4f%12.4f%12.4f\n",
-                            system->my_atoms[i].orig_id, system->my_atoms[j].orig_id, 
-                            system->my_atoms[k].orig_id, 
-                            r_jk, theta, bo_ij->BO, e_hb, data->my_en.e_hb );       
-#endif
-
-#if defined(TEST_FORCES)
-                    /* dbo term */
-                    Add_dBO( system, lists, j, pi, CEhb1, workspace.f_hb );
-
-                    /* dcos terms */
-                    rvec_ScaledAdd( workspace.f_hb[i], CEhb2, dcos_theta_di );
-                    rvec_ScaledAdd( workspace.f_hb[j], CEhb2, dcos_theta_dj );
-                    rvec_ScaledAdd( workspace.f_hb[k], CEhb2, dcos_theta_dk );
-
-                    /* dr terms */
-                    rvec_ScaledAdd( workspace.f_hb[j], -1.0 * CEhb3 / r_jk, dvec_jk ); 
-                    rvec_ScaledAdd( workspace.f_hb[k], CEhb3 / r_jk, dvec_jk );
-#endif
                 }
             }
         }
@@ -282,6 +257,18 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1( reax_atom *my_atoms, single_body_par
             free( hblist );
         }
     }
+
+#if !defined(CUDA_ACCUM_ATOMIC)
+    /* write conflicts for accumulating partial forces resolved by subsequent kernels */
+    e_hb_g[j] = e_hb_l;
+    rvecCopy( ext_press_g[j], ext_press_l );
+#else
+    atomic_rvecAdd( workspace.f[i], f_i_l );
+    atomic_rvecAdd( workspace.f[j], f_j_l );
+    atomic_rvecAdd( workspace.f[k], f_k_l );
+    atomicAdd( (double *) e_hb_g, (double) e_hb_l );
+    atomic_rvecAdd( *ext_press_g, ext_press_l );
+#endif
 }
 
 
@@ -289,7 +276,7 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1( reax_atom *my_atoms, single_body_par
 CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1_opt( reax_atom *my_atoms, single_body_parameters *sbp, 
         hbond_parameters *d_hbp, global_parameters gp, control_params *control, storage workspace,
         reax_list far_nbr_list, reax_list bond_list, reax_list hbond_list, int n, 
-        int num_atom_types, real *data_e_hb, rvec *data_ext_press )
+        int num_atom_types, real *e_hb_g, rvec *ext_press_g )
 {
     int i, j, k, pi, pk;
     int type_i, type_j, type_k;
@@ -300,9 +287,14 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1_opt( reax_atom *my_atoms, single_body
     int loopcount, count;
     ivec rel_jk;
     real r_ij, r_jk, theta, cos_theta, sin_xhz4, cos_xhz1, sin_theta2;
-    real e_hb, exp_hb2, exp_hb3, CEhb1, CEhb2, CEhb3;
+    real e_hb, e_hb_l, exp_hb2, exp_hb3, CEhb1, CEhb1_l, CEhb2, CEhb3;
     rvec dcos_theta_di, dcos_theta_dj, dcos_theta_dk;
-    rvec dvec_jk, force, ext_press;
+    rvec dvec_jk, temp, ext_press_l;
+#if !defined(CUDA_ACCUM_ATOMIC)
+    rvec f_l, hb_f_l;
+#else
+    rvec f_i_l, f_j_l, f_k_l;
+#endif
     hbond_parameters *hbp;
     bond_order_data *bo_ij;
     int nbr_jk;
@@ -311,8 +303,6 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1_opt( reax_atom *my_atoms, single_body
     /* thread-local variables */
     int thread_id, warp_id, lane_id, offset;
     unsigned int mask;
-    real e_hb_s, CEhb1_s;
-    rvec f_s, hb_f_s;
 
     thread_id = blockIdx.x * blockDim.x + threadIdx.x;
     warp_id = thread_id >> 5;
@@ -331,8 +321,15 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1_opt( reax_atom *my_atoms, single_body
      * Hydrogen bond is between j and k.
      * so in this function i->X, j->H, k->Z when we map 
      * variables onto the ones in the handout.*/
-    e_hb_s = 0.0;
-    rvec_MakeZero( f_s );
+    e_hb_l = 0.0;
+    rvec_MakeZero( ext_press_l );
+#if !defined(CUDA_ACCUM_ATOMIC)
+    rvec_MakeZero( f_l );
+#else
+    rvec_MakeZero( f_i_l );
+    rvec_MakeZero( f_j_l );
+    rvec_MakeZero( f_k_l );
+#endif
 
     /* j has to be of type H */
     if ( sbp[ my_atoms[j].type ].p_hbond == H_ATOM )
@@ -366,8 +363,10 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1_opt( reax_atom *my_atoms, single_body
             pi = hblist[itr];
             pbond_ij = &bond_list.bond_list[pi];
             i = pbond_ij->nbr;
-            rvec_MakeZero( hb_f_s );
-            CEhb1_s = 0.0;
+#if !defined(CUDA_ACCUM_ATOMIC)
+            rvec_MakeZero( hb_f_l );
+#endif
+            CEhb1_l = 0.0;
 
             //for( pk = hb_start_j; pk < hb_end_j; ++pk ) {
             loopcount = (hb_end_j - hb_start_j) / warpSize + 
@@ -420,7 +419,7 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1_opt( reax_atom *my_atoms, single_body
                                 + r_jk / hbp->r0_hb - 2.0 ) );
 
                     e_hb = hbp->p_hb1 * (1.0 - exp_hb2) * exp_hb3 * sin_xhz4;
-                    e_hb_s += e_hb;
+                    e_hb_l += e_hb;
 
                     CEhb1 = hbp->p_hb1 * hbp->p_hb2 * exp_hb2 * exp_hb3 * sin_xhz4;
                     CEhb2 = -0.5 * hbp->p_hb1 * (1.0 - exp_hb2) * exp_hb3 * cos_xhz1;
@@ -429,88 +428,82 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1_opt( reax_atom *my_atoms, single_body
 
                     /* hydrogen bond forces */
                     /* dbo term */
-                    CEhb1_s += CEhb1;
+                    CEhb1_l += CEhb1;
 
                     if ( control->virial == 0 )
                     {
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
                         /* dcos terms */
-                        rvec_ScaledAdd( hb_f_s, CEhb2, dcos_theta_di ); 
-
-                        rvec_ScaledAdd( f_s, CEhb2, dcos_theta_dj );
-
+                        rvec_ScaledAdd( hb_f_l, CEhb2, dcos_theta_di ); 
+                        rvec_ScaledAdd( f_l, CEhb2, dcos_theta_dj );
                         rvec_ScaledAdd( phbond_jk->hb_f, CEhb2, dcos_theta_dk );
 
                         /* dr terms */
-                        rvec_ScaledAdd( f_s, -1.0 * CEhb3 / r_jk, dvec_jk ); 
-
+                        rvec_ScaledAdd( f_l, -1.0 * CEhb3 / r_jk, dvec_jk ); 
                         rvec_ScaledAdd( phbond_jk->hb_f, CEhb3 / r_jk, dvec_jk );
 #else
                         /* dcos terms */
-                        rvec_ScaledAdd( hb_f_s, CEhb2, dcos_theta_di ); 
-
-                        rvec_ScaledAdd( f_s, CEhb2, dcos_theta_dj );
-
-                        atomic_rvecScaledAdd( workspace.f[k], CEhb2, dcos_theta_dk );
+                        rvec_ScaledAdd( f_i_l, CEhb2, dcos_theta_di ); 
+                        rvec_ScaledAdd( f_j_l, CEhb2, dcos_theta_dj );
+                        rvec_ScaledAdd( f_k_l, CEhb2, dcos_theta_dk );
 
                         /* dr terms */
-                        rvec_ScaledAdd( f_s, -1.0 * CEhb3 / r_jk, dvec_jk ); 
-
-                        atomic_rvecScaledAdd( workspace.f[k], CEhb3 / r_jk, dvec_jk );
+                        rvec_ScaledAdd( f_j_l, -1.0 * CEhb3 / r_jk, dvec_jk ); 
+                        rvec_ScaledAdd( f_k_l, CEhb3 / r_jk, dvec_jk );
 #endif
                     }
                     else
                     {
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
                         /* for pressure coupling, terms that are not related to bond order
                          * derivatives are added directly into pressure vector/tensor */
                         /* dcos terms */
-                        rvec_Scale( force, CEhb2, dcos_theta_di );
-                        rvec_Add( pbond_ij->hb_f, force );
-                        rvec_iMultiply( ext_press, pbond_ij->rel_box, force );
-                        rvec_ScaledAdd( data_ext_press [j], 1.0, ext_press );
+                        rvec_Scale( temp, CEhb2, dcos_theta_di );
+                        rvec_Add( pbond_ij->hb_f, temp );
+                        rvec_iMultiply( temp, pbond_ij->rel_box, temp );
+                        rvec_Add( ext_press_l, temp );
 
                         rvec_ScaledAdd( workspace.f[j], CEhb2, dcos_theta_dj );
 
                         ivec_Scale( rel_jk, hbond_list.hbond_list[pk].scl,
                                 far_nbr_list.far_nbr_list.rel_box[nbr_jk] );
-                        rvec_Scale( force, CEhb2, dcos_theta_dk );
-                        rvec_Add( phbond_jk->hb_f, force );
-                        rvec_iMultiply( ext_press, rel_jk, force );
-                        rvec_ScaledAdd( data_ext_press[j], 1.0, ext_press );
+                        rvec_Scale( temp, CEhb2, dcos_theta_dk );
+                        rvec_Add( phbond_jk->hb_f, temp );
+                        rvec_iMultiply( temp, rel_jk, temp );
+                        rvec_Add( ext_press_l, temp );
 
                         /* dr terms */
                         rvec_ScaledAdd( workspace.f[j], -1.0 * CEhb3 / r_jk, dvec_jk ); 
 
-                        rvec_Scale( force, CEhb3 / r_jk, dvec_jk );
-                        rvec_Add( phbond_jk->hb_f, force );
-                        rvec_iMultiply( ext_press, rel_jk, force );
-                        rvec_ScaledAdd( data_ext_press[j], 1.0, ext_press );
+                        rvec_Scale( temp, CEhb3 / r_jk, dvec_jk );
+                        rvec_Add( phbond_jk->hb_f, temp );
+                        rvec_iMultiply( temp, rel_jk, temp );
+                        rvec_Add( ext_press_l, temp );
 #else
                         /* for pressure coupling, terms that are not related to bond order
                          * derivatives are added directly into pressure vector/tensor */
                         /* dcos terms */
-                        rvec_Scale( force, CEhb2, dcos_theta_di );
-                        atomic_rvecAdd( workspace.f[i], force );
-                        rvec_iMultiply( ext_press, pbond_ij->rel_box, force );
-                        rvec_ScaledAdd( data_ext_press [j], 1.0, ext_press );
+                        rvec_Scale( temp, CEhb2, dcos_theta_di );
+                        rvec_Add( f_i_l, temp );
+                        rvec_iMultiply( temp, pbond_ij->rel_box, temp );
+                        rvec_Add( ext_press_l, temp );
 
-                        atomic_rvecScaledAdd( workspace.f[j], CEhb2, dcos_theta_dj );
+                        rvec_ScaledAdd( f_j_l, CEhb2, dcos_theta_dj );
 
                         ivec_Scale( rel_jk, hbond_list.hbond_list[pk].scl,
                                 far_nbr_list.far_nbr_list.rel_box[nbr_jk] );
-                        rvec_Scale( force, CEhb2, dcos_theta_dk );
-                        atomic_rvecAdd( workspace.f[k], force );
-                        rvec_iMultiply( ext_press, rel_jk, force );
-                        rvec_ScaledAdd( data_ext_press[j], 1.0, ext_press );
+                        rvec_Scale( temp, CEhb2, dcos_theta_dk );
+                        rvec_Add( f_k_l, temp );
+                        rvec_iMultiply( temp, rel_jk, temp );
+                        rvec_Add( ext_press_l, temp );
 
                         /* dr terms */
-                        atomic_rvecScaledAdd( workspace.f[j], -1.0 * CEhb3 / r_jk, dvec_jk ); 
+                        rvec_ScaledAdd( f_j_l, -1.0 * CEhb3 / r_jk, dvec_jk ); 
 
-                        rvec_Scale( force, CEhb3 / r_jk, dvec_jk );
-                        atomic_rvecAdd( workspace.f[k], force );
-                        rvec_iMultiply( ext_press, rel_jk, force );
-                        rvec_ScaledAdd( data_ext_press[j], 1.0, ext_press );
+                        rvec_Scale( temp, CEhb3 / r_jk, dvec_jk );
+                        rvec_Add( f_k_l, temp );
+                        rvec_iMultiply( temp, rel_jk, temp );
+                        rvec_Add( ext_press_l, temp );
 #endif
                     }
 
@@ -524,20 +517,20 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1_opt( reax_atom *my_atoms, single_body
             /* warp-level sums using registers within a warp */
             for ( offset = warpSize >> 1; offset > 0; offset /= 2 )
             {
-                CEhb1_s += __shfl_down_sync( mask, CEhb1_s, offset );
-                hb_f_s[0] += __shfl_down_sync( mask, hb_f_s[0], offset );
-                hb_f_s[1] += __shfl_down_sync( mask, hb_f_s[1], offset );
-                hb_f_s[2] += __shfl_down_sync( mask, hb_f_s[2], offset );
+                CEhb1_l += __shfl_down_sync( mask, CEhb1_l, offset );
+#if !defined(CUDA_ACCUM_ATOMIC)
+                hb_f_l[0] += __shfl_down_sync( mask, hb_f_l[0], offset );
+                hb_f_l[1] += __shfl_down_sync( mask, hb_f_l[1], offset );
+                hb_f_l[2] += __shfl_down_sync( mask, hb_f_l[2], offset );
+#endif
             }
 
             /* first thread within a warp writes warp-level sum to shared memory */
             if ( lane_id == 0 )
             {
-                bo_ij->Cdbo += CEhb1_s ;
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
-                rvec_Add( pbond_ij->hb_f, hb_f_s );
-#else
-                atomic_rvecAdd( workspace.f[i], hb_f_s );
+                bo_ij->Cdbo += CEhb1_l ;
+#if !defined(CUDA_ACCUM_ATOMIC)
+                rvec_Add( pbond_ij->hb_f, hb_f_l );
 #endif
             }
         } // for loop hbonds end
@@ -546,26 +539,46 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1_opt( reax_atom *my_atoms, single_body
     /* warp-level sums using registers within a warp */
     for ( offset = warpSize >> 1; offset > 0; offset /= 2 )
     {
-        e_hb_s += __shfl_down_sync( mask, e_hb_s, offset );
-        f_s[0] += __shfl_down_sync( mask, f_s[0], offset );
-        f_s[1] += __shfl_down_sync( mask, f_s[1], offset );
-        f_s[2] += __shfl_down_sync( mask, f_s[2], offset );
+#if !defined(CUDA_ACCUM_ATOMIC)
+        f_l[0] += __shfl_down_sync( mask, f_l[0], offset );
+        f_l[1] += __shfl_down_sync( mask, f_l[1], offset );
+        f_l[2] += __shfl_down_sync( mask, f_l[2], offset );
+#else
+        f_i_l[0] += __shfl_down_sync( mask, f_i_l[0], offset );
+        f_i_l[1] += __shfl_down_sync( mask, f_i_l[1], offset );
+        f_i_l[2] += __shfl_down_sync( mask, f_i_l[2], offset );
+        f_j_l[0] += __shfl_down_sync( mask, f_j_l[0], offset );
+        f_j_l[1] += __shfl_down_sync( mask, f_j_l[1], offset );
+        f_j_l[2] += __shfl_down_sync( mask, f_j_l[2], offset );
+        f_k_l[0] += __shfl_down_sync( mask, f_k_l[0], offset );
+        f_k_l[1] += __shfl_down_sync( mask, f_k_l[1], offset );
+        f_k_l[2] += __shfl_down_sync( mask, f_k_l[2], offset );
+#endif
+        e_hb_l += __shfl_down_sync( mask, e_hb_l, offset );
+        ext_press_l[0] += __shfl_down_sync( mask, ext_press_l[0], offset );
+        ext_press_l[1] += __shfl_down_sync( mask, ext_press_l[1], offset );
+        ext_press_l[2] += __shfl_down_sync( mask, ext_press_l[2], offset );
     }
 
     /* first thread within a warp writes warp-level sums to global memory */
     if ( lane_id == 0 )
     {
-        data_e_hb[j] += e_hb_s;
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
-        rvec_Add( workspace.f[j], f_s );
+#if !defined(CUDA_ACCUM_ATOMIC)
+        rvec_Add( workspace.f[j], f_l );
+        e_hb_g[j] = e_hb_l;
+        rvecCopy( ext_press_g[j], ext_press_l );
 #else
-        atomic_rvecAdd( workspace.f[j], f_s );
+        atomic_rvecAdd( workspace.f[i], f_i_l );
+        atomic_rvecAdd( workspace.f[j], f_j_l );
+        atomic_rvecAdd( workspace.f[k], f_k_l );
+        atomicAdd( (double *) e_hb_g, (double) e_hb_l );
+        atomic_rvecAdd( *ext_press_g, ext_press_l );
 #endif
     }
 }
 
 
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
 /* Accumulate forces stored in the bond list
  * using a one thread per atom implementation */
 CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part2( reax_atom *atoms,
@@ -691,7 +704,7 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part3_opt( reax_atom *atoms,
     /* thread-local variables */
     int thread_id, warp_id, lane_id, offset;
     unsigned int mask;
-    rvec hb_f_s;
+    rvec hb_f_l;
 
     thread_id = blockIdx.x * blockDim.x + threadIdx.x;
     warp_id = thread_id >> 5;
@@ -707,14 +720,14 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part3_opt( reax_atom *atoms,
     start = Start_Index( atoms[j].Hindex, &hbond_list );
     end = End_Index( atoms[j].Hindex, &hbond_list );
     pj = start + lane_id;
-    rvec_MakeZero( hb_f_s );
+    rvec_MakeZero( hb_f_l );
 
     while ( pj < end )
     {
         nbr_pj = &hbond_list.hbond_list[pj];
         sym_index_nbr = &hbond_list.hbond_list[ nbr_pj->sym_index ];
 
-        rvec_Add( hb_f_s, sym_index_nbr->hb_f );
+        rvec_Add( hb_f_l, sym_index_nbr->hb_f );
 
         pj += warpSize;
     }
@@ -723,15 +736,15 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part3_opt( reax_atom *atoms,
     /* warp-level sums using registers within a warp */
     for ( offset = warpSize >> 1; offset > 0; offset /= 2 )
     {
-        hb_f_s[0] += __shfl_down_sync( mask, hb_f_s[0], offset );
-        hb_f_s[1] += __shfl_down_sync( mask, hb_f_s[1], offset );
-        hb_f_s[2] += __shfl_down_sync( mask, hb_f_s[2], offset );
+        hb_f_l[0] += __shfl_down_sync( mask, hb_f_l[0], offset );
+        hb_f_l[1] += __shfl_down_sync( mask, hb_f_l[1], offset );
+        hb_f_l[2] += __shfl_down_sync( mask, hb_f_l[2], offset );
     }
 
     /* first thread within a warp writes warp-level sums to global memory */
     if ( lane_id == 0 )
     {
-        rvec_Add( workspace.f[j], hb_f_s );
+        rvec_Add( workspace.f[j], hb_f_l );
     }
 }
 #endif

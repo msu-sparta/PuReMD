@@ -118,7 +118,7 @@ CUDA_DEVICE static inline int Cuda_BOp( reax_list bond_list, real bo_cut,
             bo_ij->Cdbopi = 0.0;
             bo_ij->Cdbopi2 = 0.0;
 
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
             ibond->ae_CdDelta = 0.0;
             ibond->va_CdDelta = 0.0;
             rvec_MakeZero( ibond->va_f );
@@ -174,7 +174,7 @@ CUDA_DEVICE static inline int Cuda_BOp( reax_list bond_list, real bo_cut,
             bo_ji->Cdbopi = 0.0;
             bo_ji->Cdbopi2 = 0.0;
 
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
             jbond->ae_CdDelta = 0.0;
             jbond->va_CdDelta = 0.0;
             rvec_MakeZero( jbond->va_f );

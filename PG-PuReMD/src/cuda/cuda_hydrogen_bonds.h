@@ -36,7 +36,7 @@ CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1_opt( reax_atom *, single_body_paramet
         reax_list, reax_list, reax_list, int,
         int, real *, rvec * );
 
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
 CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part2( reax_atom *,
         storage, reax_list, int );
 

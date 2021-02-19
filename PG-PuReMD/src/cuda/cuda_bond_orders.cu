@@ -4,7 +4,7 @@
 #include "cuda_list.h"
 #include "cuda_utils.h"
 #include "cuda_reduction.h"
-#if defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if defined(CUDA_ACCUM_ATOMIC)
 #include "cuda_helpers.h"
 #endif
 
@@ -65,7 +65,7 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
             nbr_k = &bond_list->bond_list[pk];
             k = nbr_k->nbr;
 
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
             rvec_MakeZero( nbr_k->tf_f );
 #endif
 
@@ -79,7 +79,7 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
             rvec_ScaledAdd( temp, -coef.C3dbopi2, nbr_k->bo_data.dBOp );
 
             /* force */
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
             rvec_Add( nbr_k->tf_f, temp );
 #else
             atomic_rvecAdd( workspace->f[k], temp );
@@ -129,7 +129,7 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
             nbr_k = &bond_list->bond_list[pk];
             k = nbr_k->nbr;
 
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
             rvec_MakeZero( nbr_k->tf_f );
 #endif
 
@@ -143,7 +143,7 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
             rvec_ScaledAdd( temp, -coef.C4dbopi2, nbr_k->bo_data.dBOp );
 
             /* force */
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
             rvec_Add( nbr_k->tf_f, temp );
 #else
             atomic_rvecAdd( workspace->f[k], temp );
@@ -183,7 +183,7 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
         rvec_ScaledAdd( temp, coef.C4dbopi2, workspace->dDeltap_self[j] );
 
         /* force */
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
         rvec_Add( workspace->f[j], temp );
 #else
         atomic_rvecAdd( workspace->f[j], temp );
@@ -250,7 +250,7 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
             /* 3rd, dBOpi2 */
             rvec_ScaledAdd( temp, -coef.C3dbopi2, nbr_k->bo_data.dBOp );
 
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
             rvec_Add( nbr_k->tf_f, temp );
 #else
             atomic_rvecAdd( workspace->f[nbr_k->nbr], temp );
@@ -281,7 +281,7 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
         /* 3rd, dBO_pi2 */
         rvec_ScaledAdd( temp, coef.C3dbopi2, workspace->dDeltap_self[i] );
 
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
         rvec_Add( workspace->f[i], temp );
 #else
         atomic_rvecAdd( workspace->f[i], temp );
@@ -302,7 +302,7 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
             /* 4th, dBOpi2 */
             rvec_ScaledAdd( temp, -coef.C4dbopi2, nbr_k->bo_data.dBOp );
 
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
             rvec_Add( nbr_k->tf_f, temp );
 #else
             atomic_rvecAdd( workspace->f[nbr_k->nbr], temp );
@@ -333,7 +333,7 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
         /* 3rd, dBOpi2 */
         rvec_ScaledAdd( temp, coef.C4dbopi2, workspace->dDeltap_self[i] );
 
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
         rvec_Add( workspace->f[i], temp );
 #else
         atomic_rvecAdd( workspace->f[i], temp );
@@ -739,7 +739,7 @@ CUDA_GLOBAL void k_total_forces_part1( storage workspace, reax_list bond_list,
 }
 
 
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
 CUDA_GLOBAL void k_total_forces_part2( reax_atom *my_atoms, reax_list bond_list,
         storage workspace, int N )
 {
@@ -816,7 +816,7 @@ void Cuda_Total_Forces( reax_system *system, control_params *control,
         cudaCheckError( ); 
     }
 
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
     /* post processing for the atomic forces */
     k_total_forces_part2  <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, *(lists[BONDS]), *(workspace->d_workspace), system->N );

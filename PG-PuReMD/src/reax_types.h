@@ -82,8 +82,8 @@
 #if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
   #define CUDA_DEVICE_PACK
 #endif
-/* aggregate atomic forces using atomic operations */
-#define CUDA_ACCUM_FORCE_ATOMIC
+/* aggregate atomic energies and forces using atomic operations */
+#define CUDA_ACCUM_ATOMIC
 
 /* disable assertions if NOT compiling with debug support --
  * the definition (or lack thereof) controls how the assert macro is defined */
@@ -131,7 +131,7 @@
 
 #if defined(USE_REF_FORTRAN_REAXFF_CONSTANTS)
   /* transcendental constant pi */
-  #define PI (3.14159265)
+//  #define PI (3.14159265)
   /* unit conversion from ??? to kcal / mol */
   #define C_ELE (332.0638)
   /* Boltzmann constant, AMU * A^2 / (ps^2 * K) */
@@ -1933,7 +1933,7 @@ struct hbond_data
     int scl;
     /* position of neighbor in far neighbor list */
     int ptr;
-#if defined(HAVE_CUDA) && !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if defined(HAVE_CUDA) && !defined(CUDA_ACCUM_ATOMIC)
     /**/
     int sym_index;
     /**/
@@ -2035,7 +2035,7 @@ struct bond_data
     rvec dvec;
     /* bond order data */
     bond_order_data bo_data;
-#if defined(HAVE_CUDA) && !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if defined(HAVE_CUDA) && !defined(CUDA_ACCUM_ATOMIC)
     /**/
     real ae_CdDelta;
     /**/

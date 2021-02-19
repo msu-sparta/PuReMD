@@ -29,7 +29,7 @@ CUDA_GLOBAL void Cuda_Torsion_Angles_Part1( reax_atom *, global_parameters,
         four_body_header *, control_params *, reax_list, reax_list,
         storage, int, int, real *, real *, rvec * );
 
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
 CUDA_GLOBAL void Cuda_Torsion_Angles_Part2( reax_atom *,
         storage, reax_list, int );
 #endif

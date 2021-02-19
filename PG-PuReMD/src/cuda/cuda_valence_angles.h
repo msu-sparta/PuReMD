@@ -32,7 +32,7 @@ CUDA_GLOBAL void Cuda_Valence_Angles_Part1( reax_atom *, global_parameters,
         storage, reax_list, reax_list, int, int, int, real *,
         real *, real *, rvec *);
 
-#if !defined(CUDA_ACCUM_FORCE_ATOMIC)
+#if !defined(CUDA_ACCUM_ATOMIC)
 CUDA_GLOBAL void Cuda_Valence_Angles_Part2 ( reax_atom *, control_params *,
         storage , reax_list, int );
 #endif
@@ -42,8 +42,8 @@ CUDA_GLOBAL void Cuda_Estimate_Valence_Angles( reax_atom *, control_params *,
 
 
 /* calculates the theta angle between atom triplet i-j-k */
-CUDA_DEVICE static inline void Calculate_Theta( const rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
-        real * const theta, real * const cos_theta )
+CUDA_DEVICE static inline void Calculate_Theta( const rvec dvec_ji, real d_ji,
+        const rvec dvec_jk, real d_jk, real * const theta, real * const cos_theta )
 {
     assert( d_ji > 0.0 );
     assert( d_jk > 0.0 );
@@ -64,8 +64,9 @@ CUDA_DEVICE static inline void Calculate_Theta( const rvec dvec_ji, real d_ji, r
 
 
 /* calculates the derivative of the cosine of the angle between atom triplet i-j-k */
-CUDA_DEVICE static inline void Calculate_dCos_Theta( const rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
-        rvec * const dcos_theta_di, rvec * const dcos_theta_dj, rvec * const dcos_theta_dk )
+CUDA_DEVICE static inline void Calculate_dCos_Theta( const rvec dvec_ji,
+        real d_ji, const rvec dvec_jk, real d_jk, rvec * const dcos_theta_di,
+        rvec * const dcos_theta_dj, rvec * const dcos_theta_dk )
 {
     int t;
     real sqr_d_ji, sqr_d_jk, inv_dists, inv_dists3, dot_dvecs, Cdot_inv3;

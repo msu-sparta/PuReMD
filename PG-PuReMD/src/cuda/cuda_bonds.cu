@@ -30,14 +30,14 @@
 CUDA_GLOBAL void Cuda_Bonds( reax_atom *my_atoms, global_parameters gp, 
         single_body_parameters *sbp, two_body_parameters *tbp, 
         storage p_workspace, reax_list p_bond_list, int n, int num_atom_types, 
-        real *e_bond )
+        real *e_bond_g )
 {
     int i, j, pj;
     int start_i, end_i;
     int type_i, type_j;
-    real ebond, pow_BOs_be2, exp_be12, CEbo;
+    real pow_BOs_be2, exp_be12, CEbo, e_bond_l;
     real gp3, gp4, gp7, gp10, gp37;
-    real exphu, exphua1, exphub1, exphuov, hulpov, estriph;
+    real exphu, exphua1, exphub1, exphuov, hulpov;
     real decobdbo, decobdboua, decobdboub;
     single_body_parameters *sbp_i, *sbp_j;
     two_body_parameters *twbp;
@@ -59,6 +59,7 @@ CUDA_GLOBAL void Cuda_Bonds( reax_atom *my_atoms, global_parameters gp,
     gp7 = gp.l[7];
     gp10 = gp.l[10];
     gp37 = (int) gp.l[37];
+    e_bond_l = 0.0;
 
     start_i = Start_Index( i, bond_list );
     end_i = End_Index( i, bond_list );
@@ -82,31 +83,14 @@ CUDA_GLOBAL void Cuda_Bonds( reax_atom *my_atoms, global_parameters gp,
                 * (1.0 - twbp->p_be1 * twbp->p_be2 * pow_BOs_be2);
 
             /* calculate bond energy */
-            ebond = -twbp->De_s * bo_ij->BO_s * exp_be12
+            e_bond_l += -twbp->De_s * bo_ij->BO_s * exp_be12
                 - twbp->De_p * bo_ij->BO_pi
                 - twbp->De_pp * bo_ij->BO_pi2;
-            e_bond[i] += ebond;
 
             /* calculate derivatives of bond orders */
             bo_ij->Cdbo += CEbo;
             bo_ij->Cdbopi -= CEbo + twbp->De_p;
             bo_ij->Cdbopi2 -= CEbo + twbp->De_pp;
-
-#if defined(TEST_ENERGY)
-            //fprintf( out_control->ebond, "%6d%6d%24.15e%24.15e%24.15e\n",
-            fprintf( out_control->ebond, "%6d%6d%12.4f%12.4f%12.4f\n",
-                    system->my_atoms[i].orig_id, 
-                    system->my_atoms[j].orig_id, 
-                    bo_ij->BO, ebond, data->my_en.e_bond );
-#endif
-
-#if defined(TEST_FORCES)
-            Add_dBO( system, lists, i, pj, CEbo, workspace->f_be );
-            Add_dBOpinpi2( system, lists, i, pj,
-                    -(CEbo + twbp->De_p),
-                    -(CEbo + twbp->De_pp),
-                    workspace->f_be, workspace->f_be );
-#endif
 
             /* Stabilisation terminal triple bond */
             if ( bo_ij->BO >= 1.00 )
@@ -127,8 +111,7 @@ CUDA_GLOBAL void Cuda_Bonds( reax_atom *my_atoms, global_parameters gp,
                     exphuov = EXP(gp4 * (workspace->Delta[i] + workspace->Delta[j]));
                     hulpov = 1.0 / (1.0 + 25.0 * exphuov);
 
-                    estriph = gp10 * exphu * hulpov * (exphua1 + exphub1);
-                    e_bond[i] += estriph;
+                    e_bond_l += gp10 * exphu * hulpov * (exphua1 + exphub1);
 
                     decobdbo = gp10 * exphu * hulpov * (exphua1 + exphub1)
                         * ( gp3 - 2.0 * gp7 * (bo_ij->BO - 2.5) );
@@ -140,21 +123,14 @@ CUDA_GLOBAL void Cuda_Bonds( reax_atom *my_atoms, global_parameters gp,
                     bo_ij->Cdbo += decobdbo;
                     workspace->CdDelta[i] += decobdboua;
                     workspace->CdDelta[j] += decobdboub;
-
-#if defined(TEST_ENERGY)
-                    //fprintf( out_control->ebond, 
-                    //  "%6d%6d%24.15e%24.15e%24.15e%24.15e\n",
-                    //  system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
-                    //  estriph, decobdbo, decobdboua, decobdboub );
-#endif
-
-#if defined(TEST_FORCES)
-                    Add_dBO( system, lists, i, pj, decobdbo, workspace->f_be );
-                    Add_dDelta( system, lists, i, decobdboua, workspace->f_be );
-                    Add_dDelta( system, lists, j, decobdboub, workspace->f_be );
-#endif
                 }
             }
         }
     }
+
+#if !defined(CUDA_ACCUM_ATOMIC)
+    e_bond_g[i] = e_bond_l;
+#else
+    atomicAdd( (double *) e_bond_g, (double) e_bond_l );
+#endif
 }
