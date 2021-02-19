@@ -262,7 +262,7 @@ CUDA_GLOBAL void k_init_distance( reax_atom *my_atoms, reax_list far_nbr_list, i
 CUDA_GLOBAL void k_init_distance_opt( reax_atom *my_atoms, reax_list far_nbr_list, int N )
 {
     int j, pj, start_i, end_i, thread_id, warp_id, lane_id, itr;
-    __shared__ rvec x_i;
+    rvec x_i;
 
     thread_id = blockIdx.x * blockDim.x + threadIdx.x;
     warp_id = thread_id >> 5;
@@ -275,11 +275,7 @@ CUDA_GLOBAL void k_init_distance_opt( reax_atom *my_atoms, reax_list far_nbr_lis
     lane_id = thread_id & 0x0000001F; 
     start_i = Start_Index( warp_id, &far_nbr_list );
     end_i = End_Index( warp_id, &far_nbr_list );
-    if ( lane_id == 0 )
-    {
-        rvec_Copy( x_i, my_atoms[warp_id].x );
-    }
-    __syncthreads( );
+    rvec_Copy( x_i, my_atoms[warp_id].x );
 
     /* update distance and displacement vector between atoms i and j (i-j) */
     for ( itr = 0, pj = start_i + lane_id; itr < (end_i - start_i + 0x0000001F) >> 5; ++itr )
@@ -1762,14 +1758,15 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, 
         reax_list **lists, output_controls *out_control )
 {
-    int update_energy, ret;
+    int ret;
 //    int hbs, hnbrs_blocks;
     int *thbody;
     static int compute_bonded_part1 = FALSE;
+#if !defined(CUDA_ACCUM_ATOMIC)
+    int update_energy;
     real *spad;
     rvec *rvec_spad;
 
-#if !defined(CUDA_ACCUM_ATOMIC)
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
             MAX( sizeof(real) * system->n,
                 MAX( sizeof(real) * 3 * system->n,
@@ -1778,9 +1775,10 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
                             (sizeof(real) + sizeof(rvec)) * system->n + sizeof(rvec) * control->blocks )))),
             "Cuda_Compute_Bonded_Forces::workspace->scratch" );
     spad = (real *) workspace->scratch;
-#endif
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
+#endif
+
     ret = SUCCESS;
 
     if ( compute_bonded_part1 == FALSE )
@@ -1888,8 +1886,10 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
             "Cuda_Compute_Bonded_Forces::workspace->scratch" );
 
     thbody = (int *) workspace->scratch;
+#if !defined(CUDA_ACCUM_ATOMIC)
     /* in case scratch gets reallocated above, reassign scratch pointer */
     spad = (real *) workspace->scratch;
+#endif
 
     ret = Cuda_Estimate_Storage_Three_Body( system, control, data, workspace,
             lists, thbody );
