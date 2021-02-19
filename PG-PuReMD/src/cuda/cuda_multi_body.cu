@@ -202,11 +202,6 @@ CUDA_GLOBAL void Cuda_Atom_Energy_Part1( reax_atom *my_atoms, global_parameters 
     workspace.CdDelta[i] += CEover3;   // OvCoor - 2nd term
     workspace.CdDelta[i] += CEunder3;  // UnCoor - 1st term
 
-#if defined(TEST_FORCES)
-    Add_dDelta( system, lists, i, CEover3, workspace.f_ov ); // OvCoor 2nd
-    Add_dDelta( system, lists, i, CEunder3, workspace.f_un ); // UnCoor 1st
-#endif
-
     for ( pj = Start_Index(i, &bond_list); pj < End_Index(i, &bond_list); ++pj )
     {
         pbond_ij = &bond_list.bond_list[pj];
@@ -240,55 +235,6 @@ CUDA_GLOBAL void Cuda_Atom_Energy_Part1( reax_atom *my_atoms, global_parameters 
                 * workspace.Delta_lp_temp[j]);  // UnCoor-2b
         bo_ij->Cdbopi2 += CEunder4 * (workspace.Delta[j] - dfvl
                 * workspace.Delta_lp_temp[j]);  // UnCoor-2b
-
-#if defined(TEST_ENERGY)
-        /*      fprintf( out_control->eov, "%6d%12.6f\n", 
-              workspace.reverse_map[j], 
-        // CEover1 * twbp->p_ovun1 * twbp->De_s, CEover3, 
-        CEover4 * (1.0 - workspace.dDelta_lp[j]) * 
-        (bo_ij->BO_pi + bo_ij->BO_pi2)
-         *///           /*CEover4 * (workspace.Delta[j]-workspace.Delta_lp[j])*/);
-        //      fprintf( out_control->eov, "%6d%12.6f\n", 
-        //      fprintf( out_control->eov, "%6d%24.15e\n", 
-        //           system->my_atoms[j].orig_id, 
-        // CEover1 * twbp->p_ovun1 * twbp->De_s, CEover3, 
-        //           CEover4 * (1.0 - workspace.dDelta_lp[j]) * 
-        //           (bo_ij->BO_pi + bo_ij->BO_pi2)
-        //           /*CEover4 * (workspace.Delta[j]-workspace.Delta_lp[j])*/);
-
-        // CEunder4 * (1.0 - workspace.dDelta_lp[j]) * 
-        // (bo_ij->BO_pi + bo_ij->BO_pi2),
-        // CEunder4 * (workspace.Delta[j] - workspace.Delta_lp[j]) );
-#endif
-
-#if defined(TEST_FORCES)
-        Add_dBO( system, lists, i, pj, CEover1 * twbp->p_ovun1 * twbp->De_s,
-                workspace.f_ov ); // OvCoor - 1st term
-
-        Add_dDelta( system, lists, j,
-                CEover4 * (1.0 - dfvl*workspace.dDelta_lp[j]) * 
-                (bo_ij->BO_pi + bo_ij->BO_pi2),
-                workspace.f_ov );   // OvCoor - 3a
-
-        Add_dBOpinpi2( system, lists, i, pj, 
-                CEover4 * (workspace.Delta[j] - 
-                    dfvl * workspace.Delta_lp_temp[j]),
-                CEover4 * (workspace.Delta[j] - 
-                    dfvl * workspace.Delta_lp_temp[j]),
-                workspace.f_ov, workspace.f_ov ); // OvCoor - 3b
-
-        Add_dDelta( system, lists, j,
-                CEunder4 * (1.0 - dfvl*workspace.dDelta_lp[j]) * 
-                (bo_ij->BO_pi + bo_ij->BO_pi2),
-                workspace.f_un ); // UnCoor - 2a
-
-        Add_dBOpinpi2( system, lists, i, pj, 
-                CEunder4 * (workspace.Delta[j] - 
-                    dfvl * workspace.Delta_lp_temp[j]),
-                CEunder4 * (workspace.Delta[j] - 
-                    dfvl * workspace.Delta_lp_temp[j]),
-                workspace.f_un, workspace.f_un ); // UnCoor - 2b
-#endif
     }
 }
 

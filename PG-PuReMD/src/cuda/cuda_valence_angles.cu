@@ -59,7 +59,7 @@ CUDA_GLOBAL void Cuda_Valence_Angles_Part1( reax_atom *my_atoms,
     real f7_ij, f7_jk, f8_Dj, f9_Dj;
     real Ctheta_0, theta_0, theta_00, theta, cos_theta, sin_theta;
     real BOA_ij, BOA_jk;
-    rvec rvec_temp, ext_press_l;
+    rvec rvec_temp, f_j_l, ext_press_l;
     three_body_header *thbh;
     three_body_parameters *thbp;
     three_body_interaction_data *p_ijk;
@@ -88,6 +88,7 @@ CUDA_GLOBAL void Cuda_Valence_Angles_Part1( reax_atom *my_atoms,
     e_ang_l = 0.0;
     e_coa_l = 0.0;
     e_pen_l = 0.0;
+    rvec_MakeZero( f_j_l );
     rvec_MakeZero( ext_press_l );
 
     type_j = my_atoms[j].type;
@@ -406,11 +407,11 @@ CUDA_GLOBAL void Cuda_Valence_Angles_Part1( reax_atom *my_atoms,
                         {
 #if !defined(CUDA_ACCUM_ATOMIC)
                             rvec_ScaledAdd( pbond_ij->va_f, CEval8, p_ijk->dcos_di );
-                            rvec_ScaledAdd( workspace.f[j], CEval8, p_ijk->dcos_dj );
+                            rvec_ScaledAdd( f_j_l, CEval8, p_ijk->dcos_dj );
                             rvec_ScaledAdd( pbond_jk->va_f, CEval8, p_ijk->dcos_dk );
 #else
                             atomic_rvecScaledAdd( workspace.f[i], CEval8, p_ijk->dcos_di );
-                            atomic_rvecScaledAdd( workspace.f[j], CEval8, p_ijk->dcos_dj );
+                            rvec_ScaledAdd( f_j_l, CEval8, p_ijk->dcos_dj );
                             atomic_rvecScaledAdd( workspace.f[k], CEval8, p_ijk->dcos_dk );
 #endif
                         }
@@ -424,7 +425,7 @@ CUDA_GLOBAL void Cuda_Valence_Angles_Part1( reax_atom *my_atoms,
                             rvec_iMultiply( rvec_temp, pbond_ij->rel_box, rvec_temp );
                             rvec_Add( ext_press_l, rvec_temp );
 
-                            rvec_ScaledAdd( workspace.f[j], CEval8, p_ijk->dcos_dj );
+                            rvec_ScaledAdd( f_j_l, CEval8, p_ijk->dcos_dj );
 
                             rvec_Scale( rvec_temp, CEval8, p_ijk->dcos_dk );
                             rvec_Add( pbond_jk->va_f, rvec_temp );
@@ -438,7 +439,7 @@ CUDA_GLOBAL void Cuda_Valence_Angles_Part1( reax_atom *my_atoms,
                             rvec_iMultiply( rvec_temp, pbond_ij->rel_box, rvec_temp );
                             rvec_Add( ext_press_l, rvec_temp );
 
-                            rvec_ScaledAdd( workspace.f[j], CEval8, p_ijk->dcos_dj );
+                            rvec_ScaledAdd( f_j_l, CEval8, p_ijk->dcos_dj );
 
                             rvec_Scale( rvec_temp, CEval8, p_ijk->dcos_dk );
                             atomic_rvecAdd( workspace.f[k], rvec_temp );
@@ -455,11 +456,13 @@ CUDA_GLOBAL void Cuda_Valence_Angles_Part1( reax_atom *my_atoms,
     }
 
 #if !defined(CUDA_ACCUM_ATOMIC)
+    rvec_Add( workspace.f[j], f_j_l );
     e_ang_g[j] = e_ang_l;
     e_coa_g[j] = e_coa_l;
     e_pen_g[j] = e_pen_l;
     rvec_Copy( ext_press_g[j], ext_press_l );
 #else
+    atomic_rvecAdd( workspace.f[j], f_j_l );
     atomicAdd( (double *) e_ang_g, (double) e_ang_l );
     atomicAdd( (double *) e_coa_g, (double) e_coa_l );
     atomicAdd( (double *) e_pen_g, (double) e_pen_l );

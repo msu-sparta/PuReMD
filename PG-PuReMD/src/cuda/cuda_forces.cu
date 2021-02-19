@@ -2120,16 +2120,7 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
 }
 
 
-void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control, 
-        simulation_data *data, storage *workspace, 
-        reax_list **lists, output_controls *out_control,
-        mpi_datatypes *mpi_data )
-{
-    Cuda_NonBonded_Energy( system, control, workspace, data, lists, out_control );
-}
-
-
-void Cuda_Compute_Total_Force( reax_system *system, control_params *control,
+static void Cuda_Compute_Total_Force( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace,
         reax_list **lists, mpi_datatypes *mpi_data )
 {
@@ -2237,7 +2228,7 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
 #endif
 
         Cuda_Compute_NonBonded_Forces( system, control, data, workspace,
-                lists, out_control, mpi_data );
+                lists, out_control );
 
 #if defined(LOG_PERFORMANCE)
         cudaEventRecord( time_event[4] );
