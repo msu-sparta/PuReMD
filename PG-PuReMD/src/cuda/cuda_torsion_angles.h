@@ -25,14 +25,8 @@
 #include "../reax_types.h"
 
 
-CUDA_GLOBAL void Cuda_Torsion_Angles_Part1( reax_atom *, global_parameters,
-        four_body_header *, control_params *, reax_list, reax_list,
-        storage, int, int, real *, real *, rvec * );
-
-#if !defined(CUDA_ACCUM_ATOMIC)
-CUDA_GLOBAL void Cuda_Torsion_Angles_Part2( reax_atom *,
-        storage, reax_list, int );
-#endif
+void Cuda_Compute_Torsion_Angles( reax_system *, control_params *, 
+        simulation_data *, storage *, reax_list **, output_controls * );
 
 
 #endif

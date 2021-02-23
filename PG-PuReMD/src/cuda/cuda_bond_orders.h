@@ -7,10 +7,13 @@
 #include "../vector.h"
 
 
-void Cuda_Total_Forces( reax_system *, control_params *,
+void Cuda_Compute_Bond_Orders( reax_system *, control_params *, 
+        simulation_data *, storage *, reax_list **, output_controls * );
+
+void Cuda_Total_Forces_Part1( reax_system *, control_params *,
         simulation_data *, storage *, reax_list ** );
 
-void Cuda_Total_Forces_PURE( reax_system *, storage * );
+void Cuda_Total_Forces_Part2( reax_system *, storage * );
 
 
 /* Compute the bond order term between atoms i and j,
@@ -192,17 +195,5 @@ CUDA_DEVICE static inline int Cuda_BOp( reax_list bond_list, real bo_cut,
     return ret;
 }
 
-
-CUDA_GLOBAL void Cuda_BO_Part1( reax_atom *,
-        single_body_parameters *, storage , int );
-
-CUDA_GLOBAL void Cuda_BO_Part2( reax_atom *, global_parameters,
-        single_body_parameters *, two_body_parameters *,
-        storage, reax_list, int, int );
-
-CUDA_GLOBAL void Cuda_BO_Part3( storage, reax_list, int );
-
-CUDA_GLOBAL void Cuda_BO_Part4( reax_atom *, global_parameters,
-        single_body_parameters *, storage, int );
 
 #endif

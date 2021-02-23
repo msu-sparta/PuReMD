@@ -331,7 +331,7 @@ include cuda.am
 endif
 
 if USE_CUDA
-AM_NVCCFLAGS = --compiler-options="$(DEFS) $(AM_CFLAGS) -std=c++11 @CFLAGS_EXTRA@ $(CFLAGS) @M_CFLAGS@" -std=c++11 @NFLAGS@ @NFLAGS_EXTRA@
+AM_NVCCFLAGS = --compiler-options="$(DEFS) $(AM_CFLAGS) -std=c++14 @CFLAGS_EXTRA@ $(CFLAGS) @M_CFLAGS@" -std=c++14 @NFLAGS@ @NFLAGS_EXTRA@
 endif
 
 bin_PROGRAMS = PG-PuReMD/bin/pg-puremd

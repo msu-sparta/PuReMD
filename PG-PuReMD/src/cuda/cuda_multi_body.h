@@ -25,13 +25,8 @@
 #include "../reax_types.h"
 
 
-CUDA_GLOBAL void Cuda_Atom_Energy_Part1( reax_atom *, global_parameters,
-        single_body_parameters *, two_body_parameters *, storage,
-        reax_list, int, int, real *, real *, real *);
-
-#if !defined(CUDA_ACCUM_ATOMIC)
-CUDA_GLOBAL void Cuda_Atom_Energy_Part2( reax_list, storage, int );
-#endif
+void Cuda_Compute_Atom_Energy( reax_system *, control_params *, 
+        simulation_data *, storage *, reax_list **, output_controls * );
 
 
 #endif

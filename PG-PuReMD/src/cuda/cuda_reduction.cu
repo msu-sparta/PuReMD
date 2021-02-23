@@ -5,12 +5,13 @@
 
 #include "../vector.h"
 
-#include "../cub/cub/device/device_reduce.cuh"
-#include "../cub/cub/device/device_scan.cuh"
-
-
 /* mask used to determine which threads within a warp participate in operations */
 #define FULL_MASK (0xFFFFFFFF)
+
+#include "../cub/cub/device/device_reduce.cuh"
+#include "../cub/cub/device/device_scan.cuh"
+//#include <cub/device/device_reduce.cuh>
+//#include <cub/device/device_scan.cuh>
 
 
 //struct RvecSum
@@ -69,7 +70,7 @@ void Cuda_Reduction_Sum( real *d_array, real *d_dest, size_t n )
 
     /* allocate temporary storage */
     cuda_malloc( &d_temp_storage, temp_storage_bytes, FALSE,
-            "Cuda_Reduction_Sum::temp_storage" );
+            "Cuda_Reduction_Sum::d_temp_storage" );
 
     /* run sum-reduction */
     cub::DeviceReduce::Sum( d_temp_storage, temp_storage_bytes,
@@ -77,7 +78,7 @@ void Cuda_Reduction_Sum( real *d_array, real *d_dest, size_t n )
     cudaCheckError( );
 
     /* deallocate temporary storage */
-    cuda_free( d_temp_storage, "Cuda_Reduction_Sum::temp_storage" );
+    cuda_free( d_temp_storage, "Cuda_Reduction_Sum::d_temp_storage" );
 }
 
 

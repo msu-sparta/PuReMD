@@ -512,7 +512,6 @@ void Add_dBond_to_Forces( int i, int pj, reax_system *system,
         rvec_ScaledAdd( workspace->f[k], -coef.C2dDelta, nbr_k->bo_data.dBOp );
         /* 3rd, dBOpi */
         rvec_ScaledAdd( workspace->f[k], -coef.C3dbopi, nbr_k->bo_data.dBOp );
-        /*3rd, dBOpi2*/
         /* 3rd, dBOpi2 */
         rvec_ScaledAdd( workspace->f[k], -coef.C3dbopi2, nbr_k->bo_data.dBOp );
     }
@@ -540,7 +539,6 @@ void Add_dBond_to_Forces( int i, int pj, reax_system *system,
     rvec_ScaledAdd( workspace->f[i], coef.C2dbopi2, bo_ij->dBOp );
     /* 3rd, dBO_pi2 */
     rvec_ScaledAdd( workspace->f[i], coef.C3dbopi2, workspace->dDeltap_self[i] );
-
 
     for ( pk = Start_Index(j, bonds); pk < End_Index(j, bonds); ++pk )
     {

@@ -23,11 +23,12 @@
 
 #include "cuda_helpers.h"
 #include "cuda_list.h"
+#include "cuda_utils.h"
 
 #include "../index_utils.h"
 
 
-CUDA_GLOBAL void Cuda_Atom_Energy_Part1( reax_atom *my_atoms, global_parameters gp, 
+CUDA_GLOBAL void k_atom_energy_part1( reax_atom *my_atoms, global_parameters gp, 
         single_body_parameters *sbp, two_body_parameters *tbp, 
         storage workspace, reax_list bond_list, int n, int num_atom_types,
         real *e_lp_g, real *e_ov_g, real *e_un_g )
@@ -241,7 +242,7 @@ CUDA_GLOBAL void Cuda_Atom_Energy_Part1( reax_atom *my_atoms, global_parameters 
 
 #if !defined(CUDA_ACCUM_ATOMIC)
 /* Traverse bond list and accumulate lone pair contributions from bonded neighbors */
-CUDA_GLOBAL void Cuda_Atom_Energy_Part2( reax_list bond_list, 
+CUDA_GLOBAL void k_atom_energy_part2( reax_list bond_list, 
         storage workspace, int n )
 {
     int i, pj;
@@ -260,3 +261,64 @@ CUDA_GLOBAL void Cuda_Atom_Energy_Part2( reax_list bond_list,
     }
 }
 #endif
+
+
+void Cuda_Compute_Atom_Energy( reax_system *system, control_params *control, 
+        simulation_data *data, storage *workspace, 
+        reax_list **lists, output_controls *out_control )
+{
+#if !defined(CUDA_ACCUM_ATOMIC)
+    int update_energy;
+    real *spad;
+
+    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
+            sizeof(real) * 3 * system->n,
+            "Cuda_Compute_Atom_Energy::workspace->scratch" );
+
+    spad = (real *) workspace->scratch;
+    update_energy = (out_control->energy_update_freq > 0
+            && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
+#else
+    cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_lp,
+            0, sizeof(real), "Cuda_Compute_Atom_Energy::e_lp" );
+    cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_ov,
+            0, sizeof(real), "Cuda_Compute_Atom_Energy::e_ov" );
+    cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_un,
+            0, sizeof(real), "Cuda_Compute_Atom_Energy::e_un" );
+#endif
+
+    k_atom_energy_part1 <<< control->blocks, control->block_size >>>
+        ( system->d_my_atoms, system->reax_param.d_gp,
+          system->reax_param.d_sbp, system->reax_param.d_tbp, *(workspace->d_workspace),
+          *(lists[BONDS]), system->n, system->reax_param.num_atom_types,
+#if !defined(CUDA_ACCUM_ATOMIC)
+          spad, &spad[system->n], &spad[2 * system->n]
+#else
+          &((simulation_data *)data->d_simulation_data)->my_en.e_lp,
+          &((simulation_data *)data->d_simulation_data)->my_en.e_ov,
+          &((simulation_data *)data->d_simulation_data)->my_en.e_un
+#endif
+         );
+    cudaCheckError( );
+
+#if !defined(CUDA_ACCUM_ATOMIC)
+    k_atom_energy_part2 <<< control->blocks, control->block_size >>>
+        ( *(lists[BONDS]), *(workspace->d_workspace), system->n );
+    cudaCheckError( );
+
+    if ( update_energy == TRUE )
+    {
+        Cuda_Reduction_Sum( spad,
+                &((simulation_data *)data->d_simulation_data)->my_en.e_lp,
+                system->n );
+
+        Cuda_Reduction_Sum( &spad[system->n],
+                &((simulation_data *)data->d_simulation_data)->my_en.e_ov,
+                system->n );
+
+        Cuda_Reduction_Sum( &spad[2 * system->n],
+                &((simulation_data *)data->d_simulation_data)->my_en.e_un,
+                system->n );
+    }
+#endif
+}

@@ -25,30 +25,8 @@
 #include "../reax_types.h"
 
 
-CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1( reax_atom *, single_body_parameters *,
-        hbond_parameters *, global_parameters,
-        control_params *, storage ,
-        reax_list, reax_list, reax_list, int,
-        int, real *, rvec *, int );
-
-CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part1_opt( reax_atom *, single_body_parameters *,
-        hbond_parameters *, global_parameters, control_params *, storage,
-        reax_list, reax_list, reax_list, int,
-        int, real *, rvec * );
-
-#if !defined(CUDA_ACCUM_ATOMIC)
-CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part2( reax_atom *,
-        storage, reax_list, int );
-
-CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part2_opt( reax_atom *,
-        storage, reax_list, int );
-
-CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part3( reax_atom *,
-        storage, reax_list, int );
-
-CUDA_GLOBAL void Cuda_Hydrogen_Bonds_Part3_opt( reax_atom *,
-        storage, reax_list, int );
-#endif
+void Cuda_Compute_Hydrogen_Bonds( reax_system *, control_params *, 
+        simulation_data *, storage *, reax_list **, output_controls * );
 
 
 #endif

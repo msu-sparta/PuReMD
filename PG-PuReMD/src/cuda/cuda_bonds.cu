@@ -23,11 +23,13 @@
 
 #include "cuda_list.h"
 #include "cuda_helpers.h"
+#include "cuda_reduction.h"
+#include "cuda_utils.h"
 
 #include "../index_utils.h"
 
 
-CUDA_GLOBAL void Cuda_Bonds( reax_atom *my_atoms, global_parameters gp, 
+CUDA_GLOBAL void k_bonds( reax_atom *my_atoms, global_parameters gp, 
         single_body_parameters *sbp, two_body_parameters *tbp, 
         storage p_workspace, reax_list p_bond_list, int n, int num_atom_types, 
         real *e_bond_g )
@@ -132,5 +134,49 @@ CUDA_GLOBAL void Cuda_Bonds( reax_atom *my_atoms, global_parameters gp,
     e_bond_g[i] = e_bond_l;
 #else
     atomicAdd( (double *) e_bond_g, (double) e_bond_l );
+#endif
+}
+
+
+void Cuda_Compute_Bonds( reax_system *system, control_params *control, 
+        simulation_data *data, storage *workspace, 
+        reax_list **lists, output_controls *out_control )
+{
+#if !defined(CUDA_ACCUM_ATOMIC)
+    int update_energy;
+    real *spad;
+
+    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
+            sizeof(real) * system->n,
+            "Cuda_Compute_Bonds::workspace->scratch" );
+
+    spad = (real *) workspace->scratch;
+    update_energy = (out_control->energy_update_freq > 0
+            && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
+#else
+    cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_bond,
+            0, sizeof(real), "Cuda_Compute_Bonds::e_bond" );
+#endif
+
+    k_bonds <<< control->blocks, control->block_size,
+            sizeof(real) * control->block_size >>>
+        ( system->d_my_atoms, system->reax_param.d_gp,
+          system->reax_param.d_sbp, system->reax_param.d_tbp,
+          *(workspace->d_workspace), *(lists[BONDS]), 
+          system->n, system->reax_param.num_atom_types,
+#if !defined(CUDA_ACCUM_ATOMIC)
+          spad
+#else
+          &((simulation_data *)data->d_simulation_data)->my_en.e_bond
+#endif
+        );
+    cudaCheckError( );
+
+#if !defined(CUDA_ACCUM_ATOMIC)
+    if ( update_energy == TRUE )
+    {
+        Cuda_Reduction_Sum( spad, &((simulation_data *)data->d_simulation_data)->my_en.e_bond,
+                system->n );
+    }
 #endif
 }

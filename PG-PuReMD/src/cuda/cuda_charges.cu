@@ -31,6 +31,7 @@
 #include "../tool_box.h"
 
 #include "../cub/cub/device/device_radix_sort.cuh"
+//#include <cub/device/device_radix_sort.cuh>
 
 
 //TODO: move k_jacob and jacboi to cuda_lin_alg.cu

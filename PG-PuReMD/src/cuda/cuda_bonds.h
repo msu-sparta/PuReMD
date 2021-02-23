@@ -25,9 +25,8 @@
 #include "../reax_types.h"
 
 
-CUDA_GLOBAL void Cuda_Bonds( reax_atom *, global_parameters,
-        single_body_parameters *, two_body_parameters *, storage,
-        reax_list, int, int, real * );
+void Cuda_Compute_Bonds( reax_system *, control_params *, 
+        simulation_data *, storage *, reax_list **, output_controls * );
 
 
 #endif

@@ -343,7 +343,7 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
 
 
 /* Initialize arrays */
-CUDA_GLOBAL void Cuda_BO_Part1( reax_atom *my_atoms, 
+CUDA_GLOBAL void k_bond_order_part1( reax_atom *my_atoms, 
         single_body_parameters *sbp, storage workspace, int N )
 {
     int i, type_i;
@@ -367,7 +367,7 @@ CUDA_GLOBAL void Cuda_BO_Part1( reax_atom *my_atoms,
 
 
 /* Main BO calculations */
-CUDA_GLOBAL void Cuda_BO_Part2( reax_atom *my_atoms, global_parameters gp, 
+CUDA_GLOBAL void k_bond_order_part2( reax_atom *my_atoms, global_parameters gp, 
         single_body_parameters *sbp, two_body_parameters *tbp, 
         storage workspace, reax_list bond_list, int num_atom_types, int N )
 {
@@ -416,10 +416,6 @@ CUDA_GLOBAL void Cuda_BO_Part2( reax_atom *my_atoms, global_parameters gp,
         {
             twbp = &tbp[ index_tbp(type_i, type_j, num_atom_types) ];
 
-#if defined(TEST_FORCES)
-            Set_Start_Index( pj, top_dbo, dBOs );
-#endif
-
             if ( twbp->ovc < 0.001 && twbp->v13cor < 0.001 )
             {
                 /* There is no correction to bond orders nor to derivatives of
@@ -439,25 +435,6 @@ CUDA_GLOBAL void Cuda_BO_Part2( reax_atom *my_atoms, global_parameters gp,
                 bo_ij->C2dbopi2 = 0.0;
                 bo_ij->C3dbopi2 = 0.0;
                 bo_ij->C4dbopi2 = 0.0;
-
-#if defined(TEST_FORCES)
-                pdbo = &dBOs->dbo_list[ top_dbo ];
-
-                /* compute dBO_ij/dr_i */
-                pdbo->wrt = i;
-                rvec_Copy( pdbo->dBO, bo_ij->dBOp );
-                rvec_Scale( pdbo->dBOpi, bo_ij->BO_pi, bo_ij->dln_BOp_pi );
-                rvec_Scale( pdbo->dBOpi2, bo_ij->BO_pi2, bo_ij->dln_BOp_pi2);
-
-                /* compute dBO_ij/dr_j */
-                pdbo = &dBOs->dbo_list[ top_dbo + 1 ];
-                pdbo->wrt = j;
-                rvec_Scale( pdbo->dBO, -1.0, bo_ij->dBOp );
-                rvec_Scale( pdbo->dBOpi, -bo_ij->BO_pi, bo_ij->dln_BOp_pi );
-                rvec_Scale(pdbo->dBOpi2, -bo_ij->BO_pi2, bo_ij->dln_BOp_pi2);
-
-                top_dbo += 2;
-#endif
             }
             else
             {
@@ -566,10 +543,6 @@ CUDA_GLOBAL void Cuda_BO_Part2( reax_atom *my_atoms, global_parameters gp,
                 bo_ij->C2dbopi2 = bo_ij->BO_pi2 * A1_ij;
                 bo_ij->C3dbopi2 = bo_ij->BO_pi2 * A3_ij;
                 bo_ij->C4dbopi2 = bo_ij->BO_pi2 * A3_ji;
-
-#if defined(TEST_FORCES)
-                Calculate_dBO( i, pj, workspace, lists, &top_dbo );
-#endif
             }
 
             /* neglect weak bonds */
@@ -593,11 +566,6 @@ CUDA_GLOBAL void Cuda_BO_Part2( reax_atom *my_atoms, global_parameters gp,
             /* now keeps total_BO */
             workspace.total_bond_order[i] += bo_ij->BO;
 
-#if defined(TEST_FORCES)
-            Set_End_Index( pj, top_dbo, dBOs );
-            Add_dBO( system, lists, i, pj, 1.0, workspace.dDelta );
-#endif
-
             /* NOTE: handle sym_index later in Cuda_Calculate_BO_Part3 */
         }
     }
@@ -605,7 +573,7 @@ CUDA_GLOBAL void Cuda_BO_Part2( reax_atom *my_atoms, global_parameters gp,
 
 
 /* Compute sym_index */
-CUDA_GLOBAL void Cuda_BO_Part3( storage workspace, reax_list bond_list, int N )
+CUDA_GLOBAL void k_bond_order_part3( storage workspace, reax_list bond_list, int N )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -643,17 +611,13 @@ CUDA_GLOBAL void Cuda_BO_Part3( storage workspace, reax_list bond_list, int N )
 
             /* now keeps total_BO */
             workspace.total_bond_order[i] += bo_ij->BO;
-
-#if defined(TEST_FORCES)
-            Add_dBO( system, lists, j, sym_index, 1.0, workspace.dDelta );
-#endif
         }
     }
 }
 
 
 /* Calculate helper variables */
-CUDA_GLOBAL void Cuda_BO_Part4( reax_atom *my_atoms,
+CUDA_GLOBAL void k_bond_order_part4( reax_atom *my_atoms,
         global_parameters gp, single_body_parameters *sbp,
         storage workspace, int N )
 {
@@ -740,7 +704,7 @@ CUDA_GLOBAL void k_total_forces_part1( storage workspace, reax_list bond_list,
 
 
 #if !defined(CUDA_ACCUM_ATOMIC)
-CUDA_GLOBAL void k_total_forces_part2( reax_atom *my_atoms, reax_list bond_list,
+CUDA_GLOBAL void k_total_forces_part1_2( reax_atom *my_atoms, reax_list bond_list,
         storage workspace, int N )
 {
     int i, pk;
@@ -765,7 +729,7 @@ CUDA_GLOBAL void k_total_forces_part2( reax_atom *my_atoms, reax_list bond_list,
 #endif
 
 
-CUDA_GLOBAL void k_total_forces_pure( reax_atom *my_atoms, int n, 
+CUDA_GLOBAL void k_total_forces_part2( reax_atom *my_atoms, int n, 
         storage workspace )
 {
     int i;
@@ -781,7 +745,34 @@ CUDA_GLOBAL void k_total_forces_pure( reax_atom *my_atoms, int n,
 }
 
 
-void Cuda_Total_Forces( reax_system *system, control_params *control, 
+void Cuda_Compute_Bond_Orders( reax_system *system, control_params *control, 
+        simulation_data *data, storage *workspace, 
+        reax_list **lists, output_controls *out_control )
+{
+    k_bond_order_part1 <<< control->blocks_n, control->block_size_n >>>
+        ( system->d_my_atoms, system->reax_param.d_sbp, 
+          *(workspace->d_workspace), system->N );
+    cudaCheckError( );
+
+    k_bond_order_part2 <<< control->blocks_n, control->block_size_n >>>
+        ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp, 
+          system->reax_param.d_tbp, *(workspace->d_workspace), 
+          *(lists[BONDS]),
+          system->reax_param.num_atom_types, system->N );
+    cudaCheckError( );
+
+    k_bond_order_part3 <<< control->blocks_n, control->block_size_n >>>
+        ( *(workspace->d_workspace), *(lists[BONDS]), system->N );
+    cudaCheckError( );
+
+    k_bond_order_part4 <<< control->blocks_n, control->block_size_n >>>
+        ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp, 
+         *(workspace->d_workspace), system->N );
+    cudaCheckError( );
+}
+
+
+void Cuda_Total_Forces_Part1( reax_system *system, control_params *control, 
         simulation_data *data, storage *workspace, reax_list **lists )
 {
     int blocks;
@@ -789,7 +780,7 @@ void Cuda_Total_Forces( reax_system *system, control_params *control,
 
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
             sizeof(rvec) * 2 * system->N,
-            "Cuda_Total_Forces::workspace->scratch" );
+            "Cuda_Total_Forces_Part1::workspace->scratch" );
     spad_rvec = (rvec *) workspace->scratch;
     cuda_memset( spad_rvec, 0, sizeof(rvec) * 2 * system->N,
             "total_forces:ext_press" );
@@ -818,21 +809,21 @@ void Cuda_Total_Forces( reax_system *system, control_params *control,
 
 #if !defined(CUDA_ACCUM_ATOMIC)
     /* post processing for the atomic forces */
-    k_total_forces_part2  <<< blocks, DEF_BLOCK_SIZE >>>
+    k_total_forces_part1_2  <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, *(lists[BONDS]), *(workspace->d_workspace), system->N );
     cudaCheckError( ); 
 #endif
 }
 
 
-void Cuda_Total_Forces_PURE( reax_system *system, storage *workspace )
+void Cuda_Total_Forces_Part2( reax_system *system, storage *workspace )
 {
     int blocks;
 
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_total_forces_pure <<< blocks, DEF_BLOCK_SIZE >>>
+    k_total_forces_part2 <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->n, *(workspace->d_workspace) );
     cudaCheckError( ); 
 }
