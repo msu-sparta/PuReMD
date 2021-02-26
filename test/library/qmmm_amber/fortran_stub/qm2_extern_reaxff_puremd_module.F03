@@ -125,7 +125,7 @@ contains
                 use, intrinsic :: iso_c_binding
                 implicit none
 
-                integer (c_int), target, intent(in) :: num_qm_atoms             ! number of QM atoms
+                integer (c_int), intent(in) :: num_qm_atoms                     ! number of QM atoms
                 real (c_double), target, intent(in) :: qm_pos(3,num_qm_atoms)   ! QM atom coordinates
                 integer (c_int), target, intent(in) :: qm_types(num_qm_atoms)   ! QM atom types
                 real (c_double), target, intent(inout) :: qm_q(num_qm_atoms)    ! QM atom charges (nuclear charge in au)
