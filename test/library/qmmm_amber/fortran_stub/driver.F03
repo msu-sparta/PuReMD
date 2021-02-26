@@ -95,7 +95,7 @@ end module driver_utils
 program driver
         use, intrinsic :: iso_c_binding
         use driver_utils
-        use reaxff_puremd
+        use qm2_extern_reaxff_puremd_module
 
         implicit none
 
@@ -109,7 +109,7 @@ program driver
 #define stderr 0
 #endif
 
-        integer, parameter :: max_sim_steps = 0
+        integer, parameter :: qmcharge = 0
 
         character(len=1024), dimension(:), allocatable :: args
         character(len=1024) :: filename
@@ -182,9 +182,9 @@ program driver
         endif
         end do
 
-        call get_reaxff_puremd_forces( max_sim_steps, 0, sim_box_info, &
-                num_qm_atoms, qm_pos, qm_types_map, qm_q, num_mm_atoms, &
-                mm_pos_q, mm_types_map, e_total, qm_f, mm_f )
+        call get_reaxff_puremd_forces( num_qm_atoms, qm_pos, qm_types_map, &
+                qm_q, num_mm_atoms, mm_pos_q, mm_types_map, e_total, qm_f, &
+                mm_f, qmcharge )
 
         write (stdout, fmt=75) 'Total energy:', e_total
         write (stdout, *)
@@ -197,6 +197,8 @@ program driver
                 write (stdout, fmt=80) ix + num_qm_atoms, mm_f(3 * (ix - 1) + 1), &
                         mm_f(3 * (ix - 1) + 2), mm_f(3 * (ix - 1) + 3), mm_pos_q(4 * (ix - 1) + 3)
         end do
+
+        call reaxff_puremd_finalize( )
 
         deallocate(args)
         deallocate(qm_types)
