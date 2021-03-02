@@ -570,7 +570,7 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
         case SAI_PC:
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
             data->timing.cm_solver_pre_comp +=
-                sparse_approx_inverse( workspace->H_full, workspace->H_spar_patt_full,
+                sparse_approx_inverse( &workspace->H_full, &workspace->H_spar_patt_full,
                         &workspace->H_app_inv );
 #else
             fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile to enable. Terminating...\n" );
@@ -692,7 +692,7 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
         case SAI_PC:
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
             data->timing.cm_solver_pre_comp +=
-                sparse_approx_inverse( workspace->H_full, workspace->H_spar_patt_full,
+                sparse_approx_inverse( &workspace->H_full, &workspace->H_spar_patt_full,
                         &workspace->H_app_inv );
 #else
             fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile to enable. Terminating...\n" );
@@ -833,7 +833,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
         case SAI_PC:
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
             data->timing.cm_solver_pre_comp +=
-                sparse_approx_inverse( workspace->H_full, workspace->H_spar_patt_full,
+                sparse_approx_inverse( &workspace->H_full, &workspace->H_spar_patt_full,
                         &workspace->H_app_inv );
 #else
             fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile to enable. Terminating...\n" );
