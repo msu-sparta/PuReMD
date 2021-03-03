@@ -26,6 +26,8 @@
 #include "tool_box.h"
 #include "vector.h"
 
+#include <ctype.h>
+
 
 // CUSTOM_BOXGEO: BOXGEO box_x box_y box_z  angle1 angle2 angle3
 #define CUSTOM_BOXGEO_FORMAT " %s %lf %lf %lf %lf %lf %lf"
@@ -286,7 +288,7 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
         simulation_data *data, static_storage *workspace )
 {
     FILE *geo;
-    int i, n, serial, top;
+    int i, j, n, serial, top;
     rvec x;
     char element[3], name[9];
     reax_atom *atom;
@@ -314,6 +316,13 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
     {
         fscanf( geo, CUSTOM_ATOM_FORMAT,
                 &serial, element, name, &x[0], &x[1], &x[2] );
+
+        for ( j = 0; j < sizeof(element) - 1; ++j )
+        {
+            element[j] = toupper( element[j] );
+        }
+        element[sizeof(element) - 1] = '\0';
+
         Fit_to_Periodic_Box( &system->box, x );
 
 #if defined(DEBUG_FOCUS)
@@ -470,6 +479,10 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
                 workspace->orig_id[top] = pdb_serial;
 
                 Trim_Spaces( element, sizeof(element) );
+                for ( i = 0; i < sizeof(element) - 1; ++i )
+                {
+                    element[i] = toupper( element[i] );
+                }
                 atom->type = Get_Atom_Type( &system->reax_param, element, sizeof(element) );
                 strncpy( atom->name, atom_name, sizeof(atom->name) - 1 );
                 atom->name[sizeof(atom->name) - 1] = '\0';
@@ -745,6 +758,10 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
                     sizeof(system->atoms[atom_cnt].name) - 1 );
             system->atoms[atom_cnt].name[sizeof(system->atoms[atom_cnt].name) - 1] = '\0';
             Trim_Spaces( element, sizeof(element) );
+            for ( i = 0; i < sizeof(element) - 1; ++i )
+            {
+                element[i] = toupper( element[i] );
+            }
             system->atoms[atom_cnt].type =
                 Get_Atom_Type( &system->reax_param, element, sizeof(element) );
 
