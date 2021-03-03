@@ -73,13 +73,13 @@ int set_control_parameter( const void * const, const char * const,
        const char ** const );
 
 #if defined(QMMM)
-void * setup_qmmm( int, const int * const,
-        const double * const, int, const int * const,
+void * setup_qmmm( int, const char * const,
+        const double * const, int, const char * const,
         const double * const, const double * const,
         const char * const, const char * const );
 
-int reset_qmmm( const void * const, int, const int * const,
-        const double * const, int, const int * const,
+int reset_qmmm( const void * const, int, const char * const,
+        const double * const, int, const char * const,
         const double * const, const double * const,
         const char * const, const char * const );
 

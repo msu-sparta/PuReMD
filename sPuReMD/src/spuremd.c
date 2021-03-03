@@ -37,6 +37,8 @@
 #include "tool_box.h"
 #include "vector.h"
 
+#include <ctype.h>
+
 
 /* Handles additional entire geometry calculations after
  * perturbing atom positions during a simulation step
@@ -954,10 +956,10 @@ int set_control_parameter( const void * const handle, const char * const keyword
  * for the first simulation
  *
  * qm_num_atoms: num. atoms in the QM region
- * qm_types: element types for QM atoms
+ * qm_symbols: element types for QM atoms
  * qm_pos: coordinates of QM atom positions (consecutively arranged), in Angstroms
  * mm_num_atoms: num. atoms in the MM region
- * mm_types: element types for MM atoms
+ * mm_symbols: element types for MM atoms
  * mm_pos_q: coordinates and charges of MM atom positions (consecutively arranged), in Angstroms / Coulombs
  * sim_box_info: simulation box information, where the entries are
  *  - box length per dimension (3 entries)
@@ -965,13 +967,13 @@ int set_control_parameter( const void * const handle, const char * const keyword
  * ffield_file: file containing force field parameters
  * control_file: file containing simulation parameters
  */
-void * setup_qmmm( int qm_num_atoms, const int * const qm_types,
-        const double * const qm_pos, int mm_num_atoms, const int * const mm_types,
+void * setup_qmmm( int qm_num_atoms, const char * const qm_symbols,
+        const double * const qm_pos, int mm_num_atoms, const char * const mm_symbols,
         const double * const mm_pos_q, const double * const sim_box_info,
         const char * const ffield_file, const char * const control_file )
 {
     int i;
-//    char atom_name[9];
+    char element[3];
     rvec x;
     spuremd_handle *spmd_handle;
 
@@ -1000,6 +1002,8 @@ void * setup_qmmm( int qm_num_atoms, const int * const qm_types,
             sim_box_info[3], sim_box_info[4], sim_box_info[5],
             &spmd_handle->system->box );
 
+    element[2] = '\0';
+
     for ( i = 0; i < spmd_handle->system->N_qm; ++i )
     {
         x[0] = qm_pos[3 * i];
@@ -1009,12 +1013,14 @@ void * setup_qmmm( int qm_num_atoms, const int * const qm_types,
         Fit_to_Periodic_Box( &spmd_handle->system->box, x );
 
         spmd_handle->workspace->orig_id[i] = i + 1;
-//        spmd_handle->system->atoms[i].type = Get_Atom_Type( &system->reax_param,
-//                element, sizeof(element) );
-        spmd_handle->system->atoms[i].type = qm_types[i];
-//        strncpy( spmd_handle->system->atoms[i].name, atom_name,
-//                sizeof(spmd_handle->system->atoms[i].name) - 1 );
-//        spmd_handle->system->atoms[i].name[sizeof(spmd_handle->system->atoms[i].name) - 1] = '\0';
+        element[0] = toupper( qm_symbols[2 * i] );
+        element[1] = toupper( qm_symbols[2 * i + 1] );
+        Trim_Spaces( element, sizeof(element) );
+        spmd_handle->system->atoms[i].type = Get_Atom_Type( &spmd_handle->system->reax_param,
+                element, sizeof(element) );
+        strncpy( spmd_handle->system->atoms[i].name, element,
+                sizeof(spmd_handle->system->atoms[i].name) - 1 );
+        spmd_handle->system->atoms[i].name[sizeof(spmd_handle->system->atoms[i].name) - 1] = '\0';
         rvec_Copy( spmd_handle->system->atoms[i].x, x );
         rvec_MakeZero( spmd_handle->system->atoms[i].v );
         rvec_MakeZero( spmd_handle->system->atoms[i].f );
@@ -1033,12 +1039,14 @@ void * setup_qmmm( int qm_num_atoms, const int * const qm_types,
         Fit_to_Periodic_Box( &spmd_handle->system->box, x );
 
         spmd_handle->workspace->orig_id[i] = i + 1;
-//        spmd_handle->system->atoms[i].type = Get_Atom_Type( &system->reax_param,
-//                element, sizeof(element) );
-        spmd_handle->system->atoms[i].type = mm_types[i - spmd_handle->system->N_qm];
-//        strncpy( spmd_handle->system->atoms[i].name, atom_name,
-//                sizeof(spmd_handle->system->atoms[i].name) - 1 );
-//        spmd_handle->system->atoms[i].name[sizeof(spmd_handle->system->atoms[i].name) - 1] = '\0';
+        element[0] = toupper( mm_symbols[2 * (i - spmd_handle->system->N_qm)] );
+        element[1] = toupper( mm_symbols[2 * (i - spmd_handle->system->N_qm) + 1] );
+        Trim_Spaces( element, sizeof(element) );
+        spmd_handle->system->atoms[i].type = Get_Atom_Type( &spmd_handle->system->reax_param,
+                element, sizeof(element) );
+        strncpy( spmd_handle->system->atoms[i].name, element,
+                sizeof(spmd_handle->system->atoms[i].name) - 1 );
+        spmd_handle->system->atoms[i].name[sizeof(spmd_handle->system->atoms[i].name) - 1] = '\0';
         rvec_Copy( spmd_handle->system->atoms[i].x, x );
         rvec_MakeZero( spmd_handle->system->atoms[i].v );
         rvec_MakeZero( spmd_handle->system->atoms[i].f );
@@ -1059,10 +1067,10 @@ void * setup_qmmm( int qm_num_atoms, const int * const qm_types,
  *
  * handle: pointer to wrapper struct with top-level data structures
  * qm_num_atoms: num. atoms in the QM region
- * qm_types: element types for QM atoms
+ * qm_symbols: element types for QM atoms
  * qm_pos: coordinates of QM atom positions (consecutively arranged), in Angstroms
  * mm_num_atoms: num. atoms in the MM region
- * mm_types: element types for MM atoms
+ * mm_symbols: element types for MM atoms
  * mm_pos_q: coordinates and charges of MM atom positions (consecutively arranged), in Angstroms / Coulombs
  * sim_box_info: simulation box information, where the entries are
  *  - box length per dimension (3 entries)
@@ -1073,12 +1081,13 @@ void * setup_qmmm( int qm_num_atoms, const int * const qm_types,
  * returns: SPUREMD_SUCCESS upon success, SPUREMD_FAILURE otherwise
  */
 int reset_qmmm( const void * const handle, int qm_num_atoms,
-        const int * const qm_types, const double * const qm_pos,
-        int mm_num_atoms, const int * const mm_types,
+        const char * const qm_symbols, const double * const qm_pos,
+        int mm_num_atoms, const char * const mm_symbols,
         const double * const mm_pos_q, const double * const sim_box_info,
         const char * const ffield_file, const char * const control_file )
 {
     int i, ret;
+    char element[3];
     rvec x;
     spuremd_handle *spmd_handle;
 
@@ -1127,12 +1136,14 @@ int reset_qmmm( const void * const handle, int qm_num_atoms,
             Fit_to_Periodic_Box( &spmd_handle->system->box, x );
 
             spmd_handle->workspace->orig_id[i] = i + 1;
-//            spmd_handle->system->atoms[i].type = Get_Atom_Type( &system->reax_param,
-//                    element, sizeof(element) );
-            spmd_handle->system->atoms[i].type = qm_types[i];
-//            strncpy( spmd_handle->system->atoms[i].name, atom_name,
-//                    sizeof(spmd_handle->system->atoms[i].name) - 1 );
-//            spmd_handle->system->atoms[i].name[sizeof(spmd_handle->system->atoms[i].name) - 1] = '\0';
+            element[0] = toupper( qm_symbols[2 * i] );
+            element[1] = toupper( qm_symbols[2 * i + 1] );
+            Trim_Spaces( element, sizeof(element) );
+            spmd_handle->system->atoms[i].type = Get_Atom_Type( &spmd_handle->system->reax_param,
+                    element, sizeof(element) );
+            strncpy( spmd_handle->system->atoms[i].name, element,
+                    sizeof(spmd_handle->system->atoms[i].name) - 1 );
+            spmd_handle->system->atoms[i].name[sizeof(spmd_handle->system->atoms[i].name) - 1] = '\0';
             rvec_Copy( spmd_handle->system->atoms[i].x, x );
             rvec_MakeZero( spmd_handle->system->atoms[i].v );
             rvec_MakeZero( spmd_handle->system->atoms[i].f );
@@ -1150,12 +1161,14 @@ int reset_qmmm( const void * const handle, int qm_num_atoms,
             Fit_to_Periodic_Box( &spmd_handle->system->box, x );
 
             spmd_handle->workspace->orig_id[i] = i + 1;
-//            spmd_handle->system->atoms[i].type = Get_Atom_Type( &system->reax_param,
-//                    element, sizeof(element) );
-            spmd_handle->system->atoms[i].type = mm_types[i - spmd_handle->system->N_qm];
-//            strncpy( spmd_handle->system->atoms[i].name, atom_name,
-//                    sizeof(spmd_handle->system->atoms[i].name) - 1 );
-//            spmd_handle->system->atoms[i].name[sizeof(spmd_handle->system->atoms[i].name) - 1] = '\0';
+            element[0] = toupper( mm_symbols[2 * (i - spmd_handle->system->N_qm)] );
+            element[1] = toupper( mm_symbols[2 * (i - spmd_handle->system->N_qm) + 1] );
+            Trim_Spaces( element, sizeof(element) );
+            spmd_handle->system->atoms[i].type = Get_Atom_Type( &spmd_handle->system->reax_param,
+                    element, sizeof(element) );
+            strncpy( spmd_handle->system->atoms[i].name, element,
+                    sizeof(spmd_handle->system->atoms[i].name) - 1 );
+            spmd_handle->system->atoms[i].name[sizeof(spmd_handle->system->atoms[i].name) - 1] = '\0';
             rvec_Copy( spmd_handle->system->atoms[i].x, x );
             rvec_MakeZero( spmd_handle->system->atoms[i].v );
             rvec_MakeZero( spmd_handle->system->atoms[i].f );

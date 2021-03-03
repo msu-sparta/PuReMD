@@ -14,7 +14,7 @@ contains
                 integer (c_int), intent(in) :: num_qm_atoms, num_mm_atoms
                 real (c_double), intent(out) :: sim_box_info(6)
                 real (c_double), intent(out) :: qm_pos(3*num_qm_atoms), qm_q(num_qm_atoms), mm_pos_q(4*num_mm_atoms)
-                character(len=5), intent(out) :: qm_types(num_qm_atoms), mm_types(num_mm_atoms)
+                character(len=2), intent(out) :: qm_types(num_qm_atoms), mm_types(num_mm_atoms)
 
                 character(len=200) :: line
                 integer :: bgf_version, num_descrp, num_remark, num_format, line_num
@@ -59,7 +59,7 @@ contains
                 if (line(1:6) == 'HETATM') then
                         if (bgf_version < 400) then
                                 if (nqm < num_qm_atoms) then
-                                        read (line, '(30x,3f10.5,1x,a5,6x,f10.5)', end=40, err=40) &
+                                        read (line, '(30x,3f10.5,4x,a2,6x,f10.5)', end=40, err=40) &
                                                 qm_pos(3*nqm+1), qm_pos(3*nqm+2), qm_pos(3*nqm+3), &
                                                 qm_types(nqm+1), qm_q(nqm+1)
 
@@ -67,7 +67,7 @@ contains
                                 else
                                         ! take the MM charges from BGF file;
                                         ! Amber would set instead in real QM/MM simulation
-                                        read (line, '(30x,3f10.5,1x,a5,6x,f10.5)', end=40, err=40) &
+                                        read (line, '(30x,3f10.5,4x,a2,6x,f10.5)', end=40, err=40) &
                                                 mm_pos_q(4*nmm+1), mm_pos_q(4*nmm+2), mm_pos_q(4*nmm+3), &
                                                 mm_types(nmm+1), mm_pos_q(4*nmm+4)
 
@@ -117,8 +117,7 @@ program driver
         integer (c_int) :: num_qm_atoms, num_mm_atoms
         real (c_double) :: sim_box_info(6), e_total
         real (c_double), dimension(:), allocatable :: qm_pos, qm_q, qm_f, mm_pos_q, mm_f
-        character(len=5), dimension(:), allocatable :: qm_types, mm_types
-        integer (c_int), dimension(:), allocatable :: qm_types_map, mm_types_map
+        character(len=2), dimension(:), allocatable :: qm_types, mm_types
 
         num_args = command_argument_count( )
         if (num_args /= 3) then
@@ -138,12 +137,10 @@ program driver
         read (args(3), *) num_mm_atoms
 
         allocate( qm_types(num_qm_atoms) )
-        allocate( qm_types_map(num_qm_atoms) )
         allocate( qm_pos(3*num_qm_atoms) )
         allocate( qm_q(num_qm_atoms) )
         allocate( qm_f(3*num_qm_atoms) )
         allocate( mm_types(num_mm_atoms) )
-        allocate( mm_types_map(num_mm_atoms) )
         allocate( mm_pos_q(4*num_mm_atoms) )
         allocate( mm_f(3*num_mm_atoms) )
 
@@ -158,32 +155,8 @@ program driver
                 stop
         endif
 
-        do ix = 1, num_qm_atoms
-        if (trim(adjustl(qm_types(ix))) == 'C') then
-                qm_types_map(ix) = 0
-        else if (trim(adjustl(qm_types(ix))) == 'H') then
-                qm_types_map(ix) = 1
-        else if (trim(adjustl(qm_types(ix))) == 'O') then
-                qm_types_map(ix) = 2
-        else
-                stop 'ERROR: unrecogized QM atom type'
-        endif
-        end do
-
-        do ix = 1, num_mm_atoms
-        if (trim(adjustl(mm_types(ix))) == 'C') then
-                mm_types_map(ix) = 0
-        else if (trim(adjustl(mm_types(ix))) == 'H') then
-                mm_types_map(ix) = 1
-        else if (trim(adjustl(mm_types(ix))) == 'O') then
-                mm_types_map(ix) = 2
-        else
-                stop 'ERROR: unrecogized MM atom type'
-        endif
-        end do
-
-        call get_reaxff_puremd_forces( num_qm_atoms, qm_pos, qm_types_map, &
-                qm_q, num_mm_atoms, mm_pos_q, mm_types_map, e_total, qm_f, &
+        call get_reaxff_puremd_forces( num_qm_atoms, qm_pos, qm_types, &
+                qm_q, num_mm_atoms, mm_pos_q, mm_types, e_total, qm_f, &
                 mm_f, qmcharge )
 
         write (stdout, fmt=75) 'Total energy:', e_total
@@ -202,12 +175,10 @@ program driver
 
         deallocate(args)
         deallocate(qm_types)
-        deallocate(qm_types_map)
         deallocate(qm_pos)
         deallocate(qm_q)
         deallocate(qm_f)
         deallocate(mm_types)
-        deallocate(mm_types_map)
         deallocate(mm_pos_q)
         deallocate(mm_f)
 

@@ -5,17 +5,17 @@ module qm2_extern_reaxff_puremd_module
 
         interface
                 type(c_ptr) function setup_qmmm &
-                        (num_qm_atoms, qm_types, qm_pos, &
-                        num_mm_atoms, mm_types, mm_pos_q, sim_box_info, &
+                        (num_qm_atoms, qm_symbols, qm_pos, &
+                        num_mm_atoms, mm_symbols, mm_pos_q, sim_box_info, &
                         ffield_filename, control_filename) &
                         bind(C, name='setup_qmmm') 
                         use, intrinsic :: iso_c_binding
                         implicit none
                         integer (c_int), value :: num_qm_atoms
-                        type(c_ptr), value :: qm_types
+                        type(c_ptr), value :: qm_symbols
                         type(c_ptr), value :: qm_pos
                         integer (c_int), value :: num_mm_atoms
-                        type(c_ptr), value :: mm_types
+                        type(c_ptr), value :: mm_symbols
                         type(c_ptr), value :: mm_pos_q
                         type(c_ptr), value :: sim_box_info
                         type(c_ptr), value :: ffield_filename
@@ -23,18 +23,18 @@ module qm2_extern_reaxff_puremd_module
                 end function setup_qmmm
 
                 integer (c_int) function reset_qmmm &
-                        (handle, num_qm_atoms, qm_types, qm_pos, &
-                        num_mm_atoms, mm_types, mm_pos_q, sim_box_info, &
+                        (handle, num_qm_atoms, qm_symbols, qm_pos, &
+                        num_mm_atoms, mm_symbols, mm_pos_q, sim_box_info, &
                         ffield_filename, control_filename) &
                         bind(C, name='reset_qmmm') 
                         use, intrinsic :: iso_c_binding
                         implicit none
                         type(c_ptr), value :: handle
                         integer (c_int), value :: num_qm_atoms
-                        type(c_ptr), value :: qm_types
+                        type(c_ptr), value :: qm_symbols
                         type(c_ptr), value :: qm_pos
                         integer (c_int), value :: num_mm_atoms
-                        type(c_ptr), value :: mm_types
+                        type(c_ptr), value :: mm_symbols
                         type(c_ptr), value :: mm_pos_q
                         type(c_ptr), value :: sim_box_info
                         type(c_ptr), value :: ffield_filename
@@ -119,19 +119,19 @@ module qm2_extern_reaxff_puremd_module
         type(c_ptr), save, private :: handle = c_null_ptr
 
 contains
-        subroutine get_reaxff_puremd_forces( num_qm_atoms, qm_pos, qm_types, &
-                        qm_q, num_mm_atoms, mm_pos_q, mm_types, e_total, &
+        subroutine get_reaxff_puremd_forces( num_qm_atoms, qm_pos, qm_symbols, &
+                        qm_q, num_mm_atoms, mm_pos_q, mm_symbols, e_total, &
                         qm_f, mm_f, qmcharge )
                 use, intrinsic :: iso_c_binding
                 implicit none
 
                 integer (c_int), intent(in) :: num_qm_atoms                     ! number of QM atoms
                 real (c_double), target, intent(in) :: qm_pos(3,num_qm_atoms)   ! QM atom coordinates
-                integer (c_int), target, intent(in) :: qm_types(num_qm_atoms)   ! QM atom types
+                character(len=2), dimension(num_qm_atoms), target, intent(in) :: qm_symbols   ! QM atom types
                 real (c_double), target, intent(inout) :: qm_q(num_qm_atoms)    ! QM atom charges (nuclear charge in au)
                 integer (c_int), intent(in) :: num_mm_atoms                     ! number of MM atoms
                 real (c_double), target, intent(in) :: mm_pos_q(4,num_mm_atoms) ! MM atom coordinates and charges (nuclear charge in au)
-                integer (c_int), target, intent(in) :: mm_types(num_mm_atoms)   ! MM atom types
+                character(len=2), dimension(num_qm_atoms), target, intent(in) :: mm_symbols   ! MM atom types
                 real (c_double), target, intent(out) :: e_total                 ! SCF energy (kcal/mol)
                 real (c_double), target, intent(out) :: qm_f(3,num_qm_atoms)    ! SCF QM force (AMU * Angstroms / ps^2)
                 real (c_double), target, intent(out) :: mm_f(3,num_mm_atoms)    ! SCF MM force (AMU * Angstroms / ps^2)
@@ -159,8 +159,8 @@ contains
                 if ( first_call ) then
                         first_call = .false.
 
-                        handle = setup_qmmm( num_qm_atoms, c_loc(qm_types), &
-                                c_loc(qm_pos), num_mm_atoms, c_loc(mm_types), &
+                        handle = setup_qmmm( num_qm_atoms, c_loc(qm_symbols), &
+                                c_loc(qm_pos), num_mm_atoms, c_loc(mm_symbols), &
                                 c_loc(mm_pos_q), c_loc(sim_box_info), c_loc(ffield_filename), c_null_ptr )
 
                         ! NVE ensemble
@@ -297,8 +297,8 @@ contains
                                 c_loc(e_total), c_null_ptr, c_null_ptr, c_null_ptr )
                         if ( ret /= 0_c_int ) stop "ERROR: get_reaxff_puremd_forces::get_system_info"
                 else
-                        ret = reset_qmmm( handle, num_qm_atoms, c_loc(qm_types), &
-                                c_loc(qm_pos), num_mm_atoms, c_loc(mm_types), &
+                        ret = reset_qmmm( handle, num_qm_atoms, c_loc(qm_symbols), &
+                                c_loc(qm_pos), num_mm_atoms, c_loc(mm_symbols), &
                                 c_loc(mm_pos_q), c_loc(sim_box_info), c_null_ptr, c_null_ptr )
                         if ( ret /= 0_c_int ) stop "ERROR: get_reaxff_puremd_forces::reset_qmmm"
 
