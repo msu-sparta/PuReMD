@@ -498,6 +498,26 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
 
             for ( i = 0; i < system->N_cm - 1; ++i )
             {
+                #if defined(QMMM)
+                // total charge constraint on QM atoms
+                if ( system->atoms[i].qmmm_mask == TRUE )
+                {
+                    H->j[*Htop] = i;
+                    H->val[*Htop] = 1.0;
+
+                    H_sp->j[*H_sp_top] = i;
+                    H_sp->val[*H_sp_top] = 1.0;
+                }
+                else {
+                    H->j[*Htop] = i;
+                    H->val[*Htop] = 0.0; 
+                
+                    H_sp->j[*H_sp_top] = i;
+                    H_sp->val[*H_sp_top] = 0.0;
+                }
+                *Htop = *Htop + 1;
+                *H_sp_top = *H_sp_top + 1;
+                #else
                 H->j[*Htop] = i;
                 H->val[*Htop] = 1.0;
                 *Htop = *Htop + 1;
@@ -505,6 +525,7 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
                 H_sp->j[*H_sp_top] = i;
                 H_sp->val[*H_sp_top] = 1.0;
                 *H_sp_top = *H_sp_top + 1;
+                #endif
             }
 
             H->j[*Htop] = system->N_cm - 1;
@@ -856,7 +877,10 @@ static void Init_Forces( reax_system *system, control_params *control,
                         ++H_sp_top;
                     }
                 }
-
+                #if defined(QMMM)
+                 if ( system->atoms[i].qmmm_mask == TRUE && system->atoms[j].qmmm_mask == TRUE )
+                 {
+                #endif
                 /* hydrogen bond lists */
                 if ( control->hbond_cut > 0.0
                         && (ihb == H_ATOM || ihb == H_BONDING_ATOM)
@@ -1000,6 +1024,9 @@ static void Init_Forces( reax_system *system, control_params *control,
                     }
                 }
             }
+#if defined(QMMM)
+          }
+#endif
         }
 
         /* diagonal entry */
