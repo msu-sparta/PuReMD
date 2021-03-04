@@ -874,7 +874,7 @@ struct mpi_datatypes
  * l[34] = b_s_acks2 (ACKS2 bond softness)
  * l[35] = N/A
  * l[36] = N/A
- * l[37] = version number
+ * l[37] = N/A
  * l[38] = p_coa3
  * */
 struct global_parameters
