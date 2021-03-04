@@ -1173,7 +1173,7 @@ int reset_qmmm( const void * const handle, int qm_num_atoms,
             rvec_MakeZero( spmd_handle->system->atoms[i].v );
             rvec_MakeZero( spmd_handle->system->atoms[i].f );
             spmd_handle->system->atoms[i].q = mm_pos_q[4 * (i - spmd_handle->system->N_qm) + 3];
-
+            spmd_handle->system->atoms[i].q_init = mm_pos_q[4 * (i - spmd_handle->system->N_qm) + 3];
             spmd_handle->system->atoms[i].qmmm_mask = FALSE;
         }
 
