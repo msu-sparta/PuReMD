@@ -30,7 +30,7 @@ void Bonds( reax_system *system, control_params *control,
         reax_list **lists, output_controls *out_control )
 {
     int i;
-    real gp3, gp4, gp7, gp10, gp37, ebond_total;
+    real gp3, gp4, gp7, gp10, ebond_total;
     reax_list *bonds;
 
     bonds = lists[BONDS];
@@ -38,7 +38,6 @@ void Bonds( reax_system *system, control_params *control,
     gp4 = system->reax_param.gp.l[4];
     gp7 = system->reax_param.gp.l[7];
     gp10 = system->reax_param.gp.l[10];
-    gp37 = (int) system->reax_param.gp.l[37];
     ebond_total = 0.0;
 
 #if defined(_OPENMP)
@@ -119,11 +118,10 @@ void Bonds( reax_system *system, control_params *control,
                     /* Stabilisation terminal triple bond in C-O */
                     if ( bo_ij->BO >= 1.00 )
                     {
-                        if ( gp37 == 2 &&
-                                ( (strncmp( sbp_i->name, "C", sizeof(sbp_i->name) ) == 0
+                        if ( (strncmp( sbp_i->name, "C", sizeof(sbp_i->name) ) == 0
                                     && strncmp( sbp_j->name, "O", sizeof(sbp_j->name) ) == 0)
                                 || (strncmp( sbp_i->name, "O", sizeof(sbp_i->name) ) == 0
-                                    && strncmp( sbp_j->name, "C", sizeof(sbp_j->name) ) == 0) ) )
+                                    && strncmp( sbp_j->name, "C", sizeof(sbp_j->name) ) == 0) )
                         {
                             //ba = SQR( bo_ij->BO - 2.5 );
                             exphu = EXP( -gp7 * SQR(bo_ij->BO - 2.5) );

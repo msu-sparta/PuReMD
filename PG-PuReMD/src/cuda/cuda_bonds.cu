@@ -38,7 +38,7 @@ CUDA_GLOBAL void k_bonds( reax_atom *my_atoms, global_parameters gp,
     int start_i, end_i;
     int type_i, type_j;
     real pow_BOs_be2, exp_be12, CEbo, e_bond_l;
-    real gp3, gp4, gp7, gp10, gp37;
+    real gp3, gp4, gp7, gp10;
     real exphu, exphua1, exphub1, exphuov, hulpov;
     real decobdbo, decobdboua, decobdboub;
     single_body_parameters *sbp_i, *sbp_j;
@@ -60,7 +60,6 @@ CUDA_GLOBAL void k_bonds( reax_atom *my_atoms, global_parameters gp,
     gp4 = gp.l[4];
     gp7 = gp.l[7];
     gp10 = gp.l[10];
-    gp37 = (int) gp.l[37];
     e_bond_l = 0.0;
 
     start_i = Start_Index( i, bond_list );
@@ -97,11 +96,10 @@ CUDA_GLOBAL void k_bonds( reax_atom *my_atoms, global_parameters gp,
             /* Stabilisation terminal triple bond */
             if ( bo_ij->BO >= 1.00 )
             {
-                if ( gp37 == 2
-                        || ( (Cuda_strncmp( sbp_i->name, "C", sizeof(sbp_i->name) ) == 0
+                if ( (Cuda_strncmp( sbp_i->name, "C", sizeof(sbp_i->name) ) == 0
                             && Cuda_strncmp( sbp_j->name, "O", sizeof(sbp_j->name) ) == 0)
                         || (Cuda_strncmp( sbp_i->name, "O", sizeof(sbp_i->name) ) == 0
-                            && Cuda_strncmp( sbp_j->name, "C", sizeof(sbp_j->name) ) == 0) ) )
+                            && Cuda_strncmp( sbp_j->name, "C", sizeof(sbp_j->name) ) == 0) )
                 {
                     //ba = SQR( bo_ij->BO - 2.5 );
                     exphu = EXP( -gp7 * SQR(bo_ij->BO - 2.5) );

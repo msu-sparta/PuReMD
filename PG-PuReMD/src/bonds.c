@@ -51,7 +51,7 @@ void Bonds( reax_system * const system, control_params * const control,
     int start_i, end_i;
     int type_i, type_j;
     real ebond, pow_BOs_be2, exp_be12, CEbo;
-    real gp3, gp4, gp7, gp10, gp37;
+    real gp3, gp4, gp7, gp10;
     real exphu, exphua1, exphub1, exphuov, hulpov, estriph;
     real decobdbo, decobdboua, decobdboub;
     single_body_parameters *sbp_i, *sbp_j;
@@ -64,7 +64,6 @@ void Bonds( reax_system * const system, control_params * const control,
     gp4 = system->reax_param.gp.l[4];
     gp7 = system->reax_param.gp.l[7];
     gp10 = system->reax_param.gp.l[10];
-    gp37 = (int) system->reax_param.gp.l[37];
 
     for ( i = 0; i < system->n; ++i )
     {
@@ -120,11 +119,10 @@ void Bonds( reax_system * const system, control_params * const control,
                 /* Stabilisation terminal triple bond in C-O */
                 if ( bo_ij->BO >= 1.00 )
                 {
-                    if ( gp37 == 2 &&
-                            ( (strncmp( sbp_i->name, "C", sizeof(sbp_i->name) ) == 0
+                    if ( (strncmp( sbp_i->name, "C", sizeof(sbp_i->name) ) == 0
                                 && strncmp( sbp_j->name, "O", sizeof(sbp_j->name) ) == 0)
                             || (strncmp( sbp_i->name, "O", sizeof(sbp_i->name) ) == 0
-                                && strncmp( sbp_j->name, "C", sizeof(sbp_j->name) ) == 0) ) )
+                                && strncmp( sbp_j->name, "C", sizeof(sbp_j->name) ) == 0) )
                     {
                         //ba = SQR( bo_ij->BO - 2.5 );
                         exphu = EXP( -gp7 * SQR(bo_ij->BO - 2.5) );
