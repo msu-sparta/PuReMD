@@ -9,10 +9,9 @@
 This repository contains the development version of the **Pu**ReMD **Re**active
 **M**olecular **D**ynamics (PuReMD) project.  PuReMD is an open-source highly
 performant range-limited atomic-level molecular dynamics code which implements
-the the reactive force field (ReaxFF) method coupled with a global atomic
-charge model.  Supported charge models include charge equilibration,
-electronegativity equilization, and atom-condensed Kohn-Sham approximated to
-second order.
+the reactive force field (ReaxFF) method coupled with a global atomic charge
+model.  Supported charge models include charge equilibration, electronegativity
+equilization, and atom-condensed Kohn-Sham approximated to second order.
 
 # Build Instructions
 
