@@ -349,7 +349,7 @@ static void Spline_Extrapolate_Charges_QEq( const reax_system * const system,
     //TODO: good candidate for vectorization, avoid moving data with head pointer and circular buffer
 #if defined(_OPENMP)
     #pragma omp parallel for schedule(static) \
-        default(none) private(i, s_tmp, t_tmp) shared(system, control, data, workspace)
+        default(none) private(i, s_tmp, t_tmp) firstprivate(system, control, workspace)
 #endif
     for ( i = 0; i < system->N_cm; ++i )
     {
@@ -443,7 +443,7 @@ static void Spline_Extrapolate_Charges_EE( const reax_system * const system,
     //TODO: good candidate for vectorization, avoid moving data with head pointer and circular buffer
 #if defined(_OPENMP)
     #pragma omp parallel for schedule(static) \
-        default(none) private(i, s_tmp) shared(system, control, data, workspace)
+        default(none) private(i, s_tmp) firstprivate(system, control, workspace)
 #endif
     for ( i = 0; i < system->N_cm; ++i )
     {
