@@ -1,6 +1,6 @@
-simulation_name         petn_48256_notab_qeq           ! output files will carry this name + their specific extension
+simulation_name         water_6540_notab_qeq    ! output files will carry this name + their specific extension
 ensemble_type           0                       ! 0: NVE, 1: Berendsen NVT, 2: nose-Hoover NVT, 3: semi-isotropic NPT, 4: isotropic NPT, 5: anisotropic NPT
-nsteps                  100                     ! number of simulation steps
+nsteps                  10                      ! number of simulation steps
 dt                      0.25                    ! time step in fs
 periodic_boundaries     1                       ! 0: no periodic boundaries, 1: periodic boundaries
 
@@ -13,7 +13,7 @@ remove_CoM_vel          500                     ! remove the translational and r
 nbrhood_cutoff          5.0                     ! near neighbors cutoff for bond calculations (Angstroms)
 bond_graph_cutoff       0.3                     ! bond strength cutoff for bond graphs (Angstroms)
 thb_cutoff              0.001                   ! cutoff value for three body interactions (Angstroms)
-hbond_cutoff            7.50                    ! cutoff distance for hydrogen bond interactions (Angstroms)
+hbond_cutoff            7.5                     ! cutoff distance for hydrogen bond interactions (Angstroms)
 
 charge_method                 0             ! charge method: 0 = QEq, 1 = EEM, 2 = ACKS2
 cm_q_net                      0.0           ! net system charge
@@ -48,7 +48,7 @@ geo_format              1                       ! 0: custom, 1: pdb, 2: bgf 3: A
 write_freq              0                       ! write trajectory after so many steps
 traj_compress           0                       ! 0: no compression  1: uses zlib to compress trajectory output
 traj_format             0                       ! 0: our own format (below options apply to this only), 1: xyz, 2: bgf, 3: pdb
-traj_title              WATER_NVE               ! (no white spaces)
+traj_title              water_6540_notab_qeq    ! (no white spaces)
 atom_info               1                       ! 0: no atom info, 1: print basic atom info in the trajectory file
 atom_forces             0                       ! 0: basic atom format, 1: print force on each atom in the trajectory file
 atom_velocities         0                       ! 0: basic atom format, 1: print the velocity of each atom in the trajectory file
@@ -66,4 +66,3 @@ restrict_type           2                       ! -1: all types of atoms, 0 and 
 
 restart_format          1                       ! 0: restarts in ASCII  1: restarts in binary
 restart_freq            0                       ! 0: do not output any restart files. >0: output a restart file at every 'this many' steps
-
