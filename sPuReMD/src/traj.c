@@ -23,7 +23,9 @@
 
 #include "list.h"
 
-#include <zlib.h>
+#if defined(HAVE_ZLIB) && defined(HAVE_ZLIB_H)
+  #include <zlib.h>
+#endif
 
 
 #define HEADER_INIT ("%-10d %-10d\n%-80s\n")
@@ -557,7 +559,8 @@ int Append_Custom_Frame( reax_system *system, control_params *control,
 }
 
 
-void Read_Traj( output_controls *out_control, char *traj_name )
+#if defined(HAVE_ZLIB)
+void Read_Traj_Compressed( output_controls *out_control, char *traj_name )
 {
     int skip_all, skip_part, n;
     char size_buffer[50];
@@ -592,6 +595,7 @@ void Read_Traj( output_controls *out_control, char *traj_name )
 
     gzclose( trj );
 }
+#endif
 
 
 /********************************************************/

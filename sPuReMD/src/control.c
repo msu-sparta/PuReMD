@@ -21,12 +21,14 @@
 
 #include "control.h"
 
-#include <ctype.h>
-#include <zlib.h>
-
 #include "box.h"
 #include "traj.h"
 #include "tool_box.h"
+
+#include <ctype.h>
+#if defined(HAVE_ZLIB) && defined(HAVE_ZLIB_H)
+  #include <zlib.h>
+#endif
 
 
 int Set_Control_Parameter( const char * const keyword,
@@ -326,9 +328,15 @@ int Set_Control_Parameter( const char * const keyword,
     {
         out_control->traj_compress = sstrtol( values[0], __FILE__, __LINE__ );
 
-        if ( out_control->traj_compress )
+        if ( out_control->traj_compress == 1 )
         {
+#if defined(HAVE_ZLIB)
             out_control->write = (int (*)(FILE *, const char *, ...)) &gzprintf;
+#else
+            fprintf( stderr, "[ERROR] zlib support disabled (trajectory file compression). "
+                    "Re-compile to enable. Terminating...\n" );
+            exit( INVALID_INPUT );
+#endif
         }
         else
         {

@@ -504,7 +504,8 @@ typedef int (*write_function)( FILE *, const char *, ... );
  * l[35] = N/A
  * l[36] = N/A
  * l[37] = N/A
- * l[38] = p_coa3 */
+ * l[38] = p_coa3
+ * */
 struct global_parameters
 {
     /* num. global parameters in the force field paramater file for this simulation */

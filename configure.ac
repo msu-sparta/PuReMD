@@ -163,16 +163,9 @@ if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "
 	AC_SEARCH_LIBS([sin], [m])
 	AC_SEARCH_LIBS([tan], [m])
 	AC_SEARCH_LIBS([fabs], [m])
-	AC_SEARCH_LIBS([gzopen], [z])
-	AC_SEARCH_LIBS([gzeof], [z])
-	AC_SEARCH_LIBS([gzgets], [z])
-	AC_SEARCH_LIBS([gzseek], [z])
-	AC_SEARCH_LIBS([gzclose], [z])
 
 	# Checks for typedefs, structures, and compiler characteristics.
 	AC_C_INLINE
-	AC_CHECK_TYPES([gzFile], [],
-		       [AC_MSG_FAILURE([gzFile type not found in zlib.h], [1])], [#include<zlib.h>])
 
 	# Checks for library functions.
 	AC_FUNC_MALLOC
@@ -230,6 +223,33 @@ if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "
 		AC_SUBST([OMP_LIBS], ["${OPENMP_LIBS}"])
 	fi
 
+	# Check for zlib
+	ZLIB_LIBS=
+	AC_CHECK_HEADERS([zlib.h], [ZLIB_FOUND_HEADERS="yes"])
+	if test "x${ZLIB_FOUND_HEADERS}" = "xyes"; then
+		# BUG: AC_SEARCH_LIBS fails to reset LIBS when nested in conditional statements, so do it manually
+		save_LIBS="${LIBS}"
+		ZLIB_FOUND_LIBS="yes"
+		AC_SEARCH_LIBS([gzopen], [z], [], [ZLIB_FOUND_LIBS="no"], [])
+		AC_SEARCH_LIBS([gzeof], [z], [], [ZLIB_FOUND_LIBS="no"], [])
+		AC_SEARCH_LIBS([gzgets], [z], [], [ZLIB_FOUND_LIBS="no"], [])
+		AC_SEARCH_LIBS([gzseek], [z], [], [ZLIB_FOUND_LIBS="no"], [])
+		AC_SEARCH_LIBS([gzclose], [z], [], [ZLIB_FOUND_LIBS="no"], [])
+		AC_CHECK_TYPES([gzFile], [], [ZLIB_FOUND_LIBS="no"], [#include<zlib.h>])
+		LIBS="${save_LIBS}"
+		AS_IF([test "x${ZLIB_FOUND_LIBS}" != "xyes"],
+		      [AC_MSG_ERROR([Unable to find zlib compatible library.])])
+		ZLIB_LIBS="-lz"
+		AC_DEFINE([HAVE_ZLIB], [1], [Define to 1 if you have zlib support enabled.])
+	else
+		AC_MSG_WARN([
+-----------------------------------------------
+ Unable to find compatible zlib on this system.
+ Disabling support for dependent functionality.
+-----------------------------------------------])
+	fi
+	AC_SUBST([Z_LIBS], ["${ZLIB_LIBS}"])
+
 	# Check for LAPACKE
 	LAPACKE_LIBS=
 	AC_CHECK_HEADERS([mkl.h], [MKL_FOUND_HEADERS="yes"])
@@ -261,7 +281,7 @@ if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "
 			AC_MSG_WARN([
 -----------------------------------------------
  Unable to find LAPACKE on this system.
- Disabling support for dependent methods.
+ Disabling support for dependent functionality.
 -----------------------------------------------])
 		fi
 	fi
@@ -281,7 +301,7 @@ if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "
 		      [AC_MSG_WARN([
 ----------------------------------------------------
  Unable to find Tensorflow libraries on this system.
- Disabling support for dependent methods.
+ Disabling support for dependent functionality.
 ----------------------------------------------------])])
 		if test "x${TENSORFLOW_FOUND_HEADERS}" = "xyes" && test "x${TENSORFLOW_FOUND_LIBS}" = "xyes"; then
 			TENSORFLOW_LIBS="-ltensorflow"
@@ -291,7 +311,7 @@ if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "
 		AC_MSG_WARN([
 --------------------------------------------------
  Unable to find Tensorflow headers on this system.
- Disabling support for dependent methods.
+ Disabling support for dependent functionality.
 --------------------------------------------------])
 	fi
 	AC_SUBST([T_LIBS], ["${TENSORFLOW_LIBS}"])
@@ -310,7 +330,7 @@ if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "
 		      [AC_MSG_WARN([
 ----------------------------------------------------
  Unable to find GNU scientific library (GSL) on this system.
- Disabling support for dependent methods.
+ Disabling support for dependent functionality.
 ----------------------------------------------------])])
 		if test "x${GSL_FOUND_HEADERS}" = "xyes" && test "x${GSL_FOUND_LIBS}" = "xyes"; then
 			GSL_LIBS="-lgsl -lgslcblas -m"
@@ -320,7 +340,7 @@ if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "
 		AC_MSG_WARN([
 --------------------------------------------------
  Unable to find GNU scientific library (GSL) headers on this system.
- Disabling support for dependent methods.
+ Disabling support for dependent functionality.
 --------------------------------------------------])
 	fi
 	AC_SUBST([G_LIBS], ["${GSL_LIBS}"])
@@ -586,7 +606,7 @@ if test "x${pack_mpi_old_enabled}" = "xyes"; then
 			AC_MSG_WARN([
 -----------------------------------------------
  Unable to find LAPACKE on this system.
- Disabling support for dependent methods.
+ Disabling support for dependent functionality.
 -----------------------------------------------])
 		fi
 	fi
@@ -762,7 +782,7 @@ if test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" = "xy
 			AC_MSG_WARN([
 -----------------------------------------------
  Unable to find LAPACKE on this system.
- Disabling support for dependent methods.
+ Disabling support for dependent functionality.
 -----------------------------------------------])
 		fi
 	fi

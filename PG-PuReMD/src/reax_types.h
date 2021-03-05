@@ -52,7 +52,6 @@
 #include <string.h>
 #include <sys/time.h>
 #include <time.h>
-#include <zlib.h>
 #if defined(HAVE_CUDA)
   #include <cuda.h>
   #include <cuda_runtime.h>

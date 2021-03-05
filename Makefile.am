@@ -75,13 +75,13 @@ sPuReMD_lib_libspuremd_la_SOURCES = sPuReMD/src/allocate.c \
 sPuReMD_lib_libspuremd_la_CFLAGS = @DFT_CFLAGS@ @CFLAGS_EXTRA@ @OMP_CFLAGS@
 sPuReMD_lib_libspuremd_la_CPPFLAGS = -I sPuReMD/src @CPPFLAGS_EXTRA@
 sPuReMD_lib_libspuremd_la_LDFLAGS = -version-info 1:0:0
-sPuReMD_lib_libspuremd_la_LIBADD = @OMP_LIBS@ @L_LIBS@ @T_LIBS@ @G_LIBS@
+sPuReMD_lib_libspuremd_la_LIBADD = @OMP_LIBS@ @Z_LIBS@ @L_LIBS@ @T_LIBS@ @G_LIBS@
 
 bin_PROGRAMS = sPuReMD/bin/spuremd
 sPuReMD_bin_spuremd_SOURCES = sPuReMD/src/driver.c
 sPuReMD_bin_spuremd_CFLAGS = @DFT_CFLAGS@ @CFLAGS_EXTRA@ @OMP_CFLAGS@
 sPuReMD_bin_spuremd_CPPFLAGS = -I sPuReMD/src @CPPFLAGS_EXTRA@
-sPuReMD_bin_spuremd_LDADD = sPuReMD/lib/libspuremd.la @OMP_LIBS@ @L_LIBS@ @T_LIBS@ @G_LIBS@
+sPuReMD_bin_spuremd_LDADD = sPuReMD/lib/libspuremd.la @OMP_LIBS@ @Z_LIBS@ @L_LIBS@ @T_LIBS@ @G_LIBS@
 
 check_PROGRAMS =
 TESTS =

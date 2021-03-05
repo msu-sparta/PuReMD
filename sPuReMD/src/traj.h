@@ -93,7 +93,9 @@ int Append_Custom_Frame( reax_system*, control_params*, simulation_data*,
 int Append_xyz_Frame( reax_system*, control_params*, simulation_data*,
         static_storage*, reax_list**, output_controls* );
 
-void Read_Traj( output_controls*, char * );
+#if defined(HAVE_ZLIB)
+void Read_Traj_Compressed( output_controls*, char * );
+#endif
 
 
 #endif
