@@ -1127,6 +1127,8 @@ int reset_qmmm( const void * const handle, int qm_num_atoms,
                 sim_box_info[3], sim_box_info[4], sim_box_info[5],
                 &spmd_handle->system->box );
 
+        element[2] = '\0';
+
         for ( i = 0; i < spmd_handle->system->N_qm; ++i )
         {
             x[0] = qm_pos[3 * i];
