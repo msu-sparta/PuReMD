@@ -1671,7 +1671,9 @@ real sparse_approx_inverse( const sparse_matrix * const A,
 #if defined(_OPENMP)
     #pragma omp parallel default(none) \
     private(i, k, pj, j_temp, identity_pos, N, M, d_i, d_j, m, n, \
-            nrhs, lda, ldb, info, X, Y, pos_x, pos_y, e_j, dense_matrix, e_j_size, dense_matrix_size) \
+            nrhs, lda, ldb, info, X, Y, pos_x, pos_y, e_j, \
+            dense_matrix, e_j_size, dense_matrix_size) \
+    firstprivate(A, A_spar_patt, A_app_inv) \
     shared(stderr)
 #endif
     {
