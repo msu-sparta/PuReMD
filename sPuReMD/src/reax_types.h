@@ -1070,6 +1070,8 @@ struct control_params
     int ignore[MAX_ATOM_TYPES];
     /* number of OpenMP threads to use during the simulation */
     int num_threads;
+    /* TRUE if the num. OpenMP has bet set, FALSE otherwise */
+    int num_threads_set;
     /* function pointers for bonded interactions */
     interaction_function intr_funcs[NUM_INTRS];
     /* function pointer for computing pairwise atom distance */

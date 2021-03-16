@@ -78,6 +78,11 @@ int Set_Control_Parameter( const char * const keyword,
         /* convert from fs to ps */
         control->dt = val * 1.0e-3;
     }
+    else if ( strncmp(keyword, "num_threads", MAX_LINE) == 0 )
+    {
+        control->num_threads = sstrtol( values[0], __FILE__, __LINE__ );
+        control->num_threads_set = TRUE;
+    }
     else if ( strncmp(keyword, "gpus_per_node", MAX_LINE) == 0 )
     {
         // skip since not applicable to shared memory code
@@ -465,6 +470,7 @@ void Set_Control_Defaults( reax_system * const system,
     control->restrict_bonds = FALSE;
     control->tabulate = 0;
     control->dt = 0.25;
+    control->num_threads_set = FALSE;
     control->reneighbor = 1;
 
     /* defaults values for other cutoffs */

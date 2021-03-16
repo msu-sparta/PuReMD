@@ -1289,7 +1289,19 @@ void Initialize( reax_system *system, control_params *control,
     #pragma omp parallel default(none) shared(control)
     {
         #pragma omp single
-        control->num_threads = omp_get_num_threads( );
+        {
+            if ( control->num_threads_set == TRUE )
+            {
+                /* set using control file num_threads keyword */
+                omp_set_num_threads( control->num_threads );
+            }
+            else
+            {
+                /* set using OMP_NUM_THREADS environment variable */
+                control->num_threads = omp_get_num_threads( );
+                control->num_threads_set = TRUE;
+            }
+        }
     }
 #else
     control->num_threads = 1;
