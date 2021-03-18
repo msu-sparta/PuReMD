@@ -1290,12 +1290,7 @@ void Initialize( reax_system *system, control_params *control,
     {
         #pragma omp single
         {
-            if ( control->num_threads_set == TRUE )
-            {
-                /* set using control file num_threads keyword */
-                omp_set_num_threads( control->num_threads );
-            }
-            else
+            if ( control->num_threads_set == FALSE )
             {
                 /* set using OMP_NUM_THREADS environment variable */
                 control->num_threads = omp_get_num_threads( );
@@ -1303,6 +1298,8 @@ void Initialize( reax_system *system, control_params *control,
             }
         }
     }
+
+    omp_set_num_threads( control->num_threads );
 #else
     control->num_threads = 1;
 #endif
