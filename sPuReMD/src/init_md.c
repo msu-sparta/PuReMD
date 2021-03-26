@@ -275,6 +275,8 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
     data->timing.cm_last_pre_comp = 0.0;
     data->timing.cm_total_loss = 0.0;
     data->timing.cm_optimum = 0.0;
+    data->timing.cm_prediction_overall = 0.0;;
+    data->timing.cm_tensorflow_just_prediction = 0.0;;
 }
 
 
@@ -411,11 +413,13 @@ static void Init_Workspace( reax_system *system, control_params *control,
                 "Init_Workspace::workspace->b_prc" );
         workspace->b_prm = scalloc( system->N_cm_max * 2, sizeof( real ),
                 "Init_Workspace::workspace->b_prm" );
-        workspace->s = scalloc( 5, sizeof( real* ),
+        // Store charges of the last WINDOW_SIZE steps to use for finetuning
+        // TODO: this part needs to be improved 
+        workspace->s = scalloc( WINDOW_SIZE, sizeof( real* ),
                 "Init_Workspace::workspace->s" );
-        workspace->t = scalloc( 5, sizeof( real* ),
+        workspace->t = scalloc( WINDOW_SIZE, sizeof( real* ),
                 "Init_Workspace::workspace->t" );
-        for ( i = 0; i < 5; ++i )
+        for ( i = 0; i < WINDOW_SIZE; ++i )
         {
             workspace->s[i] = scalloc( system->N_cm_max, sizeof( real ),
                     "Init_Workspace::workspace->s[i]" );
@@ -1063,10 +1067,10 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
         temp[TEMP_SIZE - 5] = '\0';
         strcat( temp, ".log" );
         out_control->log = sfopen( temp, "w" );
-        fprintf( out_control->log, "%-6s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s\n",
+        fprintf( out_control->log, "%-6s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s\n",
                  "step", "total", "neighbors", "init", "bonded",
                  "nonbonded", "cm", "cm_sort", "s_iters", "pre_comp", "pre_app",
-                 "s_spmv", "s_vec_ops", "s_orthog", "s_tsolve" );
+                 "s_spmv", "s_vec_ops", "s_orthog", "s_tsolve", "tf_tot", "tf_pred" );
     }
     else
     {
