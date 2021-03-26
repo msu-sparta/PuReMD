@@ -414,8 +414,10 @@ int simulate( const void * const handle )
 
         if ( spmd_handle->callback != NULL )
         {
-            spmd_handle->callback( spmd_handle->system->N, spmd_handle->system->atoms,
-                    spmd_handle->data );
+        //    spmd_handle->callback( spmd_handle->system->N, spmd_handle->system->atoms,
+        //            spmd_handle->data );
+        // TODO: Temporary change to collect solver data
+            spmd_handle->callback( spmd_handle->system->N, spmd_handle->workspace->s[0] );            
         }
         //}
 
@@ -465,8 +467,10 @@ int simulate( const void * const handle )
 
             if ( spmd_handle->callback != NULL )
             {
-                spmd_handle->callback( spmd_handle->system->N, spmd_handle->system->atoms,
-                        spmd_handle->data );
+                //spmd_handle->callback( spmd_handle->system->N, spmd_handle->system->atoms,
+                //        spmd_handle->data );
+                // TODO: Temporary change to collect solver data
+                spmd_handle->callback( spmd_handle->system->N, spmd_handle->workspace->s[0] ); 
             }
         }
 
