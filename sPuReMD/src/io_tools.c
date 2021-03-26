@@ -634,7 +634,7 @@ void Output_Results( reax_system *system, control_params *control,
             f_update = 1.0 / out_control->log_update_freq;
         }
 
-        fprintf( out_control->log, "%6d %10.2f %10.2f %10.2f %10.2f %10.2f %10.4f %10.4f %10.2f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n",
+        fprintf( out_control->log, "%6d %10.2f %10.2f %10.2f %10.2f %10.2f %10.4f %10.4f %10.2f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n",
                  data->step, t_elapsed * f_update,
                  data->timing.nbrs * f_update,
                  data->timing.init_forces * f_update,
@@ -648,7 +648,9 @@ void Output_Results( reax_system *system, control_params *control,
                  data->timing.cm_solver_spmv * f_update,
                  data->timing.cm_solver_vector_ops * f_update,
                  data->timing.cm_solver_orthog * f_update,
-                 data->timing.cm_solver_tri_solve * f_update );
+                 data->timing.cm_solver_tri_solve * f_update,
+                 data->timing.cm_prediction_overall * f_update,
+                 data->timing.cm_tensorflow_just_prediction * f_update );
 
         data->timing.total = Get_Time( );
         data->timing.nbrs = 0.0;
@@ -664,6 +666,8 @@ void Output_Results( reax_system *system, control_params *control,
         data->timing.cm_solver_vector_ops = 0.0;
         data->timing.cm_solver_orthog = 0.0;
         data->timing.cm_solver_tri_solve = 0.0;
+        data->timing.cm_prediction_overall = 0.0;
+        data->timing.cm_tensorflow_just_prediction = 0.0;
 
         fflush( out_control->out );
         fflush( out_control->pot );
