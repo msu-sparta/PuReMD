@@ -66,6 +66,13 @@
 #define FAILURE (0)
 #define TRUE (1)
 #define FALSE (0)
+// TODO: This part can be read from the control file
+// needed to store the data for finetuning (if we want that)
+#if defined(HAVE_TENSORFLOW)
+  #define WINDOW_SIZE 500
+#else
+  #define WINDOW_SIZE 5
+#endif
 
 #if defined(USE_REF_FORTRAN_REAXFF_CONSTANTS)
   /* transcendental constant pi */
@@ -451,7 +458,10 @@ typedef void (*evolve_function)( reax_system*, control_params*,
         simulation_data*, static_storage*, reax_list**, output_controls* );
 /* function pointer for a callback function to be triggered after
  * completion of a simulation step -- useful for, e.g., the Python wrapper */
-typedef void (*callback_function)( int, reax_atom*, simulation_data* );
+
+// TODO: Temporary change to collect solver data
+typedef void (*callback_function)( int, double* );
+//typedef void (*callback_function)( int, reax_atom*, simulation_data* );
 /* function pointer for writing trajectory file header */
 typedef int (*write_header_function)( reax_system*, control_params*,
         static_storage*, output_controls* );
@@ -1036,6 +1046,15 @@ struct control_params
     /* window size for the long short-term memory model (LSTM)
      * when predicting solver initial guesses using Tensorflow */
     unsigned int cm_init_guess_win_size;
+    /* controls the training procedure of the LSTM
+      1-> apply training, 0->no training */  
+    unsigned int cm_init_guess_training;
+    /* controls which step to train the LSTM */
+    unsigned int cm_init_guess_training_step;
+    /* how many epoch to train the LSTM */
+    unsigned int cm_init_guess_training_epoch;
+    /* controls whether to use LSTM model for the top half(for ACKS2) */
+    unsigned int cm_top_guess; 
     /* preconditioner type for linear solver */
     unsigned int cm_solver_pre_comp_type;
     /* frequency (in terms of simulation time steps) at which to recompute
@@ -1173,6 +1192,9 @@ struct reax_timing
     real cm_optimum;
     /* num. of retries in main sim. loop */
     int num_retries;
+    /* newly added timers for CM initial guess prediction */
+    real cm_prediction_overall;
+    real cm_tensorflow_just_prediction;
 };
 
 
