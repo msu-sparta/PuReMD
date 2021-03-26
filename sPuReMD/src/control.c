@@ -434,6 +434,23 @@ int Set_Control_Parameter( const char * const keyword,
     {
         control->restrict_type = sstrtol( values[0], __FILE__, __LINE__ );
     }
+    //reading tensorflow related parameters
+    else if ( strncmp(keyword, "cm_init_guess_training", MAX_LINE) == 0 )
+    {
+        control->cm_init_guess_training = sstrtol( values[0], __FILE__, __LINE__ );
+    }
+    else if ( strncmp(keyword, "cm_init_guess_training_step", MAX_LINE) == 0 )
+    {
+        control->cm_init_guess_training_step = sstrtol( values[0], __FILE__, __LINE__ );
+    }
+    else if ( strncmp(keyword, "cm_init_guess_training_epoch", MAX_LINE) == 0 )
+    {
+        control->cm_init_guess_training_epoch = sstrtol( values[0], __FILE__, __LINE__ );
+    }
+    else if ( strncmp(keyword, "cm_top_guess", MAX_LINE) == 0 )
+    {
+        control->cm_top_guess = sstrtol( values[0], __FILE__, __LINE__ );
+    }
     else
     {
         ret = FAILURE;
@@ -518,6 +535,13 @@ void Set_Control_Defaults( reax_system * const system,
     control->cm_init_guess_type = SPLINE;
     control->cm_init_guess_extrap1 = 3;
     control->cm_init_guess_extrap2 = 2;
+    // Tensorflow related parameters
+    //TODO: needes to be finalized, only for testing
+    control->cm_top_guess = 0;
+    control->cm_init_guess_training = 0;
+    control->cm_init_guess_training_step = 0;
+    control->cm_init_guess_training_epoch = 0;
+
     /* assign default values */
     strncpy( control->cm_init_guess_gd_model, "frozen_model.pb",
             sizeof(control->cm_init_guess_gd_model) - 1 );

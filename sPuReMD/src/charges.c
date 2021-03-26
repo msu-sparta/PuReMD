@@ -31,40 +31,8 @@
 #include "vector.h"
 
 #if defined(HAVE_TENSORFLOW)
-  #include "tensorflow/c/c_api.h"
+  #include "tensorflow_regressor.c"   
 #endif
-
-
-#if defined(HAVE_TENSORFLOW)
-typedef struct my_session my_session;
-typedef struct tensor_shape tensor_shape;
-
-
-struct my_session
-{
-    TF_Session* session;
-    TF_Operation* input_op;
-    TF_Operation* output_op;
-    TF_Graph* graph;
-};
-
-
-#define MY_TENSOR_SHAPE_MAX_DIM (16)
-struct tensor_shape
-{
-    int64_t values[MY_TENSOR_SHAPE_MAX_DIM];
-    int dim;
-
-//    int64_t size(){
-//        assert(dim>=0);
-//        int64_t v=1;
-//        for(int i=0;i<dim;i++)
-//          v*=values[i];
-//        return v;
-//    }
-};
-#endif
-
 
 int is_refactoring_step( control_params * const control,
         simulation_data * const data )
@@ -102,241 +70,6 @@ int is_refactoring_step( control_params * const control,
 
     return ret;
 }
-
-
-#if defined(HAVE_TENSORFLOW)
-static void TF_Tensor_Deallocator( void* data, size_t length, void* arg )
-{
-//    sfree( data, "TF_Tensor_Deallocator::data" );
-}
-
-
-static void TF_free( void* data, size_t length )
-{
-        sfree( data, "TF_free::data" );
-}
-
-
-/* Read the entire content of a file and return it as a TF_Buffer.
- *
- * @param file: The file to be loaded.
- * @return
- */
-static TF_Buffer* read_file_to_TF_Buffer( const char* file )
-{
-    FILE *f;
-    void *data;
-    long fsize;
-    TF_Buffer* buf;
-
-    f = fopen( file, "rb" );
-    fseek( f, 0, SEEK_END );
-    fsize = ftell( f );
-    fseek( f, 0, SEEK_SET );  //same as rewind(f);
-
-    data = malloc( fsize );
-    fread( data, fsize, 1, f );
-    fclose( f );
-
-    buf = TF_NewBuffer();
-    buf->data = data;
-    buf->length = fsize;
-    buf->data_deallocator = &TF_free;
-
-    return buf;
-}
-
-
-/* Load a GraphDef from a provided file.
- *
- * @param filename: The file containing the protobuf encoded GraphDef
- * @param input_name: The name of the input placeholder
- * @param output_name: The name of the output tensor
- * @return
- */
-my_session model_load( const char *filename,
-        const char *input_name, const char *output_name )
-{
-    TF_Buffer *graph_def;
-    TF_Graph *graph;
-    TF_ImportGraphDefOptions *opts;
-    TF_Operation *input_op, *output_op;
-    TF_Session *session;
-    TF_SessionOptions *sess_opts = TF_NewSessionOptions( );
-    TF_Status* status;
-    my_session sess;
-
-    graph_def = read_file_to_TF_Buffer( filename );
-    graph = TF_NewGraph( );
-
-    // Import graph_def into graph
-    status = TF_NewStatus( );
-    opts = TF_NewImportGraphDefOptions( );
-    TF_GraphImportGraphDef( graph, graph_def, opts, status );
-
-    if ( TF_GetCode(status) != TF_OK )
-    {
-        fprintf( stderr, "[ERROR] unable to import graph: %s\n", TF_Message(status) );
-        exit( INVALID_INPUT );
-    }
-
-    input_op = TF_GraphOperationByName( graph, input_name );
-    output_op = TF_GraphOperationByName( graph, output_name );
-    if ( !input_op || !output_op )
-    {
-        fprintf( stderr, "[ERROR] !input_op || !output_op\n" );
-        exit( INVALID_INPUT );
-    }
-
-    sess_opts = TF_NewSessionOptions( );
-    status = TF_NewStatus( );
-    session = TF_NewSession( graph, sess_opts, status );
-    if ( TF_GetCode(status) != TF_OK )
-    {
-        fprintf( stderr, "[ERROR] unable to start a sesssion: %s\n", TF_Message(status) );
-        exit( INVALID_INPUT );
-    }
-
-    sess.session = session;
-    sess.input_op = input_op;
-    sess.output_op = output_op;
-    sess.graph = graph;
-
-    TF_DeleteImportGraphDefOptions( opts );
-    TF_DeleteBuffer( graph_def );
-    TF_DeleteStatus( status );
-
-    return sess;
-}
-
-
-static void Predict_Charges_TF_LSTM( const reax_system * const system,
-        const control_params * const control,
-        simulation_data * const data, static_storage * const workspace )
-{
-    int i, j, win_size, batch_size;
-    float *obs_flat, *obs_norm, *predictions;
-    my_session s;
-    tensor_shape input_shape;
-    TF_Tensor *input_tensor[1], *output_tensor[1];
-    TF_Output inputs[1], outputs[1];
-    TF_Status* status;
-
-//    win_size = 5;
-//    batch_size = 3;
-    win_size = control->cm_init_guess_win_size;
-    batch_size = system->N_cm;
-    obs_flat = smalloc( sizeof(float) * batch_size * win_size, "Predict_Charges_TF_LSTM:obs_flat" );
-    obs_norm = smalloc( sizeof(float) * batch_size, "Predict_Charges_TF_LSTM:obs_norm" );
-
-    /* load the frozen model from file in GraphDef format
-     *
-     * note: the input/output tensors names must be provided */
-    //TODO: either require standarding model names in GraphDef file
-    //      or add control file parameters to all these to be changed
-    s = model_load( control->cm_init_guess_gd_model,
-            "lstm_1_input", "dense_1/BiasAdd" );
-    if ( !s.session )
-    {
-        fprintf( stdout, "[ERROR] failed to load frozen model from GraphDef"
-                " file for initial guess prediction using Tensorflow. Terminating...\n" );
-        exit( INVALID_INPUT );
-    }
-
-    /* flatten observation data (2D -> 1D array) */
-//    float obs_flat[] = {
-//        -0.68670104, -0.68710855, -0.68788427, -0.68901125, -0.69046436,
-//        -0.68710855, -0.68788427, -0.68901125, -0.69046436, -0.69221107,
-//        -0.68788427, -0.68901125, -0.69046436, -0.69221107, -0.69421167
-//    };
-//    float ground_truth[] = {0.69221107, -0.69421167, -0.69641954};
-
-    //TODO: for QEq, would also need to use workspace->t for the second linear solve
-    for ( i = 0; i < batch_size; ++i )
-    {
-        for ( j = 0; j < win_size; ++j )
-        {
-            obs_flat[i * win_size + j] = workspace->s[j][i];
-        }
-    }
-
-    /* normalize input data in-place for prediction using the model,
-     * where the normalization is the difference from the oldest
-     * observation (component-wise) */
-    for ( i = 0; i < batch_size; ++i )
-    {
-        obs_norm[i] = obs_flat[i * win_size];
-
-        for ( j = 0; j < win_size; ++j )
-        {
-            obs_flat[i * win_size + j] = obs_flat[i * win_size + j] - obs_norm[i];
-        }
-    }
-
-    input_shape.values[0] = batch_size;
-    input_shape.values[1] = 1;
-    input_shape.values[2] = win_size;
-    input_shape.dim = 3;
-
-    fprintf( stdout, "after input_shape\n" );
-
-    input_tensor[0] = TF_NewTensor( TF_FLOAT, input_shape.values, input_shape.dim,
-            (void *)obs_flat, sizeof(float) * win_size * batch_size,
-            &TF_Tensor_Deallocator, NULL );
-    output_tensor[0] = NULL;
-
-    status = TF_NewStatus( );
-
-    fprintf( stdout, "after input_tensor\n" );
-
-    inputs[0].oper = s.input_op;
-    inputs[0].index = 0;
-    outputs[0].oper = s.output_op;
-    outputs[0].index = 0;
-
-    fprintf( stdout, "before run session\n" );
-
-    /* run the session to calculate the predictions for the given data */
-    TF_SessionRun( s.session, NULL,
-            &inputs[0], input_tensor, 1,
-            &outputs[0], output_tensor, 1,
-            NULL, 0, NULL, status );
-
-    fprintf( stdout, "Successfully run session\n" );
-
-    predictions = (float*) TF_TensorData( output_tensor[0] );
-
-    /* shift previous solutions down by one time step */
-#if defined(_OPENMP)
-    #pragma omp parallel for schedule(static) \
-        default(none) private(i)
-#endif
-    for ( i = 0; i < system->N_cm; ++i )
-    {
-        workspace->s[4][i] = workspace->s[3][i];
-        workspace->s[3][i] = workspace->s[2][i];
-        workspace->s[2][i] = workspace->s[1][i];
-        workspace->s[1][i] = workspace->s[0][i];
-    }
-
-    /* undo the normalization for the predicted values and
-     * extract the predictions from the underlying data buffer */
-    for ( i = 0; i < batch_size; ++i )
-    {
-//        predictions[i] = predictions[i] + obs_norm[i];
-        workspace->s[0][i] = predictions[i] + obs_norm[i];
-    }
-
-    sfree( obs_norm, "Predict_Charges_TF_LSTM:obs_norm" );
-    sfree( obs_flat, "Predict_Charges_TF_LSTM:obs_flat" );
-    TF_DeleteTensor( input_tensor[0] );
-    TF_DeleteTensor( output_tensor[0] );
-    TF_DeleteSession( s.session, status );
-    TF_DeleteGraph( s.graph );
-    TF_DeleteStatus( status );
-}
-#endif
-
 
 static void Spline_Extrapolate_Charges_QEq( const reax_system * const system,
         const control_params * const control,
@@ -417,16 +150,14 @@ static void Spline_Extrapolate_Charges_QEq( const reax_system * const system,
             t_tmp = 0.0;
         }
 
-        workspace->s[4][i] = workspace->s[3][i];
-        workspace->s[3][i] = workspace->s[2][i];
-        workspace->s[2][i] = workspace->s[1][i];
-        workspace->s[1][i] = workspace->s[0][i];
+        // shifting
+        // TODO: Check this part after working on WINDOW_SIZE variable
+        int j = 0;
+        for (j = WINDOW_SIZE-1;j > 0 ; j--) {
+            workspace->s[j][i] = workspace->s[j-1][i];
+            workspace->t[j][i] = workspace->t[j-1][i];
+        }
         workspace->s[0][i] = s_tmp;
-
-        workspace->t[4][i] = workspace->t[3][i];
-        workspace->t[3][i] = workspace->t[2][i];
-        workspace->t[2][i] = workspace->t[1][i];
-        workspace->t[1][i] = workspace->t[0][i];
         workspace->t[0][i] = t_tmp;
     }
 }
@@ -479,10 +210,12 @@ static void Spline_Extrapolate_Charges_EE( const reax_system * const system,
             s_tmp = 0.0;
         }
 
-        workspace->s[4][i] = workspace->s[3][i];
-        workspace->s[3][i] = workspace->s[2][i];
-        workspace->s[2][i] = workspace->s[1][i];
-        workspace->s[1][i] = workspace->s[0][i];
+        // shifting
+        // TODO: Check this part after working on WINDOW_SIZE variable
+        int j = 0;
+        for (j = WINDOW_SIZE-1;j > 0 ; j--) {
+            workspace->s[j][i] = workspace->s[j-1][i];
+        }
         workspace->s[0][i] = s_tmp;
     }
 }
@@ -1351,6 +1084,18 @@ static void QEq( reax_system * const system, control_params * const control,
         const output_controls * const out_control, int realloc )
 {
     int iters, refactor;
+    real time;
+    /* Finetune the model after reaching a certain step */
+    /* TODO: define control variables to control finetuning */
+    #if defined(HAVE_TENSORFLOW)
+    if (control->cm_init_guess_type == TF_FROZEN_MODEL_LSTM 
+        && control->cm_init_guess_training == 1 && 
+        data->step % control->cm_init_guess_training_step == 0 && data->step != 0 && data->step < 501) {
+       // #pragma omp single{
+        train_and_save(workspace, system, control);
+       // }
+    }
+    #endif
 
     refactor = is_refactoring_step( control, data );
 
@@ -1360,7 +1105,8 @@ static void QEq( reax_system * const system, control_params * const control,
 
         Compute_Preconditioner_QEq( system, control, data, workspace, realloc );
     }
-
+    // Time init. guess method
+    time = Get_Time( );
     switch ( control->cm_init_guess_type )
     {
     case SPLINE:
@@ -1369,12 +1115,17 @@ static void QEq( reax_system * const system, control_params * const control,
 
     case TF_FROZEN_MODEL_LSTM:
 #if defined(HAVE_TENSORFLOW)
-        if ( data->step < control->cm_init_guess_win_size )
+        if ( data->step < control->cm_init_guess_win_size + 5 )
         {
             Spline_Extrapolate_Charges_QEq( system, control, data, workspace );
         }
         else
         {
+            // TODO: This part is not tested
+            if (data->step == 0)
+            {
+                fprintf(stdout, "[WARNING] Tensorflow based initial guess method is not tested for QEQ!\n");
+            }
             Predict_Charges_TF_LSTM( system, control, data, workspace );
         }
 #else
@@ -1389,6 +1140,7 @@ static void QEq( reax_system * const system, control_params * const control,
         exit( INVALID_INPUT );
         break;
     }
+    data->timing.cm_prediction_overall = Get_Timing_Info( time );
 
 #if defined(QMMM)
     fprintf( stderr, "[ERROR] QEq charge method is not supported in QM/MM mode. Use EEM instead. Terminating...\n" );
@@ -1468,6 +1220,18 @@ static void EE( reax_system * const system, control_params * const control,
         const output_controls * const out_control, int realloc )
 {
     int iters, refactor;
+    real time;
+    /* Finetune the model after reaching a certain step */
+    /* TODO: define control variables to control finetuning */
+    #if defined(HAVE_TENSORFLOW)
+    if (control->cm_init_guess_type == TF_FROZEN_MODEL_LSTM 
+        && control->cm_init_guess_training == 1 && 
+        data->step % control->cm_init_guess_training_step == 0 && data->step != 0 && data->step < 501) {
+       // #pragma omp single{
+        train_and_save(workspace, system, control);
+       // }
+    }
+    #endif
 
     refactor = is_refactoring_step( control, data );
 
@@ -1477,7 +1241,8 @@ static void EE( reax_system * const system, control_params * const control,
 
         Compute_Preconditioner_EE( system, control, data, workspace, realloc );
     }
-
+    // Time init. guess method
+    time = Get_Time( );
     switch ( control->cm_init_guess_type )
     {
     case SPLINE:
@@ -1486,7 +1251,7 @@ static void EE( reax_system * const system, control_params * const control,
 
     case TF_FROZEN_MODEL_LSTM:
 #if defined(HAVE_TENSORFLOW)
-        if ( data->step < control->cm_init_guess_win_size )
+        if ( data->step < control->cm_init_guess_win_size + 5 )
         {
             Spline_Extrapolate_Charges_EE( system, control, data, workspace );
         }
@@ -1575,6 +1340,19 @@ static void ACKS2( reax_system * const system, control_params * const control,
         const output_controls * const out_control, int realloc )
 {
     int iters, refactor;
+    real time;
+
+    /* Finetune the model after reaching a certain step */
+    /* TODO: define control variables to control finetuning */
+    #if defined(HAVE_TENSORFLOW)
+    if (control->cm_init_guess_type == TF_FROZEN_MODEL_LSTM 
+        && control->cm_init_guess_training == 1 && 
+        data->step % control->cm_init_guess_training_step == 0 && data->step != 0 && data->step < 501) {
+       // #pragma omp single{
+        train_and_save(workspace, system, control);
+       // }
+    }
+    #endif
 
     refactor = is_refactoring_step( control, data );
 
@@ -1586,6 +1364,8 @@ static void ACKS2( reax_system * const system, control_params * const control,
     }
 
 //   Print_Linear_System( system, control, workspace, data->step );
+    // Time init. guess method
+    time = Get_Time( );
 
     switch ( control->cm_init_guess_type )
     {
@@ -1595,12 +1375,16 @@ static void ACKS2( reax_system * const system, control_params * const control,
 
     case TF_FROZEN_MODEL_LSTM:
 #if defined(HAVE_TENSORFLOW)
-        if ( data->step < control->cm_init_guess_win_size )
+        if ( data->step < control->cm_init_guess_win_size + 5 )
         {
             Spline_Extrapolate_Charges_EE( system, control, data, workspace );
         }
         else
         {
+            // Preemptively call the spline method in case some predictions are skipped by the following method
+            // (Charge predictions can be made by the spline method solely and LSTM can predict the rest)
+            // TODO: Remove this call after everything is finalized
+            Spline_Extrapolate_Charges_EE( system, control, data, workspace );
             Predict_Charges_TF_LSTM( system, control, data, workspace );
         }
 #else
@@ -1615,6 +1399,8 @@ static void ACKS2( reax_system * const system, control_params * const control,
         exit( INVALID_INPUT );
         break;
     }
+
+    data->timing.cm_prediction_overall = Get_Timing_Info( time );
 
 #if defined(DEBUG_FOCUS)
 #define SIZE (200)
