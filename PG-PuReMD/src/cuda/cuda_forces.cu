@@ -22,6 +22,12 @@
 #include "../tool_box.h"
 #include "../vector.h"
 
+#include "../cub/cub/warp/warp_scan.cuh"
+//#include <cub/warp/warp_scan.cuh>
+
+
+#define FULL_MASK (0xFFFFFFFF)
+
 
 typedef enum
 {
@@ -503,10 +509,9 @@ CUDA_GLOBAL void k_init_cm_full_fs( reax_atom *my_atoms, single_body_parameters 
 
         for ( pj = start_i; pj < end_i; ++pj )
         {
-            j = far_nbr_list.far_nbr_list.nbr[pj];
-
             if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut )
             {
+                j = far_nbr_list.far_nbr_list.nbr[pj];
                 atom_j = &my_atoms[j];
                 type_j = atom_j->type;
 
@@ -515,7 +520,7 @@ CUDA_GLOBAL void k_init_cm_full_fs( reax_atom *my_atoms, single_body_parameters 
 
                 H->j[cm_top] = j;
                 H->val[cm_top] = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap,
-                        control, i, H->j[cm_top], r_ij, twbp->gamma, OFF_DIAGONAL );
+                        control, i, j, r_ij, twbp->gamma, OFF_DIAGONAL );
                 ++cm_top;
             }
         }
@@ -530,6 +535,97 @@ CUDA_GLOBAL void k_init_cm_full_fs( reax_atom *my_atoms, single_body_parameters 
     if ( num_cm_entries > max_cm_entries[i] )
     {
         *realloc_cm_entries = TRUE;
+    }
+}
+
+
+/* Compute the charge matrix entries and store the matrix in full format
+ * using the far neighbors list (stored in full format) and according to
+ * the full shell communication method */
+CUDA_GLOBAL void k_init_cm_full_fs_opt( reax_atom *my_atoms, single_body_parameters *sbp, 
+        two_body_parameters *tbp, storage workspace, control_params *control, 
+        reax_list far_nbr_list, int num_atom_types,
+        int *max_cm_entries, int *realloc_cm_entries )
+{
+    extern __shared__ cub::WarpScan<int>::TempStorage temp[];
+    int i, j, pj, thread_id, lane_id, itr;
+    int start_i, end_i, type_i, type_j;
+    int cm_top, num_cm_entries, offset, flag;
+    real r_ij;
+    single_body_parameters *sbp_i;
+    two_body_parameters *twbp;
+    reax_atom *atom_i, *atom_j;
+    sparse_matrix *H;
+
+    thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+    /* all threads within a warp are assigned the same unique row 
+     * in the charge matrix */
+    i = thread_id / warpSize;
+
+    if ( i >= workspace.H.n_max )
+    {
+        return;
+    }
+
+    lane_id = thread_id % warpSize;
+    H = &workspace.H;
+    cm_top = H->start[i];
+
+    if ( i < H->n )
+    {
+        atom_i = &my_atoms[i];
+        type_i = atom_i->type;
+        start_i = Start_Index( i, &far_nbr_list );
+        end_i = End_Index( i, &far_nbr_list );
+        sbp_i = &sbp[type_i];
+
+        /* diagonal entry in the matrix */
+        if ( lane_id == 0 )
+        {
+            H->j[cm_top] = i;
+            H->val[cm_top] = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap, control,
+                    i, i, 0.0, 0.0, DIAGONAL );
+        }
+        ++cm_top;
+
+        for ( itr = 0, pj = start_i + lane_id; itr < (end_i - start_i + warpSize - 1) / warpSize; ++itr )
+        {
+            offset = (pj < end_i && far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut) ? 1 : 0;
+            flag = (offset == 1) ? TRUE : FALSE;
+            cub::WarpScan<int>(temp[i % (blockDim.x / warpSize)]).ExclusiveSum(offset, offset);
+
+            if ( flag == TRUE )
+            {
+                j = far_nbr_list.far_nbr_list.nbr[pj];
+                atom_j = &my_atoms[j];
+                type_j = atom_j->type;
+
+                twbp = &tbp[ index_tbp(type_i, type_j, num_atom_types) ];
+                r_ij = far_nbr_list.far_nbr_list.d[pj];
+
+                H->j[cm_top + offset] = j;
+                H->val[cm_top + offset] = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap,
+                        control, i, j, r_ij, twbp->gamma, OFF_DIAGONAL );
+            }
+
+            /* get cm_top from thread in last lane */
+            cm_top = cm_top + offset + (flag == TRUE ? 1 : 0);
+            cm_top = __shfl_sync( FULL_MASK, cm_top, warpSize - 1 );
+
+            pj += warpSize;
+        }
+    }
+
+    if ( lane_id == 0 )
+    {
+        H->end[i] = cm_top;
+        num_cm_entries = cm_top - H->start[i];
+
+        /* reallocation checks */
+        if ( num_cm_entries > max_cm_entries[i] )
+        {
+            *realloc_cm_entries = TRUE;
+        }
     }
 }
 
@@ -1542,7 +1638,17 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
         {
             if ( control->tabulate <= 0 )
             {
-                k_init_cm_full_fs <<< blocks, DEF_BLOCK_SIZE >>>
+//                k_init_cm_full_fs <<< blocks, DEF_BLOCK_SIZE >>>
+//                    ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
+//                      *(workspace->d_workspace), (control_params *) control->d_control_params,
+//                      *(lists[FAR_NBRS]), system->reax_param.num_atom_types,
+//                      system->d_max_cm_entries, system->d_realloc_cm_entries );
+
+                blocks = workspace->d_workspace->H.n_max * 32 / DEF_BLOCK_SIZE
+                    + (workspace->d_workspace->H.n_max * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+
+                k_init_cm_full_fs_opt <<< blocks, DEF_BLOCK_SIZE,
+                                      sizeof(cub::WarpScan<int>::TempStorage) * (DEF_BLOCK_SIZE / 32) >>>
                     ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
                       *(workspace->d_workspace), (control_params *) control->d_control_params,
                       *(lists[FAR_NBRS]), system->reax_param.num_atom_types,

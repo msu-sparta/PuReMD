@@ -316,7 +316,7 @@ CUDA_GLOBAL void k_sparse_matvec_full_opt_csr( int *row_ptr_start,
     /* partial sums per thread */
     for ( itr = 0, pj = si + lane_id; itr < (ei - si + 0x0000001F) >> 5; ++itr )
     {
-        /* coaleseced 128-bit aligned reads from global memory */
+        /* coalesced 128-bit aligned reads from global memory */
         vals_l = vals[pj];
         col_ind_l = col_ind[pj];
 
