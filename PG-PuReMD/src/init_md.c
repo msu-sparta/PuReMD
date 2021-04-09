@@ -671,8 +671,9 @@ void Init_Lists( reax_system * const system, control_params * const control,
         fprintf( stderr, "[ERROR] p%d: failed to generate neighbor lists. Terminating...\n", system->my_rank );
         MPI_Abort( MPI_COMM_WORLD, CANNOT_INITIALIZE );
     }
-    
-    Estimate_Storages( system, control, lists, &matrix_dim, cm_format );
+
+    Estimate_Storages( system, control, lists, workspace, TRUE, TRUE,
+            &matrix_dim, cm_format );
     
 #if defined(NEUTRAL_TERRITORY)
     Allocate_Matrix( &workspace->H, matrix_dim, system->local_cap, system->total_cm_entries, cm_format );

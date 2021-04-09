@@ -168,15 +168,15 @@ void Cuda_Init_Workspace( reax_system *system, control_params *control,
 
     workspace->realloc.far_nbrs = FALSE;
     workspace->realloc.cm = FALSE;
-    workspace->realloc.hbonds = FALSE;
     workspace->realloc.bonds = FALSE;
+    workspace->realloc.hbonds = FALSE;
     workspace->realloc.thbody = FALSE;
     workspace->realloc.gcell_atoms = 0;
 
     workspace->d_workspace->realloc.far_nbrs = FALSE;
     workspace->d_workspace->realloc.cm = FALSE;
-    workspace->d_workspace->realloc.hbonds = FALSE;
     workspace->d_workspace->realloc.bonds = FALSE;
+    workspace->d_workspace->realloc.hbonds = FALSE;
     workspace->d_workspace->realloc.thbody = FALSE;
     workspace->d_workspace->realloc.gcell_atoms = 0;
 

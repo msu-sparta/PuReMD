@@ -37,9 +37,6 @@ void Reset_Timing( reax_timing * const );
 
 void Reset_Workspace( reax_system * const, storage * const );
 
-void Reset_Lists( reax_system * const, control_params * const,
-        storage * const, reax_list** const );
-
 void Reset_Grid( grid * const );
 
 void Reset_Out_Buffers( mpi_out_data * const, int );

@@ -332,10 +332,10 @@ int Cuda_Velocity_Verlet_NVE( reax_system *system, control_params *control,
             Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
         }
 
+        Cuda_Reset( system, control, data, workspace, lists );
+
         cuda_copy = TRUE;
     }
-
-    Cuda_Reset( system, control, data, workspace, lists );
 
     if ( renbr == TRUE && gen_nbr_list == FALSE )
     {
@@ -430,10 +430,10 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
             Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
         }
 
+        Cuda_Reset( system, control, data, workspace, lists );
+
         cuda_copy = TRUE;
     }
-
-    Cuda_Reset( system, control, data, workspace, lists );
 
     if ( renbr == TRUE && gen_nbr_list == FALSE )
     {
@@ -561,10 +561,10 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
             Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
         }
 
+        Cuda_Reset( system, control, data, workspace, lists );
+
         cuda_copy = TRUE;
     }
-
-    Cuda_Reset( system, control, data, workspace, lists );
 
     if ( renbr == TRUE && gen_nbr_list == FALSE )
     {
@@ -675,10 +675,10 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
             Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
         }
 
+        Cuda_Reset( system, control, data, workspace, lists );
+
         cuda_copy = TRUE;
     }
-
-    Cuda_Reset( system, control, data, workspace, lists );
 
     if ( renbr == TRUE && gen_nbr_list == FALSE )
     {

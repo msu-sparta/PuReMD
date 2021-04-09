@@ -59,8 +59,11 @@ CUDA_GLOBAL void k_compute_polarization_energy( reax_atom *my_atoms,
 }
 
 
-/* one thread per atom implementation */
-CUDA_GLOBAL void k_vdW_coulomb_energy( reax_atom *my_atoms, 
+/* Compute energies and forces due to van der Waals and Coulomb interactions
+ * where the far neighbors list is in full format
+ *
+ * This implementation assigns one thread per atom */
+CUDA_GLOBAL void k_vdW_coulomb_energy_full( reax_atom *my_atoms, 
         two_body_parameters *tbp, global_parameters gp, control_params *control, 
         storage workspace, reax_list far_nbr_list, int n, int num_atom_types, 
         real *e_vdW_g, real *e_ele_g )
@@ -99,7 +102,6 @@ CUDA_GLOBAL void k_vdW_coulomb_energy( reax_atom *my_atoms,
         j = far_nbr_list.far_nbr_list.nbr[pj];
         orig_j = my_atoms[j].orig_id;
 
-        //TODO: assuming far_nbr_list in FULL_LIST, add conditions for HALF_LIST
         if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut 
                 && orig_i < orig_j )
         {
@@ -187,14 +189,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy( reax_atom *my_atoms,
                     * (r_ij * r_ij) / POW( dr3gamij_1, 4.0 / 3.0 );
             CEclmb = self_coef * (de_clb * Tap + e_clb * dTap);
 
-            if ( i < j ) 
-            {
-                rvec_Scale( temp, -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
-            }
-            else 
-            {
-                rvec_Scale( temp, (CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
-            }
+            rvec_Scale( temp, -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
             rvec_Add( f_i_l, temp );
             rvec_Scale( temp, -1.0, temp );
             atomic_rvecAdd( workspace.f[j], temp );
@@ -212,8 +207,11 @@ CUDA_GLOBAL void k_vdW_coulomb_energy( reax_atom *my_atoms,
 }
 
 
-/* one thread per atom implementation */
-CUDA_GLOBAL void k_vdW_coulomb_virial_energy( reax_atom *my_atoms, 
+/* Compute virial terms, energies, and forces due to van der Waals and Coulomb interactions
+ * where the far neighbors list is in full format
+ *
+ * This implementation assigns one thread per atom */
+CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full( reax_atom *my_atoms, 
         two_body_parameters *tbp, global_parameters gp, control_params *control, 
         storage workspace, reax_list far_nbr_list, int n, int num_atom_types, 
         real *e_vdW_g, real *e_ele_g, rvec *ext_press_g )
@@ -253,7 +251,6 @@ CUDA_GLOBAL void k_vdW_coulomb_virial_energy( reax_atom *my_atoms,
         j = far_nbr_list.far_nbr_list.nbr[pj];
         orig_j = my_atoms[j].orig_id;
 
-        //TODO: assuming far_nbr_list in FULL_LIST, add conditions for HALF_LIST
         if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut 
                 && orig_i < orig_j )
         {
@@ -343,16 +340,8 @@ CUDA_GLOBAL void k_vdW_coulomb_virial_energy( reax_atom *my_atoms,
 
             /* for pressure coupling, terms not related to bond order 
                derivatives are added directly into pressure vector/tensor */
-            if ( i < j ) 
-            {
-                rvec_Scale( temp,
-                        -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
-            }
-            else 
-            {
-                rvec_Scale( temp,
-                        (CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
-            }
+            rvec_Scale( temp,
+                    -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
             rvec_Add( f_i_l, temp );
             rvec_Scale( temp, -1.0, temp );
             atomic_rvecAdd( workspace.f[j], temp );
@@ -376,8 +365,11 @@ CUDA_GLOBAL void k_vdW_coulomb_virial_energy( reax_atom *my_atoms,
 }
 
 
-/* one warp of threads per atom implementation */
-CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms, 
+/* Compute energies and forces due to van der Waals and Coulomb interactions
+ * where the far neighbors list is in full format
+ *
+ * This implementation assigns one warp of threads per atom */
+CUDA_GLOBAL void k_vdW_coulomb_energy_full_opt( reax_atom *my_atoms, 
         two_body_parameters *tbp, global_parameters gp, control_params *control, 
         storage workspace, reax_list far_nbr_list, int n, int num_atom_types, 
         real *e_vdW_g, real *e_ele_g )
@@ -423,7 +415,6 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
         j = far_nbr_list.far_nbr_list.nbr[pj];
         orig_j = my_atoms[j].orig_id;
 
-        //TODO: assuming far_nbr_list in FULL_LIST, add conditions for HALF_LIST
         if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut 
                 && orig_i < orig_j )
         {
@@ -511,14 +502,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
                     * (r_ij * r_ij) / POW( dr3gamij_1, 4.0 / 3.0 );
             CEclmb = self_coef * (de_clb * Tap + e_clb * dTap);
 
-            if ( i < j ) 
-            {
-                rvec_Scale( temp, -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
-            }
-            else 
-            {
-                rvec_Scale( temp, (CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
-            }
+            rvec_Scale( temp, -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
             rvec_Add( f_i_l, temp );
             rvec_Scale( temp, -1.0, temp );
             atomic_rvecAdd( workspace.f[j], temp );
@@ -548,8 +532,11 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_opt( reax_atom *my_atoms,
 }
 
 
-/* one warp of threads per atom implementation */
-CUDA_GLOBAL void k_vdW_coulomb_energy_virial_opt( reax_atom *my_atoms, 
+/* Compute virial terms, energies, and forces due to van der Waals and Coulomb interactions
+ * where the far neighbors list is in full format
+ *
+ * This implementation assigns one warp of threads per atom */
+CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full_opt( reax_atom *my_atoms, 
         two_body_parameters *tbp, global_parameters gp, control_params *control, 
         storage workspace, reax_list far_nbr_list, int n, int num_atom_types, 
         real *e_vdW_g, real *e_ele_g, rvec *ext_press_g )
@@ -596,7 +583,6 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_virial_opt( reax_atom *my_atoms,
         j = far_nbr_list.far_nbr_list.nbr[pj];
         orig_j = my_atoms[j].orig_id;
 
-        //TODO: assuming far_nbr_list in FULL_LIST, add conditions for HALF_LIST
         if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut 
                 && orig_i < orig_j )
         {
@@ -686,16 +672,8 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_virial_opt( reax_atom *my_atoms,
 
             /* for pressure coupling, terms not related to bond order 
                derivatives are added directly into pressure vector/tensor */
-            if ( i < j ) 
-            {
-                rvec_Scale( temp,
-                        -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
-            }
-            else 
-            {
-                rvec_Scale( temp,
-                        (CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
-            }
+            rvec_Scale( temp,
+                    -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
             rvec_Add( f_i_l, temp );
             rvec_Scale( temp, -1.0, temp );
             atomic_rvecAdd( workspace.f[j], temp );
@@ -732,7 +710,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_virial_opt( reax_atom *my_atoms,
 
 
 /* one thread per atom implementation */
-CUDA_GLOBAL void k_vdW_coulomb_energy_tab( reax_atom *my_atoms, 
+CUDA_GLOBAL void k_vdW_coulomb_energy_tab_full( reax_atom *my_atoms, 
         global_parameters gp, control_params *control, 
         storage workspace, reax_list far_nbr_list, 
         LR_lookup_table *t_LR, int n, int num_atom_types, 
@@ -773,7 +751,6 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_tab( reax_atom *my_atoms,
         j = far_nbr_list.far_nbr_list.nbr[pj];
         orig_j = my_atoms[j].orig_id;
 
-        //TODO: assuming far_nbr_list in FULL_LIST, add conditions for HALF_LIST
         if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut
                 && orig_i < orig_j )
         {
@@ -812,16 +789,8 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_tab( reax_atom *my_atoms,
 
             if ( control->virial == 0 )
             {
-                if ( i < j ) 
-                {
-                    rvec_ScaledAdd( temp,
-                            -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
-                }
-                else 
-                {
-                    rvec_ScaledAdd( temp,
-                            (CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
-                }
+                rvec_ScaledAdd( temp,
+                        -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
                 rvec_Add( f_i_l, temp );
                 rvec_Scale( temp, -1.0, temp );
                 atomic_rvecAdd( workspace.f[j], temp );
@@ -831,16 +800,8 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_tab( reax_atom *my_atoms,
             {
                 /* for pressure coupling, terms not related to bond order derivatives
                    are added directly into pressure vector/tensor */
-                if ( i < j ) 
-                {
-                    rvec_Scale( temp,
-                            -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
-                }
-                else 
-                {
-                    rvec_Scale( temp,
-                            (CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
-                }
+                rvec_Scale( temp,
+                        -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
                 rvec_Add( f_i_l, temp );
                 rvec_ScaledAdd( temp, -1.0, temp );
                 atomic_rvecAdd( workspace.f[j], temp );
@@ -948,7 +909,7 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
     {
         if ( control->virial == 1 )
         {
-//            k_vdW_coulomb_energy_virial <<< control->blocks, control->block_size >>>
+//            k_vdW_coulomb_energy_virial_full <<< control->blocks, control->block_size >>>
 //                ( system->d_my_atoms, system->reax_param.d_tbp, 
 //                  system->reax_param.d_gp, (control_params *) control->d_control_params, 
 //                  *(workspace->d_workspace), *(lists[FAR_NBRS]), 
@@ -962,7 +923,7 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
 //#endif
 //            );
 
-        k_vdW_coulomb_energy_virial_opt <<< blocks, DEF_BLOCK_SIZE,
+        k_vdW_coulomb_energy_virial_full_opt <<< blocks, DEF_BLOCK_SIZE,
                                  sizeof(real) * (DEF_BLOCK_SIZE / 32) >>>
             ( system->d_my_atoms, system->reax_param.d_tbp, 
               system->reax_param.d_gp, (control_params *) control->d_control_params, 
@@ -979,7 +940,7 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
         }
         else
         {
-//            k_vdW_coulomb_energy <<< control->blocks, control->block_size >>>
+//            k_vdW_coulomb_energy_full <<< control->blocks, control->block_size >>>
 //                ( system->d_my_atoms, system->reax_param.d_tbp, 
 //                  system->reax_param.d_gp, (control_params *) control->d_control_params, 
 //                  *(workspace->d_workspace), *(lists[FAR_NBRS]), 
@@ -992,7 +953,7 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
 //#endif
 //                );
 
-        k_vdW_coulomb_energy_opt <<< blocks, DEF_BLOCK_SIZE,
+        k_vdW_coulomb_energy_full_opt <<< blocks, DEF_BLOCK_SIZE,
                                  sizeof(real) * (DEF_BLOCK_SIZE / 32) >>>
             ( system->d_my_atoms, system->reax_param.d_tbp, 
               system->reax_param.d_gp, (control_params *) control->d_control_params, 
@@ -1010,7 +971,7 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
     }
     else
     {
-        k_vdW_coulomb_energy_tab <<< control->blocks, control->block_size >>>
+        k_vdW_coulomb_energy_tab_full <<< control->blocks, control->block_size >>>
             ( system->d_my_atoms, system->reax_param.d_gp, 
               (control_params *) control->d_control_params, 
               *(workspace->d_workspace), *(lists[FAR_NBRS]), 

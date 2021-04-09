@@ -10,13 +10,13 @@ void Cuda_Allocate_Grid( reax_system * );
 
 void Cuda_Allocate_Simulation_Data( simulation_data * );
 
+void Cuda_Allocate_Control( control_params * );
+
 void Cuda_Allocate_Workspace_Part1( reax_system *, control_params *, storage *, int );
 
 void Cuda_Allocate_Workspace_Part2( reax_system *, control_params *, storage *, int );
 
 void Cuda_Allocate_Matrix( sparse_matrix * const, int, int, int, int );
-
-void Cuda_Allocate_Control( control_params * );
 
 void Cuda_Deallocate_Grid_Cell_Atoms( reax_system * );
 

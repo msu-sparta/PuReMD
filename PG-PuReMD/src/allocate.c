@@ -605,14 +605,11 @@ static void Reallocate_Matrix( sparse_matrix * const H, int n, int n_max, int m 
 }
 
 
-void Reallocate_HBonds_List( reax_system * const system, reax_list * const hbond_list )
+static void Reallocate_List( reax_list * const list, int n, int max_intrs,
+        int type, int format )
 {
-    int format;
-
-    format = hbond_list->format;
-
-    Delete_List( hbond_list );
-    Make_List( system->total_cap, system->total_hbonds, TYP_HBOND, format, hbond_list );
+    Delete_List( list );
+    Make_List( n, max_intrs, type, format, list );
 }
 
 
@@ -864,7 +861,7 @@ void Reallocate_Part2( reax_system * const system, control_params * const contro
         mpi_datatypes * const mpi_data )
 {
     int nflag, Nflag;
-    int renbr, format;
+    int renbr;
     reallocate_data * const realloc = &workspace->realloc;
     sparse_matrix * const H = &workspace->H;
 
@@ -930,36 +927,36 @@ void Reallocate_Part2( reax_system * const system, control_params * const contro
 #else
         Reallocate_Matrix( H, system->n, system->local_cap, system->total_cm_entries );
 #endif
-        Init_Matrix_Row_Indices( H, system->max_cm_entries );
+
         realloc->cm = FALSE;
+    }
+
+    /* bonds list */
+    if ( Nflag == TRUE || realloc->bonds == TRUE )
+    {
+        Reallocate_List( lists[BONDS], system->total_cap, system->total_bonds,
+               TYP_BOND, lists[BONDS]->format );
+
+        realloc->bonds = FALSE;
+        realloc->thbody = TRUE;
     }
 
     /* hydrogen bonds list */
     if ( control->hbond_cut > 0.0
             && (Nflag == TRUE || realloc->hbonds == TRUE) )
     {
-        Reallocate_HBonds_List( system, lists[HBONDS] );
-        Init_List_Indices( lists[HBONDS], system->max_hbonds );
-        realloc->hbonds = FALSE;
-    }
+        Reallocate_List( lists[HBONDS], system->total_cap, system->total_hbonds,
+               TYP_HBOND, lists[HBONDS]->format );
 
-    /* bonds list */
-    if ( Nflag == TRUE || realloc->bonds == TRUE )
-    {
-        Reallocate_Bonds_List( system, lists[BONDS] );
-        Init_List_Indices( lists[BONDS], system->max_bonds );
-        realloc->bonds = FALSE;
-        realloc->thbody = TRUE;
+        realloc->hbonds = FALSE;
     }
 
     /* 3-body list */
     if ( realloc->thbody == TRUE )
     {
-        format = lists[THREE_BODIES]->format;
+        Reallocate_List( lists[THREE_BODIES], system->total_bonds, system->total_thbodies,
+               TYP_THREE_BODY, lists[THREE_BODIES]->format );
 
-        Delete_List( lists[THREE_BODIES] );
-        Make_List( system->total_bonds, system->total_thbodies,
-                TYP_THREE_BODY, format, lists[THREE_BODIES] );
         realloc->thbody = FALSE;
     }
 }

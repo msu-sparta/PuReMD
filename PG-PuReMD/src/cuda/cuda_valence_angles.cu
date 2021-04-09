@@ -43,7 +43,6 @@ CUDA_GLOBAL void k_valence_angles_part1( reax_atom *my_atoms,
     int i, j, pi, k, pk, t;
     int type_i, type_j, type_k;
     int start_j, end_j;
-//    int start_pk, end_pk;
     int cnt, num_thb_intrs;
     real temp, temp_bo_jt, pBOjt7;
     real p_val1, p_val2, p_val3, p_val4, p_val5;
@@ -65,7 +64,6 @@ CUDA_GLOBAL void k_valence_angles_part1( reax_atom *my_atoms,
     three_body_header *thbh;
     three_body_parameters *thbp;
     three_body_interaction_data *p_ijk;
-//    three_body_interaction_data *p_kji;
     bond_data *pbond_ij, *pbond_jk, *pbond_jt;
     bond_order_data *bo_ij, *bo_jk, *bo_jt;
 
@@ -86,7 +84,6 @@ CUDA_GLOBAL void k_valence_angles_part1( reax_atom *my_atoms,
     p_val8 = gp.l[33];
     p_val9 = gp.l[16];
     p_val10 = gp.l[17];
-    //num_thb_intrs = j * THREE_BODY_OFFSET;
     e_ang_l = 0.0;
     e_coa_l = 0.0;
     e_pen_l = 0.0;
@@ -165,41 +162,7 @@ CUDA_GLOBAL void k_valence_angles_part1( reax_atom *my_atoms,
             i = pbond_ij->nbr;
             type_i = my_atoms[i].type;
 
-            /* first copy 3-body intrs from previously computed ones where i > k.
-             * IMPORTANT: if it is less costly to compute theta and its
-             * derivative, we should definitely re-compute them,
-             * instead of copying!
-             * in the second for-loop below, we compute only new 3-body intrs
-             * where i < k */
-            // The copy loop commented out because strange asynchronous issues started to surface
-            // Each kernel now manually generates everything
-//            for( pk = start_j; pk < pi; ++pk )
-//            {
-//                start_pk = Start_Index( pk, &thb_list );
-//                end_pk = End_Index( pk, &thb_list );
-//
-//                for( t = start_pk; t < end_pk; ++t )
-//                {
-//                    if( thb_list.three_body_list[t].thb == i )
-//                    {
-//                        p_ijk = &thb_list.three_body_list[num_thb_intrs];
-//                        p_kji = &thb_list.three_body_list[t];
-//
-//                        p_ijk->thb = bond_list.bond_list[pk].nbr;
-//                        p_ijk->pthb  = pk;
-//                        p_ijk->theta = p_kji->theta;
-//                        rvec_Copy( p_ijk->dcos_di, p_kji->dcos_dk );
-//                        rvec_Copy( p_ijk->dcos_dj, p_kji->dcos_dj );
-//                        rvec_Copy( p_ijk->dcos_dk, p_kji->dcos_di );
-//
-//                        ++num_thb_intrs;
-//                        break;
-//                    }
-//                }
-//            }
-
-            /* and this is the second for loop mentioned above */
-            // Except that now the loop goes all the way from start_j to end_j
+            /* compute _ALL_ 3-body intrs */
             for ( pk = start_j; pk < end_j; ++pk )
             {
                 if ( pk == pi )
@@ -332,11 +295,9 @@ CUDA_GLOBAL void k_valence_angles_part1( reax_atom *my_atoms,
                             - (2.0 + exp_pen3) * ( -p_pen3 * exp_pen3
                                 + p_pen4 * exp_pen4 )) / SQR( trm_pen34 );
 
-                    /* very important: since each kernel generates all interactions,
-                     * need to prevent all energies becoming duplicates */
+                    e_pen = p_pen1 * f9_Dj * exp_pen2ij * exp_pen2jk;
                     if ( pk < pi )
                     {
-                        e_pen = p_pen1 * f9_Dj * exp_pen2ij * exp_pen2jk;
                         e_pen_l += e_pen;
                     }
 
@@ -355,7 +316,7 @@ CUDA_GLOBAL void k_valence_angles_part1( reax_atom *my_atoms,
                         * EXP( -p_coa3 * SQR(workspace.total_bond_order[i] - BOA_ij) )
                         * EXP( -p_coa3 * SQR(workspace.total_bond_order[k] - BOA_jk) )
                         / (1.0 + exp_coa2);
-                    /* similar to above comment regarding if statement */
+
                     if ( pk < pi )
                     {
                         e_coa_l += e_coa;
@@ -368,7 +329,6 @@ CUDA_GLOBAL void k_valence_angles_part1( reax_atom *my_atoms,
                     CEcoa5 = -2.0 * p_coa3 * (workspace.total_bond_order[k] - BOA_jk) * e_coa;
 
                     /* calculate force contributions */
-                    /* we must again check for pk < pi for entire forces part */
                     if ( pk < pi )
                     {
 #if !defined(CUDA_ACCUM_ATOMIC)
@@ -446,7 +406,6 @@ CUDA_GLOBAL void k_valence_angles_virial_part1( reax_atom *my_atoms,
     int i, j, pi, k, pk, t;
     int type_i, type_j, type_k;
     int start_j, end_j;
-//    int start_pk, end_pk;
     int cnt, num_thb_intrs;
     real temp, temp_bo_jt, pBOjt7;
     real p_val1, p_val2, p_val3, p_val4, p_val5;
@@ -468,7 +427,6 @@ CUDA_GLOBAL void k_valence_angles_virial_part1( reax_atom *my_atoms,
     three_body_header *thbh;
     three_body_parameters *thbp;
     three_body_interaction_data *p_ijk;
-//    three_body_interaction_data *p_kji;
     bond_data *pbond_ij, *pbond_jk, *pbond_jt;
     bond_order_data *bo_ij, *bo_jk, *bo_jt;
 
@@ -489,7 +447,6 @@ CUDA_GLOBAL void k_valence_angles_virial_part1( reax_atom *my_atoms,
     p_val8 = gp.l[33];
     p_val9 = gp.l[16];
     p_val10 = gp.l[17];
-    //num_thb_intrs = j * THREE_BODY_OFFSET;
     e_ang_l = 0.0;
     e_coa_l = 0.0;
     e_pen_l = 0.0;
@@ -569,41 +526,7 @@ CUDA_GLOBAL void k_valence_angles_virial_part1( reax_atom *my_atoms,
             i = pbond_ij->nbr;
             type_i = my_atoms[i].type;
 
-            /* first copy 3-body intrs from previously computed ones where i > k.
-             * IMPORTANT: if it is less costly to compute theta and its
-             * derivative, we should definitely re-compute them,
-             * instead of copying!
-             * in the second for-loop below, we compute only new 3-body intrs
-             * where i < k */
-            // The copy loop commented out because strange asynchronous issues started to surface
-            // Each kernel now manually generates everything
-//            for( pk = start_j; pk < pi; ++pk )
-//            {
-//                start_pk = Start_Index( pk, &thb_list );
-//                end_pk = End_Index( pk, &thb_list );
-//
-//                for( t = start_pk; t < end_pk; ++t )
-//                {
-//                    if( thb_list.three_body_list[t].thb == i )
-//                    {
-//                        p_ijk = &thb_list.three_body_list[num_thb_intrs];
-//                        p_kji = &thb_list.three_body_list[t];
-//
-//                        p_ijk->thb = bond_list.bond_list[pk].nbr;
-//                        p_ijk->pthb  = pk;
-//                        p_ijk->theta = p_kji->theta;
-//                        rvec_Copy( p_ijk->dcos_di, p_kji->dcos_dk );
-//                        rvec_Copy( p_ijk->dcos_dj, p_kji->dcos_dj );
-//                        rvec_Copy( p_ijk->dcos_dk, p_kji->dcos_di );
-//
-//                        ++num_thb_intrs;
-//                        break;
-//                    }
-//                }
-//            }
-
-            /* and this is the second for loop mentioned above */
-            // Except that now the loop goes all the way from start_j to end_j
+            /* compute _ALL_ 3-body intrs */
             for ( pk = start_j; pk < end_j; ++pk )
             {
                 if ( pk == pi )
@@ -736,11 +659,9 @@ CUDA_GLOBAL void k_valence_angles_virial_part1( reax_atom *my_atoms,
                             - (2.0 + exp_pen3) * ( -p_pen3 * exp_pen3
                                 + p_pen4 * exp_pen4 )) / SQR( trm_pen34 );
 
-                    /* very important: since each kernel generates all interactions,
-                     * need to prevent all energies becoming duplicates */
+                    e_pen = p_pen1 * f9_Dj * exp_pen2ij * exp_pen2jk;
                     if ( pk < pi )
                     {
-                        e_pen = p_pen1 * f9_Dj * exp_pen2ij * exp_pen2jk;
                         e_pen_l += e_pen;
                     }
 
@@ -759,7 +680,7 @@ CUDA_GLOBAL void k_valence_angles_virial_part1( reax_atom *my_atoms,
                         * EXP( -p_coa3 * SQR(workspace.total_bond_order[i] - BOA_ij) )
                         * EXP( -p_coa3 * SQR(workspace.total_bond_order[k] - BOA_jk) )
                         / (1.0 + exp_coa2);
-                    /* similar to above comment regarding if statement */
+
                     if ( pk < pi )
                     {
                         e_coa_l += e_coa;
@@ -772,7 +693,6 @@ CUDA_GLOBAL void k_valence_angles_virial_part1( reax_atom *my_atoms,
                     CEcoa5 = -2.0 * p_coa3 * (workspace.total_bond_order[k] - BOA_jk) * e_coa;
 
                     /* calculate force contributions */
-                    /* we must again check for pk < pi for entire forces part */
                     if ( pk < pi )
                     {
 #if !defined(CUDA_ACCUM_ATOMIC)

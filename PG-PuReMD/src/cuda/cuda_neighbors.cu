@@ -47,8 +47,9 @@ CUDA_DEVICE real Cuda_DistSqr_to_Special_Point( rvec cp, rvec x )
 }
 
 
-/* Generate far neighbor lists by scanning the atoms list and applying cutoffs */
-CUDA_GLOBAL void k_generate_neighbor_lists( reax_atom *my_atoms, 
+/* Generate far neighbor lists in full format
+ * by scanning the atoms list and applying cutoffs */
+CUDA_GLOBAL void k_generate_neighbor_lists_full( reax_atom *my_atoms, 
         simulation_box my_ext_box, grid g, reax_list far_nbr_list,
         int n, int N, int *far_nbrs, int *max_far_nbrs, int *realloc_far_nbrs )
 {
@@ -113,15 +114,16 @@ CUDA_GLOBAL void k_generate_neighbor_lists( reax_atom *my_atoms,
         ivec_Copy( nbrs_x, g.nbrs_x[index_grid_nbrs(i, j, k, itr, &g)] );
 
         /* if neighboring grid cell is further in the "positive" direction AND within cutoff */
-        if ( g.str[index_grid_3d(i, j, k, &g)] <= g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]
-                && Cuda_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)], atom1->x) <= cutoff )
+        if ( //g.str[index_grid_3d(i, j, k, &g)] <= g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] && 
+                Cuda_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)], atom1->x) <= cutoff )
         {
             /* pick up another atom from the neighbor cell */
             for ( m = g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; 
                     m < g.end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; ++m )
             {
                 /* prevent recounting same pairs within a gcell */
-                if ( l < m )
+//                if ( l < m )
+                if ( l != m )
                 {
                     atom2 = &my_atoms[m];
                     dvec[0] = atom2->x[0] - atom1->x[0];
@@ -148,53 +150,11 @@ CUDA_GLOBAL void k_generate_neighbor_lists( reax_atom *my_atoms,
         ++itr;
     }   
 
-    /* scan neighboring grid cells within cutoff */
-    itr = 0;
-    while ( g.nbrs_x[index_grid_nbrs(i, j, k, itr, &g)][0] >= 0 )
-    { 
-        ivec_Copy( nbrs_x, g.nbrs_x[index_grid_nbrs(i, j, k, itr, &g)] );
-        cutoff = SQR( g.cutoff[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] );
-
-        /* if neighboring grid cell is further in the "negative" direction AND within cutoff */
-        if ( g.str[index_grid_3d(i, j, k, &g)] >= g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] &&  
-                Cuda_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)], atom1->x) <= cutoff )
-        {
-            /* pick up another atom from the neighbor cell */
-            for ( m = g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; 
-                    m < g.end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; ++m )
-            {
-                /* prevent recounting same pairs within a gcell */
-                if ( l > m )
-                {
-                    atom2 = &my_atoms[m];
-                    dvec[0] = atom1->x[0] - atom2->x[0];
-                    dvec[1] = atom1->x[1] - atom2->x[1];
-                    dvec[2] = atom1->x[2] - atom2->x[2];
-                    d = rvec_Norm_Sqr( dvec );
-
-                    if ( d <= cutoff )
-                    {
-                        /* commit far neighbor to list */
-                        far_nbr_list.far_nbr_list.nbr[num_far] = m;
-                        far_nbr_list.far_nbr_list.d[num_far] = SQRT( d );
-                        rvec_Copy( far_nbr_list.far_nbr_list.dvec[num_far], dvec );
-                        ivec_ScaledSum( far_nbr_list.far_nbr_list.rel_box[num_far],
-                                1, g.rel_box[ index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g) ], 
-                                -1, g.rel_box[ index_grid_3d(i, j, k, &g) ] );
-
-                        ++num_far;
-                    }
-                }   
-            }
-        }
-
-        ++itr;
-    }   
-
     Set_End_Index( l, num_far, &far_nbr_list );
 
-    /* reallocation check */
     my_num_far = num_far - Start_Index( l, &far_nbr_list );
+
+    /* reallocation check */
     if ( my_num_far > max_far_nbrs[l] )
     {
         *realloc_far_nbrs = TRUE;
@@ -424,8 +384,8 @@ CUDA_GLOBAL void k_mt_generate_neighbor_lists( reax_atom *my_atoms,
 }
 
 
-/* Estimate the number of far neighbors per atom (GPU) */
-CUDA_GLOBAL void k_estimate_neighbors( reax_atom *my_atoms, 
+/* Estimate the number of far neighbors in full format per atom */
+CUDA_GLOBAL void k_estimate_neighbors_full( reax_atom *my_atoms, 
         simulation_box my_ext_box, grid g, int n, int N, int total_cap,
         int *far_nbrs, int *max_far_nbrs )
 {
@@ -500,7 +460,8 @@ CUDA_GLOBAL void k_estimate_neighbors( reax_atom *my_atoms,
                         m < g.end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; ++m )
                 {
                     /* prevent recounting same pairs within a gcell */
-                    if ( l < m )
+//                    if ( l < m )
+                    if ( l != m )
                     {
                         atom2 = &my_atoms[m];
                         dvec[0] = atom2->x[0] - atom1->x[0];
@@ -517,38 +478,6 @@ CUDA_GLOBAL void k_estimate_neighbors( reax_atom *my_atoms,
             }
             ++itr;
 
-        }   
-
-        itr = 0;
-        while ( g.nbrs_x[index_grid_nbrs(i, j, k, itr, &g)][0] >= 0 )
-        {
-            ivec_Copy( nbrs_x, g.nbrs_x[index_grid_nbrs(i, j, k, itr, &g)] );
-            cutoff = SQR( g.cutoff[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] );
-
-            if ( g.str[index_grid_3d(i, j, k, &g)] >= g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] &&  
-                    Cuda_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)],atom1->x) <= cutoff ) 
-            {
-                /* pick up another atom from the neighbor cell */
-                for ( m = g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; 
-                        m < g.end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; ++m )
-                {
-                    /* prevent recounting same pairs within a gcell */
-                    if ( l > m )
-                    {
-                        atom2 = &my_atoms[m];
-                        dvec[0] = atom2->x[0] - atom1->x[0];
-                        dvec[1] = atom2->x[1] - atom1->x[1];
-                        dvec[2] = atom2->x[2] - atom1->x[2];
-                        d = rvec_Norm_Sqr( dvec );
-
-                        if ( d <= cutoff )
-                        { 
-                            num_far++;
-                        }
-                    }   
-                }
-            }
-            ++itr;
         }   
     }
     else
@@ -574,6 +503,8 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
     {
         cudaEventCreate( &time_event[i] );
     }
+
+    cudaEventRecord( time_event[0] );
 #endif
 
     /* reset reallocation flag on device */
@@ -586,11 +517,7 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
     blocks = (system->N / NBRS_BLOCK_SIZE) +
         ((system->N % NBRS_BLOCK_SIZE) == 0 ? 0 : 1);
 
-#if defined(LOG_PERFORMANCE)
-    cudaEventRecord( time_event[0] );
-#endif
-
-    k_generate_neighbor_lists <<< blocks, NBRS_BLOCK_SIZE >>>
+    k_generate_neighbor_lists_full <<< blocks, NBRS_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->my_ext_box,
           system->d_my_grid, *(lists[FAR_NBRS]),
           system->n, system->N,
@@ -607,10 +534,6 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
 //              *(lists[FAR_NBRS]), system->n, system->N );
 //    cudaCheckError( );
 
-#if defined(LOG_PERFORMANCE)
-    cudaEventRecord( time_event[1] );
-#endif
-
     /* check reallocation flag on device */
     copy_host_device( &ret_far_nbr, system->d_realloc_far_nbrs, sizeof(int), 
             cudaMemcpyDeviceToHost, "Cuda_Generate_Neighbor_Lists::d_realloc_far_nbrs" );
@@ -619,6 +542,8 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
     workspace->d_workspace->realloc.far_nbrs = ret_far_nbr;
 
 #if defined(LOG_PERFORMANCE)
+    cudaEventRecord( time_event[1] );
+
     if ( cudaEventQuery( time_event[0] ) != cudaSuccess ) 
     {
         cudaEventSynchronize( time_event[0] );
@@ -644,15 +569,21 @@ void Cuda_Estimate_Num_Neighbors( reax_system *system, simulation_data *data )
 {
     int blocks;
 #if defined(LOG_PERFORMANCE)
-    double time;
+    float time_elapsed;
+    cudaEvent_t time_event[2];
     
-    time = Get_Time( );
+    for ( int i = 0; i < 2; ++i )
+    {
+        cudaEventCreate( &time_event[i] );
+    }
+
+    cudaEventRecord( time_event[0] );
 #endif
 
     blocks = system->total_cap / DEF_BLOCK_SIZE
         + (system->total_cap % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
-    k_estimate_neighbors <<< blocks, DEF_BLOCK_SIZE >>>
+    k_estimate_neighbors_full <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
           system->n, system->N, system->total_cap,
           system->d_far_nbrs, system->d_max_far_nbrs );
@@ -664,6 +595,19 @@ void Cuda_Estimate_Num_Neighbors( reax_system *system, simulation_data *data )
             cudaMemcpyDeviceToHost, "Cuda_Estimate_Neighbors::d_total_far_nbrs" );
 
 #if defined(LOG_PERFORMANCE)
-    Update_Timing_Info( &time, &data->timing.nbrs );
+    cudaEventRecord( time_event[1] );
+
+    if ( cudaEventQuery( time_event[0] ) != cudaSuccess ) 
+    {
+        cudaEventSynchronize( time_event[0] );
+    }
+
+    if ( cudaEventQuery( time_event[1] ) != cudaSuccess ) 
+    {
+        cudaEventSynchronize( time_event[1] );
+    }
+
+    cudaEventElapsedTime( &time_elapsed, time_event[0], time_event[1] ); 
+    data->timing.nbrs += (real) (time_elapsed / 1000.0);
 #endif
 }

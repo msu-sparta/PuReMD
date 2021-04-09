@@ -169,13 +169,22 @@ void Reset_Test_Forces( reax_system * const system, storage * const workspace )
 
 void Reset_Workspace( reax_system * const system, storage * const workspace )
 {
-    memset( workspace->total_bond_order, 0, sizeof(real) * system->total_cap );
-    memset( workspace->dDeltap_self, 0, sizeof(rvec) * system->total_cap );
-    memset( workspace->CdDelta, 0, sizeof(real) * system->total_cap );
-    memset( workspace->f, 0, sizeof(rvec) * system->total_cap );
+    int i;
+
+    for ( i = 0; i < system->total_cap; ++i )
+    {
+        workspace->CdDelta[i] = 0.0;
+    }
+    for ( i = 0; i < system->total_cap; ++i )
+    {
+        rvec_MakeZero( workspace->f[i] );
+    }
 
 #ifdef TEST_FORCES
-    memset( workspace->dDelta, 0, sizeof(rvec) * system->total_cap );
+    for ( i = 0; i < system->total_cap; ++i )
+    {
+        rvec_MakeZero( workspace->dDelta[i] );
+    }
     Reset_Test_Forces( system, workspace );
 #endif
 }
@@ -211,37 +220,6 @@ void Reset_Out_Buffers( mpi_out_data * const out_buf, int n )
 }
 
 
-void Reset_Lists( reax_system * const system, control_params * const control,
-        storage * const workspace, reax_list ** const lists )
-{
-    int i;
-    reax_list * const bond_list = lists[BONDS];
-    reax_list * const hbond_list = lists[HBONDS];
-
-    if ( system->N > 0 )
-    {
-        for ( i = 0; i < bond_list->n; ++i )
-        {
-            Set_End_Index( i, Start_Index( i, bond_list ), bond_list );
-        }
-
-        if ( control->hbond_cut > 0.0 && system->numH > 0 )
-        {
-            for ( i = 0; i < hbond_list->n; ++i )
-            {
-                /* do not use Hindex, unconditionally reset end indices */
-                Set_End_Index( i, Start_Index( i, hbond_list ), hbond_list );
-            }
-        }
-
-        for ( i = 0; i < workspace->H.n_max; ++i )
-        {
-            workspace->H.end[i] = workspace->H.start[i];
-        }
-    }
-}
-
-
 void Reset( reax_system * const system, control_params * const control,
         simulation_data * const data, storage * const workspace,
         reax_list ** const lists )
@@ -256,6 +234,4 @@ void Reset( reax_system * const system, control_params * const control,
     }
 
     Reset_Workspace( system, workspace );
-
-    Reset_Lists( system, control, workspace, lists );
 }

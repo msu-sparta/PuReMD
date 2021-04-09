@@ -27,6 +27,7 @@
 #if defined(PURE_REAX)
   #include "forces.h"
 
+  #include "allocate.h"
   #include "bond_orders.h"
   #include "bonds.h"
   #include "basic_comm.h"
@@ -45,6 +46,7 @@
 #elif defined(LAMMPS_REAX)
   #include "reax_forces.h"
 
+  #include "reax_allocate.h"
   #include "reax_bond_orders.h"
   #include "reax_bonds.h"
   #include "reax_basic_comm.h"
@@ -435,32 +437,27 @@ static void Init_Distance( reax_system *system, control_params *control,
 {
     int i, j, pj;
     int start_i, end_i;
-    int renbr;
     reax_list *far_nbr_list;
     reax_atom *atom_i, *atom_j;
 
     far_nbr_list = lists[FAR_NBRS];
-    renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
 
-    if ( renbr == FALSE )
+    for ( i = 0; i < system->N; ++i )
     {
-        for ( i = 0; i < system->N; ++i )
-        {
-            atom_i = &system->my_atoms[i];
-            start_i = Start_Index( i, far_nbr_list );
-            end_i = End_Index( i, far_nbr_list );
+        atom_i = &system->my_atoms[i];
+        start_i = Start_Index( i, far_nbr_list );
+        end_i = End_Index( i, far_nbr_list );
 
-            /* update distance and displacement vector between atoms i and j (i-j) */
-            for ( pj = start_i; pj < end_i; ++pj )
-            {
-                j = far_nbr_list->far_nbr_list.nbr[pj];
-                atom_j = &system->my_atoms[j];
-                
-                far_nbr_list->far_nbr_list.dvec[pj][0] = atom_j->x[0] - atom_i->x[0];
-                far_nbr_list->far_nbr_list.dvec[pj][1] = atom_j->x[1] - atom_i->x[1];
-                far_nbr_list->far_nbr_list.dvec[pj][2] = atom_j->x[2] - atom_i->x[2];
-                far_nbr_list->far_nbr_list.d[pj] = rvec_Norm( far_nbr_list->far_nbr_list.dvec[pj] );
-            }
+        /* update distance and displacement vector between atoms i and j (i-j) */
+        for ( pj = start_i; pj < end_i; ++pj )
+        {
+            j = far_nbr_list->far_nbr_list.nbr[pj];
+            atom_j = &system->my_atoms[j];
+            
+            far_nbr_list->far_nbr_list.dvec[pj][0] = atom_j->x[0] - atom_i->x[0];
+            far_nbr_list->far_nbr_list.dvec[pj][1] = atom_j->x[1] - atom_i->x[1];
+            far_nbr_list->far_nbr_list.dvec[pj][2] = atom_j->x[2] - atom_i->x[2];
+            far_nbr_list->far_nbr_list.d[pj] = rvec_Norm( far_nbr_list->far_nbr_list.dvec[pj] );
         }
     }
 }
@@ -672,12 +669,13 @@ static void Init_CM_Half_NT( reax_system *system, control_params *control,
         }
     }
 
-    /* reallocation checks */
+    /* reallocation check */
     for ( i = 0; i < system->N; ++i )
     {
         if ( i < system->n && H->end[i] - H->start[i] > system->max_cm_entries[i] )
         {
             workspace->realloc.cm = TRUE;
+            break;
         }
     }
 }
@@ -887,12 +885,13 @@ static void Init_CM_Full_NT( reax_system *system, control_params *control,
         }
     }
 
-    /* reallocation checks */
+    /* reallocation check */
     for ( i = 0; i < system->N; ++i )
     {
         if ( i < system->n && H->end[i] - H->start[i] > system->max_cm_entries[i] )
         {
             workspace->realloc.cm = TRUE;
+            break;
         }
     }
 }
@@ -967,12 +966,13 @@ static void Init_CM_Half_FS( reax_system *system, control_params *control,
         H->end[i] = cm_top;
     }
 
-    /* reallocation checks */
+    /* reallocation check */
     for ( i = 0; i < system->n; ++i )
     {
         if ( H->end[i] - H->start[i] > system->max_cm_entries[i] )
         {
             workspace->realloc.cm = TRUE;
+            break;
         }
     }
 }
@@ -1038,12 +1038,13 @@ static void Init_CM_Full_FS( reax_system *system, control_params *control,
         H->end[i] = cm_top;
     }
 
-    /* reallocation checks */
+    /* reallocation check */
     for ( i = 0; i < system->n; ++i )
     {
         if ( H->end[i] - H->start[i] > system->max_cm_entries[i] )
         {
             workspace->realloc.cm = TRUE;
+            break;
         }
     }
 }
@@ -1210,14 +1211,18 @@ static void Init_Bond_Half( reax_system *system, control_params *control,
         if ( Num_Entries( i, bond_list ) > system->max_bonds[i] )
         {
             workspace->realloc.bonds = TRUE;
+            break;
         }
+    }
 
-        if ( i < system->n
-                && system->reax_param.sbp[ system->my_atoms[i].type ].p_hbond == H_ATOM
+    for ( i = 0; i < system->n; ++i )
+    {
+        if ( system->reax_param.sbp[ system->my_atoms[i].type ].p_hbond == H_ATOM
                 && Num_Entries( system->my_atoms[i].Hindex, hbond_list )
-                    > system->max_hbonds[system->my_atoms[i].Hindex] )
+                > system->max_hbonds[system->my_atoms[i].Hindex] )
         {
             workspace->realloc.hbonds = TRUE;
+            break;
         }
     }
 }
@@ -1387,14 +1392,18 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
         if ( Num_Entries( i, bond_list ) > system->max_bonds[i] )
         {
             workspace->realloc.bonds = TRUE;
+            break;
         }
+    }
 
-        if ( i < system->n
-                && system->reax_param.sbp[ system->my_atoms[i].type ].p_hbond == H_ATOM
+    for ( i = 0; i < system->n; ++i )
+    {
+        if ( system->reax_param.sbp[ system->my_atoms[i].type ].p_hbond == H_ATOM
                 && Num_Entries( system->my_atoms[i].Hindex, hbond_list )
                 > system->max_hbonds[system->my_atoms[i].Hindex] )
         {
             workspace->realloc.hbonds = TRUE;
+            break;
         }
     }
 
@@ -1445,6 +1454,381 @@ static void Compute_NonBonded_Forces( reax_system * const system,
     else
     {
         Tabulated_vdW_Coulomb_Energy( system, control, data, workspace, lists, out_control );
+    }
+}
+
+
+
+static void Estimate_Storages_CM( reax_system * const system, control_params * const control,
+        reax_list ** const lists, int * const matrix_dim, int cm_format )
+{
+    int i, j, pj;
+    int start_i, end_i;
+    int local;
+    real cutoff;
+    reax_list *far_nbr_list;
+    reax_atom *atom_i, *atom_j;
+#if defined(NEUTRAL_TERRITORY)
+    int mark[6] = {1, 1, 2, 2, 2, 2};
+#endif
+
+    far_nbr_list = lists[FAR_NBRS];
+    *matrix_dim = 0;
+
+    for ( i = 0; i < system->total_cap; ++i )
+    {
+        if ( i < system->local_cap )
+        {
+            system->cm_entries[i] = 0;
+        }
+    }
+
+    for ( i = 0; i < system->N; ++i )
+    {
+        atom_i = &system->my_atoms[i];
+        start_i = Start_Index( i, far_nbr_list );
+        end_i = End_Index( i, far_nbr_list );
+
+        if ( i < system->n )
+        {
+            local = 1;
+            cutoff = control->nonb_cut;
+            ++system->cm_entries[i];
+            ++(*matrix_dim);
+        }
+#if defined(NEUTRAL_TERRITORY)
+        else if ( atom_i->nt_dir != -1 )
+        {
+            local = 2;
+            cutoff = control->nonb_cut;
+            ++(*matrix_dim);
+        }
+#endif
+        else
+        {
+            local = 0;
+            cutoff = control->bond_cut;
+        }
+
+        for ( pj = start_i; pj < end_i; ++pj )
+        {
+            j = far_nbr_list->far_nbr_list.nbr[pj];
+
+#if !defined(NEUTRAL_TERRITORY)
+            if ( far_nbr_list->format == HALF_LIST )
+#endif
+            {
+                atom_j = &system->my_atoms[j];
+            }
+
+            if ( far_nbr_list->far_nbr_list.d[pj] <= cutoff )
+            {
+                if ( local == 1 )
+                {
+#if defined(NEUTRAL_TERRITORY)
+                    if( atom_j->nt_dir > 0 || j < system->n )
+                    {
+                        ++system->cm_entries[i];
+                    }
+#else
+                    if ( (far_nbr_list->format == HALF_LIST
+                                && (j < system->n || atom_i->orig_id < atom_j->orig_id))
+                            || far_nbr_list->format == FULL_LIST )
+                    {
+                        ++system->cm_entries[i];
+                    }
+#endif
+                }
+
+#if defined(NEUTRAL_TERRITORY)
+                else if ( local == 2 )
+                {
+                    if( ( atom_j->nt_dir != -1 && mark[atom_i->nt_dir] != mark[atom_j->nt_dir] ) 
+                            || ( j < system->n && atom_i->nt_dir != 0 ))
+                    {
+                        ++system->cm_entries[i];
+                    }
+                }
+#endif
+            }
+        }
+    }
+
+#if defined(NEUTRAL_TERRITORY)
+    /* Since we don't know the NT atoms' position yet, Htop cannot be calculated accurately.
+     * Therefore, we assume it is full and divide 2 if necessary. */
+    if ( cm_format == SYM_HALF_MATRIX )
+    {
+        for ( i = 0; i < system->local_cap; ++i )
+        {
+            system->cm_entries[i] = (system->cm_entries[i] + system->n + 1) / 2;
+        }
+    }
+#endif
+
+#if defined(NEUTRAL_TERRITORY)
+    *matrix_dim = (int) MAX( *matrix_dim * SAFE_ZONE_NT, MIN_CAP );
+#else
+    *matrix_dim = (int) MAX( *matrix_dim * SAFE_ZONE, MIN_CAP );
+#endif
+
+    for ( i = 0; i < system->N; ++i )
+    {
+        if ( i < system->local_cap )
+        {
+#if defined(NEUTRAL_TERRITORY)
+            system->max_cm_entries[i] = MAX( (int)(system->cm_entries[i] * SAFE_ZONE_NT), MIN_CM_ENTRIES );
+#else
+            system->max_cm_entries[i] = MAX( (int)(system->cm_entries[i] * SAFE_ZONE), MIN_CM_ENTRIES );
+#endif
+        }
+    }
+
+    /* set currently unused space to min. capacity */
+    for ( i = system->N; i < system->local_cap; ++i )
+    {
+        system->max_cm_entries[i] = MIN_CM_ENTRIES;
+    }
+
+    /* reductions to get totals */
+    system->total_cm_entries = 0;
+
+    for ( i = 0; i < system->local_cap; ++i )
+    {
+        system->total_cm_entries += system->max_cm_entries[i];
+    }
+
+    system->total_cm_entries = MAX( system->total_cm_entries, MIN_CAP * MIN_CM_ENTRIES );
+}
+
+
+static void Estimate_Storages_Bonds( reax_system * const system,
+        control_params * const control, reax_list ** const lists )
+{
+    int i, j, pj;
+    int start_i, end_i;
+    int type_i, type_j;
+    int ihb, jhb;
+    int local;
+    real cutoff;
+    real r_ij;
+    real C12, C34, C56;
+    real BO, BO_s, BO_pi, BO_pi2;
+    reax_list *far_nbr_list;
+    single_body_parameters *sbp_i, *sbp_j;
+    two_body_parameters *twbp;
+    reax_atom *atom_i, *atom_j;
+#if defined(NEUTRAL_TERRITORY)
+    int mark[6] = {1, 1, 2, 2, 2, 2};
+#endif
+
+    far_nbr_list = lists[FAR_NBRS];
+
+    for ( i = 0; i < system->total_cap; ++i )
+    {
+        system->bonds[i] = 0;
+    }
+
+    for ( i = 0; i < system->total_cap; ++i )
+    {
+        system->hbonds[i] = 0;
+    }
+
+    for ( i = 0; i < system->N; ++i )
+    {
+        atom_i = &system->my_atoms[i];
+        type_i = atom_i->type;
+        start_i = Start_Index( i, far_nbr_list );
+        end_i = End_Index( i, far_nbr_list );
+        sbp_i = &system->reax_param.sbp[type_i];
+
+        if ( i < system->n )
+        {
+            local = 1;
+            cutoff = control->nonb_cut;
+            ihb = sbp_i->p_hbond;
+        }
+#if defined(NEUTRAL_TERRITORY)
+        else if ( atom_i->nt_dir != -1 )
+        {
+            local = 2;
+            cutoff = control->nonb_cut;
+            ihb = -1;
+        }
+#endif
+        else
+        {
+            local = 0;
+            cutoff = control->bond_cut;
+            ihb = NON_H_BONDING_ATOM;
+        }
+
+        for ( pj = start_i; pj < end_i; ++pj )
+        {
+            j = far_nbr_list->far_nbr_list.nbr[pj];
+
+#if !defined(NEUTRAL_TERRITORY)
+            if ( far_nbr_list->format == HALF_LIST )
+#endif
+            {
+                atom_j = &system->my_atoms[j];
+            }
+
+            if ( far_nbr_list->far_nbr_list.d[pj] <= cutoff )
+            {
+                type_j = system->my_atoms[j].type;
+                r_ij = far_nbr_list->far_nbr_list.d[pj];
+                sbp_j = &system->reax_param.sbp[type_j];
+                twbp = &system->reax_param.tbp[
+                    index_tbp(type_i, type_j, system->reax_param.num_atom_types) ];
+
+                if ( local == 1 )
+                {
+                    /* hydrogen bond lists */
+                    if ( control->hbond_cut > 0.1
+                            && (ihb == H_ATOM || ihb == H_BONDING_ATOM)
+                            && far_nbr_list->far_nbr_list.d[pj] <= control->hbond_cut )
+                    {
+                        jhb = sbp_j->p_hbond;
+
+                        if ( ihb == H_ATOM && jhb == H_BONDING_ATOM )
+                        {
+                            ++system->hbonds[atom_i->Hindex];
+                        }
+                        /* only add to list for local j (far nbrs is half-list) */
+                        else if ( far_nbr_list->format == HALF_LIST
+                                && (j < system->n && ihb == H_BONDING_ATOM && jhb == H_ATOM) )
+                        {
+                            ++system->hbonds[atom_j->Hindex];
+                        }
+                    }
+                }
+
+                /* uncorrected bond orders */
+                if ( far_nbr_list->far_nbr_list.d[pj] <= control->bond_cut )
+                {
+                    if ( sbp_i->r_s > 0.0 && sbp_j->r_s > 0.0 )
+                    {
+                        C12 = twbp->p_bo1 * POW( r_ij / twbp->r_s, twbp->p_bo2 );
+                        BO_s = (1.0 + control->bo_cut) * EXP( C12 );
+                    }
+                    else
+                    {
+                        C12 = 0.0;
+                        BO_s = 0.0;
+                    }
+
+                    if ( sbp_i->r_pi > 0.0 && sbp_j->r_pi > 0.0 )
+                    {
+                        C34 = twbp->p_bo3 * POW( r_ij / twbp->r_p, twbp->p_bo4 );
+                        BO_pi = EXP( C34 );
+                    }
+                    else
+                    {
+                        C34 = 0.0;
+                        BO_pi = 0.0;
+                    }
+
+                    if ( sbp_i->r_pi_pi > 0.0 && sbp_j->r_pi_pi > 0.0)
+                    {
+                        C56 = twbp->p_bo5 * POW( r_ij / twbp->r_pp, twbp->p_bo6 );
+                        BO_pi2 = EXP( C56 );
+                    }
+                    else
+                    {
+                        C56 = 0.0;
+                        BO_pi2 = 0.0;
+                    }
+
+                    /* Initially BO values are the uncorrected ones, page 1 */
+                    BO = BO_s + BO_pi + BO_pi2;
+
+                    if ( BO >= control->bo_cut )
+                    {
+                        ++system->bonds[i];
+                        if ( far_nbr_list->format == HALF_LIST )
+                        {
+                            ++system->bonds[j];
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    for ( i = 0; i < system->total_cap; ++i )
+    {
+        system->max_hbonds[i] = 0;
+    }
+
+    for ( i = 0; i < system->N; ++i )
+    {
+        if ( far_nbr_list->format == HALF_LIST )
+        {
+            system->max_bonds[i] = MAX( (int)(2.0 * system->bonds[i] * SAFE_ZONE), MIN_BONDS );
+        }
+        else
+        {
+            system->max_bonds[i] = MAX( (int)(system->bonds[i] * SAFE_ZONE), MIN_BONDS );
+        }
+        if ( system->reax_param.sbp[ system->my_atoms[i].type ].p_hbond == H_ATOM )
+        {
+            system->max_hbonds[ system->my_atoms[i].Hindex ] = MAX(
+                    (int)(system->hbonds[ system->my_atoms[i].Hindex ] * SAFE_ZONE), MIN_HBONDS );
+        }
+    }
+
+    /* set currently unused space to min. capacity */
+    for ( i = system->N; i < system->total_cap; ++i )
+    {
+        system->max_bonds[i] = MIN_BONDS;
+    }
+    for ( i = system->N; i < system->total_cap; ++i )
+    {
+        system->max_hbonds[i] = MIN_HBONDS;
+    }
+
+    /* reductions to get totals */
+    system->total_bonds = 0;
+    system->total_hbonds = 0;
+    system->total_thbodies = 0;
+
+    for ( i = 0; i < system->total_cap; ++i )
+    {
+        system->total_bonds += system->max_bonds[i];
+    }
+    for ( i = 0; i < system->total_cap; ++i )
+    {
+        system->total_hbonds += system->max_hbonds[i];
+    }
+    if ( far_nbr_list->format == HALF_LIST )
+    {
+        for ( i = 0; i < system->total_cap; ++i )
+        {
+            system->total_thbodies += SQR( system->max_bonds[i] / 2.0 );
+        }
+    }
+    else
+    {
+        for ( i = 0; i < system->total_cap; ++i )
+        {
+            system->total_thbodies += SQR( system->max_bonds[i] );
+        }
+    }
+
+    system->total_bonds = MAX( system->total_bonds, MIN_CAP * MIN_BONDS );
+    system->total_hbonds = MAX( system->total_hbonds, MIN_CAP * MIN_HBONDS );
+    system->total_thbodies = MAX( system->total_thbodies * SAFE_ZONE, MIN_3BODIES );
+
+    /* duplicate info in atom structs in case of
+     * ownership transfer across processor boundaries */
+    for ( i = 0; i < system->n; ++i )
+    {
+        system->my_atoms[i].num_bonds = system->bonds[i];
+    }
+    for ( i = 0; i < system->N; ++i )
+    {
+        system->my_atoms[i].num_hbonds = system->hbonds[i];
     }
 }
 
@@ -1512,58 +1896,106 @@ static int Init_Forces( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
+    int i, renbr, ret;
+    static int dist_done = FALSE, cm_done = FALSE, bonds_done = FALSE;
 #if defined(LOG_PERFORMANCE)
     double time;
     
     time = Get_Time( );
 #endif
 
-    Init_Distance( system, control, data, workspace, lists, out_control );
+    renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
+
+    if ( renbr == FALSE && dist_done == FALSE )
+    {
+        Init_Distance( system, control, data, workspace, lists, out_control );
+
+        dist_done = TRUE;
+    }
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.init_dist );
 #endif
 
+    if ( cm_done == FALSE )
+    {
+        Init_Matrix_Row_Indices( &workspace->H, system->max_cm_entries );
+
 #if defined(NEUTRAL_TERRITORY)
-    if ( workspace->H.format == SYM_HALF_MATRIX )
-    {
-        Init_CM_Half_NT( system, control, data, workspace, lists, out_control );
-    }
-    else
-    {
-        Init_CM_Full_NT( system, control, data, workspace, lists, out_control );
-    }
+        if ( workspace->H.format == SYM_HALF_MATRIX )
+        {
+            Init_CM_Half_NT( system, control, data, workspace, lists, out_control );
+        }
+        else
+        {
+            Init_CM_Full_NT( system, control, data, workspace, lists, out_control );
+        }
 #else
-    if ( workspace->H.format == SYM_HALF_MATRIX )
-    {
-        Init_CM_Half_FS( system, control, data, workspace, lists, out_control );
-    }
-    else
-    {
-        Init_CM_Full_FS( system, control, data, workspace, lists, out_control );
-    }
+        if ( workspace->H.format == SYM_HALF_MATRIX )
+        {
+            Init_CM_Half_FS( system, control, data, workspace, lists, out_control );
+        }
+        else
+        {
+            Init_CM_Full_FS( system, control, data, workspace, lists, out_control );
+        }
 #endif
+    }
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.init_cm );
 #endif
 
-    if ( lists[FAR_NBRS]->format == HALF_LIST )
+    if ( bonds_done == FALSE )
     {
-        Init_Bond_Half( system, control, data, workspace, lists, out_control );
-    }
-    else
-    {
-        Init_Bond_Full( system, control, data, workspace, lists, out_control );
+        for ( i = 0; i < system->total_cap; ++i )
+        {
+            workspace->total_bond_order[i] = 0.0;
+        }
+        for ( i = 0; i < system->total_cap; ++i )
+        {
+            rvec_MakeZero( workspace->dDeltap_self[i] );
+        }
+
+        Init_List_Indices( lists[BONDS], system->max_bonds );
+        Init_List_Indices( lists[HBONDS], system->max_hbonds );
+
+        if ( lists[FAR_NBRS]->format == HALF_LIST )
+        {
+            Init_Bond_Half( system, control, data, workspace, lists, out_control );
+        }
+        else
+        {
+            Init_Bond_Full( system, control, data, workspace, lists, out_control );
+        }
     }
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.init_bond );
 #endif
 
-    return (workspace->realloc.bonds == FALSE 
+    ret = (workspace->realloc.cm == FALSE
+            && workspace->realloc.bonds == FALSE
             && workspace->realloc.hbonds == FALSE
-            && workspace->realloc.cm == FALSE) ? SUCCESS : FAILURE;
+            ? SUCCESS : FAILURE);
+
+    if ( workspace->realloc.cm == FALSE )
+    {
+        cm_done = TRUE;
+    }
+    if ( workspace->realloc.bonds == FALSE && workspace->realloc.hbonds == FALSE )
+    {
+        bonds_done = TRUE;
+    }
+
+    if ( ret == SUCCESS )
+    {
+        dist_done = FALSE;
+        cm_done = FALSE;
+        bonds_done = FALSE;
+    }
+
+    return ret;
 }
 
 
@@ -1811,303 +2243,18 @@ static int Init_Forces_No_Charges( reax_system * const system, control_params * 
 
 
 void Estimate_Storages( reax_system * const system, control_params * const control,
-        reax_list ** const lists, int * const matrix_dim, int cm_format )
+        reax_list ** const lists, storage *workspace, int realloc_cm,
+        int realloc_bonds, int * const matrix_dim, int cm_format )
 {
-    int i, j, pj;
-    int start_i, end_i;
-    int type_i, type_j;
-    int ihb, jhb;
-    int local;
-    real cutoff;
-    real r_ij;
-    real C12, C34, C56;
-    real BO, BO_s, BO_pi, BO_pi2;
-    reax_list *far_nbr_list;
-    single_body_parameters *sbp_i, *sbp_j;
-    two_body_parameters *twbp;
-    reax_atom *atom_i, *atom_j;
-#if defined(NEUTRAL_TERRITORY)
-    int mark[6] = {1, 1, 2, 2, 2, 2};
-#endif
-
-    far_nbr_list = lists[FAR_NBRS];
-    *matrix_dim = 0;
-
-    for ( i = 0; i < system->total_cap; ++i )
+    if ( realloc_cm == TRUE )
     {
-        system->bonds[i] = 0;
-        system->hbonds[i] = 0;
-        if ( i < system->local_cap )
-        {
-            system->cm_entries[i] = 0;
-        }
+        Estimate_Storages_CM( system, control, lists, matrix_dim, cm_format );
     }
 
-    for ( i = 0; i < system->N; ++i )
+    if ( realloc_bonds == TRUE )
     {
-        atom_i = &system->my_atoms[i];
-        type_i = atom_i->type;
-        start_i = Start_Index( i, far_nbr_list );
-        end_i = End_Index( i, far_nbr_list );
-        sbp_i = &system->reax_param.sbp[type_i];
-
-        if ( i < system->n )
-        {
-            local = 1;
-            cutoff = control->nonb_cut;
-            ++system->cm_entries[i];
-            ++(*matrix_dim);
-            ihb = sbp_i->p_hbond;
-        }
-#if defined(NEUTRAL_TERRITORY)
-        else if ( atom_i->nt_dir != -1 )
-        {
-            local = 2;
-            cutoff = control->nonb_cut;
-            ++(*matrix_dim);
-            ihb = -1;
-        }
-#endif
-        else
-        {
-            local = 0;
-            cutoff = control->bond_cut;
-            ihb = NON_H_BONDING_ATOM;
-        }
-
-        for ( pj = start_i; pj < end_i; ++pj )
-        {
-            j = far_nbr_list->far_nbr_list.nbr[pj];
-
-#if !defined(NEUTRAL_TERRITORY)
-            if ( far_nbr_list->format == HALF_LIST )
-#endif
-            {
-                atom_j = &system->my_atoms[j];
-            }
-
-            if ( far_nbr_list->far_nbr_list.d[pj] <= cutoff )
-            {
-                type_j = system->my_atoms[j].type;
-                r_ij = far_nbr_list->far_nbr_list.d[pj];
-                sbp_j = &system->reax_param.sbp[type_j];
-                twbp = &system->reax_param.tbp[
-                    index_tbp(type_i, type_j, system->reax_param.num_atom_types) ];
-
-                if ( local == 1 )
-                {
-#if defined(NEUTRAL_TERRITORY)
-                    if( atom_j->nt_dir > 0 || j < system->n )
-                    {
-                        ++system->cm_entries[i];
-                    }
-#else
-                    if ( (far_nbr_list->format == HALF_LIST
-                                && (j < system->n || atom_i->orig_id < atom_j->orig_id))
-                            || far_nbr_list->format == FULL_LIST )
-                    {
-                        ++system->cm_entries[i];
-                    }
-#endif
-
-                    /* hydrogen bond lists */
-                    if ( control->hbond_cut > 0.1
-                            && (ihb == H_ATOM || ihb == H_BONDING_ATOM)
-                            && far_nbr_list->far_nbr_list.d[pj] <= control->hbond_cut )
-                    {
-                        jhb = sbp_j->p_hbond;
-
-                        if ( ihb == H_ATOM && jhb == H_BONDING_ATOM )
-                        {
-                            ++system->hbonds[atom_i->Hindex];
-                        }
-                        /* only add to list for local j (far nbrs is half-list) */
-                        else if ( far_nbr_list->format == HALF_LIST
-                                && (j < system->n && ihb == H_BONDING_ATOM && jhb == H_ATOM) )
-                        {
-                            ++system->hbonds[atom_j->Hindex];
-                        }
-                    }
-                }
-
-#if defined(NEUTRAL_TERRITORY)
-                else if ( local == 2 )
-                {
-                    if( ( atom_j->nt_dir != -1 && mark[atom_i->nt_dir] != mark[atom_j->nt_dir] ) 
-                            || ( j < system->n && atom_i->nt_dir != 0 ))
-                    {
-                        ++system->cm_entries[i];
-                    }
-                }
-#endif
-
-                /* uncorrected bond orders */
-                if ( far_nbr_list->far_nbr_list.d[pj] <= control->bond_cut )
-                {
-                    if ( sbp_i->r_s > 0.0 && sbp_j->r_s > 0.0 )
-                    {
-                        C12 = twbp->p_bo1 * POW( r_ij / twbp->r_s, twbp->p_bo2 );
-                        BO_s = (1.0 + control->bo_cut) * EXP( C12 );
-                    }
-                    else
-                    {
-                        C12 = 0.0;
-                        BO_s = 0.0;
-                    }
-
-                    if ( sbp_i->r_pi > 0.0 && sbp_j->r_pi > 0.0 )
-                    {
-                        C34 = twbp->p_bo3 * POW( r_ij / twbp->r_p, twbp->p_bo4 );
-                        BO_pi = EXP( C34 );
-                    }
-                    else
-                    {
-                        C34 = 0.0;
-                        BO_pi = 0.0;
-                    }
-
-                    if ( sbp_i->r_pi_pi > 0.0 && sbp_j->r_pi_pi > 0.0)
-                    {
-                        C56 = twbp->p_bo5 * POW( r_ij / twbp->r_pp, twbp->p_bo6 );
-                        BO_pi2 = EXP( C56 );
-                    }
-                    else
-                    {
-                        C56 = 0.0;
-                        BO_pi2 = 0.0;
-                    }
-
-                    /* Initially BO values are the uncorrected ones, page 1 */
-                    BO = BO_s + BO_pi + BO_pi2;
-
-                    if ( BO >= control->bo_cut )
-                    {
-                        ++system->bonds[i];
-                        if ( far_nbr_list->format == HALF_LIST )
-                        {
-                            ++system->bonds[j];
-                        }
-                    }
-                }
-            }
-        }
+        Estimate_Storages_Bonds( system, control, lists );
     }
-
-#if defined(NEUTRAL_TERRITORY)
-    /* Since we don't know the NT atoms' position yet, Htop cannot be calculated accurately.
-     * Therefore, we assume it is full and divide 2 if necessary. */
-    if ( cm_format == SYM_HALF_MATRIX )
-    {
-        for ( i = 0; i < system->local_cap; ++i )
-        {
-            system->cm_entries[i] = (system->cm_entries[i] + system->n + 1) / 2;
-        }
-    }
-#endif
-
-#if defined(NEUTRAL_TERRITORY)
-    *matrix_dim = (int) MAX( *matrix_dim * SAFE_ZONE_NT, MIN_CAP );
-#else
-    *matrix_dim = (int) MAX( *matrix_dim * SAFE_ZONE, MIN_CAP );
-#endif
-
-    for ( i = 0; i < system->total_cap; ++i )
-    {
-        system->max_hbonds[i] = 0;
-    }
-
-    for ( i = 0; i < system->N; ++i )
-    {
-        if ( far_nbr_list->format == HALF_LIST )
-        {
-            system->max_bonds[i] = MAX( (int)(2.0 * system->bonds[i] * SAFE_ZONE), MIN_BONDS );
-        }
-        else
-        {
-            system->max_bonds[i] = MAX( (int)(system->bonds[i] * SAFE_ZONE), MIN_BONDS );
-        }
-        if ( system->reax_param.sbp[ system->my_atoms[i].type ].p_hbond == H_ATOM )
-        {
-            system->max_hbonds[ system->my_atoms[i].Hindex ] = MAX(
-                    (int)(system->hbonds[ system->my_atoms[i].Hindex ] * SAFE_ZONE), MIN_HBONDS );
-        }
-        if ( i < system->local_cap )
-        {
-#if defined(NEUTRAL_TERRITORY)
-            system->max_cm_entries[i] = MAX( (int)(system->cm_entries[i] * SAFE_ZONE_NT), MIN_CM_ENTRIES );
-#else
-            system->max_cm_entries[i] = MAX( (int)(system->cm_entries[i] * SAFE_ZONE), MIN_CM_ENTRIES );
-#endif
-        }
-    }
-
-    /* set currently unused space to min. capacity */
-    for ( i = system->N; i < system->total_cap; ++i )
-    {
-        system->max_bonds[i] = MIN_BONDS;
-    }
-    for ( i = system->N; i < system->total_cap; ++i )
-    {
-        system->max_hbonds[i] = MIN_HBONDS;
-    }
-    for ( i = system->N; i < system->local_cap; ++i )
-    {
-        system->max_cm_entries[i] = MIN_CM_ENTRIES;
-    }
-
-    /* reductions to get totals */
-    system->total_bonds = 0;
-    system->total_hbonds = 0;
-    system->total_cm_entries = 0;
-    system->total_thbodies = 0;
-
-    for ( i = 0; i < system->total_cap; ++i )
-    {
-        system->total_bonds += system->max_bonds[i];
-    }
-    for ( i = 0; i < system->total_cap; ++i )
-    {
-        system->total_hbonds += system->max_hbonds[i];
-    }
-    for ( i = 0; i < system->local_cap; ++i )
-    {
-        system->total_cm_entries += system->max_cm_entries[i];
-    }
-    if ( far_nbr_list->format == HALF_LIST )
-    {
-        for ( i = 0; i < system->total_cap; ++i )
-        {
-            system->total_thbodies += SQR( system->max_bonds[i] / 2.0 );
-        }
-    }
-    else
-    {
-        for ( i = 0; i < system->total_cap; ++i )
-        {
-            system->total_thbodies += SQR( system->max_bonds[i] );
-        }
-    }
-
-    system->total_bonds = MAX( system->total_bonds, MIN_CAP * MIN_BONDS );
-    system->total_hbonds = MAX( system->total_hbonds, MIN_CAP * MIN_HBONDS );
-    system->total_cm_entries = MAX( system->total_cm_entries, MIN_CAP * MIN_CM_ENTRIES );
-    system->total_thbodies = MAX( system->total_thbodies * SAFE_ZONE, MIN_3BODIES );
-
-    /* duplicate info in atom structs in case of
-     * ownership transfer across processor boundaries */
-    for ( i = 0; i < system->n; ++i )
-    {
-        system->my_atoms[i].num_bonds = system->bonds[i];
-    }
-    for ( i = 0; i < system->N; ++i )
-    {
-        system->my_atoms[i].num_hbonds = system->hbonds[i];
-    }
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "[INFO] p%d @ estimate storages: total_cm_entries = %d, total_thbodies = %d\n",
-            system->my_rank, system->total_cm_entries, system->total_thbodies );
-#endif
 }
 
 
@@ -2145,7 +2292,11 @@ int Compute_Forces( reax_system * const system, control_params * const control,
 
     if ( ret != SUCCESS )
     {
-        Estimate_Storages( system, control, lists, &matrix_dim, workspace->H.format );
+        Estimate_Storages( system, control, lists, workspace,
+                workspace->realloc.cm,
+                (workspace->realloc.bonds == TRUE
+                 || workspace->realloc.hbonds == TRUE ? TRUE : FALSE),
+                &matrix_dim, workspace->H.format );
     }
 
 #if defined(LOG_PERFORMANCE)

@@ -20,9 +20,7 @@ CUDA_GLOBAL void k_reset_workspace( storage workspace, int N )
         return;
     }
 
-    workspace.total_bond_order[i] = 0.0;
     workspace.CdDelta[i] = 0.0;
-    rvec_MakeZero( workspace.dDeltap_self[i] );
     rvec_MakeZero( workspace.f[i] );
 }
 
@@ -39,18 +37,22 @@ CUDA_GLOBAL void k_reset_hindex( reax_atom *my_atoms, single_body_parameters *sb
         return;
     }
 
+    my_atoms[i].Hindex = i;
+
     if ( sbp[ my_atoms[i].type ].p_hbond == H_ATOM
             || sbp[ my_atoms[i].type ].p_hbond == H_BONDING_ATOM )
     {
+#if !defined(CUDA_ACCUM_ATOMIC)
         hindex[i] = 1;
     }
     else
     {
         hindex[i] = 0;
     }
-
-//    my_atoms[i].Hindex = hindex[i];
-    my_atoms[i].Hindex = i;
+#else
+        atomicAdd( hindex, 1 );
+    }
+#endif
 }
 
 void Cuda_Reset_Workspace( reax_system *system, storage *workspace )
@@ -69,18 +71,28 @@ void Cuda_Reset_Workspace( reax_system *system, storage *workspace )
 void Cuda_Reset_Atoms_HBond_Indices( reax_system* system, control_params *control,
         storage *workspace )
 {
+#if !defined(CUDA_ACCUM_ATOMIC)
     int *hindex;
 
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-            sizeof(int) * system->N,
+            sizeof(int) * system->total_cap,
             "Cuda_Reset_Atoms_HBond_Indices::workspace->scratch" );
     hindex = (int *) workspace->scratch;
+#endif
 
     k_reset_hindex <<< control->blocks_n, control->block_size_n >>>
-        ( system->d_my_atoms, system->reax_param.d_sbp, hindex, system->N );
+        ( system->d_my_atoms, system->reax_param.d_sbp, 
+#if !defined(CUDA_ACCUM_ATOMIC)
+          hindex, 
+#else
+          system->d_numH,
+#endif
+          system->total_cap );
     cudaCheckError( );
 
+#if !defined(CUDA_ACCUM_ATOMIC)
     Cuda_Reduction_Sum( hindex, system->d_numH, system->N );
+#endif
 
     copy_host_device( &system->numH, system->d_numH, sizeof(int), 
             cudaMemcpyDeviceToHost, "Cuda_Reset_Atoms_HBond_Indices::d_numH" );

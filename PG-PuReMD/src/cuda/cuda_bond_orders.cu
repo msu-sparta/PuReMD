@@ -410,7 +410,6 @@ CUDA_GLOBAL void k_bond_order_part2( reax_atom *my_atoms, global_parameters gp,
         type_j = my_atoms[j].type;
         bo_ij = &bond_list.bond_list[pj].bo_data;
 
-        //TODO
         //if ( i < j || workspace.bond_mark[j] > 3 )
         if ( i < j )
         {
@@ -592,11 +591,10 @@ CUDA_GLOBAL void k_bond_order_part3( storage workspace, reax_list bond_list, int
 
     for ( pj = start_i; pj < end_i; ++pj )
     {
-
         j = bond_list.bond_list[pj].nbr;
         bo_ij = &bond_list.bond_list[pj].bo_data;
 
-        //if ( i >= j || workspace.bond_mark [i] <= 3 )
+        //if ( i >= j || workspace.bond_mark[i] <= 3 )
         if ( i >= j )
         {
             /* We only need to update bond orders from bo_ji
@@ -684,7 +682,6 @@ CUDA_GLOBAL void k_total_forces_part1( storage workspace, reax_list bond_list,
         return;
     }
 
-    //if ( i < bond_list.bond_list[pj].nbr ) {
     if ( control->virial == 0 )
     {
         for ( pj = Start_Index( i, &bond_list ); pj < End_Index( i, &bond_list ); ++pj )
@@ -722,7 +719,6 @@ CUDA_GLOBAL void k_total_forces_part1_2( reax_atom *my_atoms, reax_list bond_lis
         nbr_k = &bond_list.bond_list[pk];
         nbr_k_sym = &bond_list.bond_list[nbr_k->sym_index];
 
-        //rvec_Add( atoms[i].f, nbr_k_sym->tf_f );
         rvec_Add( workspace.f[i], nbr_k_sym->tf_f );
     }
 }
