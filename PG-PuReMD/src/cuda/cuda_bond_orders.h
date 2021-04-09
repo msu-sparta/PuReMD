@@ -66,14 +66,14 @@ CUDA_DEVICE static inline void Cuda_Compute_BOp( reax_list bond_list, real bo_cu
                 + bo_ij->BO_pi * Cln_BOp_pi
                 + bo_ij->BO_pi2 * Cln_BOp_pi2), ibond->dvec );
 
-    rvec_Add( dDeltap_self[i], bo_ij->dBOp );
-//    atomic_rvecAdd( dDeltap_self[i], bo_ij->dBOp );
+//    rvec_Add( dDeltap_self[i], bo_ij->dBOp );
+    atomic_rvecAdd( dDeltap_self[i], bo_ij->dBOp );
 
     bo_ij->BO_s -= bo_cut;
     bo_ij->BO -= bo_cut;
     /* currently total_BOp */
-    total_bond_order[i] += bo_ij->BO; 
-//    atomicAdd( (double *) &total_bond_order[i], bo_ij->BO ); 
+//    total_bond_order[i] += bo_ij->BO; 
+    atomicAdd( (double *) &total_bond_order[i], bo_ij->BO ); 
     bo_ij->Cdbo = 0.0;
     bo_ij->Cdbopi = 0.0;
     bo_ij->Cdbopi2 = 0.0;
