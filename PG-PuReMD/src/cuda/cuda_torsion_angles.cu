@@ -214,7 +214,7 @@ CUDA_GLOBAL void k_torsion_angles_part1( reax_atom *my_atoms, global_parameters 
          * trying to form a 4-body interaction out of this neighborhood */
         if ( my_atoms[j].orig_id < my_atoms[k].orig_id
                 && bo_jk->BO > control->thb_cut
-                && Num_Entries(pk, &thb_list) )
+                && Num_Entries(pk, &thb_list) > 0 )
         {
             /* pj points to j on k's list */
             pj = pbond_jk->sym_index;

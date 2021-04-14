@@ -2159,25 +2159,25 @@ int Cuda_Init_Forces_No_Charges( reax_system *system, control_params *control,
 
         Cuda_Init_Bond_Indices( system, lists[BONDS] );
 
-        k_init_bonds <<< control->blocks_n, control->block_size_n >>>
-            ( system->d_my_atoms, system->reax_param.d_sbp,
-              system->reax_param.d_tbp, *(workspace->d_workspace),
-              (control_params *) control->d_control_params,
-              *(lists[FAR_NBRS]), *(lists[BONDS]),
-              system->n, system->N, system->reax_param.num_atom_types,
-              system->d_max_bonds, system->d_realloc_bonds );
-
-//        blocks = control->block_size_n * 32 / DEF_BLOCK_SIZE
-//            + (control->block_size_n * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-//
-//        k_init_bonds_opt <<< blocks, DEF_BLOCK_SIZE,
-//                     sizeof(cub::WarpScan<int>::TempStorage) * (DEF_BLOCK_SIZE / 32) >>>
+//        k_init_bonds <<< control->blocks_n, control->block_size_n >>>
 //            ( system->d_my_atoms, system->reax_param.d_sbp,
 //              system->reax_param.d_tbp, *(workspace->d_workspace),
 //              (control_params *) control->d_control_params,
 //              *(lists[FAR_NBRS]), *(lists[BONDS]),
 //              system->n, system->N, system->reax_param.num_atom_types,
 //              system->d_max_bonds, system->d_realloc_bonds );
+
+        blocks = control->block_size_n * 32 / DEF_BLOCK_SIZE
+            + (control->block_size_n * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+
+        k_init_bonds_opt <<< blocks, DEF_BLOCK_SIZE,
+                     sizeof(cub::WarpScan<int>::TempStorage) * (DEF_BLOCK_SIZE / 32) >>>
+            ( system->d_my_atoms, system->reax_param.d_sbp,
+              system->reax_param.d_tbp, *(workspace->d_workspace),
+              (control_params *) control->d_control_params,
+              *(lists[FAR_NBRS]), *(lists[BONDS]),
+              system->n, system->N, system->reax_param.num_atom_types,
+              system->d_max_bonds, system->d_realloc_bonds );
         cudaCheckError( );
     }
 
@@ -2185,7 +2185,19 @@ int Cuda_Init_Forces_No_Charges( reax_system *system, control_params *control,
     {
         Cuda_Init_HBond_Indices( system, workspace, lists[HBONDS] );
 
-        k_init_hbonds <<< control->blocks_n, control->block_size_n >>>
+//        k_init_hbonds <<< control->blocks_n, control->block_size_n >>>
+//            ( system->d_my_atoms, system->reax_param.d_sbp,
+//              (control_params *) control->d_control_params,
+//              *(lists[FAR_NBRS]), *(lists[HBONDS]),
+//              system->n, system->N, system->reax_param.num_atom_types,
+//              system->d_max_hbonds, system->d_realloc_hbonds );
+//        cudaCheckError( );
+
+        blocks = system->N * 32 / DEF_BLOCK_SIZE
+            + (system->N * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+
+        k_init_hbonds_opt <<< blocks, DEF_BLOCK_SIZE,
+                          sizeof(cub::WarpScan<int>::TempStorage) * (DEF_BLOCK_SIZE / 32) >>>
             ( system->d_my_atoms, system->reax_param.d_sbp,
               (control_params *) control->d_control_params,
               *(lists[FAR_NBRS]), *(lists[HBONDS]),
