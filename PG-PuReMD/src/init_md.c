@@ -731,11 +731,6 @@ void Initialize( reax_system * const system, control_params * const control,
     }
 
     Init_Force_Functions( control );
-
-#if defined(TEST_FORCES)
-//    Init_Force_Test_Functions( );
-//    fprintf( stderr, "p%d: initialized force test functions\n", system->my_rank );
-#endif
 }
 
 

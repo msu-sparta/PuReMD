@@ -268,7 +268,7 @@ CUDA_GLOBAL void k_valence_angles_part1( reax_atom *my_atoms,
                     f8_Dj = p_val5 - (p_val5 - 1.0) * (2.0 + expval6) / trm8;
                     Cf8j = ( (1.0 - p_val5) / SQR(trm8) )
                         * (p_val6 * expval6 * trm8
-                                - (2.0 + expval6) * ( p_val6 * expval6 - p_val7 * expval7) );
+                                - (2.0 + expval6) * (p_val6 * expval6 - p_val7 * expval7) );
 
                     theta_0 = 180.0 - theta_00 * (1.0 - EXP(-p_val10 * (2.0 - SBO2)));
                     theta_0 = DEG2RAD( theta_0 );
@@ -375,7 +375,7 @@ CUDA_GLOBAL void k_valence_angles_part1( reax_atom *my_atoms,
                             pBOjt7 = temp * temp * temp_bo_jt;
 
 #if !defined(CUDA_ACCUM_ATOMIC)
-                            bo_jt->Cdbo += (CEval6 * pBOjt7);
+                            bo_jt->Cdbo += CEval6 * pBOjt7;
                             bo_jt->Cdbopi += CEval5;
                             bo_jt->Cdbopi2 += CEval5;
 #else

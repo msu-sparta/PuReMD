@@ -341,7 +341,7 @@ void Valence_Angles( reax_system * const system, control_params * const control,
                         f8_Dj = p_val5 - (p_val5 - 1.0) * (2.0 + expval6) / trm8;
                         Cf8j = ( (1.0 - p_val5) / SQR(trm8) )
                             * (p_val6 * expval6 * trm8
-                                    - (2.0 + expval6) * ( p_val6 * expval6 - p_val7 * expval7 ));
+                                    - (2.0 + expval6) * (p_val6 * expval6 - p_val7 * expval7) );
 
                         theta_0 = 180.0 - theta_00 * (1.0 - EXP(-p_val10 * (2.0 - SBO2)));
                         theta_0 = DEG2RAD( theta_0 );

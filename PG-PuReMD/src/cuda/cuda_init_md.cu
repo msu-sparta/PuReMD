@@ -66,7 +66,7 @@ static void Cuda_Init_System( reax_system *system, control_params *control,
     /* initialize velocities so that desired init T can be attained */
     if ( !control->restart || (control->restart && control->random_vel) )
     {
-        Cuda_Generate_Initial_Velocities( system, control->T_init );
+        Cuda_Generate_Initial_Velocities( system, control, control->T_init );
     }
 
     Cuda_Compute_Kinetic_Energy( system, control, workspace,
@@ -280,8 +280,7 @@ extern "C" void Cuda_Initialize( reax_system *system, control_params *control,
 
     Init_Output_Files( system, control, out_control, mpi_data );
 
-    /* Lookup Tables */
-    if ( control->tabulate )
+    if ( control->tabulate > 0 )
     {
         Make_LR_Lookup_Table( system, control, workspace->d_workspace, mpi_data );
     }

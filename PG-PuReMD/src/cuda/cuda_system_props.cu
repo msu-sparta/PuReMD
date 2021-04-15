@@ -2,14 +2,18 @@
 #include "cuda_system_props.h"
 
 #include "cuda_copy.h"
-#include "cuda_utils.h"
+#include "cuda_helpers.h"
 #include "cuda_random.h"
 #include "cuda_reduction.h"
+#include "cuda_utils.h"
 #include "cuda_vector.h"
 
 #include "../comm_tools.h"
 #include "../tool_box.h"
 #include "../vector.h"
+
+#include "../cub/cub/warp/warp_reduce.cuh"
+//#include <cub/warp/warp_reduce.cuh>
 
 
 /* mask used to determine which threads within a warp participate in operations */
@@ -409,102 +413,61 @@ CUDA_GLOBAL void k_compute_inertial_tensor_yz_zz( single_body_parameters *sbp,
 }
 
 
+/* Copy the atom masses to a contigous array in global memory
+ * for later reduction (sum) */
 CUDA_GLOBAL void k_compute_total_mass( single_body_parameters *sbp, reax_atom *my_atoms, 
-        real *results, int n )
+        real *M_g, int n )
 {
-    extern __shared__ real M_s[];
-    unsigned int i, mask;
-    int offset;
-    real M;
+    unsigned int i;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
-    mask = __ballot_sync( FULL_MASK, i < n );
 
-    if ( i < n )
+    if ( i >= n )
     {
-        M = sbp[ my_atoms[i].type ].mass;
-
-        for ( offset = warpSize >> 1; offset > 0; offset /= 2 )
-        {
-            M += __shfl_down_sync( mask, M, offset );
-        }
-
-        if ( threadIdx.x % warpSize == 0 )
-        {
-            M_s[threadIdx.x >> 5] = M;
-        }
-    }
-    __syncthreads( );
-
-    for ( offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
-    {
-        if ( threadIdx.x < offset )
-        {
-            M_s[threadIdx.x] += M_s[threadIdx.x + offset];
-        }
-
-        __syncthreads( );
+        return;
     }
 
-    if ( threadIdx.x == 0 )
-    {
-        results[blockIdx.x] = M_s[0];
-    }
+    M_g[blockIdx.x] = sbp[ my_atoms[i].type ].mass;
 }
 
 
 CUDA_GLOBAL void k_compute_kinetic_energy( single_body_parameters *sbp, reax_atom *my_atoms, 
-        real *results, int n )
+        real *e_kin_g, int n )
 {
-    extern __shared__ real e_kin_s[];
-    unsigned int i, mask;
-    int offset;
-    real e_kin;
+    unsigned int i;
     rvec p;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
-    mask = __ballot_sync( FULL_MASK, i < n );
 
-    if ( i < n )
+    if ( i >= n )
     {
-        rvec_Scale( p, sbp[ my_atoms[i].type ].mass, my_atoms[i].v );
-        e_kin = 0.5 * rvec_Dot( p, my_atoms[i].v );
-
-        /* warp-level sum using registers within a warp */
-        for ( offset = warpSize >> 1; offset > 0; offset /= 2 )
-        {
-            e_kin += __shfl_down_sync( mask, e_kin, offset );
-        }
-
-        /* first thread within a warp writes warp-level sum to shared memory */
-        if ( threadIdx.x % warpSize == 0 )
-        {
-            e_kin_s[threadIdx.x >> 5] = e_kin;
-        }
-    }
-    __syncthreads( );
-
-    /* block-level sum using shared memory */
-    for ( offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
-    {
-        if ( threadIdx.x < offset )
-        {
-            e_kin_s[threadIdx.x] += e_kin_s[threadIdx.x + offset];
-        }
-
-        __syncthreads( );
+        return;
     }
 
-    /* one thread writes the block-level partial sum
-     * of the reduction back to global memory */
-    if ( threadIdx.x == 0 )
-    {
-        results[blockIdx.x] = e_kin_s[0];
-    }
+    rvec_Scale( p, sbp[ my_atoms[i].type ].mass, my_atoms[i].v );
+    e_kin_g[i] = 0.5 * rvec_Dot( p, my_atoms[i].v );
 }
 
 
-CUDA_GLOBAL void k_generate_initial_velocities( single_body_parameters *sbp,
+/* Generate zero atom velocities */
+CUDA_GLOBAL void k_atom_velocities_zero( reax_atom *my_atoms, int n )
+{
+    int i;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= n )
+    {
+        return;
+    }
+
+    rvec_MakeZero( my_atoms[i].v );
+}
+
+
+/* Generate random atom velocities according
+ * to the prescribed initial temperature */
+CUDA_GLOBAL void k_atom_velocities_random( single_body_parameters *sbp,
         reax_atom *my_atoms, real T, int n )
 {
     int i;
@@ -517,20 +480,13 @@ CUDA_GLOBAL void k_generate_initial_velocities( single_body_parameters *sbp,
         return;
     }
 
-    if ( T <= 0.1 )
-    {
-        rvec_MakeZero( my_atoms[i].v );
-    }
-    else
-    {
-        cuda_rvec_Random( my_atoms[i].v );
+    cuda_rvec_Random( my_atoms[i].v );
 
-        norm = rvec_Norm_Sqr( my_atoms[i].v );
-        m = sbp[ my_atoms[i].type ].mass;
-        scale = SQRT( m * norm / (3.0 * K_B * T) );
+    norm = rvec_Norm_Sqr( my_atoms[i].v );
+    m = sbp[ my_atoms[i].type ].mass;
+    scale = SQRT( m * norm / (3.0 * K_B * T) );
 
-        rvec_Scale( my_atoms[i].v, 1.0 / scale, my_atoms[i].v );
-    }
+    rvec_Scale( my_atoms[i].v, 1.0 / scale, my_atoms[i].v );
 }
 
 
@@ -664,20 +620,50 @@ static void Cuda_Compute_Inertial_Tensor( reax_system *system, control_params *c
 }
 
 
-void Cuda_Generate_Initial_Velocities( reax_system *system, real T )
+/* Initialize atom velocities according to the prescribed parameters */
+void Cuda_Generate_Initial_Velocities( reax_system *system,
+        control_params *control, real T )
 {
     int blocks;
 
     blocks = system->n / DEF_BLOCK_SIZE + 
         ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    if ( T > 0.1 )
+    if ( T <= 0.1 || control->random_vel == FALSE )
     {
-        Cuda_Randomize( );
-    }
+        /* warnings if conflicts between initial temperature and control file parameter */
+        if ( control->random_vel == TRUE )
+        {
+            fprintf( stderr, "[ERROR] conflicting control file parameters\n" );
+            fprintf( stderr, "[INFO] random_vel = 1 and small initial temperature (t_init = %f)\n", T );
+            fprintf( stderr, "[INFO] set random_vel = 0 to resolve this (atom initial velocites set to zero)\n" );
+            MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
+        }
+        else if ( T > 0.1 )
+        {
+            fprintf( stderr, "[ERROR] conflicting control file paramters\n" );
+            fprintf( stderr, "[INFO] random_vel = 0 and large initial temperature (t_init = %f)\n", T );
+            fprintf( stderr, "[INFO] set random_vel = 1 to resolve this (random atom initial velocites according to t_init)\n" );
+            MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
+        }
 
-    k_generate_initial_velocities <<< blocks, DEF_BLOCK_SIZE >>>
-        ( system->reax_param.d_sbp, system->d_my_atoms, T, system->n );
+        k_atom_velocities_zero <<< blocks, DEF_BLOCK_SIZE >>>
+            ( system->d_my_atoms, system->n );
+    }
+    else
+    {
+        if ( T <= 0.0 )
+        {
+            fprintf( stderr, "[ERROR] random atom initial velocities specified with invalid temperature (%f). Terminating...\n",
+                  T );
+            MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
+        }
+
+        Cuda_Randomize( );
+
+        k_atom_velocities_random <<< blocks, DEF_BLOCK_SIZE >>>
+            ( system->reax_param.d_sbp, system->d_my_atoms, T, system->n );
+    }
 }
 
 
@@ -686,27 +672,22 @@ extern "C" void Cuda_Compute_Kinetic_Energy( reax_system *system,
         MPI_Comm comm )
 {
     int ret;
-    real *block_energy;
+    real *kinetic_energy;
 
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-            sizeof(real) * (control->blocks + 1),
+            sizeof(real) * (system->n + 1),
             "Cuda_Compute_Kinetic_Energy::workspace->scratch" );
-    block_energy = (real *) workspace->scratch;
-    cuda_memset( block_energy, 0, sizeof(real) * (control->blocks + 1),
-            "Cuda_Compute_Kinetic_Energy::tmp" );
+    kinetic_energy = (real *) workspace->scratch;
 
-    data->my_en.e_kin = 0.0;
-
-    k_compute_kinetic_energy <<< control->blocks, control->block_size,
-                             sizeof(real) * (control->block_size / 32) >>>
-        ( system->reax_param.d_sbp, system->d_my_atoms, block_energy, system->n );
+    k_compute_kinetic_energy <<< control->blocks, control->block_size >>>
+        ( system->reax_param.d_sbp, system->d_my_atoms, kinetic_energy, system->n );
     cudaCheckError( );
 
     /* note: above kernel sums the kinetic energy contribution within blocks,
      * and this call finishes the global reduction across all blocks */
-    Cuda_Reduction_Sum( block_energy, &block_energy[control->blocks], control->blocks );
+    Cuda_Reduction_Sum( kinetic_energy, &kinetic_energy[system->n], system->n );
 
-    copy_host_device( &data->my_en.e_kin, &block_energy[control->blocks],
+    copy_host_device( &data->my_en.e_kin, &kinetic_energy[system->n],
             sizeof(real), cudaMemcpyDeviceToHost,
             "Cuda_Compute_Kinetic_Energy::tmp" );
 
@@ -714,7 +695,7 @@ extern "C" void Cuda_Compute_Kinetic_Energy( reax_system *system,
             1, MPI_DOUBLE, MPI_SUM, comm );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-    data->therm.T = 2.0 * data->sys_en.e_kin / (data->N_f * K_B);
+    data->therm.T = (2.0 * data->sys_en.e_kin) / (data->N_f * K_B);
 
     /* avoid T being an absolute zero, might cause F.P.E! */
     if ( FABS(data->therm.T) < ALMOST_ZERO )
@@ -728,28 +709,23 @@ void Cuda_Compute_Total_Mass( reax_system *system, control_params *control,
         storage *workspace, simulation_data *data, MPI_Comm comm  )
 {
     int ret;
-    real M_l, *spad_real;
+    real my_M, *spad;
 
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-            sizeof(real) * (control->blocks + 1),
+            sizeof(real) * (system->n + 1),
             "Cuda_Compute_Total_Mass::workspace->scratch" );
-    spad_real = (real *) workspace->scratch;
-    cuda_memset( spad_real, 0, sizeof(real) * (control->blocks + 1),
-            "Cuda_Compute_Total_Mass::spad_real" );
+    spad = (real *) workspace->scratch;
 
-    k_compute_total_mass <<< control->blocks, control->block_size,
-                         sizeof(real) * (control->block_size / 32) >>>
-        ( system->reax_param.d_sbp, system->d_my_atoms, spad_real, system->n );
+    k_compute_total_mass <<< control->blocks, control->block_size  >>>
+        ( system->reax_param.d_sbp, system->d_my_atoms, spad, system->n );
     cudaCheckError( );
 
-    /* note: above kernel sums the mass contribution within blocks,
-     * and this call finishes the global reduction across all blocks */
-    Cuda_Reduction_Sum( spad_real, &spad_real[control->blocks], control->blocks );
+    Cuda_Reduction_Sum( spad, &spad[system->n], system->n );
 
-    copy_host_device( &M_l, &spad_real[control->blocks], sizeof(real), 
-            cudaMemcpyDeviceToHost, "total_mass:M_l" );
+    copy_host_device( &my_M, &spad[system->n], sizeof(real), 
+            cudaMemcpyDeviceToHost, "total_mass::my_M" );
 
-    ret = MPI_Allreduce( &M_l, &data->M, 1, MPI_DOUBLE, MPI_SUM, comm );
+    ret = MPI_Allreduce( &my_M, &data->M, 1, MPI_DOUBLE, MPI_SUM, comm );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     data->inv_M = 1.0 / data->M;

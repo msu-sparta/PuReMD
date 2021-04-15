@@ -5,7 +5,7 @@
 #include "../reax_types.h"
 
 
-void Cuda_Generate_Initial_Velocities( reax_system *, real );
+void Cuda_Generate_Initial_Velocities( reax_system *, control_params *, real );
 
 void Cuda_Compute_Total_Mass( reax_system *, control_params *,
         storage *, simulation_data *, MPI_Comm );
