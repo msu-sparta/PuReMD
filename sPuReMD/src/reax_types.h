@@ -1244,10 +1244,12 @@ struct simulation_data
     real E_Ele;
     /* polarization energy, in kcal / mol */
     real E_Pol;
-	/*Restraint energy values in kcal / mol */
-	real E_Bond_Rest;
-	real E_Ang_Rest;
-	real E_Tors_Rest;
+  	/*Restraint energy values in kcal / mol */
+  	real E_Bond_Rest;
+  	real E_Ang_Rest;
+  	real E_Tors_Rest;
+    real E_Total_Rest;
+
 
     /* number of degrees of freedom */
     real N_f;

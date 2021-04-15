@@ -829,6 +829,9 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
                     &(system->bond_restraints[bond_rest_cnt].change),
                     &(system->bond_restraints[bond_rest_cnt].start),
                     &(system->bond_restraints[bond_rest_cnt].end));
+            // indexing starts from 0
+            system->bond_restraints[bond_rest_cnt].atom_inds[0]--;
+            system->bond_restraints[bond_rest_cnt].atom_inds[1]--;
 			bond_rest_cnt++;
 		}
 
@@ -850,6 +853,10 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
                     &(system->angle_restraints[ang_rest_cnt].change),
                     &(system->angle_restraints[ang_rest_cnt].start),
                     &(system->angle_restraints[ang_rest_cnt].end));
+            // indexing starts from 0
+            system->angle_restraints[ang_rest_cnt].atom_inds[0]--;
+            system->angle_restraints[ang_rest_cnt].atom_inds[1]--;
+            system->angle_restraints[ang_rest_cnt].atom_inds[2]--;
 			ang_rest_cnt++;
 		}
 
@@ -872,6 +879,11 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
                     &(system->torsion_restraints[tors_rest_cnt].change),
                     &(system->torsion_restraints[tors_rest_cnt].start),
                     &(system->torsion_restraints[tors_rest_cnt].end));
+            // indexing starts from 0
+            system->torsion_restraints[tors_rest_cnt].atom_inds[0]--;
+            system->torsion_restraints[tors_rest_cnt].atom_inds[1]--;
+            system->torsion_restraints[tors_rest_cnt].atom_inds[2]--;
+            system->torsion_restraints[tors_rest_cnt].atom_inds[3]--;
 			tors_rest_cnt++;
 		}
 		

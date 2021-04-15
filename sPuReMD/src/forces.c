@@ -75,36 +75,101 @@ void Init_Bonded_Force_Functions( control_params *control )
     control->intr_funcs[9] = NULL;
 }
 
+static void calculate_dist(rvec x1, rvec x2) 
+{
+    rvec diff;
+    rvec_ScaledSum(diff, 1, x1, -1, x2);  
+    return rvec_Norm(diff);
+}
+
 static void Compute_Bond_Restraint_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control )
 {
-	int i;
+	int i,j;
 	// bond restraints
+    data->E_Bond_Rest = 0;
 	for (i = 0; i < system->bond_rest_cnt; i++) 
 	{
 		bond_restraint br = system->bond_restraints[i];
-		reax_atom a1, a2;
-		a1 = system->atoms[br.atom_inds[0]];
-		a2 = system->atoms[br.atom_inds[1]];
+		reax_atom *a1, *a2;
+		a1 = &system->atoms[br.atom_inds[0]];
+		a2 = &system->atoms[br.atom_inds[1]];
 
-		
+        rvec diff;
+        rvec_ScaledSum(diff, 1, a1->x, -1, a2->x);
+        real dist = rvec_Norm(diff);
+        // ported from the fortran code (poten.f, subroutine restraint)
+        real dist_diff = dist - br.t_dist;
+        real exphu = EXP(-br.f_2 * SQR(dist_diff));
+        real erh = br.f_1 * (1.0 - exphu);
+        //fprintf(stderr,"\nBond rest pot:%f, dist:%f", erh, dist);
+        data->E_Bond_Rest += erh;
+
+        real deresdr = 2.0 * br.f_2 * dist_diff * br.f_1 * exphu;
+        for (j=0; j < 3; j++) {
+            real drda = (a1->x[j] - a2->x[j]) / dist;
+            a1->f[j] += deresdr * drda;
+            a2->f[j] += -deresdr * drda;            
+        }	
 	}
 }
+
+
 
 static void Compute_Angle_Restraint_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control )
 {
-	int i;
+	int i,j;
 	// angle restraints
-	for (i = 0; i < system->bond_rest_cnt; i++) 
+    data->E_Ang_Rest = 0;
+	for (i = 0; i < system->ang_rest_cnt; i++) 
 	{
-		angle_restraint br = system->angle_restraints[i];
-		reax_atom a1, a2, a3;
-		a1 = system->atoms[br.atom_inds[0]];
-		a2 = system->atoms[br.atom_inds[1]];
-		a3 = system->atoms[br.atom_inds[2]];
+		angle_restraint ar = system->angle_restraints[i];
+		reax_atom *a1, *a2, *a3;
+		a1 = &system->atoms[ar.atom_inds[0]]; //i
+		a2 = &system->atoms[ar.atom_inds[1]]; //j
+		a3 = &system->atoms[ar.atom_inds[2]]; //k
+        rvec dvec_ji, dvec_jk;
+        real d_ji, d_jk, theta, cos_theta; //arg-costheta, hr-theta
+
+        rvec_ScaledSum(dvec_ji, 1, a2->x, -1, a1->x);
+        d_ji = rvec_Norm(dvec_ji);
+
+        rvec_ScaledSum(dvec_jk, 1, a2->x, -1, a3->x);
+        d_jk = rvec_Norm(dvec_jk);
+
+        Calculate_Theta(dvec_ji, d_ji, dvec_jk, d_jk,
+                        &theta, &cos_theta );
+        real vaval = RAD2DEG(theta);
+        real diffv = -DEG2RAD(vaval - ar.t_ang);
+        real exphu = EXP(-ar.f_2 * SQR(diffv));
+        real erh = ar.f_1 * (1.0 - exphu);
+        data->E_Ang_Rest += erh;
+        //fprintf(stderr,"\nAngle rest pot:%f, angle:%f", erh, vaval);
+        rvec dcos_theta_di, dcos_theta_dj, dcos_theta_dk;
+        Calculate_dCos_Theta(dvec_ji, d_ji, dvec_jk, d_jk,
+                        &dcos_theta_di, &dcos_theta_dj, &dcos_theta_dk);
+        real arg2 = SQR(cos_theta);
+        real s1ma22 = 1.0 - arg2; // sin2 + cos2 = 1, find sin from cos
+        if (s1ma22 < 1e-10) 
+            s1ma22 = 1e-10;
+        real s1ma2 = SQRT(s1ma22);
+        // Calculate forces
+        real sin_thata_inv = 1.0 / s1ma2;
+        real deresdv = -2.0 * ar.f_2 * diffv * ar.f_1 * exphu;
+
+        for (j=0; j < 3; j++) {
+            //fprintf(stderr, "%d %d %f\n", j+1, 1, dcos_theta_di[j] * sin_thata_inv);
+            //fprintf(stderr, "%d %d %f\n", j+1, 2, dcos_theta_dj[j] * sin_thata_inv);
+            //fprintf(stderr, "%d %d %f\n", j+1, 3, dcos_theta_dk[j] * sin_thata_inv);
+            a1->f[j] += deresdv * dcos_theta_di[j] * sin_thata_inv;
+            a2->f[j] += deresdv * dcos_theta_dj[j] * sin_thata_inv;
+            a3->f[j] += deresdv * dcos_theta_dk[j] * sin_thata_inv;         
+        }           
+
+
 		
 	}
 }
@@ -115,6 +180,7 @@ static void Compute_Torsion_Restraint_Forces( reax_system *system, control_param
 {
 	int i;
 	// torsion restraints
+    data->E_Tors_Rest = 0;
 	for (i = 0; i < system->tors_rest_cnt; i++) 
 	{
 		torsion_restraint br = system->torsion_restraints[i];
@@ -1599,6 +1665,9 @@ void Compute_Forces( reax_system *system, control_params *control,
 
     Compute_Total_Force( system, control, data, workspace, lists );
 
+    Compute_Bond_Restraint_Forces(system, control, data, workspace, lists,out_control );
+    Compute_Angle_Restraint_Forces(system, control, data, workspace, lists,out_control );
+    Compute_Torsion_Restraint_Forces(system, control, data, workspace, lists,out_control );
 #if defined(DEBUG_FOCUS)
     //Print_Total_Force( system, control, data, workspace, lists, out_control );
 #endif

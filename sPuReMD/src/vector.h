@@ -492,7 +492,7 @@ static inline void rvec_Random( rvec v )
     v[2] = Random(2.0) - 1.0;
 }
 
-static inline void rvec_clip( rvec v ,real min, real max)
+static inline void rvec_clip(rvec dst, rvec src ,real min, real max)
 {
     int i;
 
@@ -501,7 +501,7 @@ static inline void rvec_clip( rvec v ,real min, real max)
 #endif
     for ( i = 0; i < 3; ++i )
     {
-        v[i] = v[i] < min ? min : (v[i] > max ? max : v[i]);
+        dst[i] = src[i] < min ? min : (src[i] > max ? max : src[i]);
     }
 }
 
