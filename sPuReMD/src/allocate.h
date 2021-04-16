@@ -24,6 +24,9 @@
 
 #include "reax_types.h"
 
+void Allocate_Restraint_Space( reax_system * const, int, int, int );
+
+void Deallocate_Restraint_Space( reax_system * const );
 
 void PreAllocate_Space( reax_system * const, control_params  const * const,
         static_storage * const, int );
