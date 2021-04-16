@@ -33,6 +33,7 @@
 #if defined(HAVE_TENSORFLOW)
   #include "tensorflow_regressor.c"   
 #endif
+#include "ELM_regressor.c"
 
 int is_refactoring_step( control_params * const control,
         simulation_data * const data )
@@ -167,43 +168,61 @@ static void Spline_Extrapolate_Charges_EE( const reax_system * const system,
         const control_params * const control,
         simulation_data * const data, static_storage * const workspace )
 {
-    int i;
+    int i,j;
     real s_tmp;
+    double limit = WINDOW_SIZE;
+    // TODO: this is a temporary solution decrease the cost of shifting after training is done
+    if (data->step > 501) {
+        limit = 10;
+    }
+
+
 
     /* spline extrapolation for s */
     //TODO: good candidate for vectorization, avoid moving data with head pointer and circular buffer
 #if defined(_OPENMP)
     #pragma omp parallel for schedule(static) \
-        default(none) private(i, s_tmp) firstprivate(system, control, workspace)
+        default(none) private(i, s_tmp, j) firstprivate(system, control, workspace)
 #endif
     for ( i = 0; i < system->N_cm; ++i )
     {
+        //for (j = 0; j < 5; j++) {
+        //    diff[j] = workspace->s[j][i] - workspace->s[j+1][i];
+        //}
         /* no extrapolation */
         if ( control->cm_init_guess_extrap1 == 0 )
         {
             s_tmp = workspace->s[0][i];
+            //s_tmp = diff[0];
         }
         /* linear */
         else if ( control->cm_init_guess_extrap1 == 1 )
         {
             s_tmp = 2.0 * workspace->s[0][i] - workspace->s[1][i];
+            //s_tmp = 2.0 * diff[0] - diff[1];
         }
         /* quadratic */
         else if ( control->cm_init_guess_extrap1 == 2 )
         {
             s_tmp = workspace->s[2][i] + 3.0 * (workspace->s[0][i]-workspace->s[1][i]);
+            //s_tmp = diff[2] + 3.0 * (diff[0]-diff[1]);
         }
         /* cubic */
         else if ( control->cm_init_guess_extrap1 == 3 )
         {
             s_tmp = 4.0 * (workspace->s[0][i] + workspace->s[2][i]) -
                     (6.0 * workspace->s[1][i] + workspace->s[3][i] );
+
+            //s_tmp = 4.0 * (diff[0] + diff[2]) -
+            //        (6.0 * diff[1] + diff[3] );
         }
         /* 4th order */
         else if ( control->cm_init_guess_extrap1 == 4 )
         {
             s_tmp = 5.0 * (workspace->s[0][i] - workspace->s[3][i]) +
                 10.0 * (-workspace->s[1][i] + workspace->s[2][i] ) + workspace->s[4][i];
+            //s_tmp = 5.0 * (diff[0] - diff[3]) +
+            //   10.0 * (-diff[1] + diff[2]) + diff[4];
         }
         else
         {
@@ -213,10 +232,11 @@ static void Spline_Extrapolate_Charges_EE( const reax_system * const system,
         // shifting
         // TODO: Check this part after working on WINDOW_SIZE variable
         int j = 0;
-        for (j = WINDOW_SIZE-1;j > 0 ; j--) {
+        for (j = limit-1;j > 0 ; j--) {
             workspace->s[j][i] = workspace->s[j-1][i];
         }
         workspace->s[0][i] = s_tmp;
+        //workspace->s[0][i] = s_tmp + workspace->s[1][i];
     }
 }
 
@@ -1092,7 +1112,7 @@ static void QEq( reax_system * const system, control_params * const control,
         && control->cm_init_guess_training == 1 && 
         data->step % control->cm_init_guess_training_step == 0 && data->step != 0 && data->step < 501) {
        // #pragma omp single{
-        train_and_save(workspace, system, control);
+        //train_and_save(workspace, system, control);
        // }
     }
     #endif
@@ -1126,7 +1146,8 @@ static void QEq( reax_system * const system, control_params * const control,
             {
                 fprintf(stdout, "[WARNING] Tensorflow based initial guess method is not tested for QEQ!\n");
             }
-            Predict_Charges_TF_LSTM( system, control, data, workspace );
+            Spline_Extrapolate_Charges_QEq( system, control, data, workspace );
+            //Predict_Charges_TF_LSTM( system, control, data, workspace );
         }
 #else
         fprintf( stderr, "[ERROR] Tensorflow support disabled. Re-compile to enable. Terminating...\n" );
@@ -1228,7 +1249,7 @@ static void EE( reax_system * const system, control_params * const control,
         && control->cm_init_guess_training == 1 && 
         data->step % control->cm_init_guess_training_step == 0 && data->step != 0 && data->step < 501) {
        // #pragma omp single{
-        train_and_save(workspace, system, control);
+        //train_and_save_EE(workspace, system, control);
        // }
     }
     #endif
@@ -1257,7 +1278,12 @@ static void EE( reax_system * const system, control_params * const control,
         }
         else
         {
-            Predict_Charges_TF_LSTM( system, control, data, workspace );
+            // Preemptively call the spline method in case some predictions are skipped by the following method
+            // (Charge predictions can be made by the spline method solely and LSTM can predict the rest)
+            // TODO: Remove this call after everything is finalized
+            Spline_Extrapolate_Charges_EE( system, control, data, workspace );
+            //Predict_Charges_TF_LSTM_EE( system, control, data, workspace );
+            Predict_Charges_ELM_EE( system, control, data, workspace );
         }
 #else
         fprintf( stderr, "[ERROR] Tensorflow support disabled. Re-compile to enable. Terminating...\n" );
@@ -1271,6 +1297,7 @@ static void EE( reax_system * const system, control_params * const control,
         exit( INVALID_INPUT );
         break;
     }
+    data->timing.cm_prediction_overall = Get_Timing_Info( time );
 
 #if defined(QMMM)
     for ( int i = 0; i < system->N_qm; ++i )
@@ -1349,7 +1376,7 @@ static void ACKS2( reax_system * const system, control_params * const control,
         && control->cm_init_guess_training == 1 && 
         data->step % control->cm_init_guess_training_step == 0 && data->step != 0 && data->step < 501) {
        // #pragma omp single{
-        train_and_save(workspace, system, control);
+        //train_and_save_ACKS2(workspace, system, control);
        // }
     }
     #endif
@@ -1385,7 +1412,8 @@ static void ACKS2( reax_system * const system, control_params * const control,
             // (Charge predictions can be made by the spline method solely and LSTM can predict the rest)
             // TODO: Remove this call after everything is finalized
             Spline_Extrapolate_Charges_EE( system, control, data, workspace );
-            Predict_Charges_TF_LSTM( system, control, data, workspace );
+            //Predict_Charges_TF_LSTM_ACKS2( system, control, data, workspace );
+            Predict_Charges_ELM_ACKS2( system, control, data, workspace );
         }
 #else
         fprintf( stderr, "[ERROR] Tensorflow support disabled. Re-compile to enable. Terminating...\n" );

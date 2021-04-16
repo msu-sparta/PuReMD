@@ -330,7 +330,7 @@ static void Init_Workspace( reax_system *system, control_params *control,
     int i;
 
     if ( realloc == TRUE )
-    {
+    { 
         /* hydrogen bond list */
         workspace->hbond_index = smalloc( system->N_max * sizeof( int ),
                "Init_Workspace::workspace->hbond_index" );
@@ -394,6 +394,17 @@ static void Init_Workspace( reax_system *system, control_params *control,
 
     if ( realloc == TRUE )
     {
+        // TODO: tempo fix, init scratch space for ML models
+        workspace->flat_input = smalloc( system->N_cm_max * control->cm_init_guess_win_size * sizeof( double ),
+               "Init_Workspace::workspace->flat_input" ); 
+        workspace->flat_input_hidden = smalloc( system->N_cm_max * 512 * sizeof( double ),
+               "Init_Workspace::workspace->flat_input" ); 
+        workspace->predictions = smalloc( system->N_cm_max * sizeof( double ),
+               "Init_Workspace::workspace->predictions" ); 
+        workspace->norm_arr1 = smalloc( system->N_cm_max * sizeof( double ),
+               "Init_Workspace::workspace->norm_arr1" ); 
+        workspace->norm_arr2 = smalloc( system->N_cm_max * sizeof( double ),
+               "Init_Workspace::workspace->norm_arr2" ); 
         workspace->Hdia_inv = NULL;
 
         if ( control->cm_solver_pre_comp_type == ICHOLT_PC

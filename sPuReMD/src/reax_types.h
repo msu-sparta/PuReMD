@@ -69,7 +69,7 @@
 // TODO: This part can be read from the control file
 // needed to store the data for finetuning (if we want that)
 #if defined(HAVE_TENSORFLOW)
-  #define WINDOW_SIZE 500
+  #define WINDOW_SIZE 200
 #else
   #define WINDOW_SIZE 5
 #endif
@@ -1672,6 +1672,13 @@ struct static_storage
     rvec *f_tor;
     rvec *f_con;
 #endif
+
+    // scratch space for charge prediction models
+    double *flat_input;
+    double *predictions;
+    double *norm_arr1;
+    double *norm_arr2;
+    double *flat_input_hidden;
 };
 
 

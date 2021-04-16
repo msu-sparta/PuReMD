@@ -3524,10 +3524,6 @@ int CG( const static_storage * const workspace, const control_params * const con
         t_vops = 0.0;
 
         t_start = Get_Time( );
-        bnorm = Norm( b, N );
-        t_vops += Get_Timing_Info( t_start );
-
-        t_start = Get_Time( );
         sparse_matvec( workspace, H, x, d );
         t_spmv += Get_Timing_Info( t_start );
 
@@ -3535,7 +3531,10 @@ int CG( const static_storage * const workspace, const control_params * const con
         Vector_Sum( r, 1.0,  b, -1.0, d, N );
 #if defined(QMMM)
         Vector_Mask_qmmm( r, workspace->mask_qmmm, N );
+        Vector_Mask_qmmm( b, workspace->mask_qmmm, N );
 #endif
+        t_start = Get_Time( );
+        bnorm = Norm( b, N );
         rnorm = Norm( r, N );
         t_vops += Get_Timing_Info( t_start );
 

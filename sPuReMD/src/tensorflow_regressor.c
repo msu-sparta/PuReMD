@@ -3,6 +3,8 @@
 #include "allocate.h"
 #include <sys/stat.h>
 
+#include <time.h>
+
 #define MY_TENSOR_SHAPE_MAX_DIM (16)
 // Defined in reax_types.h
 // TODO: provide a single source for this
@@ -107,7 +109,7 @@ int DirectoryExists(const char* dirname) {
 }
 
 // min-max normalization of the flattened data (store the min max values in the given arrays after the operation is done)
-static void min_max_normalize(double* obs_flat, int win_size, int batch_size, double* min_array, double* max_array) {
+static void min_max_normalize(float* obs_flat, int win_size, int batch_size, double* min_array, double* max_array) {
     int i;
     // find min and max values
     for ( i = 0; i < batch_size; ++i )
@@ -128,6 +130,9 @@ static void min_max_normalize(double* obs_flat, int win_size, int batch_size, do
     for ( i = 0; i < batch_size; ++i )
     {
         double min_max_diff = max_array[i] - min_array[i];
+        if (min_max_diff <= 1e-10) {
+          min_max_diff = 1.0;
+        }
         for (int j = 0; j < win_size; ++j ) 
         {
              obs_flat[i * win_size + j] = (obs_flat[i * win_size + j] - min_array[i]) / min_max_diff;
@@ -136,7 +141,7 @@ static void min_max_normalize(double* obs_flat, int win_size, int batch_size, do
 }
 
 // reverse the min-max normalization
-static void min_max_reverse(double* predictions, int win_size, int batch_size, double* min_array, double* max_array) {
+static void min_max_reverse(float* predictions, int win_size, int batch_size, double* min_array, double* max_array) {
     int i;
     for (i = 0; i < batch_size; ++i )
     {
@@ -149,6 +154,10 @@ static void standard_normalize(DATA_PRECISION* obs_flat, int win_size, int batch
                               double* mean_array, double* std_array) {
     int i;
     // find mean and std values
+#ifdef _OPENMP
+    #pragma omp parallel for schedule(static) \
+        private(i)
+#endif 
     for ( i = 0; i < batch_size; ++i )
     {
         mean_array[i] = 0;
@@ -159,6 +168,10 @@ static void standard_normalize(DATA_PRECISION* obs_flat, int win_size, int batch
         }
         mean_array[i] = mean_array[i] / win_size;
     }
+#ifdef _OPENMP
+    #pragma omp parallel for schedule(static) \
+        private(i)
+#endif 
     for ( i = 0; i < batch_size; ++i )
     {
         std_array[i] = 0;
@@ -170,7 +183,7 @@ static void standard_normalize(DATA_PRECISION* obs_flat, int win_size, int batch
 
         std_array[i] = std_array[i] / (win_size);
         std_array[i] = SQRT(std_array[i]);
-        if (std_array[i] == 0){
+        if (std_array[i] <= 1e-15){
            std_array[i] = 1;
            //fprintf( stdout, "[ERROR] encountered with 0 std: %d \n", i);
 
@@ -178,7 +191,10 @@ static void standard_normalize(DATA_PRECISION* obs_flat, int win_size, int batch
 
     }
 
-    // 
+#ifdef _OPENMP
+    #pragma omp parallel for schedule(static) \
+        private(i)
+#endif 
     for ( i = 0; i < batch_size; ++i )
     {
         for (int j = 0; j < win_size; ++j ) 
@@ -192,6 +208,10 @@ static void standard_normalize(DATA_PRECISION* obs_flat, int win_size, int batch
 static void standard_reverse(DATA_PRECISION* predictions, int win_size, int batch_size, 
                             double* mean_array, double* std_array) {
     int i;
+#ifdef _OPENMP
+    #pragma omp parallel for schedule(static) \
+        private(i)
+#endif 
     for (i = 0; i < batch_size; ++i )
     {
             predictions[i] = predictions[i] * ( std_array[i]);
@@ -312,8 +332,8 @@ TF_model model_load( const char *filename,
     // '\x10\x07'
 
     sess_opts = TF_NewSessionOptions( );
-    uint8_t intra_op_parallelism_threads = 2;
-    uint8_t inter_op_parallelism_threads = 14;
+    uint8_t intra_op_parallelism_threads = 1;
+    uint8_t inter_op_parallelism_threads = 8;
     uint8_t buf[]={0x10,intra_op_parallelism_threads,0x28,inter_op_parallelism_threads};
     TF_SetConfig(sess_opts, buf,sizeof(buf),model.status);
 
@@ -361,7 +381,7 @@ static int save_model_parameters(TF_model* my_model, const char* checkpoint_pref
     return model_checkpoint(my_model, checkpoint_prefix, SAVE);
 }
 
-static void get_1diff_training_data(double** saved_data, DATA_PRECISION** training_data,
+static void get_training_data(double** saved_data, DATA_PRECISION** training_data,
                                    int start_atom_ind, int end_atom_ind,int data_size, int window_size,
                                   int sample_size){
 
@@ -370,15 +390,9 @@ static void get_1diff_training_data(double** saved_data, DATA_PRECISION** traini
   int sample_index = 0;
 
   for (int i = start_atom_ind; i < end_atom_ind; i++){
-    double diff_array[data_size-1];
-    for (int j = 0; j < data_size-1; j++){
-        double val1 = saved_data[data_size - j - 1][i];
-        double val2 = saved_data[data_size - j - 2][i];
-        diff_array[j] = val2 - val1;       
-    }
     for(int start = 0; start < data_size - window_size - 1; start++){
       for(int s_ind = 0; s_ind < window_size + 1; s_ind++){
-          training_data[sample_index][s_ind] = diff_array[start + s_ind];
+          training_data[sample_index][s_ind] = saved_data[data_size - start - s_ind - 1][i];
       }
       sample_index = sample_index + 1;
       if (sample_index >= sample_size){
@@ -386,9 +400,39 @@ static void get_1diff_training_data(double** saved_data, DATA_PRECISION** traini
       }
     }
   }
+  fprintf( stdout, "%d %d ",sample_index,sample_size);
+}
+
+static void get_1diff_training_data(double** saved_data, DATA_PRECISION** training_data,
+                                   int start_atom_ind, int end_atom_ind,int data_size, int window_size,
+                                  int sample_size){
+
+  // assume training is called in post-shifted time (right after a solve)
+  // history data is reversed (index 1 is the most recent)
+  int sample_index = 0;
+
+  for (int i = start_atom_ind; i < end_atom_ind; i++){
+    //fprintf( stdout, "atom: %d %d", i, sample_index);
+    double diff_array[data_size-2];
+    for (int j = 0; j < data_size-2; j++){ // after shifting, subtract -2
+        double val1 = saved_data[data_size - j - 1][i];
+        double val2 = saved_data[data_size - j - 2][i];
+        diff_array[j] = val2 - val1;       
+    }
+    for(int start = 0; start < data_size - window_size - 2; start++){
+      for(int s_ind = 0; s_ind < window_size + 1; s_ind++){
+          training_data[sample_index][s_ind] = diff_array[start + s_ind];
+      }
+      sample_index = sample_index + 1;
+      if (sample_index >= sample_size){
+         fprintf( stdout, "[ERROR] unexpected sample ");
+         return;
+      }
+    }
+  }
 }
 static void get_batch(TF_Tensor** inputs_tensor, TF_Tensor** targets_tensor,
-                      DATA_PRECISION** one_diff_training_data, int* selected_indices, 
+                      DATA_PRECISION** training_data, int* selected_indices, 
                       int full_size, int batch_start_ind, int batch_size, int window_size){
 
   DATA_PRECISION* inputs = smalloc( sizeof(DATA_PRECISION) * batch_size * window_size, 
@@ -409,21 +453,32 @@ static void get_batch(TF_Tensor** inputs_tensor, TF_Tensor** targets_tensor,
   for (int i = 0; i < batch_size; i++){
     int start = selected_indices[batch_start_ind + i];
     for(int j = 0; j < window_size; j++) {
-      inputs[i * window_size + j] = one_diff_training_data[start][j];
-      //fprintf( stdout, "%d, ", inputs[i * window_size + j]);
+      inputs[i * window_size + j] = training_data[start][j];
+      //fprintf( stdout, "%f, ", inputs[i * window_size + j]);
     }
-    targets[i] = one_diff_training_data[start][window_size];
-    //fprintf( stdout, "%d \n", targets[i]);
+    targets[i] = training_data[start][window_size];
+    //fprintf( stdout, "%f \n", targets[i]);
   }
-  double means[batch_size];
-  double stds[batch_size];
+  double* means = smalloc( sizeof(double) * batch_size, 
+                                                    "Predict_Charges_TF_LSTM:inputs" );
+  double* stds = smalloc( sizeof(double) * batch_size, 
+                                                    "Predict_Charges_TF_LSTM:inputs" );
   // normalize the data
-  //standard_normalize(inputs, window_size, batch_size, means, stds);
+  //fprintf( stdout, "------------------\n");
+  //for(int j = 0; j < window_size; j++) {
+    //fprintf( stdout, "%f, ", inputs[0 * window_size + j]);
+  //}
+  //fprintf( stdout, "%f \n", targets[0]);
 
-  //for (int i = 0; i < batch_size; i++){
-  // targets[i] = (targets[i] - means[i]) / stds[i];
-  //} 
+  standard_normalize(inputs, window_size, batch_size, means, stds);
 
+  
+  for (int i = 0; i < batch_size; i++){
+   targets[i] = (targets[i] - means[i]) / stds[i];
+  } 
+
+
+  //fprintf( stdout, "%f \n", targets[0]);
   size_t nbytes_input = batch_size * window_size * sizeof(DATA_PRECISION);
   size_t nbytes_target = batch_size * sizeof(DATA_PRECISION);
 
@@ -434,6 +489,9 @@ static void get_batch(TF_Tensor** inputs_tensor, TF_Tensor** targets_tensor,
   *targets_tensor = TF_NewTensor( TF_DATA_TYPE, output_shape.values, output_shape.dim,
             (void *)targets, sizeof(DATA_PRECISION) * 1 * batch_size,
             &TF_Tensor_Deallocator, NULL );
+
+  sfree( means, "Predict_Charges_TF_LSTM:min_array" ); 
+  sfree( stds, "Predict_Charges_TF_LSTM:max_array" );
 
 }
 
@@ -468,15 +526,18 @@ static double calculate_loss(TF_model* model, TF_Tensor *x, TF_Tensor* y, int nu
 
     //calculate error
     double total_error = 0;
+    double mean_abs = 0;
 
     for (int i = 0; i < num_samples; i++) {
         double err = predictions[i] - true_y[i];
+        mean_abs = mean_abs + ABS(err);
         total_error = total_error + err * err;
     }
 
     // get the average
-    total_error = total_error / num_samples;
-
+    total_error = SQRT(total_error / num_samples);
+    mean_abs = mean_abs / num_samples;
+    fprintf( stdout, "MAE: %f \n", mean_abs);
     return total_error;
 
 
@@ -504,12 +565,13 @@ static int train_model(TF_model* model, static_storage * const workspace, const 
     fprintf( stdout, "[INFO] Initial learning rate: %f\n",learnning_rate_fl);
     //int num_samples = (system->N_cm-2)/2 * (data_size - window_size);
     // start inclusive, end exlusive 
-    int num_samples = (end_atom_ind - start_atom_ind) * (data_size - window_size); 
+    // if 1-diff
+    int num_samples = (end_atom_ind - start_atom_ind) * (data_size - window_size - 2); 
     fprintf( stdout, "[INFO] Number of samples: %d \n",num_samples ); 
-    DATA_PRECISION** one_diff_training_data = scalloc( num_samples, sizeof( DATA_PRECISION* ),
+    DATA_PRECISION** training_data = scalloc( num_samples, sizeof( DATA_PRECISION* ),
                               "tensorflow_regressor::flattened_array" );
     for (int i = 0; i < num_samples; i++){
-        one_diff_training_data[i] = scalloc( window_size + 1, sizeof( DATA_PRECISION ),
+        training_data[i] = scalloc( window_size + 1, sizeof( DATA_PRECISION ),
                               "tensorflow_regressor::flattened_array" );
     }
 
@@ -519,7 +581,10 @@ static int train_model(TF_model* model, static_storage * const workspace, const 
     //    one_diff_training_data2[i] = scalloc( window_size + 1, sizeof( DATA_PRECISION ),
     //                          "tensorflow_regressor::flattened_array" );
     //}
-    get_1diff_training_data(workspace->s, one_diff_training_data, start_atom_ind, end_atom_ind, data_size, window_size, num_samples);
+    //fprintf( stdout, "before get_1diff_training_data\n" );
+    get_1diff_training_data(workspace->s, training_data, start_atom_ind, end_atom_ind, data_size, window_size, num_samples);
+    //fprintf( stdout, "after get_1diff_training_data\n" );
+    //get_training_data(workspace->s, training_data, start_atom_ind, end_atom_ind, data_size, window_size, num_samples);
     //get_1diff_training_data(workspace->s_14, one_diff_training_data2, start_atom_ind, end_atom_ind, data_size, window_size, num_samples);
 
     // We need to make sure we can divide the array into equal parts
@@ -543,7 +608,7 @@ static int train_model(TF_model* model, static_storage * const workspace, const 
       create_non_repetetive_random_numbers(0, num_samples, selected_order);
       
       for (int j = 0; j < num_samples - batch_size; j = j + batch_size){
-        get_batch(&x, &y, one_diff_training_data, selected_order,  
+        get_batch(&x, &y, training_data, selected_order,  
                         num_samples, j, batch_size, window_size);
         //get_batch(&x_2, &y, one_diff_training_data2, selected_order,  
         //           num_samples, j, batch_size, window_size);
@@ -561,7 +626,7 @@ static int train_model(TF_model* model, static_storage * const workspace, const 
       }
 
       // get the loss in that batch and print it
-      get_batch(&x, &y, one_diff_training_data, selected_order,  
+      get_batch(&x, &y, training_data, selected_order,  
                         num_samples, 0, num_samples, window_size);
       
       //get_batch(&x_2, &y, one_diff_training_data2, selected_order,  
@@ -605,15 +670,15 @@ static int train_model(TF_model* model, static_storage * const workspace, const 
 
     }
     for (int i = 0; i < num_samples; i++){
-        free(one_diff_training_data[i]);
+        free(training_data[i]);
         //free(one_diff_training_data2[i]);
     }
-    free(one_diff_training_data);
+    free(training_data);
     //free(one_diff_training_data2);
     return 1; // succesful
 }
 
-static int train_and_save(static_storage * const workspace, 
+static int train_and_save_ACKS2(static_storage * const workspace, 
   const reax_system * const system, const control_params * const control) {
   int epoch = control->cm_init_guess_training_epoch;
   int batch_size = 512;
@@ -621,10 +686,10 @@ static int train_and_save(static_storage * const workspace,
   int data_size;
   //window size from reax_types
   if (WINDOW_SIZE < control->cm_init_guess_training_step) {
-    data_size = WINDOW_SIZE;
+    data_size = WINDOW_SIZE - 1;
   }
   else {
-    data_size = control->cm_init_guess_training_step;
+    data_size = control->cm_init_guess_training_step - 1;
   }
   // TODO: using the global model FIX IT LATER
   const char* checkpoint_prefix = "./checkpoints/checkpoint";
@@ -661,6 +726,38 @@ static int train_and_save(static_storage * const workspace,
   }
 }
 
+static int train_and_save_EE(static_storage * const workspace, 
+  const reax_system * const system, const control_params * const control) {
+  int epoch = control->cm_init_guess_training_epoch;
+  int batch_size = 512;
+  int window_size = control->cm_init_guess_win_size;
+  int data_size;
+  //window size from reax_types
+  if (WINDOW_SIZE < control->cm_init_guess_training_step) {
+    data_size = WINDOW_SIZE - 1;
+  }
+  else {
+    data_size = control->cm_init_guess_training_step - 1;
+  }
+  // TODO: using the global model FIX IT LATER
+  const char* checkpoint_prefix = "./checkpoints/checkpoint";
+  printf("data size: %d\n", data_size);
+  if (train_model(&model_top, workspace, system, 0, system->N_cm - 1, data_size, window_size, epoch, batch_size)) {
+      if(save_model_parameters(&model_top, checkpoint_prefix)) {
+         fprintf( stdout, "[INFO] Model is trained and saved to ./checkpoints/checkpoint");
+         //return 1;
+      }
+      else {
+        fprintf( stdout, "[ERROR] Couldnt save");
+         return 0;
+      }
+  }
+  else {
+    fprintf( stdout, "[ERROR] Couldnt train");
+    return 0;
+  }
+}
+
 static void batch_prediction(TF_model *my_model, int atom_start, int atom_end, const reax_system * const system,
         const control_params * const control,
         simulation_data * const data, static_storage * const workspace)
@@ -672,10 +769,16 @@ static void batch_prediction(TF_model *my_model, int atom_start, int atom_end, c
     TF_Output inputs[1] = {my_model->input};
     TF_Output outputs[1] = {my_model->output};
     DATA_PRECISION* obs_flat_in;
+
+
+    clock_t start, end;
+    double cpu_time_used;
+
+
     int i = 0;
 
-    if (atom_end > system->N_cm-2){
-        atom_end = system->N_cm-2;
+    if (atom_end > system->N_cm-1){
+        atom_end = system->N_cm-1;
     }
 
 
@@ -685,7 +788,14 @@ static void batch_prediction(TF_model *my_model, int atom_start, int atom_end, c
     input_shape.values[2] = 1;
     input_shape.dim = 3;
     //printf(" before 1diff\n");
+    // this array gets freed by TF_DeleteTensor( input_tensor[0] )
     obs_flat_in = smalloc( sizeof(DATA_PRECISION) * batch_size * win_size, "Predict_Charges_TF_LSTM:obs_flat" );
+    //obs_flat_in = workspace->flat_input;
+
+#ifdef _OPENMP
+    #pragma omp parallel for schedule(static) \
+        private(i)
+#endif 
     for ( i = atom_start; i < atom_end; ++i )
     {
         int arr_start = i - atom_start;
@@ -702,18 +812,24 @@ static void batch_prediction(TF_model *my_model, int atom_start, int atom_end, c
             double val1 = workspace->s[win_size - j - 1 + 1][i];
             double val2 = workspace->s[win_size - j + 1][i];
             obs_flat_in[arr_start * win_size + j] = val1 - val2;  
-            //obs_flat[arr_start * win_size + j] = workspace->s[win_size - j - 1 + 1][i];      
+            //obs_flat_in[arr_start * win_size + j] = workspace->s[win_size - j - 1 + 1][i];      
         }
     }
-    //fprintf( stdout, "[INFO] obs_flat %.12f %.12f\n",  obs_flat[0 * win_size + 0],obs_flat[0 * win_size + 1]);
+    //fprintf( stdout, "[INFO] obs_flat %.12f %.12f\n",  obs_flat_in[0 * win_size + 0],obs_flat_in[0 * win_size + 1]);
 
     // std normalizer
-    
-    //double mean_array[batch_size];
-    //double std_array[batch_size];
-    //standard_normalize(obs_flat_in, win_size, batch_size, mean_array, std_array);
+      
+    //double* means = smalloc( sizeof(double) * batch_size, 
+    //                                                  "Predict_Charges_TF_LSTM:inputs" );
+    //double* stds = smalloc( sizeof(double) * batch_size, 
+    //   
+    //                                               "Predict_Charges_TF_LSTM:inputs" );
+    double* means = workspace->norm_arr1;
+    double* stds = workspace->norm_arr2;
+    standard_normalize(obs_flat_in, win_size, batch_size, means, stds);
 
-
+    //min_max_normalize(obs_flat_in, win_size, batch_size, min_array, max_array);
+    //fprintf( stdout, "[INFO] Min Max array %.12f %.12f\n",  min_array[0],max_array[0]);
     //fprintf( stdout, "[INFO] obs_flat after norm %.12f %.12f\n",  obs_flat[0 * win_size + 0],obs_flat[0 * win_size + 1]);
     //fprintf( stdout, "[INFO] mean std %.12f %.12f\n",  mean_array[0],std_array[0]);
 
@@ -727,6 +843,7 @@ static void batch_prediction(TF_model *my_model, int atom_start, int atom_end, c
     output_tensor[0] = NULL;
 
     //printf(" before TF_SessionRun\n");
+    start = clock();
     TF_SessionRun( my_model->session, NULL,
         &inputs[0], input_tensor, 1,
         &outputs[0], output_tensor, 1,
@@ -737,12 +854,22 @@ static void batch_prediction(TF_model *my_model, int atom_start, int atom_end, c
         fprintf( stdout, "output_tensor is null\n" );
         fprintf( stderr, "[ERROR] unable to start a sesssion: %s\n", TF_Message(my_model->status) );
     }
+    end = clock();
+    cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+
+    //fprintf( stdout, "[INFO] Prediction took %.12f\n",  cpu_time_used);
+
     DATA_PRECISION * predictions = (DATA_PRECISION*) TF_TensorData( output_tensor[0] );
     //fprintf( stdout, "[INFO] predictions[0] %.12f\n",  predictions[0]);
 
-    //standard_reverse(predictions, win_size, batch_size, mean_array, std_array);
+    standard_reverse(predictions, win_size, batch_size, means, stds);
+    //min_max_reverse(predictions, win_size, batch_size, min_array, max_array);
     //fprintf( stdout, "[INFO] after reverse predictions[0] %.12f\n",  predictions[0]);
     //printf(" before atom_start loop\n");
+#ifdef _OPENMP
+    #pragma omp parallel for schedule(static) \
+        private(i)
+#endif 
     for (i = atom_start; i < atom_end; ++i )
     {
         /*
@@ -759,9 +886,11 @@ static void batch_prediction(TF_model *my_model, int atom_start, int atom_end, c
         int arr_start = i - atom_start;
         // add the guessed error to the last error(true - guess)
         workspace->s[0][i] = predictions[arr_start] + workspace->s[1][i];
+        //workspace->s[0][i] = predictions[arr_start];
     }
 
-    //sfree( obs_flat_in, "Predict_Charges_TF_LSTM:obs_flat_in" );
+    //sfree( means, "Predict_Charges_TF_LSTM:min_array" ); 
+    //sfree( stds, "Predict_Charges_TF_LSTM:max_array" );
     TF_DeleteTensor( input_tensor[0] );
     TF_DeleteTensor( output_tensor[0] );
     //TODO: fix memory leak later
@@ -788,14 +917,14 @@ static void load_and_restore_model(TF_model* model, const reax_system * const sy
 
 }
 
-static void Predict_Charges_TF_LSTM( const reax_system * const system,
+static void Predict_Charges_TF_LSTM_ACKS2( const reax_system * const system,
         const control_params * const control,
         simulation_data * const data, static_storage * const workspace )
 {
 
     //TODO: allocate the resources in the init module
     //static TF_model my_model; // using the global one FIX IT LATER
-    int atom_batch = 512; //1500 atom at a time
+    int atom_batch = system->N_cm; //1500 atom at a time
     real time;
     int i = 0;
 
@@ -864,6 +993,84 @@ static void Predict_Charges_TF_LSTM( const reax_system * const system,
         batch_prediction(&model_bot, i, i + atom_batch, system,
         control,data, workspace);
     }   
+    
+    /*
+    for(int i = system->N_cm-2; i < system->N_cm; i = i + 1) {
+        workspace->s[0][i] = workspace->s[1][i];
+    }
+    */
+
+    data->timing.cm_tensorflow_just_prediction = Get_Timing_Info( time );
+    //fprintf( stdout, "Successfully run session\n" );
+    //float * predictions_f = (float*) TF_TensorData( output_tensor[0] );
+    //fprintf( stdout, "predictions before\n" );
+    //fprintf( stdout, "predictions after\n" );
+}
+
+
+static void Predict_Charges_TF_LSTM_EE( const reax_system * const system,
+        const control_params * const control,
+        simulation_data * const data, static_storage * const workspace )
+{
+
+    //TODO: allocate the resources in the init module
+    //static TF_model my_model; // using the global one FIX IT LATER
+    int atom_batch = 10000; //1500 atom at a time
+    real time;
+    int i = 0;
+
+
+    /* load the frozen model from file in GraphDef format
+     *
+     * note: the input/output tensors names must be provided */
+    //TODO: either require standarding model names in GraphDef file
+    //      or add control file parameters to all these to be changed
+    if (model_top.session == NULL) {
+      load_and_restore_model(&model_top, system, control, data, workspace);
+    }
+
+
+    if ( !model_top.session)
+    {
+        fprintf( stdout, "[ERROR] failed to load frozen model from GraphDef"
+                " file for initial guess prediction using Tensorflow. Terminating...\n" );
+        exit( INVALID_INPUT );
+    }
+    
+
+
+    //fprintf( stdout, "before shift\n" );
+    /* shift previous solutions down by one time step 
+    #ifdef _OPENMP
+        #pragma omp parallel for schedule(static) \
+            default(none) private(i)
+    #endif*/
+
+    /*
+    for ( i = 0; i < system->N_cm; ++i )
+    {
+        // shifting
+        int j = 0;
+        for (j = WINDOW_SIZE-1;j > 0 ; j--) {
+            workspace->s[j][i] = workspace->s[j-1][i];
+            workspace->t[j][i] = workspace->t[j-1][i];                   
+        }
+    }
+    */
+    
+    
+
+    /* run the session to calculate the predictions for the given data */
+    time = Get_Time( );
+    //#ifdef _OPENMP
+    //    #pragma omp parallel for schedule(static) \
+    //        private(i)
+    //#endif    
+    for (i = 0; i < system->N_cm - 1; i = i + atom_batch) {
+        batch_prediction(&model_top, i, i + atom_batch, system,
+        control,data, workspace);      
+    }
+     
     
     /*
     for(int i = system->N_cm-2; i < system->N_cm; i = i + 1) {
