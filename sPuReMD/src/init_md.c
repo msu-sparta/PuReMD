@@ -1342,6 +1342,7 @@ static void Finalize_System( reax_system *system, control_params *control,
     reax = &system->reax_param;
 
     Finalize_Grid( system );
+    Deallocate_Restraint_Space ( system );
 
     if ( reset == FALSE )
     {
