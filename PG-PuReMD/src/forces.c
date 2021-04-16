@@ -1844,17 +1844,26 @@ static void Compute_Total_Force( reax_system * const system,
     int i, pj;
     reax_list * const bond_list = lists[BONDS];
 
-    for ( i = 0; i < system->N; ++i )
+    if ( control->virial == 0 )
     {
-        for ( pj = Start_Index(i, bond_list); pj < End_Index(i, bond_list); ++pj )
+        for ( i = 0; i < system->N; ++i )
         {
-            if ( i < bond_list->bond_list[pj].nbr )
+            for ( pj = Start_Index(i, bond_list); pj < End_Index(i, bond_list); ++pj )
             {
-                if ( control->virial == 0 )
+                if ( i < bond_list->bond_list[pj].nbr )
                 {
                     Add_dBond_to_Forces( i, pj, system, data, workspace, lists );
                 }
-                else
+            }
+        }
+    }
+    else
+    {
+        for ( i = 0; i < system->N; ++i )
+        {
+            for ( pj = Start_Index(i, bond_list); pj < End_Index(i, bond_list); ++pj )
+            {
+                if ( i < bond_list->bond_list[pj].nbr )
                 {
                     Add_dBond_to_Forces_NPT( i, pj, system, data, workspace, lists );
                 }

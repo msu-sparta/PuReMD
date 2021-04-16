@@ -1,15 +1,16 @@
 
 #include "cuda_bond_orders.h"
 
+#include "cuda_helpers.h"
 #include "cuda_list.h"
 #include "cuda_utils.h"
 #include "cuda_reduction.h"
-#if defined(CUDA_ACCUM_ATOMIC)
-#include "cuda_helpers.h"
-#endif
 
 #include "../index_utils.h"
 #include "../bond_orders.h"
+
+#include "../cub/cub/warp/warp_reduce.cuh"
+//#include <cub/warp/warp_reduce.cuh>
 
 
 CUDA_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
@@ -25,16 +26,8 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
 
     nbr_j = &bond_list->bond_list[pj];
     j = nbr_j->nbr;
-    if ( i < j )
-    {
-        bo_ij = &nbr_j->bo_data;
-        bo_ji = &bond_list->bond_list[ nbr_j->sym_index ].bo_data;
-    }
-    else
-    {
-        bo_ij = &bond_list->bond_list[ nbr_j->sym_index ].bo_data;
-        bo_ji = &nbr_j->bo_data;
-    }
+    bo_ij = &nbr_j->bo_data;
+    bo_ji = &bond_list->bond_list[ nbr_j->sym_index ].bo_data;
 
     coef.C1dbo = bo_ij->C1dbo * (bo_ij->Cdbo + bo_ji->Cdbo);
     coef.C2dbo = bo_ij->C2dbo * (bo_ij->Cdbo + bo_ji->Cdbo);
@@ -58,164 +51,139 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
     * forces related to atom i          *
     * first neighbors of atom i         *
     ************************************/
-    if ( i < j )
+    for ( pk = Start_Index(i, bond_list); pk < End_Index(i, bond_list); ++pk )
     {
-        for ( pk = Start_Index(i, bond_list); pk < End_Index(i, bond_list); ++pk )
-        {
-            nbr_k = &bond_list->bond_list[pk];
-            k = nbr_k->nbr;
+        nbr_k = &bond_list->bond_list[pk];
+        k = nbr_k->nbr;
 
 #if !defined(CUDA_ACCUM_ATOMIC)
-            rvec_MakeZero( nbr_k->tf_f );
+        rvec_MakeZero( nbr_k->tf_f );
 #endif
 
-            /* 2nd, dBO */
-            rvec_Scale( temp, -coef.C2dbo, nbr_k->bo_data.dBOp );
-            /* dDelta */
-            rvec_ScaledAdd( temp, -coef.C2dDelta, nbr_k->bo_data.dBOp );
-            /* 3rd, dBOpi */
-            rvec_ScaledAdd( temp, -coef.C3dbopi, nbr_k->bo_data.dBOp );
-            /* 3rd, dBOpi2 */
-            rvec_ScaledAdd( temp, -coef.C3dbopi2, nbr_k->bo_data.dBOp );
-
-            /* force */
-#if !defined(CUDA_ACCUM_ATOMIC)
-            rvec_Add( nbr_k->tf_f, temp );
-#else
-            atomic_rvecAdd( workspace->f[k], temp );
-#endif
-            /* pressure */
-            rvec_iMultiply( ext_press, nbr_k->rel_box, temp );
-            rvec_Add( data_ext_press, ext_press );
-        }
-
-        /* then atom i itself */
-        /* 1st, dBO */
-        rvec_Scale( temp, coef.C1dbo, bo_ij->dBOp );
         /* 2nd, dBO */
-        rvec_ScaledAdd( temp, coef.C2dbo, workspace->dDeltap_self[i] );
-
-        /* 1st, dBO */
-        rvec_ScaledAdd( temp, coef.C1dDelta, bo_ij->dBOp );
-        /* 2nd, dBO */
-        rvec_ScaledAdd( temp, coef.C2dDelta, workspace->dDeltap_self[i] );
-
-        /* 1st, dBOpi */
-        rvec_ScaledAdd( temp, coef.C1dbopi, bo_ij->dln_BOp_pi );
-        /* 2nd, dBOpi */
-        rvec_ScaledAdd( temp, coef.C2dbopi, bo_ij->dBOp );
+        rvec_Scale( temp, -coef.C2dbo, nbr_k->bo_data.dBOp );
+        /* dDelta */
+        rvec_ScaledAdd( temp, -coef.C2dDelta, nbr_k->bo_data.dBOp );
         /* 3rd, dBOpi */
-        rvec_ScaledAdd( temp, coef.C3dbopi, workspace->dDeltap_self[i] );
-
-        /* 1st, dBO_pi2 */
-        rvec_ScaledAdd( temp, coef.C1dbopi2, bo_ij->dln_BOp_pi2 );
-        /* 2nd, dBO_pi2 */
-        rvec_ScaledAdd( temp, coef.C2dbopi2, bo_ij->dBOp );
-        /* 3rd, dBO_pi2 */
-        rvec_ScaledAdd( temp, coef.C3dbopi2, workspace->dDeltap_self[i] );
-
-        /* force */
-        rvec_Add( workspace->f[i], temp );
-        /* ext pressure due to i is dropped, counting force on j will be enough */
-    }
-    else
-    {
-        /******************************************************
-         * forces and pressure related to atom j               * 
-         * first neighbors of atom j                           *
-         ******************************************************/
-        for ( pk = Start_Index(j, bond_list); pk < End_Index(j, bond_list); ++pk )
-        {
-            nbr_k = &bond_list->bond_list[pk];
-            k = nbr_k->nbr;
-
-#if !defined(CUDA_ACCUM_ATOMIC)
-            rvec_MakeZero( nbr_k->tf_f );
-#endif
-
-            /* 3rd, dBO */
-            rvec_Scale( temp, -coef.C3dbo, nbr_k->bo_data.dBOp );
-            /* dDelta */
-            rvec_ScaledAdd( temp, -coef.C3dDelta, nbr_k->bo_data.dBOp );
-            /* 4th, dBOpi */
-            rvec_ScaledAdd( temp, -coef.C4dbopi, nbr_k->bo_data.dBOp );
-            /* 4th, dBOpi2 */
-            rvec_ScaledAdd( temp, -coef.C4dbopi2, nbr_k->bo_data.dBOp );
-
-            /* force */
-#if !defined(CUDA_ACCUM_ATOMIC)
-            rvec_Add( nbr_k->tf_f, temp );
-#else
-            atomic_rvecAdd( workspace->f[k], temp );
-#endif
-            /* pressure */
-            if ( k != i )
-            {
-                ivec_Sum( rel_box, nbr_k->rel_box, nbr_j->rel_box ); //rel_box(k, i)
-                rvec_iMultiply( ext_press, rel_box, temp );
-                rvec_Add( data_ext_press, ext_press );
-            }
-        }
-
-        /* then atom j itself */
-        /* 1st, dBO */
-        rvec_Scale( temp, -coef.C1dbo, bo_ij->dBOp );
-        /* 2nd, dBO */
-        rvec_ScaledAdd( temp, coef.C3dbo, workspace->dDeltap_self[j] );
-
-        /* 1st, dBO */
-        rvec_ScaledAdd( temp, -coef.C1dDelta, bo_ij->dBOp );
-        /* 2nd, dBO */
-        rvec_ScaledAdd( temp, coef.C3dDelta, workspace->dDeltap_self[j] );
-
-        /* 1st, dBOpi */
-        rvec_ScaledAdd( temp, -coef.C1dbopi, bo_ij->dln_BOp_pi );
-        /* 2nd, dBOpi */
-        rvec_ScaledAdd( temp, -coef.C2dbopi, bo_ij->dBOp );
-        /* 3rd, dBOpi */
-        rvec_ScaledAdd( temp, coef.C4dbopi, workspace->dDeltap_self[j] );
-
-        /* 1st, dBOpi2 */
-        rvec_ScaledAdd( temp, -coef.C1dbopi2, bo_ij->dln_BOp_pi2 );
-        /* 2nd, dBOpi2 */
-        rvec_ScaledAdd( temp, -coef.C2dbopi2, bo_ij->dBOp );
+        rvec_ScaledAdd( temp, -coef.C3dbopi, nbr_k->bo_data.dBOp );
         /* 3rd, dBOpi2 */
-        rvec_ScaledAdd( temp, coef.C4dbopi2, workspace->dDeltap_self[j] );
+        rvec_ScaledAdd( temp, -coef.C3dbopi2, nbr_k->bo_data.dBOp );
 
         /* force */
 #if !defined(CUDA_ACCUM_ATOMIC)
-        rvec_Add( workspace->f[j], temp );
+        rvec_Add( nbr_k->tf_f, temp );
 #else
-        atomic_rvecAdd( workspace->f[j], temp );
+        atomic_rvecAdd( workspace->f[k], temp );
 #endif
         /* pressure */
-        rvec_iMultiply( ext_press, nbr_j->rel_box, temp );
-        rvec_Add( data->my_ext_press, ext_press );
+        rvec_iMultiply( ext_press, nbr_k->rel_box, temp );
+        rvec_Add( data_ext_press, ext_press );
     }
+
+    /* then atom i itself */
+    /* 1st, dBO */
+    rvec_Scale( temp, coef.C1dbo, bo_ij->dBOp );
+    /* 2nd, dBO */
+    rvec_ScaledAdd( temp, coef.C2dbo, workspace->dDeltap_self[i] );
+
+    /* 1st, dBO */
+    rvec_ScaledAdd( temp, coef.C1dDelta, bo_ij->dBOp );
+    /* 2nd, dBO */
+    rvec_ScaledAdd( temp, coef.C2dDelta, workspace->dDeltap_self[i] );
+
+    /* 1st, dBOpi */
+    rvec_ScaledAdd( temp, coef.C1dbopi, bo_ij->dln_BOp_pi );
+    /* 2nd, dBOpi */
+    rvec_ScaledAdd( temp, coef.C2dbopi, bo_ij->dBOp );
+    /* 3rd, dBOpi */
+    rvec_ScaledAdd( temp, coef.C3dbopi, workspace->dDeltap_self[i] );
+
+    /* 1st, dBO_pi2 */
+    rvec_ScaledAdd( temp, coef.C1dbopi2, bo_ij->dln_BOp_pi2 );
+    /* 2nd, dBO_pi2 */
+    rvec_ScaledAdd( temp, coef.C2dbopi2, bo_ij->dBOp );
+    /* 3rd, dBO_pi2 */
+    rvec_ScaledAdd( temp, coef.C3dbopi2, workspace->dDeltap_self[i] );
+
+    /* force */
+    atomic_rvecAdd( workspace->f[i], temp );
+    /* ext pressure due to i is dropped, counting force on j will be enough */
+
+    /******************************************************
+     * forces and pressure related to atom j               *
+     * first neighbors of atom j                           *
+     ******************************************************/
+    for ( pk = Start_Index(j, bond_list); pk < End_Index(j, bond_list); ++pk )
+    {
+        nbr_k = &bond_list->bond_list[pk];
+        k = nbr_k->nbr;
+
+        /* 3rd, dBO */
+        rvec_Scale( temp, -coef.C3dbo, nbr_k->bo_data.dBOp );
+        /* dDelta */
+        rvec_ScaledAdd( temp, -coef.C3dDelta, nbr_k->bo_data.dBOp );
+        /* 4th, dBOpi */
+        rvec_ScaledAdd( temp, -coef.C4dbopi, nbr_k->bo_data.dBOp );
+        /* 4th, dBOpi2 */
+        rvec_ScaledAdd( temp, -coef.C4dbopi2, nbr_k->bo_data.dBOp );
+
+        /* force */
+        atomic_rvecAdd( workspace->f[k], temp );
+        /* pressure */
+        if ( k != i )
+        {
+            ivec_Sum( rel_box, nbr_k->rel_box, nbr_j->rel_box ); //rel_box(k, i)
+            rvec_iMultiply( ext_press, rel_box, temp );
+            rvec_Add( data_ext_press, ext_press );
+        }
+    }
+
+    /* then atom j itself */
+    /* 1st, dBO */
+    rvec_Scale( temp, -coef.C1dbo, bo_ij->dBOp );
+    /* 2nd, dBO */
+    rvec_ScaledAdd( temp, coef.C3dbo, workspace->dDeltap_self[j] );
+
+    /* 1st, dBO */
+    rvec_ScaledAdd( temp, -coef.C1dDelta, bo_ij->dBOp );
+    /* 2nd, dBO */
+    rvec_ScaledAdd( temp, coef.C3dDelta, workspace->dDeltap_self[j] );
+
+    /* 1st, dBOpi */
+    rvec_ScaledAdd( temp, -coef.C1dbopi, bo_ij->dln_BOp_pi );
+    /* 2nd, dBOpi */
+    rvec_ScaledAdd( temp, -coef.C2dbopi, bo_ij->dBOp );
+    /* 3rd, dBOpi */
+    rvec_ScaledAdd( temp, coef.C4dbopi, workspace->dDeltap_self[j] );
+
+    /* 1st, dBOpi2 */
+    rvec_ScaledAdd( temp, -coef.C1dbopi2, bo_ij->dln_BOp_pi2 );
+    /* 2nd, dBOpi2 */
+    rvec_ScaledAdd( temp, -coef.C2dbopi2, bo_ij->dBOp );
+    /* 3rd, dBOpi2 */
+    rvec_ScaledAdd( temp, coef.C4dbopi2, workspace->dDeltap_self[j] );
+
+    /* force */
+    atomic_rvecAdd( workspace->f[j], temp );
+    /* pressure */
+    rvec_iMultiply( ext_press, nbr_j->rel_box, temp );
+    rvec_Add( data_ext_press, ext_press );
 }
 
 
 CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
-        storage *workspace, reax_list *bond_list )
+        storage *workspace, reax_list *bond_list, rvec *f_i )
 {
     bond_data *nbr_j, *nbr_k;
     bond_order_data *bo_ij, *bo_ji;
     dbond_coefficients coef;
-    int pk, j;
+    int pk, j, k;
     rvec temp;
 
     nbr_j = &bond_list->bond_list[pj];
     j = nbr_j->nbr;
-    if ( i < j )
-    {
-        bo_ij = &nbr_j->bo_data;
-        bo_ji = &bond_list->bond_list[ nbr_j->sym_index ].bo_data;
-    }
-    else
-    {
-        bo_ij = &bond_list->bond_list[ nbr_j->sym_index ].bo_data;
-        bo_ji = &nbr_j->bo_data;
-    }
+    bo_ij = &nbr_j->bo_data;
+    bo_ji = &bond_list->bond_list[ nbr_j->sym_index ].bo_data;
 
     coef.C1dbo = bo_ij->C1dbo * (bo_ij->Cdbo + bo_ji->Cdbo);
     coef.C2dbo = bo_ij->C2dbo * (bo_ij->Cdbo + bo_ji->Cdbo);
@@ -235,110 +203,94 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
     coef.C2dDelta = bo_ij->C2dbo * (workspace->CdDelta[i] + workspace->CdDelta[j]);
     coef.C3dDelta = bo_ij->C3dbo * (workspace->CdDelta[i] + workspace->CdDelta[j]);
 
-    if ( i < j )
+    for ( pk = Start_Index(i, bond_list); pk < End_Index(i, bond_list); ++pk )
     {
-        for ( pk = Start_Index(i, bond_list); pk < End_Index(i, bond_list); ++pk )
-        {
-            nbr_k = &bond_list->bond_list[pk];
+        nbr_k = &bond_list->bond_list[pk];
 
-            /* 2nd, dBO */
-            rvec_Scale( temp, -coef.C2dbo, nbr_k->bo_data.dBOp );
-            /* dDelta */
-            rvec_ScaledAdd( temp, -coef.C2dDelta, nbr_k->bo_data.dBOp );
-            /* 3rd, dBOpi */
-            rvec_ScaledAdd( temp, -coef.C3dbopi, nbr_k->bo_data.dBOp );
-            /* 3rd, dBOpi2 */
-            rvec_ScaledAdd( temp, -coef.C3dbopi2, nbr_k->bo_data.dBOp );
-
-#if !defined(CUDA_ACCUM_ATOMIC)
-            rvec_Add( nbr_k->tf_f, temp );
-#else
-            atomic_rvecAdd( workspace->f[nbr_k->nbr], temp );
-#endif
-        }
-
-        /* 1st, dBO */
-        rvec_Scale( temp, coef.C1dbo, bo_ij->dBOp );
         /* 2nd, dBO */
-        rvec_ScaledAdd( temp, coef.C2dbo, workspace->dDeltap_self[i] );
-
-        /* 1st, dBO */
-        rvec_ScaledAdd( temp, coef.C1dDelta, bo_ij->dBOp );
-        /* 2nd, dBO */
-        rvec_ScaledAdd( temp, coef.C2dDelta, workspace->dDeltap_self[i] );
-
-        /* 1st, dBOpi */
-        rvec_ScaledAdd( temp, coef.C1dbopi, bo_ij->dln_BOp_pi );
-        /* 2nd, dBOpi */
-        rvec_ScaledAdd( temp, coef.C2dbopi, bo_ij->dBOp );
+        rvec_Scale( temp, -coef.C2dbo, nbr_k->bo_data.dBOp );
+        /* dDelta */
+        rvec_ScaledAdd( temp, -coef.C2dDelta, nbr_k->bo_data.dBOp );
         /* 3rd, dBOpi */
-        rvec_ScaledAdd( temp, coef.C3dbopi, workspace->dDeltap_self[i] );
-
-        /* 1st, dBO_pi2 */
-        rvec_ScaledAdd( temp, coef.C1dbopi2, bo_ij->dln_BOp_pi2 );
-        /* 2nd, dBO_pi2 */
-        rvec_ScaledAdd( temp, coef.C2dbopi2, bo_ij->dBOp );
-        /* 3rd, dBO_pi2 */
-        rvec_ScaledAdd( temp, coef.C3dbopi2, workspace->dDeltap_self[i] );
-
-#if !defined(CUDA_ACCUM_ATOMIC)
-        rvec_Add( workspace->f[i], temp );
-#else
-        atomic_rvecAdd( workspace->f[i], temp );
-#endif
-    }
-    else
-    {
-        for ( pk = Start_Index(i, bond_list); pk < End_Index(i, bond_list); ++pk )
-        {
-            nbr_k = &bond_list->bond_list[pk];
-
-            /* 3rd, dBO */
-            rvec_Scale( temp, -coef.C3dbo, nbr_k->bo_data.dBOp );
-            /* dDelta */
-            rvec_ScaledAdd( temp, -coef.C3dDelta, nbr_k->bo_data.dBOp );
-            /* 4th, dBOpi */
-            rvec_ScaledAdd( temp, -coef.C4dbopi, nbr_k->bo_data.dBOp );
-            /* 4th, dBOpi2 */
-            rvec_ScaledAdd( temp, -coef.C4dbopi2, nbr_k->bo_data.dBOp );
-
-#if !defined(CUDA_ACCUM_ATOMIC)
-            rvec_Add( nbr_k->tf_f, temp );
-#else
-            atomic_rvecAdd( workspace->f[nbr_k->nbr], temp );
-#endif
-        }
-
-        /* 1st, dBO */
-        rvec_Scale( temp, -coef.C1dbo, bo_ij->dBOp );
-        /* 2nd, dBO */
-        rvec_ScaledAdd( temp, coef.C3dbo, workspace->dDeltap_self[i] );
-
-        /* 1st, dBO */
-        rvec_ScaledAdd( temp, -coef.C1dDelta, bo_ij->dBOp );
-        /* 2nd, dBO */
-        rvec_ScaledAdd( temp, coef.C3dDelta, workspace->dDeltap_self[i] );
-
-        /* 1st, dBOpi */
-        rvec_ScaledAdd( temp, -coef.C1dbopi, bo_ij->dln_BOp_pi );
-        /* 2nd, dBOpi */
-        rvec_ScaledAdd( temp, -coef.C2dbopi, bo_ij->dBOp );
-        /* 3rd, dBOpi */
-        rvec_ScaledAdd( temp, coef.C4dbopi, workspace->dDeltap_self[i] );
-
-        /* 1st, dBOpi2 */
-        rvec_ScaledAdd( temp, -coef.C1dbopi2, bo_ij->dln_BOp_pi2 );
-        /* 2nd, dBOpi2 */
-        rvec_ScaledAdd( temp, -coef.C2dbopi2, bo_ij->dBOp );
+        rvec_ScaledAdd( temp, -coef.C3dbopi, nbr_k->bo_data.dBOp );
         /* 3rd, dBOpi2 */
-        rvec_ScaledAdd( temp, coef.C4dbopi2, workspace->dDeltap_self[i] );
+        rvec_ScaledAdd( temp, -coef.C3dbopi2, nbr_k->bo_data.dBOp );
 
 #if !defined(CUDA_ACCUM_ATOMIC)
-        rvec_Add( workspace->f[i], temp );
+        rvec_Add( nbr_k->tf_f, temp );
 #else
-        atomic_rvecAdd( workspace->f[i], temp );
+        atomic_rvecAdd( workspace->f[nbr_k->nbr], temp );
 #endif
     }
+
+    /* 1st, dBO */
+    rvec_Scale( temp, coef.C1dbo, bo_ij->dBOp );
+    /* 2nd, dBO */
+    rvec_ScaledAdd( temp, coef.C2dbo, workspace->dDeltap_self[i] );
+
+    /* 1st, dBO */
+    rvec_ScaledAdd( temp, coef.C1dDelta, bo_ij->dBOp );
+    /* 2nd, dBO */
+    rvec_ScaledAdd( temp, coef.C2dDelta, workspace->dDeltap_self[i] );
+
+    /* 1st, dBOpi */
+    rvec_ScaledAdd( temp, coef.C1dbopi, bo_ij->dln_BOp_pi );
+    /* 2nd, dBOpi */
+    rvec_ScaledAdd( temp, coef.C2dbopi, bo_ij->dBOp );
+    /* 3rd, dBOpi */
+    rvec_ScaledAdd( temp, coef.C3dbopi, workspace->dDeltap_self[i] );
+
+    /* 1st, dBO_pi2 */
+    rvec_ScaledAdd( temp, coef.C1dbopi2, bo_ij->dln_BOp_pi2 );
+    /* 2nd, dBO_pi2 */
+    rvec_ScaledAdd( temp, coef.C2dbopi2, bo_ij->dBOp );
+    /* 3rd, dBO_pi2 */
+    rvec_ScaledAdd( temp, coef.C3dbopi2, workspace->dDeltap_self[i] );
+
+    rvec_Add( *f_i, temp );
+
+    for ( pk = Start_Index(j, bond_list); pk < End_Index(j, bond_list); ++pk )
+    {
+        nbr_k = &bond_list->bond_list[pk];
+        k = nbr_k->nbr;
+
+        /* 3rd, dBO */
+        rvec_Scale( temp, -coef.C3dbo, nbr_k->bo_data.dBOp );
+        /* dDelta */
+        rvec_ScaledAdd( temp, -coef.C3dDelta, nbr_k->bo_data.dBOp );
+        /* 4th, dBOpi */
+        rvec_ScaledAdd( temp, -coef.C4dbopi, nbr_k->bo_data.dBOp );
+        /* 4th, dBOpi2 */
+        rvec_ScaledAdd( temp, -coef.C4dbopi2, nbr_k->bo_data.dBOp );
+
+        atomic_rvecAdd( workspace->f[k], temp );
+    }
+
+    /* 1st, dBO */
+    rvec_Scale( temp, -coef.C1dbo, bo_ij->dBOp );
+    /* 2nd, dBO */
+    rvec_ScaledAdd( temp, coef.C3dbo, workspace->dDeltap_self[j] );
+
+    /* 1st, dBO */
+    rvec_ScaledAdd( temp, -coef.C1dDelta, bo_ij->dBOp );
+    /* 2nd, dBO */
+    rvec_ScaledAdd( temp, coef.C3dDelta, workspace->dDeltap_self[j] );
+
+    /* 1st, dBOpi */
+    rvec_ScaledAdd( temp, -coef.C1dbopi, bo_ij->dln_BOp_pi );
+    /* 2nd, dBOpi */
+    rvec_ScaledAdd( temp, -coef.C2dbopi, bo_ij->dBOp );
+    /* 3rd, dBOpi */
+    rvec_ScaledAdd( temp, coef.C4dbopi, workspace->dDeltap_self[j] );
+
+    /* 1st, dBOpi2 */
+    rvec_ScaledAdd( temp, -coef.C1dbopi2, bo_ij->dln_BOp_pi2 );
+    /* 2nd, dBOpi2 */
+    rvec_ScaledAdd( temp, -coef.C2dbopi2, bo_ij->dBOp );
+    /* 3rd, dBOpi2 */
+    rvec_ScaledAdd( temp, coef.C4dbopi2, workspace->dDeltap_self[j] );
+
+    atomic_rvecAdd( workspace->f[j], temp );
 }
 
 
@@ -669,9 +621,87 @@ CUDA_GLOBAL void k_bond_order_part4( reax_atom *my_atoms,
 }
 
 
-CUDA_GLOBAL void k_total_forces_part1( storage workspace, reax_list bond_list, 
-        control_params *control, simulation_data *data, rvec *data_ext_press,
+CUDA_GLOBAL void k_total_forces_part1( storage workspace, reax_list bond_list,
         int N )
+{
+    int i, pj;
+    rvec f_i;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= N )
+    {
+        return;
+    }
+
+    rvec_MakeZero( f_i );
+
+    for ( pj = Start_Index( i, &bond_list ); pj < End_Index( i, &bond_list ); ++pj )
+    {
+        if ( i < bond_list.bond_list[pj].nbr )
+        {
+            Cuda_Add_dBond_to_Forces( i, pj, &workspace, &bond_list, &f_i );
+        }
+    }
+
+#if !defined(CUDA_ACCUM_ATOMIC)
+    rvec_Add( workspace->f[i], f_i );
+#else
+    atomic_rvecAdd( workspace.f[i], f_i );
+#endif
+}
+
+
+CUDA_GLOBAL void k_total_forces_part1_opt( storage workspace, reax_list bond_list,
+        int N )
+{
+    extern __shared__ cub::WarpReduce<double>::TempStorage temp_d[];
+    int i, pj, start_i, end_i, thread_id, lane_id, itr;
+    rvec f_i;
+
+    thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+    /* all threads within a warp are assigned the interactions
+     * for a unique atom */
+    i = thread_id / warpSize;
+
+    if ( i >= N )
+    {
+        return;
+    }
+
+    lane_id = thread_id % warpSize;
+    start_i = Start_Index( i, &bond_list );
+    end_i = End_Index( i, &bond_list );
+    rvec_MakeZero( f_i );
+
+    for ( itr = 0, pj = start_i + lane_id; itr < (end_i - start_i + warpSize - 1) / warpSize; ++itr )
+    {
+        if ( pj < end_i && i < bond_list.bond_list[pj].nbr )
+        {
+            Cuda_Add_dBond_to_Forces( i, pj, &workspace, &bond_list, &f_i );
+        }
+
+        pj += warpSize;
+    }
+
+    f_i[0] = cub::WarpReduce<double>(temp_d[i % (blockDim.x / warpSize)]).Sum(f_i[0]);
+    f_i[1] = cub::WarpReduce<double>(temp_d[i % (blockDim.x / warpSize)]).Sum(f_i[1]);
+    f_i[2] = cub::WarpReduce<double>(temp_d[i % (blockDim.x / warpSize)]).Sum(f_i[2]);
+
+    if ( lane_id == 0 )
+    {
+#if !defined(CUDA_ACCUM_ATOMIC)
+        rvec_Add( workspace->f[i], f_i );
+#else
+        atomic_rvecAdd( workspace.f[i], f_i );
+#endif
+    }
+}
+
+
+CUDA_GLOBAL void k_total_forces_virial_part1( storage workspace,
+        reax_list bond_list, simulation_data *data,
+        rvec *data_ext_press, int N )
 {
     int i, pj;
 
@@ -682,16 +712,9 @@ CUDA_GLOBAL void k_total_forces_part1( storage workspace, reax_list bond_list,
         return;
     }
 
-    if ( control->virial == 0 )
+    for ( pj = Start_Index( i, &bond_list ); pj < End_Index( i, &bond_list ); ++pj )
     {
-        for ( pj = Start_Index( i, &bond_list ); pj < End_Index( i, &bond_list ); ++pj )
-        {
-            Cuda_Add_dBond_to_Forces( i, pj, &workspace, &bond_list );
-        }
-    }
-    else 
-    {
-        for ( pj = Start_Index( i, &bond_list ); pj < End_Index( i, &bond_list ); ++pj )
+        if ( i < bond_list.bond_list[pj].nbr )
         {
             Cuda_Add_dBond_to_Forces_NPT( i, pj, data, &workspace, &bond_list,
                     data_ext_press[i] );
@@ -774,25 +797,44 @@ void Cuda_Total_Forces_Part1( reax_system *system, control_params *control,
     int blocks;
     rvec *spad_rvec;
 
-    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-            sizeof(rvec) * 2 * system->N,
-            "Cuda_Total_Forces_Part1::workspace->scratch" );
-    spad_rvec = (rvec *) workspace->scratch;
-    cuda_memset( spad_rvec, 0, sizeof(rvec) * 2 * system->N,
-            "total_forces:ext_press" );
-
-    blocks = system->N / DEF_BLOCK_SIZE
-        + ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
-
-    k_total_forces_part1 <<< blocks, DEF_BLOCK_SIZE >>>
-        ( *(workspace->d_workspace), *(lists[BONDS]), 
-          (control_params *) control->d_control_params, 
-          (simulation_data *)data->d_simulation_data, 
-          spad_rvec, system->N );
-    cudaCheckError( );
-
-    if ( control->virial != 0 )
+    if ( control->virial == 0 )
     {
+//        blocks = system->N / DEF_BLOCK_SIZE
+//            + ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+//
+//        k_total_forces_part1 <<< blocks, DEF_BLOCK_SIZE >>>
+//            ( *(workspace->d_workspace), *(lists[BONDS]), system->N );
+//        cudaCheckError( );
+
+        blocks = system->N * 32 / DEF_BLOCK_SIZE
+            + ((system->N * 32 % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+
+        k_total_forces_part1_opt <<< blocks, DEF_BLOCK_SIZE,
+                                 sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32) >>>
+            ( *(workspace->d_workspace), *(lists[BONDS]), system->N );
+        cudaCheckError( );
+    }
+    else
+    {
+        cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
+                sizeof(rvec) * 2 * system->N,
+                "Cuda_Total_Forces_Part1::workspace->scratch" );
+        spad_rvec = (rvec *) workspace->scratch;
+        cuda_memset( spad_rvec, 0, sizeof(rvec) * 2 * system->N,
+                "total_forces:ext_press" );
+
+        blocks = system->N / DEF_BLOCK_SIZE
+            + ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+
+        k_total_forces_virial_part1 <<< blocks, DEF_BLOCK_SIZE >>>
+            ( *(workspace->d_workspace), *(lists[BONDS]), 
+              (simulation_data *)data->d_simulation_data, 
+              spad_rvec, system->N );
+        cudaCheckError( );
+
+        blocks = system->N / DEF_BLOCK_SIZE
+            + ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+
         /* reduction for ext_press */
         k_reduction_rvec <<< blocks, DEF_BLOCK_SIZE, sizeof(rvec) * (DEF_BLOCK_SIZE / 32) >>> 
             ( spad_rvec, &spad_rvec[system->N], system->N );
@@ -804,6 +846,9 @@ void Cuda_Total_Forces_Part1( reax_system *system, control_params *control,
     }
 
 #if !defined(CUDA_ACCUM_ATOMIC)
+    blocks = system->N / DEF_BLOCK_SIZE
+        + ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+
     /* post processing for the atomic forces */
     k_total_forces_part1_2  <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, *(lists[BONDS]), *(workspace->d_workspace), system->N );
