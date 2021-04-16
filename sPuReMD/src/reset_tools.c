@@ -137,6 +137,9 @@ void Reset_Energies( simulation_data* data )
     data->E_vdW = 0.0;
     data->E_Ele = 0.0;
     data->E_Pol = 0.0;
+    data->E_Bond_Rest = 0.0;
+    data->E_Ang_Rest = 0.0;
+    data->E_Tors_Rest = 0.0;
 }
 
 
