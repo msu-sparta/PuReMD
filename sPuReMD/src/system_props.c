@@ -213,8 +213,8 @@ void Compute_Total_Energy( simulation_data* data )
 {
     data->E_Pot = data->E_BE + data->E_Ov + data->E_Un  + data->E_Lp +
         data->E_Ang + data->E_Pen + data->E_Coa + data->E_HB +
-        data->E_Tor + data->E_Con + data->E_vdW + data->E_Ele + data->E_Pol;
-
+        data->E_Tor + data->E_Con + data->E_vdW + data->E_Ele + data->E_Pol +
+        data->E_Bond_Rest + data->E_Ang_Rest + data->E_Tors_Rest;
 
     data->E_Tot = data->E_Pot + data->E_Kin * E_CONV;
 }

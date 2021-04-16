@@ -296,7 +296,9 @@ static void Compute_Bond_Restraint_Forces( reax_system *system, control_params *
             real drda = (a1->x[j] - a2->x[j]) / dist;
             a1->f[j] += deresdr * drda;
             a2->f[j] += -deresdr * drda;            
-        }   
+        } 
+
+        //fprintf(stdout, "A1: %d A2: %d distance: %f, pot:%f\n", br.atom_inds[0],br.atom_inds[1], dist, erh);  
     }
 }
 
