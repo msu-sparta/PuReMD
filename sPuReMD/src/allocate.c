@@ -27,24 +27,33 @@
 /* Allocate space for restraints */
 void Allocate_Restraint_Space( reax_system *system, int bond_rest_cnt, int ang_rest_cnt, int tors_rest_cnt )
 {
+    if (system->restraints_allocated == TRUE) 
+    {
+        Deallocate_Restraint_Space( system );
+    }
     /* Allocate +1 in case there is no restraint  */
     system->bond_restraints = scalloc( bond_rest_cnt+1, sizeof(bond_restraint),
             "Allocate_Restraint_Space::system->bond_restraints" );
     system->angle_restraints = scalloc( ang_rest_cnt+1, sizeof(angle_restraint),
             "Allocate_Restraint_Space::system->angle_restraints" );
     system->torsion_restraints = scalloc( tors_rest_cnt+1, sizeof(torsion_restraint),
-            "Allocate_Restraint_Space::system->torsion_restraints" );    
+            "Allocate_Restraint_Space::system->torsion_restraints" ); 
+    system->restraints_allocated = TRUE;  
 }
 
 /* Deallocate space for restraints */
 void Deallocate_Restraint_Space( reax_system *system )
 {
-    sfree( system->bond_restraints,
-            "Deallocate_Restraint_Space::system->bond_restraints" );  
-    sfree( system->angle_restraints,
-            "Deallocate_Restraint_Space::system->bond_restraints" );
-    sfree( system->torsion_restraints,
-            "Deallocate_Restraint_Space::system->bond_restraints" ); 
+    if (system->restraints_allocated) 
+    {
+        sfree( system->bond_restraints,
+                "Deallocate_Restraint_Space::system->bond_restraints" );  
+        sfree( system->angle_restraints,
+                "Deallocate_Restraint_Space::system->bond_restraints" );
+        sfree( system->torsion_restraints,
+                "Deallocate_Restraint_Space::system->bond_restraints" ); 
+        system->restraints_allocated = FALSE; 
+    }
 }
 
 /* allocate space for atoms */

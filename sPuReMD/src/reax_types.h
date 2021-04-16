@@ -937,6 +937,8 @@ struct reax_system
     simulation_box box;
     /* grid structure used for binning atoms and tracking neighboring bins */
     grid g;
+    /* 0 if struct members are NOT allocated, 1 otherwise */
+    int restraints_allocated;
     /* restraints and their counts */
     int bond_rest_cnt;
     int ang_rest_cnt;
@@ -944,6 +946,7 @@ struct reax_system
     bond_restraint *bond_restraints;
     angle_restraint *angle_restraints;
     torsion_restraint *torsion_restraints;
+
 };
 
 

@@ -354,7 +354,9 @@ static void Compute_Angle_Restraint_Forces( reax_system *system, control_params 
             a1->f[j] += deresdv * dcos_theta_di[j] * sin_thata_inv;
             a2->f[j] += deresdv * dcos_theta_dj[j] * sin_thata_inv;
             a3->f[j] += deresdv * dcos_theta_dk[j] * sin_thata_inv;         
-        }           
+        } 
+        //fprintf(stdout, "A1: %d A2: %d A3: %d Angle: %f,T_Angle: %f, pot:%f\n", ar.atom_inds[0],ar.atom_inds[1],
+        //              ar.atom_inds[2], vaval, ar.t_ang, erh);          
 
 
         

@@ -199,6 +199,11 @@ static void Initialize_Top_Level_Structs( spuremd_handle * handle )
     handle->system->prealloc_allocated = FALSE;
     handle->system->ffield_params_allocated = FALSE;
     handle->system->g.allocated = FALSE;
+    handle->system->restraints_allocated = FALSE;
+    // Initalize restraint counts
+    handle->system->bond_rest_cnt = 0;
+    handle->system->ang_rest_cnt = 0;
+    handle->system->tors_rest_cnt = 0;
 
     handle->workspace->H.allocated = FALSE;
     handle->workspace->H_full.allocated = FALSE;
