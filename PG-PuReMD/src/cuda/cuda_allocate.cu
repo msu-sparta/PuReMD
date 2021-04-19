@@ -490,6 +490,12 @@ void Cuda_Allocate_Workspace_Part2( reax_system *system, control_params *control
         cuda_malloc( (void **) &workspace->d, total_real, TRUE, "d" );
         cuda_malloc( (void **) &workspace->q, total_real, TRUE, "q" );
         cuda_malloc( (void **) &workspace->p, total_real, TRUE, "p" );
+#if defined(DUAL_SOLVER)
+        cuda_malloc( (void **) &workspace->r2, total_rvec2, TRUE, "r2" );
+        cuda_malloc( (void **) &workspace->d2, total_rvec2, TRUE, "d2" );
+        cuda_malloc( (void **) &workspace->q2, total_rvec2, TRUE, "q2" );
+        cuda_malloc( (void **) &workspace->p2, total_rvec2, TRUE, "p2" );
+#endif
         break;
 
     case CG_S:
@@ -529,9 +535,49 @@ void Cuda_Allocate_Workspace_Part2( reax_system *system, control_params *control
         break;
 
     case PIPECG_S:
+        cuda_malloc( (void **) &workspace->z, total_real, TRUE, "z" );
+        cuda_malloc( (void **) &workspace->r, total_real, TRUE, "r" );
+        cuda_malloc( (void **) &workspace->d, total_real, TRUE, "d" );
+        cuda_malloc( (void **) &workspace->q, total_real, TRUE, "q" );
+        cuda_malloc( (void **) &workspace->p, total_real, TRUE, "p" );
+        cuda_malloc( (void **) &workspace->m, total_real, TRUE, "m" );
+        cuda_malloc( (void **) &workspace->n, total_real, TRUE, "n" );
+        cuda_malloc( (void **) &workspace->u, total_real, TRUE, "u" );
+        cuda_malloc( (void **) &workspace->w, total_real, TRUE, "w" );
+#if defined(DUAL_SOLVER)
+        cuda_malloc( (void **) &workspace->z2, total_rvec2, TRUE, "z2" );
+        cuda_malloc( (void **) &workspace->r2, total_rvec2, TRUE, "r2" );
+        cuda_malloc( (void **) &workspace->d2, total_rvec2, TRUE, "d2" );
+        cuda_malloc( (void **) &workspace->q2, total_rvec2, TRUE, "q2" );
+        cuda_malloc( (void **) &workspace->p2, total_rvec2, TRUE, "p2" );
+        cuda_malloc( (void **) &workspace->m2, total_rvec2, TRUE, "m2" );
+        cuda_malloc( (void **) &workspace->n2, total_rvec2, TRUE, "n2" );
+        cuda_malloc( (void **) &workspace->u2, total_rvec2, TRUE, "u2" );
+        cuda_malloc( (void **) &workspace->w2, total_rvec2, TRUE, "w2" );
+#endif
         break;
 
     case PIPECR_S:
+        cuda_malloc( (void **) &workspace->z, total_real, TRUE, "z" );
+        cuda_malloc( (void **) &workspace->r, total_real, TRUE, "r" );
+        cuda_malloc( (void **) &workspace->d, total_real, TRUE, "d" );
+        cuda_malloc( (void **) &workspace->q, total_real, TRUE, "q" );
+        cuda_malloc( (void **) &workspace->p, total_real, TRUE, "p" );
+        cuda_malloc( (void **) &workspace->m, total_real, TRUE, "m" );
+        cuda_malloc( (void **) &workspace->n, total_real, TRUE, "n" );
+        cuda_malloc( (void **) &workspace->u, total_real, TRUE, "u" );
+        cuda_malloc( (void **) &workspace->w, total_real, TRUE, "w" );
+#if defined(DUAL_SOLVER)
+        cuda_malloc( (void **) &workspace->z2, total_rvec2, TRUE, "z2" );
+        cuda_malloc( (void **) &workspace->r2, total_rvec2, TRUE, "r2" );
+        cuda_malloc( (void **) &workspace->d2, total_rvec2, TRUE, "d2" );
+        cuda_malloc( (void **) &workspace->q2, total_rvec2, TRUE, "q2" );
+        cuda_malloc( (void **) &workspace->p2, total_rvec2, TRUE, "p2" );
+        cuda_malloc( (void **) &workspace->m2, total_rvec2, TRUE, "m2" );
+        cuda_malloc( (void **) &workspace->n2, total_rvec2, TRUE, "n2" );
+        cuda_malloc( (void **) &workspace->u2, total_rvec2, TRUE, "u2" );
+        cuda_malloc( (void **) &workspace->w2, total_rvec2, TRUE, "w2" );
+#endif
         break;
 
     default:
@@ -651,6 +697,12 @@ void Cuda_Deallocate_Workspace_Part2( control_params *control, storage *workspac
             cuda_free( workspace->d, "d" );
             cuda_free( workspace->q, "q" );
             cuda_free( workspace->p, "p" );
+#if defined(DUAL_SOLVER)
+            cuda_free( workspace->r2, "r2" );
+            cuda_free( workspace->d2, "d2" );
+            cuda_free( workspace->q2, "q2" );
+            cuda_free( workspace->p2, "p2" );
+#endif
             break;
 
         case BiCGStab_S:
@@ -677,9 +729,49 @@ void Cuda_Deallocate_Workspace_Part2( control_params *control, storage *workspac
             break;
 
         case PIPECG_S:
+            cuda_free( workspace->z, "z" );
+            cuda_free( workspace->r, "r" );
+            cuda_free( workspace->d, "d" );
+            cuda_free( workspace->q, "q" );
+            cuda_free( workspace->p, "p" );
+            cuda_free( workspace->m, "m" );
+            cuda_free( workspace->n, "n" );
+            cuda_free( workspace->u, "u" );
+            cuda_free( workspace->w, "w" );
+#if defined(DUAL_SOLVER)
+            cuda_free( workspace->z2, "z2" );
+            cuda_free( workspace->r2, "r2" );
+            cuda_free( workspace->d2, "d2" );
+            cuda_free( workspace->q2, "q2" );
+            cuda_free( workspace->p2, "p2" );
+            cuda_free( workspace->m2, "m2" );
+            cuda_free( workspace->n2, "n2" );
+            cuda_free( workspace->u2, "u2" );
+            cuda_free( workspace->w2, "w2" );
+#endif
             break;
 
         case PIPECR_S:
+            cuda_free( workspace->z, "z" );
+            cuda_free( workspace->r, "r" );
+            cuda_free( workspace->d, "d" );
+            cuda_free( workspace->q, "q" );
+            cuda_free( workspace->p, "p" );
+            cuda_free( workspace->m, "m" );
+            cuda_free( workspace->n, "n" );
+            cuda_free( workspace->u, "u" );
+            cuda_free( workspace->w, "w" );
+#if defined(DUAL_SOLVER)
+            cuda_free( workspace->z2, "z2" );
+            cuda_free( workspace->r2, "r2" );
+            cuda_free( workspace->d2, "d2" );
+            cuda_free( workspace->q2, "q2" );
+            cuda_free( workspace->p2, "p2" );
+            cuda_free( workspace->m2, "m2" );
+            cuda_free( workspace->n2, "n2" );
+            cuda_free( workspace->u2, "u2" );
+            cuda_free( workspace->w2, "w2" );
+#endif
             break;
 
         default:

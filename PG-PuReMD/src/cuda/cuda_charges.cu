@@ -630,6 +630,16 @@ void QEq( reax_system const * const system, control_params const * const control
         break;
 
     case SDM_S:
+#if defined(DUAL_SOLVER)
+        iters = Cuda_dual_SDM( system, control, data, workspace,
+                &workspace->d_workspace->H, workspace->d_workspace->b,
+                control->cm_solver_q_err, workspace->d_workspace->x, mpi_data );
+#else
+        iters = Cuda_SDM( system, control, data, workspace, &workspace->d_workspace->H,
+                workspace->d_workspace->b_s, control->cm_solver_q_err, workspace->d_workspace->s, mpi_data );
+        iters += Cuda_SDM( system, control, data, workspace, &workspace->d_workspace->H,
+                workspace->d_workspace->b_t, control->cm_solver_q_err, workspace->d_workspace->t, mpi_data );
+#endif
         break;
 
     case BiCGStab_S:
@@ -646,9 +656,29 @@ void QEq( reax_system const * const system, control_params const * const control
         break;
 
     case PIPECG_S:
+#if defined(DUAL_SOLVER)
+        iters = Cuda_dual_PIPECG( system, control, data, workspace,
+                &workspace->d_workspace->H, workspace->d_workspace->b,
+                control->cm_solver_q_err, workspace->d_workspace->x, mpi_data );
+#else
+        iters = Cuda_PIPECG( system, control, data, workspace, &workspace->d_workspace->H,
+                workspace->d_workspace->b_s, control->cm_solver_q_err, workspace->d_workspace->s, mpi_data );
+        iters += Cuda_PIPECG( system, control, data, workspace, &workspace->d_workspace->H,
+                workspace->d_workspace->b_t, control->cm_solver_q_err, workspace->d_workspace->t, mpi_data );
+#endif
         break;
 
     case PIPECR_S:
+#if defined(DUAL_SOLVER)
+        iters = Cuda_dual_PIPECR( system, control, data, workspace,
+                &workspace->d_workspace->H, workspace->d_workspace->b,
+                control->cm_solver_q_err, workspace->d_workspace->x, mpi_data );
+#else
+        iters = Cuda_PIPECR( system, control, data, workspace, &workspace->d_workspace->H,
+                workspace->d_workspace->b_s, control->cm_solver_q_err, workspace->d_workspace->s, mpi_data );
+        iters += Cuda_PIPECR( system, control, data, workspace, &workspace->d_workspace->H,
+                workspace->d_workspace->b_t, control->cm_solver_q_err, workspace->d_workspace->t, mpi_data );
+#endif
         break;
 
     default:
@@ -670,6 +700,8 @@ void EE( reax_system const * const system, control_params const * const control,
         output_controls const * const out_control,
         mpi_datatypes * const mpi_data )
 {
+    fprintf( stderr, "[ERROR] Unsupported charge model (EE). Terminating...\n" );
+    exit( INVALID_INPUT );
 }
 
 
@@ -678,6 +710,8 @@ void ACKS2( reax_system const * const system, control_params const * const contr
         output_controls const * const out_control,
         mpi_datatypes * const mpi_data )
 {
+    fprintf( stderr, "[ERROR] Unsupported charge model (ACKS2). Terminating...\n" );
+    exit( INVALID_INPUT );
 }
 
 

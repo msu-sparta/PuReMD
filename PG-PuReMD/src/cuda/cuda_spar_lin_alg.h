@@ -25,6 +25,16 @@
 #include "../reax_types.h"
 
 
+int Cuda_dual_SDM( reax_system const * const, control_params const * const,
+        simulation_data * const, storage * const,
+        sparse_matrix const * const, rvec2 const * const, real,
+        rvec2 * const, mpi_datatypes * const );
+
+int Cuda_SDM( reax_system const * const, control_params const * const,
+        simulation_data * const, storage * const,
+        sparse_matrix const * const, real const * const, real,
+        real * const, mpi_datatypes * const );
+
 int Cuda_dual_CG( reax_system const * const, control_params const * const,
         simulation_data * const, storage * const,
         sparse_matrix const * const, rvec2 const * const, real,
@@ -41,6 +51,26 @@ int Cuda_dual_BiCGStab( reax_system const * const, control_params const * const,
         rvec2 * const, mpi_datatypes * const );
 
 int Cuda_BiCGStab( reax_system const * const, control_params const * const,
+        simulation_data * const, storage * const,
+        sparse_matrix const * const, real const * const, real,
+        real * const, mpi_datatypes * const );
+
+int Cuda_dual_PIPECG( reax_system const * const, control_params const * const,
+        simulation_data * const, storage * const,
+        sparse_matrix const * const, rvec2 const * const, real,
+        rvec2 * const, mpi_datatypes * const );
+
+int Cuda_PIPECG( reax_system const * const, control_params const * const,
+        simulation_data * const, storage * const,
+        sparse_matrix const * const, real const * const, real,
+        real * const, mpi_datatypes * const );
+
+int Cuda_dual_PIPECR( reax_system const * const, control_params const * const,
+        simulation_data * const, storage * const,
+        sparse_matrix const * const, rvec2 const * const, real,
+        rvec2 * const, mpi_datatypes * const );
+
+int Cuda_PIPECR( reax_system const * const, control_params const * const,
         simulation_data * const, storage * const,
         sparse_matrix const * const, real const * const, real,
         real * const, mpi_datatypes * const );

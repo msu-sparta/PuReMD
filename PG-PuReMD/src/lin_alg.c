@@ -2098,9 +2098,9 @@ static void apply_preconditioner( const reax_system * const system,
 
 /* Steepest Descent */
 int SDM( reax_system const * const system, control_params const * const control,
-        simulation_data * const data,
-        storage * const workspace, sparse_matrix * const H, real * const b,
-        real tol, real * const x, mpi_datatypes * const  mpi_data )
+        simulation_data * const data, storage * const workspace,
+        sparse_matrix * const H, real * const b, real tol,
+        real * const x, mpi_datatypes * const  mpi_data )
 {
     int i, j, ret;
     real tmp, alpha, bnorm, sig;
@@ -2241,7 +2241,7 @@ int SDM( reax_system const * const system, control_params const * const control,
         tmp = redux[1];
         alpha = sig / tmp;
         Vector_Add( x, alpha, workspace->d, system->n );
-        Vector_Add( workspace->r, -alpha, workspace->q, system->n );
+        Vector_Add( workspace->r, -1.0 * alpha, workspace->q, system->n );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2305,7 +2305,7 @@ int dual_CG( reax_system const * const system, control_params const * const cont
         real tol, rvec2 * const x, mpi_datatypes * const  mpi_data )
 {
     int i, j, ret;
-    rvec2 tmp, alpha, beta, norm, b_norm, sig_old, sig_new;
+    rvec2 tmp, alpha, beta, r_norm, b_norm, sig_old, sig_new;
     real redux[6];
 #if defined(LOG_PERFORMANCE)
     real time;
@@ -2416,8 +2416,8 @@ int dual_CG( reax_system const * const system, control_params const * const cont
 
     sig_new[0] = redux[0];
     sig_new[1] = redux[1];
-    norm[0] = SQRT( redux[2] );
-    norm[1] = SQRT( redux[3] );
+    r_norm[0] = SQRT( redux[2] );
+    r_norm[1] = SQRT( redux[3] );
     b_norm[0] = SQRT( redux[4] );
     b_norm[1] = SQRT( redux[5] );
 
@@ -2427,7 +2427,7 @@ int dual_CG( reax_system const * const system, control_params const * const cont
 
     for ( i = 0; i < control->cm_solver_max_iters; ++i )
     {
-        if ( norm[0] / b_norm[0] <= tol || norm[1] / b_norm[1] <= tol )
+        if ( r_norm[0] / b_norm[0] <= tol || r_norm[1] / b_norm[1] <= tol )
         {
             break;
         }
@@ -2567,8 +2567,8 @@ int dual_CG( reax_system const * const system, control_params const * const cont
         sig_old[1] = sig_new[1];
         sig_new[0] = redux[0];
         sig_new[1] = redux[1];
-        norm[0] = SQRT( redux[2] );
-        norm[1] = SQRT( redux[3] );
+        r_norm[0] = SQRT( redux[2] );
+        r_norm[1] = SQRT( redux[3] );
         beta[0] = sig_new[0] / sig_old[0];
         beta[1] = sig_new[1] / sig_old[1];
         /* d = p + beta * d */
@@ -2584,7 +2584,7 @@ int dual_CG( reax_system const * const system, control_params const * const cont
     }
 
     /* continue to solve the system that has not converged yet */
-    if ( norm[0] / b_norm[0] > tol )
+    if ( r_norm[0] / b_norm[0] > tol )
     {
         for ( j = 0; j < system->n; ++j )
         {
@@ -2599,7 +2599,7 @@ int dual_CG( reax_system const * const system, control_params const * const cont
             workspace->x[j][0] = workspace->s[j];
         }
     }
-    else if ( norm[1] / b_norm[1] > tol )
+    else if ( r_norm[1] / b_norm[1] > tol )
     {
         for ( j = 0; j < system->n; ++j )
         {
@@ -3215,7 +3215,7 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
         real tol, rvec2 * const x, mpi_datatypes * const  mpi_data )
 {
     int i, j, ret;
-    rvec2 alpha, beta, delta, gamma_old, gamma_new, norm, b_norm;
+    rvec2 alpha, beta, delta, gamma_old, gamma_new, r_norm, b_norm;
     real redux[8];
     MPI_Request req;
 #if defined(LOG_PERFORMANCE)
@@ -3432,8 +3432,8 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
     delta[1] = redux[1];
     gamma_new[0] = redux[2];
     gamma_new[1] = redux[3];
-    norm[0] = SQRT( redux[4] );
-    norm[1] = SQRT( redux[5] );
+    r_norm[0] = SQRT( redux[4] );
+    r_norm[1] = SQRT( redux[5] );
     b_norm[0] = SQRT( redux[6] );
     b_norm[1] = SQRT( redux[7] );
 
@@ -3443,7 +3443,7 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
 
     for ( i = 0; i < control->cm_solver_max_iters; ++i )
     {
-        if ( norm[0] / b_norm[0] <= tol || norm[1] / b_norm[1] <= tol )
+        if ( r_norm[0] / b_norm[0] <= tol || r_norm[1] / b_norm[1] <= tol )
         {
             break;
         }
@@ -3599,8 +3599,8 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
         delta[1] = redux[1];
         gamma_new[0] = redux[2];
         gamma_new[1] = redux[3];
-        norm[0] = SQRT( redux[4] );
-        norm[1] = SQRT( redux[5] );
+        r_norm[0] = SQRT( redux[4] );
+        r_norm[1] = SQRT( redux[5] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
@@ -3608,7 +3608,7 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
     }
 
     /* continue to solve the system that has not converged yet */
-    if ( norm[0] / b_norm[0] > tol )
+    if ( r_norm[0] / b_norm[0] > tol )
     {
         for ( j = 0; j < system->n; ++j )
         {
@@ -3623,7 +3623,7 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
             workspace->x[j][0] = workspace->s[j];
         }
     }
-    else if ( norm[1] / b_norm[1] > tol )
+    else if ( r_norm[1] / b_norm[1] > tol )
     {
         for ( j = 0; j < system->n; ++j )
         {
@@ -3664,7 +3664,7 @@ int PIPECG( reax_system const * const system, control_params const * const contr
         real tol, real * const x, mpi_datatypes * const  mpi_data )
 {
     int i, j, ret;
-    real alpha, beta, delta, gamma_old, gamma_new, norm, b_norm;
+    real alpha, beta, delta, gamma_old, gamma_new, r_norm, b_norm;
     real redux[4];
     MPI_Request req;
 #if defined(LOG_PERFORMANCE)
@@ -3697,7 +3697,7 @@ int PIPECG( reax_system const * const system, control_params const * const contr
     Update_Timing_Info( &time, &data->timing.cm_solver_comm );
 #endif
 
-    Vector_Sum( workspace->r , 1.0,  b, -1.0, workspace->u, system->n );
+    Vector_Sum( workspace->r, 1.0, b, -1.0, workspace->u, system->n );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -3844,14 +3844,14 @@ int PIPECG( reax_system const * const system, control_params const * const contr
     Check_MPI_Error( ret, __FILE__, __LINE__ );
     delta = redux[0];
     gamma_new = redux[1];
-    norm = SQRT( redux[2] );
+    r_norm = SQRT( redux[2] );
     b_norm = SQRT( redux[3] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
 #endif
 
-    for ( i = 0; i < control->cm_solver_max_iters && norm / b_norm > tol; ++i )
+    for ( i = 0; i < control->cm_solver_max_iters && r_norm / b_norm > tol; ++i )
     {
         if ( i > 0 )
         {
@@ -3869,9 +3869,9 @@ int PIPECG( reax_system const * const system, control_params const * const contr
         Vector_Sum( workspace->p, 1.0, workspace->u, beta, workspace->p, system->n );
         Vector_Sum( workspace->d, 1.0, workspace->w, beta, workspace->d, system->n );
         Vector_Sum( x, 1.0, x, alpha, workspace->p, system->n );
-        Vector_Sum( workspace->u, 1.0, workspace->u, -alpha, workspace->q, system->n );
-        Vector_Sum( workspace->w, 1.0, workspace->w, -alpha, workspace->z, system->n );
-        Vector_Sum( workspace->r, 1.0, workspace->r, -alpha, workspace->d, system->n );
+        Vector_Sum( workspace->u, 1.0, workspace->u, -1.0 * alpha, workspace->q, system->n );
+        Vector_Sum( workspace->w, 1.0, workspace->w, -1.0 * alpha, workspace->z, system->n );
+        Vector_Sum( workspace->r, 1.0, workspace->r, -1.0 * alpha, workspace->d, system->n );
         redux[0] = Dot_local( workspace->w, workspace->u, system->n );
         redux[1] = Dot_local( workspace->r, workspace->u, system->n );
         redux[2] = Dot_local( workspace->u, workspace->u, system->n );
@@ -3952,7 +3952,7 @@ int PIPECG( reax_system const * const system, control_params const * const contr
         Check_MPI_Error( ret, __FILE__, __LINE__ );
         delta = redux[0];
         gamma_new = redux[1];
-        norm = SQRT( redux[2] );
+        r_norm = SQRT( redux[2] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
@@ -3981,7 +3981,7 @@ int PIPECR( reax_system const * const system, control_params const * const contr
         real tol, real * const x, mpi_datatypes * const  mpi_data )
 {
     int i, j, ret;
-    real alpha, beta, delta, gamma_old, gamma_new, norm, b_norm;
+    real alpha, beta, delta, gamma_old, gamma_new, r_norm, b_norm;
     real redux[3];
     MPI_Request req;
 #if defined(LOG_PERFORMANCE)
@@ -3989,16 +3989,6 @@ int PIPECR( reax_system const * const system, control_params const * const contr
 
     time = Get_Time( );
 #endif
-
-    redux[0] = Dot_local( b, b, system->n );
-
-#if defined(LOG_PERFORMANCE)
-    Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
-#endif
-
-    ret = MPI_Iallreduce( MPI_IN_PLACE, redux, 1, MPI_DOUBLE, MPI_SUM,
-            MPI_COMM_WORLD, &req );
-    Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     Sparse_MatVec_Comm_Part1( system, control, mpi_data,
             x, REAL_PTR_TYPE, MPI_DOUBLE );
@@ -4024,7 +4014,7 @@ int PIPECR( reax_system const * const system, control_params const * const contr
     Update_Timing_Info( &time, &data->timing.cm_solver_comm );
 #endif
 
-    Vector_Sum( workspace->r , 1.0,  b, -1.0, workspace->u, system->n );
+    Vector_Sum( workspace->r, 1.0, b, -1.0, workspace->u, system->n );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -4068,6 +4058,17 @@ int PIPECR( reax_system const * const system, control_params const * const contr
         /* no comm part2 because u is only local portion */
     }
 
+    redux[0] = Dot_local( b, b, system->n );
+    redux[1] = Dot_local( workspace->u, workspace->u, system->n );
+
+    ret = MPI_Iallreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE, MPI_SUM,
+            MPI_COMM_WORLD, &req );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
     Sparse_MatVec_Comm_Part1( system, control, mpi_data,
             workspace->u, REAL_PTR_TYPE, MPI_DOUBLE );
 
@@ -4095,18 +4096,13 @@ int PIPECR( reax_system const * const system, control_params const * const contr
     ret = MPI_Wait( &req, MPI_STATUS_IGNORE );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
     b_norm = SQRT( redux[0] );
+    r_norm = SQRT( redux[1] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
 #endif
 
-    norm = Parallel_Norm( workspace->u, system->n, MPI_COMM_WORLD );
-
-#if defined(LOG_PERFORMANCE)
-    Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
-#endif
-
-    for ( i = 0; i < control->cm_solver_max_iters && norm / b_norm > tol; ++i )
+    for ( i = 0; i < control->cm_solver_max_iters && r_norm / b_norm > tol; ++i )
     {
         /* pre-conditioning */
         if ( control->cm_solver_pre_comp_type == NONE_PC )
@@ -4186,7 +4182,7 @@ int PIPECR( reax_system const * const system, control_params const * const contr
         Check_MPI_Error( ret, __FILE__, __LINE__ );
         gamma_new = redux[0];
         delta = redux[1];
-        norm = SQRT( redux[2] );
+        r_norm = SQRT( redux[2] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
@@ -4208,15 +4204,15 @@ int PIPECR( reax_system const * const system, control_params const * const contr
         Vector_Sum( workspace->p, 1.0, workspace->u, beta, workspace->p, system->n );
         Vector_Sum( workspace->d, 1.0, workspace->w, beta, workspace->d, system->n );
         Vector_Sum( x, 1.0, x, alpha, workspace->p, system->n );
-        Vector_Sum( workspace->u, 1.0, workspace->u, -alpha, workspace->q, system->n );
-        Vector_Sum( workspace->w, 1.0, workspace->w, -alpha, workspace->z, system->n );
-        Vector_Sum( workspace->r, 1.0, workspace->r, -alpha, workspace->d, system->n );
+        Vector_Sum( workspace->u, 1.0, workspace->u, -1.0 * alpha, workspace->q, system->n );
+        Vector_Sum( workspace->w, 1.0, workspace->w, -1.0 * alpha, workspace->z, system->n );
+        Vector_Sum( workspace->r, 1.0, workspace->r, -1.0 * alpha, workspace->d, system->n );
+
+        gamma_old = gamma_new;
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
-
-        gamma_old = gamma_new;
     }
 
     if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )
