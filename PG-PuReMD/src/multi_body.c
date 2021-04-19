@@ -229,8 +229,7 @@ void Atom_Energy( reax_system * const system, control_params * const control,
             * p_ovun4 * exp_ovun1 * SQR(inv_exp_ovun1) + CEunder2;
 
         /* forces */
-        workspace->CdDelta[i] += CEover3;   // OvCoor - 2nd term
-        workspace->CdDelta[i] += CEunder3;  // UnCoor - 1st term
+        workspace->CdDelta[i] += CEover3 + CEunder3;   // OvCoor - 2nd term, UnCoor - 1st term
 
 #if defined(TEST_FORCES)
         Add_dDelta( system, lists, i, CEover3, workspace->f_ov ); // OvCoor 2nd
