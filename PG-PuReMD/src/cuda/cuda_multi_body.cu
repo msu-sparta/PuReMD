@@ -40,13 +40,14 @@ CUDA_GLOBAL void k_atom_energy_part1( reax_atom *my_atoms, global_parameters gp,
     real Delta_lpcorr, dfvl;
     real expvd2, inv_expvd2, dElp, CElp, DlpVi;
     real Di, vov3, deahu2dbo, deahu2dsbo;
-    real CEover1, CEover2, CEover3, CEover4, e_lp_l;
+    real CEover1, CEover2, CEover3, CEover4, e_lp;
     real exp_ovun1, exp_ovun2, sum_ovun1, sum_ovun2;
     real exp_ovun2n, exp_ovun6, exp_ovun8;
     real inv_exp_ovun1, inv_exp_ovun2, inv_exp_ovun2n, inv_exp_ovun8;
     real e_un, CEunder1, CEunder2, CEunder3, CEunder4;
     real p_lp2, p_lp3;
     real p_ovun2, p_ovun3, p_ovun4, p_ovun5, p_ovun6, p_ovun7, p_ovun8;
+    real CdDelta_i;
     single_body_parameters *sbp_i;
     two_body_parameters *twbp;
     bond_data *pbond_ij;
@@ -72,20 +73,16 @@ CUDA_GLOBAL void k_atom_energy_part1( reax_atom *my_atoms, global_parameters gp,
     /* lone-pair Energy */
     p_lp2 = sbp_i->p_lp2;      
     expvd2 = EXP( -75.0 * workspace.Delta_lp[i] );
-    inv_expvd2 = 1.0 / (1.0 + expvd2 );
+    inv_expvd2 = 1.0 / ( 1.0 + expvd2 );
 
     /* calculate the energy */
-    e_lp_l = p_lp2 * workspace.Delta_lp[i] * inv_expvd2;
+    e_lp = p_lp2 * workspace.Delta_lp[i] * inv_expvd2;
 
     dElp = p_lp2 * inv_expvd2 + 75.0 * p_lp2 * workspace.Delta_lp[i]
         * expvd2 * SQR(inv_expvd2);
     CElp = dElp * workspace.dDelta_lp[i];
 
-#if !defined(CUDA_ACCUM_ATOMIC)
-    workspace.CdDelta[i] += CElp;  // lp - 1st term  
-#else
-    atomicAdd( &workspace.CdDelta[i], CElp );  // lp - 1st term  
-#endif
+    CdDelta_i = CElp;  // lp - 1st term  
 
     /* correction for C2 */
     if ( gp.l[5] > 0.001
@@ -110,14 +107,14 @@ CUDA_GLOBAL void k_atom_energy_part1( reax_atom *my_atoms, global_parameters gp,
 
                     if ( vov3 > 3.0 )
                     {
-                        e_lp_l += p_lp3 * SQR( vov3 - 3.0 );
+                        e_lp += p_lp3 * SQR( vov3 - 3.0 );
 
                         deahu2dbo = 2.0 * p_lp3 * (vov3 - 3.0);
                         deahu2dsbo = 2.0 * p_lp3 * (vov3 - 3.0)
                             * (-1.0 - 0.16 * POW(Di, 3.0));
 
                         bo_ij->Cdbo += deahu2dbo;
-                        workspace.CdDelta[i] += deahu2dsbo;
+                        CdDelta_i += deahu2dsbo;
                     }
                 }    
             }
@@ -125,9 +122,9 @@ CUDA_GLOBAL void k_atom_energy_part1( reax_atom *my_atoms, global_parameters gp,
     }
 
 #if !defined(CUDA_ACCUM_ATOMIC)
-    e_lp_g[i] = e_lp_l;
+    e_lp_g[i] = e_lp;
 #else
-    atomicAdd( (double *) e_lp_g, (double) e_lp_l );
+    atomicAdd( (double *) e_lp_g, (double) e_lp );
 #endif
 
     /* over-coordination energy */
@@ -207,10 +204,12 @@ CUDA_GLOBAL void k_atom_energy_part1( reax_atom *my_atoms, global_parameters gp,
         * p_ovun4 * exp_ovun1 * SQR(inv_exp_ovun1) + CEunder2;
 
     /* forces */
+    CdDelta_i += CEover3 + CEunder3;   // OvCoor - 2nd term, UnCoor - 1st term
+
 #if !defined(CUDA_ACCUM_ATOMIC)
-    workspace.CdDelta[i] += CEover3 + CEunder3;   // OvCoor - 2nd term, UnCoor - 1st term
+    workspace.CdDelta[i] += CdDelta_i;
 #else
-    atomicAdd( &workspace.CdDelta[i], CEover3 + CEunder3 );  // OvCoor - 2nd term, UnCoor - 1st term
+    atomicAdd( &workspace.CdDelta[i], CdDelta_i );
 #endif
 
     for ( pj = Start_Index(i, &bond_list); pj < End_Index(i, &bond_list); ++pj )
@@ -261,13 +260,14 @@ CUDA_GLOBAL void k_atom_energy_part1_opt( reax_atom *my_atoms, global_parameters
     real Delta_lpcorr, dfvl;
     real expvd2, inv_expvd2, dElp, CElp, DlpVi;
     real Di, vov3, deahu2dbo, deahu2dsbo;
-    real CEover1, CEover2, CEover3, CEover4, e_lp_l;
+    real CEover1, CEover2, CEover3, CEover4, e_lp;
     real exp_ovun1, exp_ovun2, sum_ovun1, sum_ovun2;
     real exp_ovun2n, exp_ovun6, exp_ovun8;
     real inv_exp_ovun1, inv_exp_ovun2, inv_exp_ovun2n, inv_exp_ovun8;
     real e_un, CEunder1, CEunder2, CEunder3, CEunder4;
     real p_lp2, p_lp3;
     real p_ovun2, p_ovun3, p_ovun4, p_ovun5, p_ovun6, p_ovun7, p_ovun8;
+    real CdDelta_i;
     single_body_parameters *sbp_i;
     two_body_parameters *twbp;
     bond_data *pbond_ij;
@@ -290,29 +290,31 @@ CUDA_GLOBAL void k_atom_energy_part1_opt( reax_atom *my_atoms, global_parameters
     p_ovun6 = gp.l[6];
     p_ovun7 = gp.l[8];
     p_ovun8 = gp.l[9];
+    e_lp = 0.0;
+    e_un = 0.0;
+    CdDelta_i = 0.0;
 
     type_i = my_atoms[i].type;
     sbp_i = &sbp[ type_i ];
     start_i = Start_Index( i, &bond_list );
     end_i = End_Index( i, &bond_list );
 
-    /* lone-pair Energy */
-    p_lp2 = sbp_i->p_lp2;      
-    expvd2 = EXP( -75.0 * workspace.Delta_lp[i] );
-    inv_expvd2 = 1.0 / (1.0 + expvd2 );
+    if ( lane_id == 0 )
+    {
+        /* lone-pair Energy */
+        p_lp2 = sbp_i->p_lp2;      
+        expvd2 = EXP( -75.0 * workspace.Delta_lp[i] );
+        inv_expvd2 = 1.0 / ( 1.0 + expvd2 );
 
-    /* calculate the energy */
-    e_lp_l = p_lp2 * workspace.Delta_lp[i] * inv_expvd2;
+        /* calculate the energy */
+        e_lp = p_lp2 * workspace.Delta_lp[i] * inv_expvd2;
 
-    dElp = p_lp2 * inv_expvd2 + 75.0 * p_lp2 * workspace.Delta_lp[i]
-        * expvd2 * SQR(inv_expvd2);
-    CElp = dElp * workspace.dDelta_lp[i];
+        dElp = p_lp2 * inv_expvd2 + 75.0 * p_lp2 * workspace.Delta_lp[i]
+            * expvd2 * SQR(inv_expvd2);
+        CElp = dElp * workspace.dDelta_lp[i];
 
-#if !defined(CUDA_ACCUM_ATOMIC)
-    workspace.CdDelta[i] += CElp;  // lp - 1st term  
-#else
-    atomicAdd( &workspace.CdDelta[i], CElp );  // lp - 1st term  
-#endif
+        CdDelta_i += CElp;  // lp - 1st term  
+    }
 
     /* correction for C2 */
     if ( gp.l[5] > 0.001
@@ -338,14 +340,14 @@ CUDA_GLOBAL void k_atom_energy_part1_opt( reax_atom *my_atoms, global_parameters
 
                     if ( vov3 > 3.0 )
                     {
-                        e_lp_l += p_lp3 * SQR( vov3 - 3.0 );
+                        e_lp += p_lp3 * SQR( vov3 - 3.0 );
 
                         deahu2dbo = 2.0 * p_lp3 * (vov3 - 3.0);
                         deahu2dsbo = 2.0 * p_lp3 * (vov3 - 3.0)
                             * (-1.0 - 0.16 * POW(Di, 3.0));
 
                         bo_ij->Cdbo += deahu2dbo;
-                        workspace.CdDelta[i] += deahu2dsbo;
+                        CdDelta_i += deahu2dsbo;
                     }
                 }    
             }
@@ -354,11 +356,16 @@ CUDA_GLOBAL void k_atom_energy_part1_opt( reax_atom *my_atoms, global_parameters
         }
     }
 
+    e_lp = cub::WarpReduce<double>(temp_d[i % (blockDim.x / warpSize)]).Sum(e_lp);
+
+    if ( lane_id == 0 )
+    {
 #if !defined(CUDA_ACCUM_ATOMIC)
-    e_lp_g[i] = e_lp_l;
+        e_lp_g[i] = e_lp;
 #else
-    atomicAdd( (double *) e_lp_g, (double) e_lp_l );
+        atomicAdd( (double *) e_lp_g, (double) e_lp );
 #endif
+    }
 
     /* over-coordination energy */
     if ( sbp_i->mass > 21.0 ) 
@@ -375,21 +382,29 @@ CUDA_GLOBAL void k_atom_energy_part1_opt( reax_atom *my_atoms, global_parameters
     sum_ovun1 = 0.0;
     sum_ovun2 = 0.0;
 
-    for ( pj = Start_Index(i, &bond_list); pj < End_Index(i, &bond_list); ++pj )
+    for ( itr = 0, pj = start_i + lane_id; itr < (end_i - start_i + warpSize - 1) / warpSize; ++itr )
     {
-        j = bond_list.bond_list[pj].nbr;
-        type_j = my_atoms[j].type;
-        bo_ij = &bond_list.bond_list[pj].bo_data;
-        twbp = &tbp[ index_tbp(type_i, type_j, num_atom_types) ];
+        if ( pj < end_i )
+        {
+            j = bond_list.bond_list[pj].nbr;
+            type_j = my_atoms[j].type;
+            bo_ij = &bond_list.bond_list[pj].bo_data;
+            twbp = &tbp[ index_tbp(type_i, type_j, num_atom_types) ];
 
-        sum_ovun1 += twbp->p_ovun1 * twbp->De_s * bo_ij->BO;
-        sum_ovun2 += (workspace.Delta[j] - dfvl * workspace.Delta_lp_temp[j])
-            * ( bo_ij->BO_pi + bo_ij->BO_pi2 );
+            sum_ovun1 += twbp->p_ovun1 * twbp->De_s * bo_ij->BO;
+            sum_ovun2 += (workspace.Delta[j] - dfvl * workspace.Delta_lp_temp[j])
+                * ( bo_ij->BO_pi + bo_ij->BO_pi2 );
+        }
+
+        pj += warpSize;
     }
+
+    sum_ovun1 = cub::WarpReduce<double>(temp_d[i % (blockDim.x / warpSize)]).Sum(sum_ovun1);
+    sum_ovun2 = cub::WarpReduce<double>(temp_d[i % (blockDim.x / warpSize)]).Sum(sum_ovun2);
 
     exp_ovun1 = p_ovun3 * EXP( p_ovun4 * sum_ovun2 );
     inv_exp_ovun1 = 1.0 / (1.0 + exp_ovun1);
-    Delta_lpcorr  = workspace.Delta[i]
+    Delta_lpcorr = workspace.Delta[i]
         - (dfvl * workspace.Delta_lp_temp[i]) * inv_exp_ovun1;
 
     exp_ovun2 = EXP( p_ovun2 * Delta_lpcorr );
@@ -398,11 +413,14 @@ CUDA_GLOBAL void k_atom_energy_part1_opt( reax_atom *my_atoms, global_parameters
     DlpVi = 1.0 / (Delta_lpcorr + sbp_i->valency + 1.0e-8);
     CEover1 = Delta_lpcorr * DlpVi * inv_exp_ovun2;
 
+    if ( lane_id == 0 )
+    {
 #if !defined(CUDA_ACCUM_ATOMIC)
-    e_ov_g[i] = sum_ovun1 * CEover1;
+        e_ov_g[i] = sum_ovun1 * CEover1;
 #else
-    atomicAdd( (double *) e_ov_g, (double) (sum_ovun1 * CEover1) );
+        atomicAdd( (double *) e_ov_g, (double) (sum_ovun1 * CEover1) );
 #endif
+    }
 
     CEover2 = sum_ovun1 * DlpVi * inv_exp_ovun2 * (1.0 - Delta_lpcorr
             * ( DlpVi + p_ovun2 * exp_ovun2 * inv_exp_ovun2 ));
@@ -423,11 +441,14 @@ CUDA_GLOBAL void k_atom_energy_part1_opt( reax_atom *my_atoms, global_parameters
     inv_exp_ovun8 = 1.0 / (1.0 + exp_ovun8);
 
     e_un = -p_ovun5 * (1.0 - exp_ovun6) * inv_exp_ovun2n * inv_exp_ovun8;
+    if ( lane_id == 0 )
+    {
 #if !defined(CUDA_ACCUM_ATOMIC)
-    e_un_g[i] = e_un;
+        e_un_g[i] = e_un;
 #else
-    atomicAdd( (double *) e_un_g, (double) e_un );
+        atomicAdd( (double *) e_un_g, (double) e_un );
 #endif
+    }
 
     CEunder1 = inv_exp_ovun2n * ( p_ovun5 * p_ovun6 * exp_ovun6 * inv_exp_ovun8
             + p_ovun2 * e_un * exp_ovun2n );
@@ -437,45 +458,60 @@ CUDA_GLOBAL void k_atom_energy_part1_opt( reax_atom *my_atoms, global_parameters
         * p_ovun4 * exp_ovun1 * SQR(inv_exp_ovun1) + CEunder2;
 
     /* forces */
-#if !defined(CUDA_ACCUM_ATOMIC)
-    workspace.CdDelta[i] += CEover3 + CEunder3;   // OvCoor - 2nd term, UnCoor - 1st term
-#else
-    atomicAdd( &workspace.CdDelta[i], CEover3 + CEunder3 );  // OvCoor - 2nd term, UnCoor - 1st term
-#endif
-
-    for ( pj = Start_Index(i, &bond_list); pj < End_Index(i, &bond_list); ++pj )
+    if ( lane_id == 0 )
     {
-        pbond_ij = &bond_list.bond_list[pj];
-        j = pbond_ij->nbr;
-        bo_ij = &pbond_ij->bo_data;
-        twbp  = &tbp[
-            index_tbp(my_atoms[i].type, my_atoms[j].type, 
-                    num_atom_types) ];
+        CdDelta_i += CEover3 + CEunder3;   // OvCoor - 2nd term, UnCoor - 1st term
+    }
 
-        bo_ij->Cdbo += CEover1 * twbp->p_ovun1 * twbp->De_s;// OvCoor-1st 
+    CdDelta_i = cub::WarpReduce<double>(temp_d[i % (blockDim.x / warpSize)]).Sum(CdDelta_i);
+
+    if ( lane_id == 0 )
+    {
 #if !defined(CUDA_ACCUM_ATOMIC)
-        pbond_ij->ae_CdDelta += CEover4 * (1.0 - dfvl * workspace.dDelta_lp[j])
-            * (bo_ij->BO_pi + bo_ij->BO_pi2); // OvCoor-3a
+        workspace.CdDelta[i] += CdDelta_i;
 #else
-        atomicAdd( &workspace.CdDelta[j], CEover4 * (1.0 - dfvl * workspace.dDelta_lp[j])
-            * (bo_ij->BO_pi + bo_ij->BO_pi2) );
+        atomicAdd( &workspace.CdDelta[i], CdDelta_i );
 #endif
-        bo_ij->Cdbopi += CEover4 * (workspace.Delta[j] - dfvl
-                * workspace.Delta_lp_temp[j]); // OvCoor-3b
-        bo_ij->Cdbopi2 += CEover4 * (workspace.Delta[j] - dfvl
-                * workspace.Delta_lp_temp[j]);  // OvCoor-3b
+    }
+
+    for ( itr = 0, pj = start_i + lane_id; itr < (end_i - start_i + warpSize - 1) / warpSize; ++itr )
+    {
+        if ( pj < end_i )
+        {
+            pbond_ij = &bond_list.bond_list[pj];
+            j = pbond_ij->nbr;
+            bo_ij = &pbond_ij->bo_data;
+            twbp  = &tbp[
+                index_tbp(my_atoms[i].type, my_atoms[j].type, 
+                        num_atom_types) ];
+
+            bo_ij->Cdbo += CEover1 * twbp->p_ovun1 * twbp->De_s;// OvCoor-1st 
+#if !defined(CUDA_ACCUM_ATOMIC)
+            pbond_ij->ae_CdDelta += CEover4 * (1.0 - dfvl * workspace.dDelta_lp[j])
+                * (bo_ij->BO_pi + bo_ij->BO_pi2); // OvCoor-3a
+#else
+            atomicAdd( &workspace.CdDelta[j], CEover4 * (1.0 - dfvl * workspace.dDelta_lp[j])
+                * (bo_ij->BO_pi + bo_ij->BO_pi2) );
+#endif
+            bo_ij->Cdbopi += CEover4 * (workspace.Delta[j] - dfvl
+                    * workspace.Delta_lp_temp[j]); // OvCoor-3b
+            bo_ij->Cdbopi2 += CEover4 * (workspace.Delta[j] - dfvl
+                    * workspace.Delta_lp_temp[j]);  // OvCoor-3b
 
 #if !defined(CUDA_ACCUM_ATOMIC)
-        pbond_ij->ae_CdDelta += CEunder4 * (1.0 - dfvl * workspace.dDelta_lp[j])
-            * (bo_ij->BO_pi + bo_ij->BO_pi2);   // UnCoor - 2a
+            pbond_ij->ae_CdDelta += CEunder4 * (1.0 - dfvl * workspace.dDelta_lp[j])
+                * (bo_ij->BO_pi + bo_ij->BO_pi2);   // UnCoor - 2a
 #else
-        atomicAdd( &workspace.CdDelta[j], CEunder4 * (1.0 - dfvl * workspace.dDelta_lp[j])
-            * (bo_ij->BO_pi + bo_ij->BO_pi2) );
+            atomicAdd( &workspace.CdDelta[j], CEunder4 * (1.0 - dfvl * workspace.dDelta_lp[j])
+                * (bo_ij->BO_pi + bo_ij->BO_pi2) );
 #endif
-        bo_ij->Cdbopi += CEunder4 * (workspace.Delta[j] - dfvl
-                * workspace.Delta_lp_temp[j]);  // UnCoor-2b
-        bo_ij->Cdbopi2 += CEunder4 * (workspace.Delta[j] - dfvl
-                * workspace.Delta_lp_temp[j]);  // UnCoor-2b
+            bo_ij->Cdbopi += CEunder4 * (workspace.Delta[j] - dfvl
+                    * workspace.Delta_lp_temp[j]);  // UnCoor-2b
+            bo_ij->Cdbopi2 += CEunder4 * (workspace.Delta[j] - dfvl
+                    * workspace.Delta_lp_temp[j]);  // UnCoor-2b
+        }
+
+        pj += warpSize;
     }
 }
 
@@ -507,6 +543,7 @@ void Cuda_Compute_Atom_Energy( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, 
         reax_list **lists, output_controls *out_control )
 {
+    int blocks;
 #if !defined(CUDA_ACCUM_ATOMIC)
     int update_energy;
     real *spad;
@@ -527,7 +564,25 @@ void Cuda_Compute_Atom_Energy( reax_system *system, control_params *control,
             0, sizeof(real), "Cuda_Compute_Atom_Energy::e_un" );
 #endif
 
-    k_atom_energy_part1 <<< control->blocks, control->block_size >>>
+//    k_atom_energy_part1 <<< control->blocks, control->block_size >>>
+//        ( system->d_my_atoms, system->reax_param.d_gp,
+//          system->reax_param.d_sbp, system->reax_param.d_tbp, *(workspace->d_workspace),
+//          *(lists[BONDS]), system->n, system->reax_param.num_atom_types,
+//#if !defined(CUDA_ACCUM_ATOMIC)
+//          spad, &spad[system->n], &spad[2 * system->n]
+//#else
+//          &((simulation_data *)data->d_simulation_data)->my_en.e_lp,
+//          &((simulation_data *)data->d_simulation_data)->my_en.e_ov,
+//          &((simulation_data *)data->d_simulation_data)->my_en.e_un
+//#endif
+//         );
+//    cudaCheckError( );
+
+    blocks = system->n * 32 / DEF_BLOCK_SIZE
+        + (system->n * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+
+    k_atom_energy_part1_opt <<< blocks, DEF_BLOCK_SIZE,
+                            sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32) >>>
         ( system->d_my_atoms, system->reax_param.d_gp,
           system->reax_param.d_sbp, system->reax_param.d_tbp, *(workspace->d_workspace),
           *(lists[BONDS]), system->n, system->reax_param.num_atom_types,

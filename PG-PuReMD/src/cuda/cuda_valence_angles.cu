@@ -1500,7 +1500,7 @@ int Cuda_Compute_Valence_Angles( reax_system *system, control_params *control,
 
             k_valence_angles_part1_opt <<< blocks, DEF_BLOCK_SIZE,
                                        (sizeof(cub::WarpScan<int>::TempStorage)
-                                        + sizeof(cub::WarpReduce<double>::TempStorage)) * (DEF_BLOCK_SIZE / 32)  >>>
+                                        + sizeof(cub::WarpReduce<double>::TempStorage)) * (DEF_BLOCK_SIZE / 32) >>>
                 ( system->d_my_atoms, system->reax_param.d_gp,
                   system->reax_param.d_sbp, system->reax_param.d_thbp, 
                   (control_params *) control->d_control_params,
