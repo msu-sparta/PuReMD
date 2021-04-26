@@ -106,14 +106,8 @@ then
 	NVCC_VERSION=`$NVCC --version | grep release | awk 'gsub(/,/, "") {print [$]5}'`
 	AC_MSG_RESULT([nvcc version : $NVCC_VERSION])
 	
-	# test if architecture is 64 bits and NVCC version >= 2.3
         #libdir=lib #NOTE: was lib, but changed to lib64 for CUDA 8.0
         libdir=lib64
-	if test "x$host_cpu" = xx86_64 ; then
-	   if test "x$NVCC_VERSION" \> "x2.2" ; then
-              libdir=lib64
-           fi
-	fi
 
 	# set CUDA flags
 	if test -n "$cuda_home_path"
@@ -166,7 +160,7 @@ then
 			CUfunction cuFunction;
 			size_t pitch, width = 250, height = 500;
 
-			void main()
+			int main()
 			{
 				cuModuleLoad(&cuModule, "myModule.cubin");
 				cuMemAllocPitch(&devPtr, &pitch,width * sizeof(float), height, 4);
@@ -175,6 +169,7 @@ then
 				cuParamSeti(cuFunction, 0, devPtr);
 				cuParamSetSize(cuFunction, sizeof(devPtr));
 				cuLaunchGrid(cuFunction, 100, 1);
+				return 0;
 			}
 		])
 	],
