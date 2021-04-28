@@ -47,21 +47,21 @@ static void Cuda_Reallocate_System_Part1( reax_system *system, storage *workspac
             "Cuda_Reallocate_System_Part1::workspace->scratch" );
     temp = (int *) workspace->scratch;
 
-    copy_device( temp, system->d_cm_entries, sizeof(int) * local_cap_old,
-            "Cuda_Reallocate_System_Part1::temp" );
+    sCudaMemcpy( temp, system->d_cm_entries, sizeof(int) * local_cap_old,
+            cudaMemcpyDeviceToDevice, __FILE__, __LINE__ );
     cuda_free( system->d_cm_entries, "Cuda_Reallocate_System_Part1::d_cm_entries" );
     cuda_malloc( (void **) &system->d_cm_entries,
             sizeof(int) * system->local_cap, TRUE, "Cuda_Reallocate_System_Part1::d_cm_entries" );
-    copy_device( system->d_cm_entries, temp, sizeof(int) * local_cap_old,
-            "Cuda_Reallocate_System_Part1::temp" );
+    sCudaMemcpy( system->d_cm_entries, temp, sizeof(int) * local_cap_old,
+            cudaMemcpyDeviceToDevice, __FILE__, __LINE__ );
 
-    copy_device( temp, system->d_max_cm_entries, sizeof(int) * local_cap_old,
-            "Cuda_Reallocate_System_Part1::temp" );
+    sCudaMemcpy( temp, system->d_max_cm_entries, sizeof(int) * local_cap_old,
+            cudaMemcpyDeviceToDevice, __FILE__, __LINE__ );
     cuda_free( system->d_max_cm_entries, "Cuda_Reallocate_System_Part1::d_max_cm_entries" );
     cuda_malloc( (void **) &system->d_max_cm_entries,
             sizeof(int) * system->local_cap, TRUE, "Cuda_Reallocate_System_Part1::d_max_cm_entries" );
-    copy_device( system->d_max_cm_entries, temp, sizeof(int) * local_cap_old,
-            "Cuda_Reallocate_System_Part1::temp" );
+    sCudaMemcpy( system->d_max_cm_entries, temp, sizeof(int) * local_cap_old,
+            cudaMemcpyDeviceToDevice, __FILE__, __LINE__ );
 }
 
 
@@ -78,69 +78,69 @@ static void Cuda_Reallocate_System_Part2( reax_system *system, storage *workspac
     temp_atom = (reax_atom *) workspace->scratch;
 
     /* free the existing storage for atoms, leave other info allocated */
-    copy_device( temp_atom, system->d_my_atoms, sizeof(reax_atom) * total_cap_old,
-            "Cuda_Reallocate_System_Part2::temp_atom" );
+    sCudaMemcpy( temp_atom, system->d_my_atoms, sizeof(reax_atom) * total_cap_old,
+            cudaMemcpyDeviceToDevice, __FILE__, __LINE__ );
     cuda_free( system->d_my_atoms, "system::d_my_atoms" );
     cuda_malloc( (void **) &system->d_my_atoms,
             sizeof(reax_atom) * system->total_cap, TRUE,
             "Cuda_Reallocate_System_Part2::d_my_atoms" );
-    copy_device( system->d_my_atoms, temp_atom, sizeof(reax_atom) * total_cap_old,
-            "Cuda_Reallocate_System_Part2::temp_atom" );
+    sCudaMemcpy( system->d_my_atoms, temp_atom, sizeof(reax_atom) * total_cap_old,
+            cudaMemcpyDeviceToDevice, __FILE__, __LINE__ );
 
     /* list management */
-    copy_device( temp, system->d_far_nbrs, sizeof(int) * total_cap_old,
-            "Cuda_Reallocate_System_Part2::temp" );
+    sCudaMemcpy( temp, system->d_far_nbrs, sizeof(int) * total_cap_old,
+            cudaMemcpyDeviceToDevice, __FILE__, __LINE__ );
     cuda_free( system->d_far_nbrs, "Cuda_Reallocate_System_Part2::d_far_nbrs" );
     cuda_malloc( (void **) &system->d_far_nbrs,
             sizeof(int) * system->total_cap, TRUE,
             "Cuda_Reallocate_System_Part2::d_far_nbrs" );
-    copy_device( system->d_far_nbrs, temp, sizeof(int) * total_cap_old,
-            "Cuda_Reallocate_System_Part2::temp" );
+    sCudaMemcpy( system->d_far_nbrs, temp, sizeof(int) * total_cap_old,
+            cudaMemcpyDeviceToDevice, __FILE__, __LINE__ );
 
-    copy_device( temp, system->d_max_far_nbrs, sizeof(int) * total_cap_old,
-            "Cuda_Reallocate_System_Part2::temp" );
+    sCudaMemcpy( temp, system->d_max_far_nbrs, sizeof(int) * total_cap_old,
+            cudaMemcpyDeviceToDevice, __FILE__, __LINE__ );
     cuda_free( system->d_max_far_nbrs, "Cuda_Reallocate_System_Part2::d_max_far_nbrs" );
     cuda_malloc( (void **) &system->d_max_far_nbrs,
             sizeof(int) * system->total_cap, TRUE,
             "Cuda_Reallocate_System_Part2::d_max_far_nbrs" );
-    copy_device( system->d_max_far_nbrs, temp, sizeof(int) * total_cap_old,
-            "Cuda_Reallocate_System_Part2::temp" );
+    sCudaMemcpy( system->d_max_far_nbrs, temp, sizeof(int) * total_cap_old,
+            cudaMemcpyDeviceToDevice, __FILE__, __LINE__ );
 
-    copy_device( temp, system->d_bonds, sizeof(int) * total_cap_old,
-            "Cuda_Reallocate_System_Part2::temp" );
+    sCudaMemcpy( temp, system->d_bonds, sizeof(int) * total_cap_old,
+            cudaMemcpyDeviceToDevice, __FILE__, __LINE__ );
     cuda_free( system->d_bonds, "Cuda_Reallocate_System_Part2::d_bonds" );
     cuda_malloc( (void **) &system->d_bonds,
             sizeof(int) * system->total_cap, TRUE,
             "Cuda_Reallocate_System_Part2::d_bonds" );
-    copy_device( system->d_bonds, temp, sizeof(int) * total_cap_old,
-            "Cuda_Reallocate_System_Part2::temp" );
+    sCudaMemcpy( system->d_bonds, temp, sizeof(int) * total_cap_old,
+            cudaMemcpyDeviceToDevice, __FILE__, __LINE__ );
 
-    copy_device( temp, system->d_max_bonds, sizeof(int) * total_cap_old,
-            "Cuda_Reallocate_System_Part2::temp" );
+    sCudaMemcpy( temp, system->d_max_bonds, sizeof(int) * total_cap_old,
+            cudaMemcpyDeviceToDevice, __FILE__, __LINE__ );
     cuda_free( system->d_max_bonds, "Cuda_Reallocate_System_Part2::d_max_bonds" );
     cuda_malloc( (void **) &system->d_max_bonds,
             sizeof(int) * system->total_cap, TRUE,
             "Cuda_Reallocate_System_Part2::d_max_bonds" );
-    copy_device( system->d_max_bonds, temp, sizeof(int) * total_cap_old,
-            "Cuda_Reallocate_System_Part2::temp" );
+    sCudaMemcpy( system->d_max_bonds, temp, sizeof(int) * total_cap_old,
+            cudaMemcpyDeviceToDevice, __FILE__, __LINE__ );
 
-    copy_device( temp, system->d_hbonds, sizeof(int) * total_cap_old,
-            "Cuda_Reallocate_System_Part2::temp" );
+    sCudaMemcpy( temp, system->d_hbonds, sizeof(int) * total_cap_old,
+            cudaMemcpyDeviceToDevice, __FILE__, __LINE__ );
     cuda_free( system->d_hbonds, "system::d_hbonds" );
     cuda_malloc( (void **) &system->d_hbonds,
             sizeof(int) * system->total_cap, TRUE,
             "Cuda_Reallocate_System_Part2::d_hbonds" );
-    copy_device( system->d_hbonds, temp, sizeof(int) * total_cap_old,
-            "Cuda_Reallocate_System_Part2::temp" );
+    sCudaMemcpy( system->d_hbonds, temp, sizeof(int) * total_cap_old,
+            cudaMemcpyDeviceToDevice, __FILE__, __LINE__ );
 
-    copy_device( temp, system->d_max_hbonds, sizeof(int) * total_cap_old,
-            "Cuda_Reallocate_System_Part2::temp" );
+    sCudaMemcpy( temp, system->d_max_hbonds, sizeof(int) * total_cap_old,
+            cudaMemcpyDeviceToDevice, __FILE__, __LINE__ );
     cuda_free( system->d_max_hbonds, "system::d_max_hbonds" );
     cuda_malloc( (void **) &system->d_max_hbonds,
             sizeof(int) * system->total_cap, TRUE,
             "Cuda_Reallocate_System_Part2::d_max_hbonds" );
-    copy_device( system->d_max_hbonds, temp, sizeof(int) * total_cap_old,
-            "Cuda_Reallocate_System_Part2::temp" );
+    sCudaMemcpy( system->d_max_hbonds, temp, sizeof(int) * total_cap_old,
+            cudaMemcpyDeviceToDevice, __FILE__, __LINE__ );
 }
 
 
@@ -148,8 +148,8 @@ void Cuda_Allocate_Control( control_params *control )
 {
     cuda_malloc( (void **)&control->d_control_params,
             sizeof(control_params), TRUE, "control_params" );
-    copy_host_device( control, control->d_control_params,
-            sizeof(control_params), cudaMemcpyHostToDevice, "control_params" );
+    sCudaMemcpy( control->d_control_params, control,
+            sizeof(control_params), cudaMemcpyHostToDevice, __FILE__, __LINE__ );
 }
 
 
@@ -219,7 +219,8 @@ void Cuda_Allocate_Grid( reax_system *system )
 //
 //        cuda_malloc( (void **) &local_cell.nbrs_x, sizeof(ivec) * host->max_nbrs,
 //                TRUE, "alloc:grid:cells:nbrs_x" );
-//        copy_device( local_cell.nbrs_x, nbrs_x, host->max_nbrs * sizeof(ivec), "grid:nbrs_x" );
+//        sCudaMemcpy( local_cell.nbrs_x, nbrs_x, host->max_nbrs * sizeof(ivec),
+//                cudaMemcpyDeviceToDevice, __FILE__, __LINE__ );
 //        //fprintf( stderr, "Allocated address of the nbrs_x--> %ld \n", local_cell.nbrs_x );
 //
 //        cuda_malloc( (void **) &local_cell.nbrs_cp, sizeof(rvec) * host->max_nbrs,
@@ -230,8 +231,8 @@ void Cuda_Allocate_Grid( reax_system *system )
 //        //                TRUE, "alloc:grid:cells:nbrs" );
 //        //fprintf( stderr, "Allocated address of the nbrs--> %ld \n", local_cell.nbrs );
 //
-//        copy_host_device( &local_cell, &device->cells[i], sizeof(grid_cell),
-//                cudaMemcpyHostToDevice, "grid:cell-alloc" );
+//        sCudaMemcpy( &device->cells[i], &local_cell, sizeof(grid_cell),
+//                cudaMemcpyHostToDevice, __FILE__, __LINE__ );
 //    }
 }
 
@@ -248,9 +249,8 @@ void Cuda_Deallocate_Grid_Cell_Atoms( reax_system *system )
 
     for ( i = 0; i < total; ++i )
     {
-        copy_host_device( &local_cell, &device->cells[i], 
-                sizeof(grid_cell), cudaMemcpyDeviceToHost,
-                "Cuda_Deallocate_Grid_Cell_Atoms::grid" );
+        sCudaMemcpy( &local_cell, &device->cells[i], 
+                sizeof(grid_cell), cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
 
         cuda_free( local_cell.atoms,
                 "Cuda_Deallocate_Grid_Cell_Atoms::grid_cell.atoms" );
@@ -270,12 +270,12 @@ void Cuda_Allocate_Grid_Cell_Atoms( reax_system *system, int cap )
 
     for ( i = 0; i < total; i++ )
     {
-        copy_host_device( &local_cell, &device->cells[i], 
-                sizeof(grid_cell), cudaMemcpyDeviceToHost, "grid:cell-dealloc" );
+        sCudaMemcpy( &local_cell, &device->cells[i], 
+                sizeof(grid_cell), cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
         cuda_malloc( (void **)&local_cell.atoms, sizeof(int) * cap, 
                 TRUE, "realloc:grid:cells:atoms" );
-        copy_host_device( &local_cell, &device->cells[i], 
-                sizeof(grid_cell), cudaMemcpyHostToDevice, "grid:cell-realloc" );
+        sCudaMemcpy( &local_cell, &device->cells[i], 
+                sizeof(grid_cell), cudaMemcpyHostToDevice, __FILE__, __LINE__ );
     }
 }
 

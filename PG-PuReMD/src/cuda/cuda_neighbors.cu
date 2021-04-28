@@ -535,8 +535,8 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
 //    cudaCheckError( );
 
     /* check reallocation flag on device */
-    copy_host_device( &ret_far_nbr, system->d_realloc_far_nbrs, sizeof(int), 
-            cudaMemcpyDeviceToHost, "Cuda_Generate_Neighbor_Lists::d_realloc_far_nbrs" );
+    sCudaMemcpy( &ret_far_nbr, system->d_realloc_far_nbrs, sizeof(int), 
+            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
 
     ret = (ret_far_nbr == FALSE) ? SUCCESS : FAILURE;
     workspace->d_workspace->realloc.far_nbrs = ret_far_nbr;
@@ -591,8 +591,8 @@ void Cuda_Estimate_Num_Neighbors( reax_system *system, simulation_data *data )
 
     Cuda_Reduction_Sum( system->d_max_far_nbrs, system->d_total_far_nbrs,
             system->total_cap );
-    copy_host_device( &system->total_far_nbrs, system->d_total_far_nbrs, sizeof(int), 
-            cudaMemcpyDeviceToHost, "Cuda_Estimate_Neighbors::d_total_far_nbrs" );
+    sCudaMemcpy( &system->total_far_nbrs, system->d_total_far_nbrs, sizeof(int), 
+            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
 
 #if defined(LOG_PERFORMANCE)
     cudaEventRecord( time_event[1] );

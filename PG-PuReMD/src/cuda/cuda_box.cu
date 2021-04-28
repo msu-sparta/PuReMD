@@ -96,15 +96,15 @@ void Cuda_Scale_Box( reax_system *system, control_params *control,
     system->big_box.box[1][1] *= mu[1];
     system->big_box.box[2][2] *= mu[2];
 
-    Make_Consistent( &(system->big_box) );
+    Make_Consistent( &system->big_box );
     Setup_My_Box( system, control );
     Setup_My_Ext_Box( system, control );
     Update_Comm( system );
 
-    copy_host_device( &system->big_box, &system->d_big_box,
-            sizeof(simulation_box), cudaMemcpyHostToDevice, "Cuda_Scale_Box::simulation_data->big_box" );
-    copy_host_device( &system->my_box, &system->d_my_box,
-            sizeof(simulation_box), cudaMemcpyHostToDevice, "Cuda_Scale_Box::simulation_data->my_box" );
-    copy_host_device( &system->my_ext_box, &system->d_my_ext_box,
-            sizeof(simulation_box), cudaMemcpyHostToDevice, "Cuda_Scale_Box::simulation_data->my_ext_box" );
+    sCudaMemcpy( &system->d_big_box, &system->big_box,
+            sizeof(simulation_box), cudaMemcpyHostToDevice, __FILE__, __LINE__ );
+    sCudaMemcpy( &system->d_my_box, &system->my_box,
+            sizeof(simulation_box), cudaMemcpyHostToDevice, __FILE__, __LINE__ );
+    sCudaMemcpy( &system->d_my_ext_box, &system->my_ext_box,
+            sizeof(simulation_box), cudaMemcpyHostToDevice, __FILE__, __LINE__ );
 }

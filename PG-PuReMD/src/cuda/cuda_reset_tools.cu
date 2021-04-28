@@ -94,8 +94,8 @@ void Cuda_Reset_Atoms_HBond_Indices( reax_system* system, control_params *contro
     Cuda_Reduction_Sum( hindex, system->d_numH, system->N );
 #endif
 
-    copy_host_device( &system->numH, system->d_numH, sizeof(int), 
-            cudaMemcpyDeviceToHost, "Cuda_Reset_Atoms_HBond_Indices::d_numH" );
+    sCudaMemcpy( &system->numH, system->d_numH, sizeof(int), 
+            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
 }
 
 

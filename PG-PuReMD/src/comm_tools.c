@@ -174,26 +174,21 @@ void Estimate_NT_Atoms( reax_system * const system, mpi_datatypes * const mpi_da
 /* Note: filename must be NULL-terminated before calling this function */
 void Check_MPI_Error( int code, const char * const filename, int line )
 {
-    int len;
+    int len, rank;
     char err_msg[MPI_MAX_ERROR_STRING];
-#if defined(DEBUG_FOCUS)
-    int rank;
-
-    MPI_Comm_rank( MPI_COMM_WORLD, &rank );
-    fprintf( stderr, "[INFO] Check_MPI_Error: p%d, file %.*s, line %d\n", rank, (int) strlen(filename), filename, line );
-    fflush( stderr );
-#endif
 
     if ( code != MPI_SUCCESS )
     {
+        MPI_Comm_rank( MPI_COMM_WORLD, &rank );
         MPI_Error_string( code, err_msg, &len );
 
         fprintf( stderr, "[ERROR] MPI error\n" );
         /* strlen safe here only if filename is NULL-terminated before calling Check_MPI_Error */
-        fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
-                line, (int) strlen(filename), filename );
-        fprintf( stderr, "    [INFO] Error code %d\n", code );
+        fprintf( stderr, "    [INFO] At line %d in file %.*s on MPI processor %d\n",
+                line, (int) strlen(filename), filename, rank );
+        fprintf( stderr, "    [INFO] Error code: %d\n", code );
         fprintf( stderr, "    [INFO] Error message: %.*s\n", len, err_msg );
+
         MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
     }
 }

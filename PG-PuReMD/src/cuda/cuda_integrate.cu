@@ -237,7 +237,7 @@ void Velocity_Verlet_Nose_Hoover_NVT_Part2( reax_system *system, storage *worksp
 
 
 real Velocity_Verlet_Nose_Hoover_NVT_Part3( reax_system *system, storage *workspace,
-       real dt, real v_xi_old, real * d_my_ekin, real * d_total_my_ekin )
+       real dt, real v_xi_old, real *d_my_ekin, real *d_total_my_ekin )
 {
     int blocks;
     real my_ekin;
@@ -252,9 +252,8 @@ real Velocity_Verlet_Nose_Hoover_NVT_Part3( reax_system *system, storage *worksp
 
     Cuda_Reduction_Sum( d_my_ekin, d_total_my_ekin, system->n );
 
-    copy_host_device( &my_ekin, d_total_my_ekin, sizeof(real), 
-            cudaMemcpyDeviceToHost,
-            "Velocity_Verlet_Nose_Hoover_NVT_Part3::d_total_my_ekin" );
+    sCudaMemcpy( &my_ekin, d_total_my_ekin, sizeof(real), 
+            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
 
     return my_ekin;
 }

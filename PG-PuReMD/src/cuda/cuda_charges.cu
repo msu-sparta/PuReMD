@@ -87,20 +87,20 @@ void Sort_Matrix_Rows( sparse_matrix * const A, reax_system const * const system
     /* copy row indices from device */
     start = (int *) smalloc( sizeof(int) * system->total_cap, "Sort_Matrix_Rows::start" );
     end = (int *) smalloc( sizeof(int) * system->total_cap, "Sort_Matrix_Rows::end" );
-    copy_host_device( start, A->start, sizeof(int) * system->total_cap, 
-            cudaMemcpyDeviceToHost, "Sort_Matrix_Rows::start" );
-    copy_host_device( end, A->end, sizeof(int) * system->total_cap, 
-            cudaMemcpyDeviceToHost, "Sort_Matrix_Rows::end" );
+    sCudaMemcpy( start, A->start, sizeof(int) * system->total_cap, 
+            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+    sCudaMemcpy( end, A->end, sizeof(int) * system->total_cap, 
+            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
 
     /* make copies of column indices and non-zero values */
-    cuda_malloc( (void **)&d_j_temp, sizeof(int) * system->total_cm_entries,
+    cuda_malloc( (void **) &d_j_temp, sizeof(int) * system->total_cm_entries,
             FALSE, "Sort_Matrix_Rows::d_j_temp" );
-    cuda_malloc( (void **)&d_val_temp, sizeof(real) * system->total_cm_entries,
+    cuda_malloc( (void **) &d_val_temp, sizeof(real) * system->total_cm_entries,
             FALSE, "Sort_Matrix_Rows::d_val_temp" );
-    copy_device( d_j_temp, A->j, sizeof(int) * system->total_cm_entries,
-            "Sort_Matrix_Rows::d_j_temp" );
-    copy_device( d_val_temp, A->val, sizeof(real) * system->total_cm_entries,
-            "Sort_Matrix_Rows::d_val_temp" );
+    sCudaMemcpy( d_j_temp, A->j, sizeof(int) * system->total_cm_entries,
+            cudaMemcpyDeviceToDevice, __FILE__, __LINE__ );
+    sCudaMemcpy( d_val_temp, A->val, sizeof(real) * system->total_cm_entries,
+            cudaMemcpyDeviceToDevice, __FILE__, __LINE__ );
 
     for ( i = 0; i < system->n; ++i )
     {
@@ -421,8 +421,8 @@ static void Extrapolate_Charges_QEq_Part2( reax_system const * const system,
         ( system->d_my_atoms, *(workspace->d_workspace), u, spad, system->n );
     cudaCheckError( );
 
-    copy_host_device( q, spad, sizeof(real) * system->n, 
-            cudaMemcpyDeviceToHost, "Extrapolate_Charges_QEq_Part2::spad" );
+    sCudaMemcpy( q, spad, sizeof(real) * system->n, 
+            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
 }
 
 
@@ -455,8 +455,8 @@ static void Update_Ghost_Atom_Charges( reax_system const * const system,
             sizeof(real) * (system->N - system->n),
             "Update_Ghost_Atom_Charges::workspace->scratch" );
     spad = (real *) workspace->scratch;
-    copy_host_device( &q[system->n], spad, sizeof(real) * (system->N - system->n),
-            cudaMemcpyHostToDevice, "Update_Ghost_Atom_Charges::q" );
+    sCudaMemcpy( spad, &q[system->n], sizeof(real) * (system->N - system->n),
+            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
 
     k_update_ghost_atom_charges <<< blocks, DEF_BLOCK_SIZE >>>
         ( system->d_my_atoms, spad, system->n, system->N );
@@ -501,8 +501,8 @@ static void Calculate_Charges_QEq( reax_system const * const system,
         ( spad, &spad[blocks], blocks );
     cudaCheckError( );
 
-    copy_host_device( &my_sum, &spad[blocks],
-            sizeof(rvec2), cudaMemcpyDeviceToHost, "Calculate_Charges_QEq::my_sum," );
+    sCudaMemcpy( &my_sum, &spad[blocks],
+            sizeof(rvec2), cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
 #else
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
             sizeof(real) * 2,
@@ -513,8 +513,8 @@ static void Calculate_Charges_QEq( reax_system const * const system,
     Cuda_Reduction_Sum( workspace->d_workspace->s, &spad[0], system->n );
     Cuda_Reduction_Sum( workspace->d_workspace->t, &spad[1], system->n );
 
-    copy_host_device( my_sum, spad, sizeof(real) * 2,
-            cudaMemcpyDeviceToHost, "Calculate_Charges_QEq::my_sum," );
+    sCudaMemcpy( my_sum, spad, sizeof(real) * 2,
+            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
 #endif
 
     /* global reduction on pseudo-charges for s and t */

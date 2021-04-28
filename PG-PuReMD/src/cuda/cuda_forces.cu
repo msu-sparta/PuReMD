@@ -1763,8 +1763,8 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
 
         Cuda_Reduction_Sum( system->d_max_cm_entries,
                 system->d_total_cm_entries, workspace->d_workspace->H.n_max );
-        copy_host_device( &system->total_cm_entries, system->d_total_cm_entries, sizeof(int),
-                cudaMemcpyDeviceToHost, "Cuda_Estimate_Storages::d_total_cm_entries" );
+        sCudaMemcpy( &system->total_cm_entries, system->d_total_cm_entries,
+                sizeof(int), cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
     }
 
     if ( realloc_bonds == TRUE )
@@ -1782,8 +1782,8 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
 
         Cuda_Reduction_Sum( system->d_max_bonds, system->d_total_bonds,
                 system->total_cap );
-        copy_host_device( &system->total_bonds, system->d_total_bonds, sizeof(int), 
-                cudaMemcpyDeviceToHost, "Cuda_Estimate_Storages::d_total_bonds" );
+        sCudaMemcpy( &system->total_bonds, system->d_total_bonds, sizeof(int), 
+                cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
     }
 
     if ( system->numH > 0 && control->hbond_cut > 0.0 && realloc_hbonds == TRUE )
@@ -1801,8 +1801,8 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
 
         Cuda_Reduction_Sum( system->d_max_hbonds, system->d_total_hbonds,
                 system->total_cap );
-        copy_host_device( &system->total_hbonds, system->d_total_hbonds, sizeof(int), 
-                cudaMemcpyDeviceToHost, "Cuda_Estimate_Storages::d_total_hbonds" );
+        sCudaMemcpy( &system->total_hbonds, system->d_total_hbonds, sizeof(int), 
+                cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
     }
     else if ( step == 0 && (system->numH == 0 || control->hbond_cut <= 0.0) )
     {
@@ -2002,12 +2002,12 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
 #endif
 
     /* check reallocation flags on device */
-    copy_host_device( &realloc_cm, system->d_realloc_cm_entries, sizeof(int), 
-            cudaMemcpyDeviceToHost, "Cuda_Init_Forces::d_realloc_cm_entries" );
-    copy_host_device( &realloc_bonds, system->d_realloc_bonds, sizeof(int), 
-            cudaMemcpyDeviceToHost, "Cuda_Init_Forces::d_realloc_bonds" );
-    copy_host_device( &realloc_hbonds, system->d_realloc_hbonds, sizeof(int), 
-            cudaMemcpyDeviceToHost, "Cuda_Init_Forces::d_realloc_hbonds" );
+    sCudaMemcpy( &realloc_cm, system->d_realloc_cm_entries, sizeof(int), 
+            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+    sCudaMemcpy( &realloc_bonds, system->d_realloc_bonds, sizeof(int), 
+            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+    sCudaMemcpy( &realloc_hbonds, system->d_realloc_hbonds, sizeof(int), 
+            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
 
 #if defined(LOG_PERFORMANCE)
     if ( cudaEventQuery( time_event[0] ) != cudaSuccess ) 
@@ -2211,10 +2211,10 @@ int Cuda_Init_Forces_No_Charges( reax_system *system, control_params *control,
 #endif
 
     /* check reallocation flags on device */
-    copy_host_device( &realloc_bonds, system->d_realloc_bonds, sizeof(int), 
-            cudaMemcpyDeviceToHost, "Cuda_Init_Forces::d_realloc_bonds" );
-    copy_host_device( &realloc_hbonds, system->d_realloc_hbonds, sizeof(int), 
-            cudaMemcpyDeviceToHost, "Cuda_Init_Forces::d_realloc_hbonds" );
+    sCudaMemcpy( &realloc_bonds, system->d_realloc_bonds, sizeof(int), 
+            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+    sCudaMemcpy( &realloc_hbonds, system->d_realloc_hbonds, sizeof(int), 
+            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
 
 #if defined(LOG_PERFORMANCE)
     if ( cudaEventQuery( time_event[0] ) != cudaSuccess ) 
@@ -2356,13 +2356,13 @@ static void Cuda_Compute_Total_Force( reax_system *system, control_params *contr
      * based on the neighbors information each processor has had.
      * final values of force on each atom needs to be computed by adding up
      * all partially-final pieces */
-    copy_host_device( f, workspace->d_workspace->f, sizeof(rvec) * system->N ,
-            cudaMemcpyDeviceToHost, "Cuda_Compute_Total_Force::workspace->d_workspace->f" );
+    sCudaMemcpy( f, workspace->d_workspace->f, sizeof(rvec) * system->N ,
+            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
 
     Coll( system, mpi_data, f, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
 
-    copy_host_device( f, workspace->d_workspace->f, sizeof(rvec) * system->N,
-            cudaMemcpyHostToDevice, "Cuda_Compute_Total_Force::workspace->d_workspace->f" );
+    sCudaMemcpy( workspace->d_workspace->f, f, sizeof(rvec) * system->N,
+            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
 
     Cuda_Total_Forces_Part2( system, workspace );
 }

@@ -109,42 +109,35 @@ void cuda_check_malloc( void **ptr, size_t *cur_size, size_t new_size, const cha
 }
 
 
-void copy_host_device( void *host, void *dev, size_t size,
-        cudaMemcpyKind dir, const char *msg )
+/* Safe wrapper around cudaMemcpy
+ *
+ * dest: address to be copied to
+ * src: address to be copied from
+ * size: num. bytes to copy
+ * dir: CUDA enum specifying address types for dest and src
+ * filename: NULL-terminated source filename where function call originated
+ * line: line of source filen where function call originated
+ */
+void sCudaMemcpy( void * const dest, void const * const src, size_t size,
+        cudaMemcpyKind dir, const char * const filename, int line )
 {
-    cudaError_t retVal = cudaErrorNotReady;
+    int rank;
+    cudaError_t ret;
 
-    if ( dir == cudaMemcpyHostToDevice )
+    ret = cudaMemcpy( dest, src, size, dir );
+
+    if ( ret != cudaSuccess )
     {
-        retVal = cudaMemcpy( dev, host, size, cudaMemcpyHostToDevice );
-    }
-    else
-    {
-        retVal = cudaMemcpy( host, dev, size, cudaMemcpyDeviceToHost );
-    }
+        MPI_Comm_rank( MPI_COMM_WORLD, &rank );
+        const char *str = cudaGetErrorString( ret );
 
-    if ( retVal != cudaSuccess )
-    {
-        fprintf( stderr,
-                "[ERROR] could not copy resource %s from host to device\n    [INFO] CUDA API error code: %d\n",
-                msg, retVal );
-        exit( INSUFFICIENT_MEMORY );
-    }
-}
+        fprintf( stderr, "[ERROR] CUDA error: memory copy failure\n" );
+        fprintf( stderr, "  [INFO] At line %d in file %.*s on MPI processor %d\n",
+                line, (int) strlen(filename), filename, rank );
+        fprintf( stderr, "  [INFO] Error code: %d\n", ret );
+        fprintf( stderr, "  [INFO] Error message: %.*s\n", (int) strlen(str), str );
 
-
-void copy_device( void *dest, void *src, size_t size, const char *msg )
-{
-    cudaError_t retVal;
-
-    retVal = cudaMemcpy( dest, src, size, cudaMemcpyDeviceToDevice );
-
-    if ( retVal != cudaSuccess )
-    {
-        fprintf( stderr,
-                "[ERROR] could not copy resource %s from device to device\n    [INFO] CUDA API error code: %d\n",
-                msg, retVal );
-        exit( INSUFFICIENT_MEMORY );
+        MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
     }
 }
 

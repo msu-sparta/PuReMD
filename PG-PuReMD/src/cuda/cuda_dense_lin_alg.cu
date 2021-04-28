@@ -600,8 +600,8 @@ real Dot( storage * const workspace,
 //    ret = MPI_Allreduce( &spad[k], &sum, 1, MPI_DOUBLE, MPI_SUM, comm );
 //    Check_MPI_Error( ret, __FILE__, __LINE__ );
 //#else
-    copy_host_device( &temp, &spad[k], sizeof(real),
-            cudaMemcpyDeviceToHost, "Dot::temp" );
+    sCudaMemcpy( &temp, &spad[k], sizeof(real),
+            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
 
     ret = MPI_Allreduce( &temp, &sum, 1, MPI_DOUBLE, MPI_SUM, comm );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
@@ -636,8 +636,8 @@ real Dot_local( storage * const workspace,
     Cuda_Reduction_Sum( spad, &spad[k], k );
 
     //TODO: keep result of reduction on devie and pass directly to CUDA-aware MPI
-    copy_host_device( &sum, &spad[k], sizeof(real),
-            cudaMemcpyDeviceToHost, "Dot_local::sum" );
+    sCudaMemcpy( &sum, &spad[k], sizeof(real),
+            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
 
     return sum;
 }
@@ -683,8 +683,8 @@ void Dot_local_rvec2( control_params const * const control,
     cudaCheckError( );
 
     //TODO: keep result of reduction on devie and pass directly to CUDA-aware MPI
-    copy_host_device( &sum, &spad[k + blocks], sizeof(rvec2),
-            cudaMemcpyDeviceToHost, "Dot_local_rvec2::sum" );
+    sCudaMemcpy( &sum, &spad[k + blocks], sizeof(rvec2),
+            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
 
     *sum1 = sum[0];
     *sum2 = sum[1];

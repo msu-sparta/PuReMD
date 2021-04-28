@@ -1365,8 +1365,8 @@ static int Cuda_Estimate_Storage_Three_Body( reax_system *system, control_params
 
     Cuda_Reduction_Sum( thbody, system->d_total_thbodies, system->total_bonds );
 
-    copy_host_device( &system->total_thbodies, system->d_total_thbodies, sizeof(int),
-            cudaMemcpyDeviceToHost, "Cuda_Estimate_Storage_Three_Body::d_total_thbodies" );
+    sCudaMemcpy( &system->total_thbodies, system->d_total_thbodies,
+            sizeof(int), cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
 
     if ( data->step - data->prev_steps == 0 )
     {

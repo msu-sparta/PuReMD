@@ -12,9 +12,8 @@ void cuda_memset( void *, int , size_t , const char * );
 
 void cuda_check_malloc( void **, size_t *, size_t, const char * );
 
-void copy_host_device( void *, void *, size_t, enum cudaMemcpyKind, const char * );
-
-void copy_device( void *, void *, size_t, const char * );
+void sCudaMemcpy( void * const, void const * const, size_t,
+        enum cudaMemcpyKind, const char * const, int );
 
 void Cuda_Print_Mem_Usage( );
 
