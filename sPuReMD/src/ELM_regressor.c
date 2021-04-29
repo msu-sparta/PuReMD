@@ -3,9 +3,15 @@
 #include <sys/stat.h>
 #include "tool_box.h"
 #include <time.h>
-#include "lapacke.h"
 #include "cblas.h"
 
+/* Intel MKL */
+#if defined(HAVE_LAPACKE_MKL)
+  #include "mkl.h"
+/* reference LAPACK */
+#elif defined(HAVE_LAPACKE)
+  #include "lapacke.h"
+#endif
 
 
 /* store the model parameters */
@@ -61,8 +67,6 @@ void predict(static_storage * const workspace, ELM_model* model, double* output,
         	 	1.0, hidden_out, model->hidden_size, model->W_out, 1, 0.0, output, 1);
 
 	//sfree( hidden_out, "batch_predict:hidden_out" ); 
-    
-
 }
 
 void batch_predict(ELM_model* model, 

@@ -33,7 +33,10 @@
 #if defined(HAVE_TENSORFLOW)
   #include "tensorflow_regressor.c"   
 #endif
+
 #include "ELM_regressor.c"
+
+
 
 int is_refactoring_step( control_params * const control,
         simulation_data * const data )
@@ -182,7 +185,8 @@ static void Spline_Extrapolate_Charges_EE( const reax_system * const system,
     //TODO: good candidate for vectorization, avoid moving data with head pointer and circular buffer
 #if defined(_OPENMP)
     #pragma omp parallel for schedule(static) \
-        default(none) private(i, s_tmp, j) firstprivate(system, control, workspace)
+        default(none) private(i, s_tmp, j) firstprivate(system, control, workspace) \
+    	shared(limit)
 #endif
     for ( i = 0; i < system->N_cm; ++i )
     {
