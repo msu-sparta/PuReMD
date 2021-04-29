@@ -267,6 +267,28 @@ restart_freq            0                       ! 0: do not output any restart f
                     self.__ffield_file,
                     control_file,
                 ]
+            elif mpi_cmd[0] == 'jsrun':
+                # LSF scheduler wraps MPI commands (e.g., OLCF at ONL)
+                cmd_args = [
+                    'jsrun',
+                    '--nrs',
+                    # number of resource sets
+                    mpi_cmd[1],
+                    '--tasks_per_rs',
+                    # number of MPI tasks (ranks) per resource set
+                    mpi_cmd[2],
+                    # number of CPUs per resource set per node
+                    '--cpu_per_rs',
+                    mpi_cmd[3],
+                    # number of GPUs per resource set per task
+                    '--gpu_per_rs',
+                    mpi_cmd[4],
+                ] + mpi_cmd_extra[0].split() + [
+                ] + binary.split() + [
+                    self.__geo_file,
+                    self.__ffield_file,
+                    control_file,
+                ]
             else:
                 print("[ERROR] Invalid MPI application type ({0}). Terminating...".format(mpi_cmd[0]))
                 exit(-1)
