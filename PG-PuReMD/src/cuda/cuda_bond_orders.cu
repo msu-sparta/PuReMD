@@ -993,13 +993,14 @@ CUDA_GLOBAL void k_total_forces_part2( reax_atom *my_atoms, int n,
 }
 
 
-void Cuda_Compute_Bond_Orders( reax_system *system, control_params *control, 
-        simulation_data *data, storage *workspace, 
-        reax_list **lists, output_controls *out_control )
+void Cuda_Compute_Bond_Orders( reax_system * const system, control_params * const control, 
+        simulation_data * const data, storage * const workspace, 
+        reax_list ** const lists, output_controls * const out_control )
 {
     int blocks;
 
-    k_bond_order_part1 <<< control->blocks_n, control->block_size_n >>>
+    k_bond_order_part1 <<< control->blocks_n, control->block_size_n, 0,
+                       control->streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
           *(workspace->d_workspace), system->N );
     cudaCheckError( );
@@ -1014,25 +1015,28 @@ void Cuda_Compute_Bond_Orders( reax_system *system, control_params *control,
         + (system->N * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
     k_bond_order_part2 <<< blocks, DEF_BLOCK_SIZE,
-                       sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32) >>>
+                       sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32),
+                       control->streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp, 
           system->reax_param.d_tbp, *(workspace->d_workspace), 
           *(lists[BONDS]), system->reax_param.num_atom_types, system->N );
     cudaCheckError( );
 
-    k_bond_order_part3 <<< control->blocks_n, control->block_size_n >>>
+    k_bond_order_part3 <<< control->blocks_n, control->block_size_n, 0,
+                       control->streams[0] >>>
         ( *(workspace->d_workspace), *(lists[BONDS]), system->N );
     cudaCheckError( );
 
-    k_bond_order_part4 <<< control->blocks_n, control->block_size_n >>>
+    k_bond_order_part4 <<< control->blocks_n, control->block_size_n, 0,
+                       control->streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp, 
          *(workspace->d_workspace), system->N );
     cudaCheckError( );
 }
 
 
-void Cuda_Total_Forces_Part1( reax_system *system, control_params *control, 
-        simulation_data *data, storage *workspace, reax_list **lists )
+void Cuda_Total_Forces_Part1( reax_system * const system, control_params * const control, 
+        simulation_data *data, storage * const workspace, reax_list ** const lists )
 {
     int blocks;
     rvec *spad_rvec;
@@ -1042,7 +1046,8 @@ void Cuda_Total_Forces_Part1( reax_system *system, control_params *control,
 //        blocks = system->N / DEF_BLOCK_SIZE
 //            + ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 //
-//        k_total_forces_part1 <<< blocks, DEF_BLOCK_SIZE >>>
+//        k_total_forces_part1 <<< blocks, DEF_BLOCK_SIZE, 0,
+//                             control->streams[0] >>>
 //            ( *(workspace->d_workspace), *(lists[BONDS]), system->N );
 //        cudaCheckError( );
 
@@ -1050,7 +1055,8 @@ void Cuda_Total_Forces_Part1( reax_system *system, control_params *control,
             + ((system->N * 32 % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
         k_total_forces_part1_opt <<< blocks, DEF_BLOCK_SIZE,
-                                 sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32) >>>
+                                 sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32),
+                                 control->streams[0] >>>
             ( *(workspace->d_workspace), *(lists[BONDS]), system->N );
         cudaCheckError( );
     }
@@ -1066,7 +1072,8 @@ void Cuda_Total_Forces_Part1( reax_system *system, control_params *control,
         blocks = system->N / DEF_BLOCK_SIZE
             + ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-        k_total_forces_virial_part1 <<< blocks, DEF_BLOCK_SIZE >>>
+        k_total_forces_virial_part1 <<< blocks, DEF_BLOCK_SIZE, 0,
+                                    control->streams[0] >>>
             ( *(workspace->d_workspace), *(lists[BONDS]), 
               (simulation_data *)data->d_simulation_data, 
               spad_rvec, system->N );
@@ -1076,12 +1083,17 @@ void Cuda_Total_Forces_Part1( reax_system *system, control_params *control,
             + ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
         /* reduction for ext_press */
-        k_reduction_rvec <<< blocks, DEF_BLOCK_SIZE, sizeof(rvec) * (DEF_BLOCK_SIZE / 32) >>> 
+        k_reduction_rvec <<< blocks, DEF_BLOCK_SIZE,
+                         sizeof(rvec) * (DEF_BLOCK_SIZE / 32),
+                         control->streams[0] >>> 
             ( spad_rvec, &spad_rvec[system->N], system->N );
         cudaCheckError( ); 
 
-        k_reduction_rvec <<< 1, ((blocks + 31) / 32) * 32, sizeof(rvec) * ((blocks + 31) / 32) >>>
-            ( &spad_rvec[system->N], &((simulation_data *)data->d_simulation_data)->my_ext_press, blocks );
+        k_reduction_rvec <<< 1, ((blocks + 31) / 32) * 32,
+                         sizeof(rvec) * ((blocks + 31) / 32),
+                         control->streams[0] >>>
+            ( &spad_rvec[system->N],
+              &((simulation_data *)data->d_simulation_data)->my_ext_press, blocks );
         cudaCheckError( ); 
     }
 
@@ -1090,21 +1102,24 @@ void Cuda_Total_Forces_Part1( reax_system *system, control_params *control,
         + ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
     /* post processing for the atomic forces */
-    k_total_forces_part1_2  <<< blocks, DEF_BLOCK_SIZE >>>
-        ( system->d_my_atoms, *(lists[BONDS]), *(workspace->d_workspace), system->N );
+    k_total_forces_part1_2  <<< blocks, DEF_BLOCK_SIZE, 0,
+                            control->streams[0] >>>
+        ( system->d_my_atoms, *(lists[BONDS]),
+          *(workspace->d_workspace), system->N );
     cudaCheckError( ); 
 #endif
 }
 
 
-void Cuda_Total_Forces_Part2( reax_system *system, storage *workspace )
+void Cuda_Total_Forces_Part2( reax_system * const system,
+        control_params * const control, storage * const workspace )
 {
     int blocks;
 
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_total_forces_part2 <<< blocks, DEF_BLOCK_SIZE >>>
+    k_total_forces_part2 <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
         ( system->d_my_atoms, system->n, *(workspace->d_workspace) );
     cudaCheckError( ); 
 }

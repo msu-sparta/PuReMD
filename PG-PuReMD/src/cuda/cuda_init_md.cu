@@ -180,7 +180,7 @@ void Cuda_Init_Workspace( reax_system *system, control_params *control,
     workspace->d_workspace->realloc.thbody = FALSE;
     workspace->d_workspace->realloc.gcell_atoms = 0;
 
-    Cuda_Reset_Workspace( system, workspace );
+    Cuda_Reset_Workspace( system, control, workspace );
 
     Init_Taper( control, workspace->d_workspace, mpi_data );
 }
@@ -190,13 +190,13 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists,
         mpi_datatypes *mpi_data )
 {
-    Cuda_Estimate_Num_Neighbors( system, data );
+    Cuda_Estimate_Num_Neighbors( system, control, data );
 
     Cuda_Make_List( system->total_cap, system->total_far_nbrs,
             TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
-    Cuda_Init_Neighbor_Indices( system, lists[FAR_NBRS] );
+    Cuda_Init_Neighbor_Indices( system, control, lists[FAR_NBRS] );
 
-    Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
+    Cuda_Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
     /* first call to Cuda_Estimate_Storages requires setting these manually before allocation */
     workspace->d_workspace->H.n = system->n;
@@ -209,15 +209,15 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
 
     Cuda_Allocate_Matrix( &workspace->d_workspace->H, system->n,
             system->local_cap, system->total_cm_entries, SYM_FULL_MATRIX );
-    Cuda_Init_Sparse_Matrix_Indices( system, &workspace->d_workspace->H );
+    Cuda_Init_Sparse_Matrix_Indices( system, control, &workspace->d_workspace->H );
 
     Cuda_Make_List( system->total_cap, system->total_bonds, TYP_BOND, lists[BONDS] );
-    Cuda_Init_Bond_Indices( system, lists[BONDS] );
+    Cuda_Init_Bond_Indices( system, control, lists[BONDS] );
 
     if ( control->hbond_cut > 0.0 && system->numH > 0 )
     {
         Cuda_Make_List( system->total_cap, system->total_hbonds, TYP_HBOND, lists[HBONDS] );
-        Cuda_Init_HBond_Indices( system, workspace, lists[HBONDS] );
+        Cuda_Init_HBond_Indices( system, control, workspace, lists[HBONDS] );
     }
 
     /* 3bodies list: since a more accurate estimate of the num.

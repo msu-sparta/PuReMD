@@ -1617,27 +1617,28 @@ CUDA_GLOBAL void k_print_hbonds( reax_atom *my_atoms, reax_list hbond_list, int 
 
 
 #if defined(DEBUG_FOCUS)
-static void Print_Forces( reax_system *system )
+static void Print_Forces( reax_system *system, control_params *control )
 {
     int blocks;
     
     blocks = (system->n) / DEF_BLOCK_SIZE
         + (((system->n % DEF_BLOCK_SIZE) == 0) ? 0 : 1);
 
-    k_print_forces <<< blocks, DEF_BLOCK_SIZE >>>
+    k_print_forces <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
         ( system->d_my_atoms, workspace->d_workspace->f, system->n );
     cudaCheckError( );
 }
 
 
-static void Print_HBonds( reax_system *system, int step )
+static void Print_HBonds( reax_system *system, control_params *control,
+        int step )
 {
     int blocks;
     
     blocks = (system->n) / DEF_BLOCK_SIZE
         + (((system->n % DEF_BLOCK_SIZE) == 0) ? 0 : 1);
 
-    k_print_hbonds <<< blocks, DEF_BLOCK_SIZE >>>
+    k_print_hbonds <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
         ( system->d_my_atoms, *(lists[HBONDS]), system->n, system->my_rank, step );
     cudaCheckError( );
 }
@@ -1647,7 +1648,8 @@ static void Print_HBonds( reax_system *system, int step )
 /* Initialize indices for far neighbors list post reallocation
  *
  * system: atomic system info. */
-void Cuda_Init_Neighbor_Indices( reax_system *system, reax_list *far_nbr_list )
+void Cuda_Init_Neighbor_Indices( reax_system *system, control_params *control,
+        reax_list *far_nbr_list )
 {
     int blocks;
 
@@ -1655,11 +1657,13 @@ void Cuda_Init_Neighbor_Indices( reax_system *system, reax_list *far_nbr_list )
         + (far_nbr_list->n % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
     /* init indices */
-    Cuda_Scan_Excl_Sum( system->d_max_far_nbrs, far_nbr_list->index, far_nbr_list->n );
+    Cuda_Scan_Excl_Sum( system->d_max_far_nbrs, far_nbr_list->index,
+            far_nbr_list->n, control->streams[0] );
 
     /* init end_indices */
-    k_init_end_index <<< blocks, DEF_BLOCK_SIZE >>>
-        ( system->d_far_nbrs, far_nbr_list->index, far_nbr_list->end_index, far_nbr_list->n );
+    k_init_end_index <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
+        ( system->d_far_nbrs, far_nbr_list->index, far_nbr_list->end_index,
+          far_nbr_list->n );
     cudaCheckError( );
 }
 
@@ -1667,8 +1671,8 @@ void Cuda_Init_Neighbor_Indices( reax_system *system, reax_list *far_nbr_list )
 /* Initialize indices for far hydrogen bonds list post reallocation
  *
  * system: atomic system info. */
-void Cuda_Init_HBond_Indices( reax_system *system, storage *workspace,
-        reax_list *hbond_list )
+void Cuda_Init_HBond_Indices( reax_system *system, control_params *control,
+        storage *workspace, reax_list *hbond_list )
 {
     int blocks, *temp;
 
@@ -1681,9 +1685,10 @@ void Cuda_Init_HBond_Indices( reax_system *system, storage *workspace,
     temp = (int *) workspace->scratch;
 
     /* init indices and end_indices */
-    Cuda_Scan_Excl_Sum( system->d_max_hbonds, temp, system->total_cap );
+    Cuda_Scan_Excl_Sum( system->d_max_hbonds, temp, system->total_cap,
+            control->streams[0] );
 
-    k_init_hbond_indices <<< blocks, DEF_BLOCK_SIZE >>>
+    k_init_hbond_indices <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, system->d_hbonds, temp, 
           hbond_list->index, hbond_list->end_index, system->total_cap );
     cudaCheckError( );
@@ -1693,7 +1698,8 @@ void Cuda_Init_HBond_Indices( reax_system *system, storage *workspace,
 /* Initialize indices for far bonds list post reallocation
  *
  * system: atomic system info. */
-void Cuda_Init_Bond_Indices( reax_system *system, reax_list * bond_list )
+void Cuda_Init_Bond_Indices( reax_system *system, control_params * control,
+        reax_list * bond_list )
 {
     int blocks;
 
@@ -1701,10 +1707,11 @@ void Cuda_Init_Bond_Indices( reax_system *system, reax_list * bond_list )
         (system->total_cap % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
     /* init indices */
-    Cuda_Scan_Excl_Sum( system->d_max_bonds, bond_list->index, system->total_cap );
+    Cuda_Scan_Excl_Sum( system->d_max_bonds, bond_list->index, system->total_cap,
+            control->streams[0] );
 
     /* init end_indices */
-    k_init_end_index <<< blocks, DEF_BLOCK_SIZE >>>
+    k_init_end_index <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
         ( system->d_bonds, bond_list->index, bond_list->end_index, system->total_cap );
     cudaCheckError( );
 }
@@ -1714,7 +1721,8 @@ void Cuda_Init_Bond_Indices( reax_system *system, reax_list * bond_list )
  *
  * system: atomic system info.
  * H: charge matrix */
-void Cuda_Init_Sparse_Matrix_Indices( reax_system *system, sparse_matrix *H )
+void Cuda_Init_Sparse_Matrix_Indices( reax_system *system, control_params *control,
+        sparse_matrix *H )
 {
     int blocks;
 
@@ -1722,11 +1730,12 @@ void Cuda_Init_Sparse_Matrix_Indices( reax_system *system, sparse_matrix *H )
         + (H->n_max % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
     /* init indices */
-    Cuda_Scan_Excl_Sum( system->d_max_cm_entries, H->start, H->n_max );
+    Cuda_Scan_Excl_Sum( system->d_max_cm_entries, H->start, H->n_max,
+           control->streams[0] );
 
     //TODO: not needed for full format (Init_Forces sets H->end)
     /* init end_indices */
-    k_init_end_index <<< blocks, DEF_BLOCK_SIZE >>>
+    k_init_end_index <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
         ( system->d_cm_entries, H->start, H->end, H->n_max );
     cudaCheckError( );
 }
@@ -1745,7 +1754,8 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
 
         if ( workspace->d_workspace->H.format == SYM_HALF_MATRIX )
         {
-            k_estimate_storages_cm_half <<< blocks, DEF_BLOCK_SIZE >>>
+            k_estimate_storages_cm_half <<< blocks, DEF_BLOCK_SIZE, 0,
+                                        control->streams[0] >>>
                 ( system->d_my_atoms, (control_params *) control->d_control_params,
                   *(lists[FAR_NBRS]), workspace->d_workspace->H.n,
                   workspace->d_workspace->H.n_max,
@@ -1753,7 +1763,8 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
         }
         else
         {
-            k_estimate_storages_cm_full <<< blocks, DEF_BLOCK_SIZE >>>
+            k_estimate_storages_cm_full <<< blocks, DEF_BLOCK_SIZE, 0,
+                                        control->streams[0] >>>
                 ( (control_params *) control->d_control_params,
                   *(lists[FAR_NBRS]), workspace->d_workspace->H.n,
                   workspace->d_workspace->H.n_max,
@@ -1761,8 +1772,8 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
         }
         cudaCheckError( );
 
-        Cuda_Reduction_Sum( system->d_max_cm_entries,
-                system->d_total_cm_entries, workspace->d_workspace->H.n_max );
+        Cuda_Reduction_Sum( system->d_max_cm_entries, system->d_total_cm_entries,
+                workspace->d_workspace->H.n_max, control->streams[0] );
         sCudaMemcpy( &system->total_cm_entries, system->d_total_cm_entries,
                 sizeof(int), cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
     }
@@ -1772,7 +1783,8 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
         blocks = system->total_cap / DEF_BLOCK_SIZE
             + (system->total_cap % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
-        k_estimate_storage_bonds <<< blocks, DEF_BLOCK_SIZE >>>
+        k_estimate_storage_bonds <<< blocks, DEF_BLOCK_SIZE, 0,
+                                 control->streams[0] >>>
             ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp, 
               (control_params *) control->d_control_params,
               *(lists[FAR_NBRS]), system->reax_param.num_atom_types,
@@ -1781,7 +1793,7 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
         cudaCheckError( );
 
         Cuda_Reduction_Sum( system->d_max_bonds, system->d_total_bonds,
-                system->total_cap );
+                system->total_cap, control->streams[0] );
         sCudaMemcpy( &system->total_bonds, system->d_total_bonds, sizeof(int), 
                 cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
     }
@@ -1791,7 +1803,8 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
         blocks = system->total_cap / DEF_BLOCK_SIZE
             + (system->total_cap % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
-        k_estimate_storage_hbonds <<< blocks, DEF_BLOCK_SIZE >>>
+        k_estimate_storage_hbonds <<< blocks, DEF_BLOCK_SIZE, 0,
+                                  control->streams[0] >>>
             ( system->d_my_atoms, system->reax_param.d_sbp,
               (control_params *) control->d_control_params,
               *(lists[FAR_NBRS]), system->reax_param.num_atom_types,
@@ -1800,7 +1813,7 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
         cudaCheckError( );
 
         Cuda_Reduction_Sum( system->d_max_hbonds, system->d_total_hbonds,
-                system->total_cap );
+                system->total_cap, control->streams[0] );
         sCudaMemcpy( &system->total_hbonds, system->d_total_hbonds, sizeof(int), 
                 cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
     }
@@ -1819,7 +1832,8 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
 #endif
 
         control->hbond_cut = 0.0;
-        k_disable_hydrogen_bonding <<< 1, 1 >>> ( (control_params *) control->d_control_params );
+        k_disable_hydrogen_bonding <<< 1, 1, 0, control->streams[0] >>>
+            ( (control_params *) control->d_control_params );
     }
 }
 
@@ -1856,13 +1870,13 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
 
     if ( renbr == FALSE && dist_done == FALSE )
     {
-//        k_init_dist <<< control->blocks_n, control->block_size_n >>>
+//        k_init_dist <<< control->blocks_n, control->block_size_n, 0, control->streams[0] >>>
 //            ( system->d_my_atoms, *(lists[FAR_NBRS]), system->N );
 
         blocks = system->N * 32 / DEF_BLOCK_SIZE
             + (system->N * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
-        k_init_dist_opt <<< blocks, DEF_BLOCK_SIZE >>>
+        k_init_dist_opt <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
             ( system->d_my_atoms, *(lists[FAR_NBRS]), system->N );
         cudaCheckError( );
 
@@ -1881,13 +1895,13 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
         /* update num. rows in matrix for this GPU */
         workspace->d_workspace->H.n = system->n;
 
-        Cuda_Init_Sparse_Matrix_Indices( system, &workspace->d_workspace->H );
+        Cuda_Init_Sparse_Matrix_Indices( system, control, &workspace->d_workspace->H );
 
         if ( workspace->d_workspace->H.format == SYM_HALF_MATRIX )
         {
             if ( control->tabulate <= 0 )
             {
-                k_init_cm_half_fs <<< blocks, DEF_BLOCK_SIZE >>>
+                k_init_cm_half_fs <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
                     ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
                       *(workspace->d_workspace), (control_params *) control->d_control_params,
                       *(lists[FAR_NBRS]), system->reax_param.num_atom_types,
@@ -1895,7 +1909,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
             }
             else
             {
-                k_init_cm_half_fs_tab <<< blocks, DEF_BLOCK_SIZE >>>
+                k_init_cm_half_fs_tab <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
                     ( system->d_my_atoms, system->reax_param.d_sbp,
                       *(workspace->d_workspace), (control_params *) control->d_control_params,
                       *(lists[FAR_NBRS]), workspace->d_LR, system->reax_param.num_atom_types,
@@ -1906,7 +1920,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
         {
             if ( control->tabulate <= 0 )
             {
-//                k_init_cm_full_fs <<< blocks, DEF_BLOCK_SIZE >>>
+//                k_init_cm_full_fs <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
 //                    ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
 //                      *(workspace->d_workspace), (control_params *) control->d_control_params,
 //                      *(lists[FAR_NBRS]), system->reax_param.num_atom_types,
@@ -1916,7 +1930,8 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
                     + (workspace->d_workspace->H.n_max * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
                 k_init_cm_full_fs_opt <<< blocks, DEF_BLOCK_SIZE,
-                                      sizeof(cub::WarpScan<int>::TempStorage) * (DEF_BLOCK_SIZE / 32) >>>
+                                      sizeof(cub::WarpScan<int>::TempStorage) * (DEF_BLOCK_SIZE / 32),
+                                      control->streams[0] >>>
                     ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
                       *(workspace->d_workspace), (control_params *) control->d_control_params,
                       *(lists[FAR_NBRS]), system->reax_param.num_atom_types,
@@ -1924,7 +1939,8 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
             }
             else
             {
-                k_init_cm_full_fs_tab <<< blocks, DEF_BLOCK_SIZE >>>
+                k_init_cm_full_fs_tab <<< blocks, DEF_BLOCK_SIZE, 0,
+                                      control->streams[0] >>>
                     ( system->d_my_atoms, system->reax_param.d_sbp,
                       *(workspace->d_workspace), (control_params *) control->d_control_params,
                       *(lists[FAR_NBRS]), workspace->d_LR, system->reax_param.num_atom_types,
@@ -1943,13 +1959,13 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
         blocks = system->total_cap / DEF_BLOCK_SIZE
             + ((system->total_cap % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
 
-        k_reset_bond_orders <<< blocks, DEF_BLOCK_SIZE >>>
+        k_reset_bond_orders <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
             ( *(workspace->d_workspace), system->total_cap );
         cudaCheckError( );
 
-        Cuda_Init_Bond_Indices( system, lists[BONDS] );
+        Cuda_Init_Bond_Indices( system, control, lists[BONDS] );
 
-//        k_init_bonds <<< control->blocks_n, control->block_size_n >>>
+//        k_init_bonds <<< control->blocks_n, control->block_size_n, 0, control->streams[0] >>>
 //            ( system->d_my_atoms, system->reax_param.d_sbp,
 //              system->reax_param.d_tbp, *(workspace->d_workspace),
 //              (control_params *) control->d_control_params,
@@ -1962,7 +1978,8 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
             + (system->N * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
         k_init_bonds_opt <<< blocks, DEF_BLOCK_SIZE,
-                     sizeof(cub::WarpScan<int>::TempStorage) * (DEF_BLOCK_SIZE / 32) >>>
+                     sizeof(cub::WarpScan<int>::TempStorage) * (DEF_BLOCK_SIZE / 32),
+                     control->streams[0] >>>
             ( system->d_my_atoms, system->reax_param.d_sbp,
               system->reax_param.d_tbp, *(workspace->d_workspace),
               (control_params *) control->d_control_params,
@@ -1974,9 +1991,9 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
 
     if ( control->hbond_cut > 0.0 && system->numH > 0 && hbonds_done == FALSE )
     {
-        Cuda_Init_HBond_Indices( system, workspace, lists[HBONDS] );
+        Cuda_Init_HBond_Indices( system, control, workspace, lists[HBONDS] );
 
-//        k_init_hbonds <<< control->blocks_n, control->block_size_n >>>
+//        k_init_hbonds <<< control->blocks_n, control->block_size_n, 0, control->streams[0] >>>
 //            ( system->d_my_atoms, system->reax_param.d_sbp,
 //              (control_params *) control->d_control_params,
 //              *(lists[FAR_NBRS]), *(lists[HBONDS]),
@@ -1988,7 +2005,8 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
             + (system->N * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
         k_init_hbonds_opt <<< blocks, DEF_BLOCK_SIZE,
-                          sizeof(cub::WarpScan<int>::TempStorage) * (DEF_BLOCK_SIZE / 32) >>>
+                          sizeof(cub::WarpScan<int>::TempStorage) * (DEF_BLOCK_SIZE / 32),
+                          control->streams[0] >>>
             ( system->d_my_atoms, system->reax_param.d_sbp,
               (control_params *) control->d_control_params,
               *(lists[FAR_NBRS]), *(lists[HBONDS]),
@@ -2063,7 +2081,8 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
 
     if ( ret == SUCCESS )
     {
-        k_update_sym_dbond_indices <<< control->blocks_n, control->block_size_n >>> 
+        k_update_sym_dbond_indices <<< control->blocks_n, control->block_size_n,
+                                   0, control->streams[0] >>> 
             ( *(lists[BONDS]), system->N );
         cudaCheckError( );
 
@@ -2074,7 +2093,8 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
                 + (system->N * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
             /* make hbond_list symmetric */
-            k_update_sym_hbond_indices_opt <<< blocks, DEF_BLOCK_SIZE >>>
+            k_update_sym_hbond_indices_opt <<< blocks, DEF_BLOCK_SIZE,
+                                           0, control->streams[0] >>>
                 ( system->d_my_atoms, *(lists[HBONDS]), system->N );
             cudaCheckError( );
         }
@@ -2131,13 +2151,13 @@ int Cuda_Init_Forces_No_Charges( reax_system *system, control_params *control,
 
     if ( renbr == FALSE && dist_done == FALSE )
     {
-//        k_init_dist <<< control->blocks_n, control->block_size_n >>>
+//        k_init_dist <<< control->blocks_n, control->block_size_n, 0, control->streams[0] >>>
 //            ( system->d_my_atoms, *(lists[FAR_NBRS]), system->N );
 
         blocks = system->N * 32 / DEF_BLOCK_SIZE
             + (system->N * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
-        k_init_dist_opt <<< blocks, DEF_BLOCK_SIZE >>>
+        k_init_dist_opt <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
             ( system->d_my_atoms, *(lists[FAR_NBRS]), system->N );
         cudaCheckError( );
 
@@ -2153,13 +2173,13 @@ int Cuda_Init_Forces_No_Charges( reax_system *system, control_params *control,
         blocks = system->total_cap / DEF_BLOCK_SIZE
             + ((system->total_cap % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
 
-        k_reset_bond_orders <<< blocks, DEF_BLOCK_SIZE >>>
+        k_reset_bond_orders <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
             ( *(workspace->d_workspace), system->total_cap );
         cudaCheckError( );
 
-        Cuda_Init_Bond_Indices( system, lists[BONDS] );
+        Cuda_Init_Bond_Indices( system, control, lists[BONDS] );
 
-//        k_init_bonds <<< control->blocks_n, control->block_size_n >>>
+//        k_init_bonds <<< control->blocks_n, control->block_size_n, 0, control->streams[0] >>>
 //            ( system->d_my_atoms, system->reax_param.d_sbp,
 //              system->reax_param.d_tbp, *(workspace->d_workspace),
 //              (control_params *) control->d_control_params,
@@ -2171,7 +2191,8 @@ int Cuda_Init_Forces_No_Charges( reax_system *system, control_params *control,
             + (control->block_size_n * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
         k_init_bonds_opt <<< blocks, DEF_BLOCK_SIZE,
-                     sizeof(cub::WarpScan<int>::TempStorage) * (DEF_BLOCK_SIZE / 32) >>>
+                     sizeof(cub::WarpScan<int>::TempStorage) * (DEF_BLOCK_SIZE / 32),
+                     control->streams[0] >>>
             ( system->d_my_atoms, system->reax_param.d_sbp,
               system->reax_param.d_tbp, *(workspace->d_workspace),
               (control_params *) control->d_control_params,
@@ -2183,9 +2204,9 @@ int Cuda_Init_Forces_No_Charges( reax_system *system, control_params *control,
 
     if ( control->hbond_cut > 0.0 && system->numH > 0 && hbonds_done == FALSE )
     {
-        Cuda_Init_HBond_Indices( system, workspace, lists[HBONDS] );
+        Cuda_Init_HBond_Indices( system, control, workspace, lists[HBONDS] );
 
-//        k_init_hbonds <<< control->blocks_n, control->block_size_n >>>
+//        k_init_hbonds <<< control->blocks_n, control->block_size_n, 0, control->streams[0] >>>
 //            ( system->d_my_atoms, system->reax_param.d_sbp,
 //              (control_params *) control->d_control_params,
 //              *(lists[FAR_NBRS]), *(lists[HBONDS]),
@@ -2197,7 +2218,8 @@ int Cuda_Init_Forces_No_Charges( reax_system *system, control_params *control,
             + (system->N * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
         k_init_hbonds_opt <<< blocks, DEF_BLOCK_SIZE,
-                          sizeof(cub::WarpScan<int>::TempStorage) * (DEF_BLOCK_SIZE / 32) >>>
+                          sizeof(cub::WarpScan<int>::TempStorage) * (DEF_BLOCK_SIZE / 32),
+                          control->streams[0] >>>
             ( system->d_my_atoms, system->reax_param.d_sbp,
               (control_params *) control->d_control_params,
               *(lists[FAR_NBRS]), *(lists[HBONDS]),
@@ -2258,7 +2280,8 @@ int Cuda_Init_Forces_No_Charges( reax_system *system, control_params *control,
 
     if ( ret == SUCCESS )
     {
-        k_update_sym_dbond_indices <<< control->blocks_n, control->block_size_n >>> 
+        k_update_sym_dbond_indices <<< control->blocks_n, control->block_size_n,
+                                   0, control->streams[0] >>> 
             ( *(lists[BONDS]), system->N );
         cudaCheckError( );
 
@@ -2269,7 +2292,8 @@ int Cuda_Init_Forces_No_Charges( reax_system *system, control_params *control,
                 + (system->N * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
             /* make hbond_list symmetric */
-            k_update_sym_hbond_indices_opt <<< blocks, DEF_BLOCK_SIZE >>>
+            k_update_sym_hbond_indices_opt <<< blocks, DEF_BLOCK_SIZE,
+                                           0, control->streams[0] >>>
                 ( system->d_my_atoms, *(lists[HBONDS]), system->N );
             cudaCheckError( );
         }
@@ -2364,7 +2388,7 @@ static void Cuda_Compute_Total_Force( reax_system *system, control_params *contr
     sCudaMemcpy( workspace->d_workspace->f, f, sizeof(rvec) * system->N,
             cudaMemcpyHostToDevice, __FILE__, __LINE__ );
 
-    Cuda_Total_Forces_Part2( system, workspace );
+    Cuda_Total_Forces_Part2( system, control, workspace );
 }
 
 

@@ -9,13 +9,15 @@
 #include "../vector.h"
 
 
-void Cuda_Compute_Bond_Orders( reax_system *, control_params *, 
-        simulation_data *, storage *, reax_list **, output_controls * );
+void Cuda_Compute_Bond_Orders( reax_system * const, control_params * const, 
+        simulation_data * const, storage * const, reax_list ** const,
+        output_controls * const );
 
-void Cuda_Total_Forces_Part1( reax_system *, control_params *,
-        simulation_data *, storage *, reax_list ** );
+void Cuda_Total_Forces_Part1( reax_system * const, control_params * const,
+        simulation_data * const, storage *, reax_list ** const );
 
-void Cuda_Total_Forces_Part2( reax_system *, storage * );
+void Cuda_Total_Forces_Part2( reax_system * const, control_params * const,
+        storage * const );
 
 
 /* Compute the bond order term between atoms i and j,

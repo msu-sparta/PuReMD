@@ -1319,7 +1319,8 @@ void Cuda_Compute_Torsion_Angles( reax_system *system, control_params *control,
 
     if ( control->virial == 1 )
     {
-        k_torsion_angles_virial_part1 <<< control->blocks, control->block_size >>>
+        k_torsion_angles_virial_part1 <<< control->blocks, control->block_size,
+                                      0, control->streams[0] >>>
             ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_fbp,
               (control_params *) control->d_control_params, *(lists[BONDS]),
               *(lists[THREE_BODIES]), *(workspace->d_workspace), system->n,
@@ -1335,7 +1336,8 @@ void Cuda_Compute_Torsion_Angles( reax_system *system, control_params *control,
     }
     else
     {
-//        k_torsion_angles_part1 <<< control->blocks, control->block_size >>>
+//        k_torsion_angles_part1 <<< control->blocks, control->block_size,
+//                               0, control->streams[0] >>>
 //            ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_fbp,
 //              (control_params *) control->d_control_params, *(lists[BONDS]),
 //              *(lists[THREE_BODIES]), *(workspace->d_workspace), system->n,
@@ -1352,7 +1354,8 @@ void Cuda_Compute_Torsion_Angles( reax_system *system, control_params *control,
             + (system->n * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
         k_torsion_angles_part1_opt <<< blocks, DEF_BLOCK_SIZE,
-                                   sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32)  >>>
+                                   sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32),
+                                   control->streams[0] >>>
             ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_fbp,
               (control_params *) control->d_control_params, *(lists[BONDS]),
               *(lists[THREE_BODIES]), *(workspace->d_workspace), system->n,
@@ -1384,12 +1387,14 @@ void Cuda_Compute_Torsion_Angles( reax_system *system, control_params *control,
         rvec_spad = (rvec *) (&spad[2 * system->n]);
 
         k_reduction_rvec <<< control->blocks, control->block_size,
-                         sizeof(rvec) * (control->block_size / 32) >>>
+                         sizeof(rvec) * (control->block_size / 32),
+                         control->streams[0] >>>
             ( rvec_spad, &rvec_spad[system->n], system->n );
         cudaCheckError( );
 
         k_reduction_rvec <<< 1, control->blocks_pow_2,
-                         sizeof(rvec) * (control->blocks_pow_2 / 32) >>>
+                         sizeof(rvec) * (control->blocks_pow_2 / 32),
+                         control->streams[0] >>>
                 ( &rvec_spad[system->n],
                   &((simulation_data *)data->d_simulation_data)->my_ext_press,
                   control->blocks );
@@ -1401,7 +1406,8 @@ void Cuda_Compute_Torsion_Angles( reax_system *system, control_params *control,
 #endif
 
 #if !defined(CUDA_ACCUM_ATOMIC)
-    k_torsion_angles_part2 <<< control->blocks_n, control->block_size_n >>>
+    k_torsion_angles_part2 <<< control->blocks_n, control->block_size_n, 0,
+                           control->streams[0] >>>
             ( system->d_my_atoms, *(workspace->d_workspace), *(lists[BONDS]),
               system->N );
     cudaCheckError( );

@@ -30,14 +30,14 @@
  *
  * d_array: device array to reduce
  * d_dest: device pointer to hold result of reduction */
-void Cuda_Reduction_Sum( int *d_array, int *d_dest, size_t n )
+void Cuda_Reduction_Sum( int *d_array, int *d_dest, size_t n, cudaStream_t s )
 {
     void *d_temp_storage = NULL;
     size_t temp_storage_bytes = 0;
 
     /* determine temporary device storage requirements */
     cub::DeviceReduce::Sum( d_temp_storage, temp_storage_bytes,
-            d_array, d_dest, n );
+            d_array, d_dest, n, s );
     cudaCheckError( );
 
     /* allocate temporary storage */
@@ -46,7 +46,7 @@ void Cuda_Reduction_Sum( int *d_array, int *d_dest, size_t n )
 
     /* run sum-reduction */
     cub::DeviceReduce::Sum( d_temp_storage, temp_storage_bytes,
-            d_array, d_dest, n );
+            d_array, d_dest, n, s );
     cudaCheckError( );
 
     /* deallocate temporary storage */
@@ -58,14 +58,14 @@ void Cuda_Reduction_Sum( int *d_array, int *d_dest, size_t n )
  *
  * d_array: device array to reduce
  * d_dest: device pointer to hold result of reduction */
-void Cuda_Reduction_Sum( real *d_array, real *d_dest, size_t n )
+void Cuda_Reduction_Sum( real *d_array, real *d_dest, size_t n, cudaStream_t s )
 {
     void *d_temp_storage = NULL;
     size_t temp_storage_bytes = 0;
 
     /* determine temporary device storage requirements */
     cub::DeviceReduce::Sum( d_temp_storage, temp_storage_bytes,
-            d_array, d_dest, n );
+            d_array, d_dest, n, s );
     cudaCheckError( );
 
     /* allocate temporary storage */
@@ -74,7 +74,7 @@ void Cuda_Reduction_Sum( real *d_array, real *d_dest, size_t n )
 
     /* run sum-reduction */
     cub::DeviceReduce::Sum( d_temp_storage, temp_storage_bytes,
-            d_array, d_dest, n );
+            d_array, d_dest, n, s );
     cudaCheckError( );
 
     /* deallocate temporary storage */
@@ -86,7 +86,7 @@ void Cuda_Reduction_Sum( real *d_array, real *d_dest, size_t n )
 // *
 // * d_array: device array to reduce
 // * d_dest: device pointer to hold result of reduction */
-//void Cuda_Reduction_Sum( rvec *d_array, rvec *d_dest, size_t n )
+//void Cuda_Reduction_Sum( rvec *d_array, rvec *d_dest, size_t n, cudaStream_t s )
 //{
 //    void *d_temp_storage = NULL;
 //    size_t temp_storage_bytes = 0;
@@ -95,7 +95,7 @@ void Cuda_Reduction_Sum( real *d_array, real *d_dest, size_t n )
 //
 //    /* determine temporary device storage requirements */
 //    cub::DeviceReduce::Reduce( d_temp_storage, temp_storage_bytes,
-//            d_array, d_dest, n, sum_op, init );
+//            d_array, d_dest, n, sum_op, init, s );
 //    cudaCheckError( );
 //
 //    /* allocate temporary storage */
@@ -104,7 +104,7 @@ void Cuda_Reduction_Sum( real *d_array, real *d_dest, size_t n )
 //
 //    /* run sum-reduction */
 //    cub::DeviceReduce::Reduce( d_temp_storage, temp_storage_bytes,
-//            d_array, d_dest, n, sum_op, init );
+//            d_array, d_dest, n, sum_op, init, s );
 //    cudaCheckError( );
 //
 //    /* deallocate temporary storage */
@@ -116,14 +116,14 @@ void Cuda_Reduction_Sum( real *d_array, real *d_dest, size_t n )
  *
  * d_array: device array to reduce
  * d_dest: device pointer to hold result of reduction */
-void Cuda_Reduction_Max( int *d_array, int *d_dest, size_t n )
+void Cuda_Reduction_Max( int *d_array, int *d_dest, size_t n, cudaStream_t s )
 {
     void *d_temp_storage = NULL;
     size_t temp_storage_bytes = 0;
 
     /* determine temporary device storage requirements */
     cub::DeviceReduce::Max( d_temp_storage, temp_storage_bytes,
-            d_array, d_dest, n );
+            d_array, d_dest, n, s );
     cudaCheckError( );
 
     /* allocate temporary storage */
@@ -132,7 +132,7 @@ void Cuda_Reduction_Max( int *d_array, int *d_dest, size_t n )
 
     /* run exclusive prefix sum */
     cub::DeviceReduce::Max( d_temp_storage, temp_storage_bytes,
-            d_array, d_dest, n );
+            d_array, d_dest, n, s );
     cudaCheckError( );
 
     /* deallocate temporary storage */
@@ -144,14 +144,14 @@ void Cuda_Reduction_Max( int *d_array, int *d_dest, size_t n )
  *
  * d_src: device array to scan
  * d_dest: device array to hold result of scan */
-void Cuda_Scan_Excl_Sum( int *d_src, int *d_dest, size_t n )
+void Cuda_Scan_Excl_Sum( int *d_src, int *d_dest, size_t n, cudaStream_t s )
 {
     void *d_temp_storage = NULL;
     size_t temp_storage_bytes = 0;
 
     /* determine temporary device storage requirements */
     cub::DeviceScan::ExclusiveSum( d_temp_storage, temp_storage_bytes,
-            d_src, d_dest, n );
+            d_src, d_dest, n, s );
     cudaCheckError( );
 
     /* allocate temporary storage */
@@ -160,7 +160,7 @@ void Cuda_Scan_Excl_Sum( int *d_src, int *d_dest, size_t n )
 
     /* run exclusive prefix sum */
     cub::DeviceScan::ExclusiveSum( d_temp_storage, temp_storage_bytes,
-            d_src, d_dest, n );
+            d_src, d_dest, n, s );
     cudaCheckError( );
 
     /* deallocate temporary storage */

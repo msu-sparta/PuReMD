@@ -530,12 +530,14 @@ static void Cuda_Compute_Momentum( reax_system *system, control_params *control,
             "Cuda_Compute_Momentum::spad" );
     
     k_center_of_mass_blocks_xcm <<< control->blocks, control->block_size,
-                                sizeof(rvec) * (control->block_size / 32) >>>
+                                sizeof(rvec) * (control->block_size / 32),
+                                control->streams[0] >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad, system->n );
     cudaCheckError( );
     
     k_reduction_rvec <<< 1, control->blocks_pow_2,
-                     sizeof(rvec) * (control->blocks_pow_2 / 32) >>>
+                     sizeof(rvec) * (control->blocks_pow_2 / 32),
+                     control->streams[0] >>>
             ( spad, &spad[control->blocks], control->blocks );
     cudaCheckError( );
 
@@ -547,12 +549,14 @@ static void Cuda_Compute_Momentum( reax_system *system, control_params *control,
             "Cuda_Compute_Momentum::spad" );
     
     k_center_of_mass_blocks_vcm <<< control->blocks, control->block_size,
-                                sizeof(rvec) * (control->block_size / 32) >>>
+                                sizeof(rvec) * (control->block_size / 32),
+                                control->streams[0] >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad, system->n );
     cudaCheckError( );
     
     k_reduction_rvec <<< 1, control->blocks_pow_2,
-                     sizeof(rvec) * (control->blocks_pow_2 / 32) >>>
+                     sizeof(rvec) * (control->blocks_pow_2 / 32),
+                     control->streams[0] >>>
         ( spad, &spad[control->blocks], control->blocks );
     cudaCheckError( );
 
@@ -564,12 +568,14 @@ static void Cuda_Compute_Momentum( reax_system *system, control_params *control,
             "Cuda_Compute_Momentum::spad");
     
     k_center_of_mass_blocks_amcm <<< control->blocks, control->block_size,
-                                 sizeof(rvec) * (control->block_size / 32) >>>
+                                 sizeof(rvec) * (control->block_size / 32),
+                                 control->streams[0] >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad, system->n );
     cudaCheckError( );
     
     k_reduction_rvec <<< 1, control->blocks_pow_2,
-                     sizeof(rvec) * (control->blocks_pow_2 / 32) >>>
+                     sizeof(rvec) * (control->blocks_pow_2 / 32),
+                     control->streams[0] >>>
         ( spad, &spad[control->blocks], control->blocks );
     cudaCheckError( );
 
@@ -591,26 +597,30 @@ static void Cuda_Compute_Inertial_Tensor( reax_system *system, control_params *c
             "Cuda_Compute_Intertial_Tensor::tmp" );
 
     k_compute_inertial_tensor_xx_xy <<< control->blocks, control->block_size,
-                                sizeof(real) * 2 * (control->block_size / 32) >>>
+                                sizeof(real) * 2 * (control->block_size / 32),
+                                control->streams[0] >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad,
           my_xcm[0], my_xcm[1], my_xcm[2], system->n );
     cudaCheckError( );
 
     k_compute_inertial_tensor_xz_yy <<< control->blocks, control->block_size,
-                                sizeof(real) * 2 * (control->block_size / 32) >>>
+                                sizeof(real) * 2 * (control->block_size / 32),
+                                control->streams[0] >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad,
           my_xcm[0], my_xcm[1], my_xcm[2], system->n );
     cudaCheckError( );
 
     k_compute_inertial_tensor_yz_zz <<< control->blocks, control->block_size,
-                                sizeof(real) * 2 * (control->block_size / 32) >>>
+                                sizeof(real) * 2 * (control->block_size / 32),
+                                control->streams[0] >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad,
           my_xcm[0], my_xcm[1], my_xcm[2], system->n );
     cudaCheckError( );
 
     /* reduction of block-level partial sums for inertial tensor */
     k_compute_inertial_tensor_blocks <<< 1, control->blocks_pow_2,
-                              sizeof(real) * 6 * control->blocks_pow_2 >>>
+                                     sizeof(real) * 6 * control->blocks_pow_2,
+                                     control->streams[0] >>>
         ( spad, &spad[6 * control->blocks], control->blocks );
     cudaCheckError( );
 
@@ -647,7 +657,7 @@ void Cuda_Generate_Initial_Velocities( reax_system *system,
             MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
         }
 
-        k_atom_velocities_zero <<< blocks, DEF_BLOCK_SIZE >>>
+        k_atom_velocities_zero <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
             ( system->d_my_atoms, system->n );
     }
     else
@@ -661,7 +671,7 @@ void Cuda_Generate_Initial_Velocities( reax_system *system,
 
         Cuda_Randomize( );
 
-        k_atom_velocities_random <<< blocks, DEF_BLOCK_SIZE >>>
+        k_atom_velocities_random <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
             ( system->reax_param.d_sbp, system->d_my_atoms, T, system->n );
     }
 }
@@ -679,13 +689,14 @@ extern "C" void Cuda_Compute_Kinetic_Energy( reax_system *system,
             "Cuda_Compute_Kinetic_Energy::workspace->scratch" );
     kinetic_energy = (real *) workspace->scratch;
 
-    k_compute_kinetic_energy <<< control->blocks, control->block_size >>>
+    k_compute_kinetic_energy <<< control->blocks, control->block_size, 0, control->streams[0] >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, kinetic_energy, system->n );
     cudaCheckError( );
 
     /* note: above kernel sums the kinetic energy contribution within blocks,
      * and this call finishes the global reduction across all blocks */
-    Cuda_Reduction_Sum( kinetic_energy, &kinetic_energy[system->n], system->n );
+    Cuda_Reduction_Sum( kinetic_energy, &kinetic_energy[system->n], system->n,
+            control->streams[0] );
 
     sCudaMemcpy( &data->my_en.e_kin, &kinetic_energy[system->n],
             sizeof(real), cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
@@ -715,11 +726,11 @@ void Cuda_Compute_Total_Mass( reax_system *system, control_params *control,
             "Cuda_Compute_Total_Mass::workspace->scratch" );
     spad = (real *) workspace->scratch;
 
-    k_compute_total_mass <<< control->blocks, control->block_size  >>>
+    k_compute_total_mass <<< control->blocks, control->block_size, 0, control->streams[0]  >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad, system->n );
     cudaCheckError( );
 
-    Cuda_Reduction_Sum( spad, &spad[system->n], system->n );
+    Cuda_Reduction_Sum( spad, &spad[system->n], system->n, control->streams[0] );
 
     sCudaMemcpy( &my_M, &spad[system->n], sizeof(real), 
             cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
@@ -861,17 +872,20 @@ void Cuda_Compute_Pressure( reax_system* system, control_params *control,
                 "Cuda_Compute_Pressure::workspace->scratch" );
         rvec_spad = (rvec *) workspace->scratch;
 
-        k_compute_pressure <<< control->blocks, control->block_size >>>
+        k_compute_pressure <<< control->blocks, control->block_size, 0,
+                           control->streams[0] >>>
             ( system->d_my_atoms, system->d_big_box, rvec_spad,
               system->n );
 
         k_reduction_rvec <<< control->blocks, control->block_size,
-                         sizeof(rvec) * (control->block_size / 32) >>>
+                         sizeof(rvec) * (control->block_size / 32),
+                         control->streams[0] >>>
             ( rvec_spad, &rvec_spad[system->n],  system->n );
         cudaCheckError( );
 
         k_reduction_rvec <<< 1, control->blocks_pow_2,
-                         sizeof(rvec) * (control->blocks_pow_2 / 32) >>>
+                         sizeof(rvec) * (control->blocks_pow_2 / 32),
+                         control->streams[0] >>>
             ( &rvec_spad[system->n], &rvec_spad[system->n + control->blocks],
               control->blocks );
         cudaCheckError( );

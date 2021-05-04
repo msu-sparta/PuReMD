@@ -183,61 +183,65 @@ CUDA_GLOBAL void k_scale_velocities_npt( reax_atom *my_atoms, real lambda,
 }
 
 
-void Velocity_Verlet_Part1( reax_system *system, real dt )
+static void Velocity_Verlet_Part1( reax_system *system, control_params *control, real dt )
 {
     int blocks;
 
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_velocity_verlet_part1 <<< blocks, DEF_BLOCK_SIZE >>>
+    k_velocity_verlet_part1 <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, dt, system->n );
     cudaCheckError( );
 }
 
 
-void Velocity_Verlet_Part2( reax_system *system, real dt )
+static void Velocity_Verlet_Part2( reax_system *system, control_params *control, real dt )
 {
     int blocks;
 
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_velocity_verlet_part2 <<< blocks, DEF_BLOCK_SIZE >>>
+    k_velocity_verlet_part2 <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, dt, system->n );
     cudaCheckError( );
 }
 
 
-void Velocity_Verlet_Nose_Hoover_NVT_Part1( reax_system *system, real dt )
+static void Velocity_Verlet_Nose_Hoover_NVT_Part1( reax_system *system,
+        control_params *control, real dt )
 {
     int blocks;
 
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_velocity_verlet_nose_hoover_nvt <<< blocks, DEF_BLOCK_SIZE >>>
+    k_velocity_verlet_nose_hoover_nvt <<< blocks, DEF_BLOCK_SIZE, 0,
+                                      control->streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, dt, system->n );
     cudaCheckError( );
 }
 
 
-void Velocity_Verlet_Nose_Hoover_NVT_Part2( reax_system *system, storage *workspace, real dt, real v_xi )
+static void Velocity_Verlet_Nose_Hoover_NVT_Part2( reax_system *system, control_params *control,
+        storage *workspace, real dt, real v_xi )
 {
     int blocks;
 
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_velocity_verlet_nose_hoover_nvt <<< blocks, DEF_BLOCK_SIZE >>>
+    k_velocity_verlet_nose_hoover_nvt <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
         ( system->d_my_atoms, workspace->v_const,
           system->reax_param.d_sbp, dt, v_xi, system->n );
     cudaCheckError( );
 }
 
 
-real Velocity_Verlet_Nose_Hoover_NVT_Part3( reax_system *system, storage *workspace,
-       real dt, real v_xi_old, real *d_my_ekin, real *d_total_my_ekin )
+static real Velocity_Verlet_Nose_Hoover_NVT_Part3( reax_system *system,
+        control_params *control, storage *workspace, real dt, real v_xi_old,
+        real *d_my_ekin, real *d_total_my_ekin )
 {
     int blocks;
     real my_ekin;
@@ -245,12 +249,12 @@ real Velocity_Verlet_Nose_Hoover_NVT_Part3( reax_system *system, storage *worksp
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_velocity_verlet_nose_hoover_nvt_part3 <<< blocks, DEF_BLOCK_SIZE >>>
+    k_velocity_verlet_nose_hoover_nvt_part3 <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
         ( system->d_my_atoms, workspace->v_const, system->reax_param.d_sbp,
           dt, v_xi_old, d_my_ekin, system->n );
     cudaCheckError( );
 
-    Cuda_Reduction_Sum( d_my_ekin, d_total_my_ekin, system->n );
+    Cuda_Reduction_Sum( d_my_ekin, d_total_my_ekin, system->n, control->streams[0] );
 
     sCudaMemcpy( &my_ekin, d_total_my_ekin, sizeof(real), 
             cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
@@ -259,27 +263,30 @@ real Velocity_Verlet_Nose_Hoover_NVT_Part3( reax_system *system, storage *worksp
 }
 
 
-static void Cuda_Scale_Velocities_Berendsen_NVT( reax_system *system, real lambda )
+static void Cuda_Scale_Velocities_Berendsen_NVT( reax_system *system,
+        control_params * control, real lambda )
 {
     int blocks;
 
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_scale_velocites_berendsen_nvt <<< blocks, DEF_BLOCK_SIZE >>>
+    k_scale_velocites_berendsen_nvt <<< blocks, DEF_BLOCK_SIZE,
+                                    0, control->streams[0] >>>
         ( system->d_my_atoms, lambda, system->n );
     cudaCheckError( );
 }
 
 
-void Cuda_Scale_Velocities_NPT( reax_system *system, real lambda, rvec mu )
+void Cuda_Scale_Velocities_NPT( reax_system *system, control_params * control,
+        real lambda, rvec mu )
 {
     int blocks;
 
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_scale_velocities_npt <<< blocks, DEF_BLOCK_SIZE >>>
+    k_scale_velocities_npt <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
         ( system->d_my_atoms, lambda, mu[0], mu[1], mu[2], system->n );
     cudaCheckError( );
 }
@@ -300,7 +307,7 @@ int Cuda_Velocity_Verlet_NVE( reax_system *system, control_params *control,
 
     if ( verlet_part1_done == FALSE )
     {
-        Velocity_Verlet_Part1( system, dt );
+        Velocity_Verlet_Part1( system, control, dt );
 
         Cuda_Reallocate_Part1( system, control, data, workspace, lists, mpi_data );
 
@@ -338,7 +345,7 @@ int Cuda_Velocity_Verlet_NVE( reax_system *system, control_params *control,
 
     if ( renbr == TRUE && gen_nbr_list == FALSE )
     {
-        ret = Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
+        ret = Cuda_Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
         if ( ret == SUCCESS )
         {
@@ -346,7 +353,7 @@ int Cuda_Velocity_Verlet_NVE( reax_system *system, control_params *control,
         }
         else
         {
-            Cuda_Estimate_Num_Neighbors( system, data );
+            Cuda_Estimate_Num_Neighbors( system, control, data );
         }
     }
 
@@ -358,7 +365,7 @@ int Cuda_Velocity_Verlet_NVE( reax_system *system, control_params *control,
 
     if ( ret == SUCCESS )
     {
-        Velocity_Verlet_Part2( system, dt );
+        Velocity_Verlet_Part2( system, control, dt );
 
         verlet_part1_done = FALSE;
         cuda_copy = FALSE;
@@ -390,7 +397,7 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
 
     if ( verlet_part1_done == FALSE )
     {
-        Velocity_Verlet_Nose_Hoover_NVT_Part1( system, dt );
+        Velocity_Verlet_Nose_Hoover_NVT_Part1( system, control, dt );
     
         /* Compute xi(t + dt) */
         therm->xi += therm->v_xi * dt + 0.5 * dt_sqr * therm->G_xi;
@@ -436,7 +443,7 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
 
     if ( renbr == TRUE && gen_nbr_list == FALSE )
     {
-        ret = Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
+        ret = Cuda_Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
         if ( ret == SUCCESS )
         {
@@ -444,7 +451,7 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
         }
         else
         {
-            Cuda_Estimate_Num_Neighbors( system, data );
+            Cuda_Estimate_Num_Neighbors( system, control, data );
         }
     }
 
@@ -457,7 +464,7 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
     if ( ret == SUCCESS )
     {
         /* Compute iteration constants for each atom's velocity */
-        Velocity_Verlet_Nose_Hoover_NVT_Part2( system,
+        Velocity_Verlet_Nose_Hoover_NVT_Part2( system, control,
                 workspace->d_workspace, dt, therm->v_xi );
     
         v_xi_new = therm->v_xi_old + 2.0 * dt * therm->G_xi;
@@ -476,7 +483,7 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
             /* new values become old in this iteration */
             v_xi_old = v_xi_new;
     
-            my_ekin = Velocity_Verlet_Nose_Hoover_NVT_Part3( system,
+            my_ekin = Velocity_Verlet_Nose_Hoover_NVT_Part3( system, control,
                     workspace->d_workspace, dt, v_xi_old,
                     d_my_ekin, d_total_my_ekin );
     
@@ -524,7 +531,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
 
     if ( verlet_part1_done == FALSE )
     {
-        Velocity_Verlet_Part1( system, dt );
+        Velocity_Verlet_Part1( system, control, dt );
 
         Cuda_Reallocate_Part1( system, control, data, workspace, lists, mpi_data );
 
@@ -567,7 +574,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
 
     if ( renbr == TRUE && gen_nbr_list == FALSE )
     {
-        ret = Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
+        ret = Cuda_Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
         if ( ret == SUCCESS )
         {
@@ -575,7 +582,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
         }
         else
         {
-            Cuda_Estimate_Num_Neighbors( system, data );
+            Cuda_Estimate_Num_Neighbors( system, control, data );
         }
     }
 
@@ -587,8 +594,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
 
     if ( ret == SUCCESS )
     {
-        /* velocity verlet, 2nd part */
-        Velocity_Verlet_Part2( system, dt );
+        Velocity_Verlet_Part2( system, control, dt );
 
         /* temperature scaler */
         Cuda_Compute_Kinetic_Energy( system, control, workspace,
@@ -606,7 +612,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
         lambda = SQRT( lambda );
 
         /* Scale velocities and positions at t+dt */
-        Cuda_Scale_Velocities_Berendsen_NVT( system, lambda );
+        Cuda_Scale_Velocities_Berendsen_NVT( system, control, lambda );
 
         Cuda_Compute_Kinetic_Energy( system, control, workspace,
                 data, mpi_data->comm_mesh3D );
@@ -638,7 +644,7 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
 
     if ( verlet_part1_done == FALSE )
     {
-        Velocity_Verlet_Part1( system, dt );
+        Velocity_Verlet_Part1( system, control, dt );
 
         Cuda_Reallocate_Part1( system, control, data, workspace, lists, mpi_data );
 
@@ -681,7 +687,7 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
 
     if ( renbr == TRUE && gen_nbr_list == FALSE )
     {
-        ret = Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
+        ret = Cuda_Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
         if ( ret == SUCCESS )
         {
@@ -689,7 +695,7 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
         }
         else
         {
-            Cuda_Estimate_Num_Neighbors( system, data );
+            Cuda_Estimate_Num_Neighbors( system, control, data );
         }
     }
 
@@ -701,7 +707,7 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
 
     if ( ret == SUCCESS )
     {
-        Velocity_Verlet_Part2( system, dt );
+        Velocity_Verlet_Part2( system, control, dt );
 
         Cuda_Compute_Kinetic_Energy( system, control,
                 workspace, data, mpi_data->comm_mesh3D );

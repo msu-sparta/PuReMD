@@ -87,7 +87,7 @@ void Cuda_Scale_Box( reax_system *system, control_params *control,
     lambda = SQRT( lambda );
 
     /* Scale velocities and positions at t+dt */
-    Cuda_Scale_Velocities_NPT( system, lambda, mu );
+    Cuda_Scale_Velocities_NPT( system, control, lambda, mu );
 
     Cuda_Compute_Kinetic_Energy( system, control, workspace, data, mpi_data->comm_mesh3D );
 

@@ -767,7 +767,8 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system *system, control_params *control,
 
     if ( control->virial == 1 )
     {
-        k_hydrogen_bonds_virial_part1 <<< control->blocks, control->block_size >>>
+        k_hydrogen_bonds_virial_part1 <<< control->blocks, control->block_size,
+                                      0, control->streams[0] >>>
                 ( system->d_my_atoms, system->reax_param.d_sbp,
                   system->reax_param.d_hbp, system->reax_param.d_gp,
                   (control_params *) control->d_control_params,
@@ -785,7 +786,7 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system *system, control_params *control,
     }
     else
     {
-//        k_hydrogen_bonds_part1 <<< control->blocks, control->block_size >>>
+//        k_hydrogen_bonds_part1 <<< control->blocks, control->block_size, 0, control->streams[0] >>>
 //                ( system->d_my_atoms, system->reax_param.d_sbp,
 //                  system->reax_param.d_hbp, system->reax_param.d_gp,
 //                  (control_params *) control->d_control_params,
@@ -804,7 +805,8 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system *system, control_params *control,
             + (system->n * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
         
         k_hydrogen_bonds_part1_opt <<< blocks, DEF_BLOCK_SIZE,
-                                   sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32) >>>
+                                   sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32),
+                                   control->streams[0] >>>
                 ( system->d_my_atoms, system->reax_param.d_sbp,
                   system->reax_param.d_hbp, system->reax_param.d_gp,
                   (control_params *) control->d_control_params,
@@ -833,12 +835,14 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system *system, control_params *control,
         rvec_spad = (rvec *) (&spad[system->n]);
 
         k_reduction_rvec <<< control->blocks, control->block_size,
-                         sizeof(rvec) * (control->block_size / 32) >>>
+                         sizeof(rvec) * (control->block_size / 32),
+                         control->streams[0] >>>
             ( rvec_spad, &rvec_spad[system->n], system->n );
         cudaCheckError( );
 
         k_reduction_rvec <<< 1, control->blocks_pow_2,
-                         sizeof(rvec) * (control->blocks_pow_2 / 32) >>>
+                         sizeof(rvec) * (control->blocks_pow_2 / 32),
+                         control->streams[0] >>>
             ( &rvec_spad[system->n],
               &((simulation_data *)data->d_simulation_data)->my_ext_press,
               control->blocks );
@@ -850,7 +854,8 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system *system, control_params *control,
 #endif
 
 #if !defined(CUDA_ACCUM_ATOMIC)
-    k_hydrogen_bonds_part2 <<< control->blocks, control->block_size >>>
+    k_hydrogen_bonds_part2 <<< control->blocks, control->block_size, 0,
+                           control->streams[0] >>>
         ( system->d_my_atoms, *(workspace->d_workspace),
           *(lists[BONDS]), system->n );
     cudaCheckError( );
@@ -858,10 +863,11 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system *system, control_params *control,
 //    hnbrs_blocks = (system->n * HB_POST_PROC_KER_THREADS_PER_ATOM / HB_POST_PROC_BLOCK_SIZE) +
 //        (((system->n * HB_POST_PROC_KER_THREADS_PER_ATOM) % HB_POST_PROC_BLOCK_SIZE) == 0 ? 0 : 1);
 
-    k_hydrogen_bonds_part3 <<< control->blocks, control->block_size >>>
+    k_hydrogen_bonds_part3 <<< control->blocks, control->block_size, 0,
+                           control->streams[0] >>>
         ( system->d_my_atoms, *(workspace->d_workspace), *(lists[HBONDS]), system->n );
 //    k_hydrogen_bonds_part3_opt <<< hnbrs_blocks, HB_POST_PROC_BLOCK_SIZE, 
-//            HB_POST_PROC_BLOCK_SIZE * sizeof(rvec) >>>
+//            sizeof(rvec) * HB_POST_PROC_BLOCK_SIZE, control->streams[0] >>>
 //        ( system->d_my_atoms, *(workspace->d_workspace), *(lists[HBONDS]), system->n );
     cudaCheckError( );
 #endif

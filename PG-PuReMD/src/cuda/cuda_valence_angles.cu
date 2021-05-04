@@ -1349,7 +1349,7 @@ static int Cuda_Estimate_Storage_Three_Body( reax_system *system, control_params
     cuda_memset( thbody, 0, system->total_bonds * sizeof(int),
             "Cuda_Estimate_Storage_Three_Body::thbody" );
 
-//    k_estimate_valence_angles <<< control->blocks_n, control->block_size_n >>>
+//    k_estimate_valence_angles <<< control->blocks_n, control->block_size_n, 0, control->streams[0] >>>
 //        ( system->d_my_atoms, (control_params *)control->d_control_params, 
 //          *(lists[BONDS]), system->n, system->N, thbody );
 //    cudaCheckError( );
@@ -1358,12 +1358,14 @@ static int Cuda_Estimate_Storage_Three_Body( reax_system *system, control_params
         + (system->N * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
     k_estimate_valence_angles_opt <<< blocks, DEF_BLOCK_SIZE,
-                              sizeof(cub::WarpReduce<int>::TempStorage) * (DEF_BLOCK_SIZE / 32)  >>>
+                              sizeof(cub::WarpReduce<int>::TempStorage) * (DEF_BLOCK_SIZE / 32),
+                              control->streams[0] >>>
         ( system->d_my_atoms, (control_params *)control->d_control_params, 
           *(lists[BONDS]), system->n, system->N, thbody );
     cudaCheckError( );
 
-    Cuda_Reduction_Sum( thbody, system->d_total_thbodies, system->total_bonds );
+    Cuda_Reduction_Sum( thbody, system->d_total_thbodies, system->total_bonds,
+           control->streams[0] );
 
     sCudaMemcpy( &system->total_thbodies, system->d_total_thbodies,
             sizeof(int), cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
@@ -1403,13 +1405,14 @@ static int Cuda_Estimate_Storage_Three_Body( reax_system *system, control_params
  *
  * indices: list indices
  * entries: num. of entries in list */
-void Cuda_Init_Three_Body_Indices( int *indices, int entries, reax_list **lists )
+static void Cuda_Init_Three_Body_Indices( control_params *control, int *indices,
+        int entries, reax_list **lists )
 {
     reax_list *thbody;
 
     thbody = lists[THREE_BODIES];
 
-    Cuda_Scan_Excl_Sum( indices, thbody->index, entries );
+    Cuda_Scan_Excl_Sum( indices, thbody->index, entries, control->streams[0] );
 }
 
 
@@ -1447,7 +1450,7 @@ int Cuda_Compute_Valence_Angles( reax_system *system, control_params *control,
 
     if ( ret == SUCCESS )
     {
-        Cuda_Init_Three_Body_Indices( thbody, system->total_thbodies_indices, lists );
+        Cuda_Init_Three_Body_Indices( control, thbody, system->total_thbodies_indices, lists );
 
 #if defined(CUDA_ACCUM_ATOMIC)
         cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_ang,
@@ -1462,7 +1465,8 @@ int Cuda_Compute_Valence_Angles( reax_system *system, control_params *control,
 
         if ( control->virial == 1 )
         {
-            k_valence_angles_virial_part1 <<< control->blocks_n, control->block_size_n >>>
+            k_valence_angles_virial_part1 <<< control->blocks_n, control->block_size_n,
+                                          0, control->streams[0] >>>
                 ( system->d_my_atoms, system->reax_param.d_gp,
                   system->reax_param.d_sbp, system->reax_param.d_thbp, 
                   (control_params *) control->d_control_params,
@@ -1480,7 +1484,8 @@ int Cuda_Compute_Valence_Angles( reax_system *system, control_params *control,
         }
         else
         {
-//            k_valence_angles_part1 <<< control->blocks_n, control->block_size_n >>>
+//            k_valence_angles_part1 <<< control->blocks_n, control->block_size_n,
+//                                   0, control->streams[0] >>>
 //                ( system->d_my_atoms, system->reax_param.d_gp,
 //                  system->reax_param.d_sbp, system->reax_param.d_thbp, 
 //                  (control_params *) control->d_control_params,
@@ -1500,7 +1505,8 @@ int Cuda_Compute_Valence_Angles( reax_system *system, control_params *control,
 
             k_valence_angles_part1_opt <<< blocks, DEF_BLOCK_SIZE,
                                        (sizeof(cub::WarpScan<int>::TempStorage)
-                                        + sizeof(cub::WarpReduce<double>::TempStorage)) * (DEF_BLOCK_SIZE / 32) >>>
+                                        + sizeof(cub::WarpReduce<double>::TempStorage)) * (DEF_BLOCK_SIZE / 32),
+                                       control->streams[0] >>>
                 ( system->d_my_atoms, system->reax_param.d_gp,
                   system->reax_param.d_sbp, system->reax_param.d_thbp, 
                   (control_params *) control->d_control_params,
@@ -1522,15 +1528,15 @@ int Cuda_Compute_Valence_Angles( reax_system *system, control_params *control,
         {
             Cuda_Reduction_Sum( spad,
                     &((simulation_data *)data->d_simulation_data)->my_en.e_ang,
-                    system->N );
+                    system->N, control->streams[0] );
 
             Cuda_Reduction_Sum( &spad[system->N],
                     &((simulation_data *)data->d_simulation_data)->my_en.e_pen,
-                    system->N );
+                    system->N, control->streams[0] );
 
             Cuda_Reduction_Sum( &spad[2 * system->N],
                     &((simulation_data *)data->d_simulation_data)->my_en.e_coa,
-                    system->N );
+                    system->N, control->streams[0] );
         }
 
         if ( control->virial == 1 )
@@ -1538,24 +1544,27 @@ int Cuda_Compute_Valence_Angles( reax_system *system, control_params *control,
             rvec_spad = (rvec *) (&spad[3 * system->N]);
 
             k_reduction_rvec <<< control->blocks_n, control->block_size_n,
-                             sizeof(rvec) * (control->block_size_n / 32) >>>
+                             sizeof(rvec) * (control->block_size_n / 32),
+                             control->streams[0] >>>
                 ( rvec_spad, &rvec_spad[system->N], system->N );
             cudaCheckError( );
 
             k_reduction_rvec <<< 1, control->blocks_pow_2_n,
-                             sizeof(rvec) * (control->blocks_pow_2_n / 32) >>>
+                             sizeof(rvec) * (control->blocks_pow_2_n / 32),
+                             control->streams[0] >>>
                 ( &rvec_spad[system->N],
                   &((simulation_data *)data->d_simulation_data)->my_ext_press,
                   control->blocks_n );
             cudaCheckError( );
 //            Cuda_Reduction_Sum( rvec_spad,
 //                    &((simulation_data *)data->d_simulation_data)->my_ext_press,
-//                    system->N );
+//                    system->N, control->streams[0] );
         }
 #endif
 
 #if !defined(CUDA_ACCUM_ATOMIC)
-        k_valence_angles_part2 <<< control->blocks_n, control->block_size_n >>>
+        k_valence_angles_part2 <<< control->blocks_n, control->block_size_n,
+                               0, control->streams[0] >>>
             ( system->d_my_atoms, (control_params *) control->d_control_params,
               *(workspace->d_workspace), *(lists[BONDS]), system->N );
         cudaCheckError( );

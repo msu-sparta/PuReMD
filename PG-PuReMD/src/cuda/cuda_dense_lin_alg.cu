@@ -279,31 +279,6 @@ CUDA_GLOBAL void k_vector_mult_rvec2( rvec2 * const dest, rvec2 const * const v1
 }
 
 
-/* check if all entries of a dense vector are sufficiently close to zero
- *
- * inputs:
- *  v: dense vector
- *  k: number of entries in v
- * output: TRUE if all entries are sufficiently close to zero, FALSE otherwise
- */
-int Vector_isZero( real const * const v, unsigned int k )
-{
-    unsigned int i, ret;
-
-    ret = TRUE;
-
-    for ( i = 0; i < k; ++i )
-    {
-        if ( FABS( v[i] ) > ALMOST_ZERO )
-        {
-            ret = FALSE;
-        }
-    }
-
-    return ret;
-}
-
-
 /* sets all entries of a dense vector to zero
  *
  * inputs:
@@ -311,14 +286,14 @@ int Vector_isZero( real const * const v, unsigned int k )
  *  k: number of entries in v
  * output: v with entries set to zero
  */
-void Vector_MakeZero( real * const v, unsigned int k )
+void Vector_MakeZero( real * const v, unsigned int k, cudaStream_t s )
 {
     int blocks;
 
     blocks = (k / DEF_BLOCK_SIZE)
         + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_vector_makezero <<< blocks, DEF_BLOCK_SIZE >>>
+    k_vector_makezero <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
         ( v, k );
     cudaCheckError( );
 }
@@ -333,14 +308,14 @@ void Vector_MakeZero( real * const v, unsigned int k )
  *  dest: vector copied into
  */
 void Vector_Copy( real * const dest, real const * const v,
-        unsigned int k )
+        unsigned int k, cudaStream_t s )
 {
     int blocks;
 
     blocks = (k / DEF_BLOCK_SIZE)
         + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_vector_copy <<< blocks, DEF_BLOCK_SIZE >>>
+    k_vector_copy <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
         ( dest, v, k );
     cudaCheckError( );
 }
@@ -355,42 +330,42 @@ void Vector_Copy( real * const dest, real const * const v,
  *  dest: vector copied into
  */
 void Vector_Copy_rvec2( rvec2 * const dest, rvec2 const * const v,
-        unsigned int k )
+        unsigned int k, cudaStream_t s )
 {
     int blocks;
 
     blocks = (k / DEF_BLOCK_SIZE)
         + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_vector_copy_rvec2 <<< blocks, DEF_BLOCK_SIZE >>>
+    k_vector_copy_rvec2 <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
         ( dest, v, k );
     cudaCheckError( );
 }
 
 
 void Vector_Copy_From_rvec2( real * const dst, rvec2 const * const src,
-        int index, int k )
+        int index, int k, cudaStream_t s )
 {
     int blocks;
 
     blocks = (k / DEF_BLOCK_SIZE)
         + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_vector_copy_from_rvec2 <<< blocks, DEF_BLOCK_SIZE >>>
+    k_vector_copy_from_rvec2 <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
         ( dst, src, index, k );
     cudaCheckError( );
 }
 
 
 void Vector_Copy_To_rvec2( rvec2 * const dst, real const * const src,
-        int index, int k )
+        int index, int k, cudaStream_t s )
 {
     int blocks;
 
     blocks = (k / DEF_BLOCK_SIZE)
         + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_vector_copy_to_rvec2 <<< blocks, DEF_BLOCK_SIZE >>>
+    k_vector_copy_to_rvec2 <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
         ( dst, src, index, k );
     cudaCheckError( );
 }
@@ -406,14 +381,14 @@ void Vector_Copy_To_rvec2( rvec2 * const dst, real const * const src,
  *  dest: with entries scaled
  */
 void Vector_Scale( real * const dest, real c, real const * const v,
-        unsigned int k )
+        unsigned int k, cudaStream_t s )
 {
     int blocks;
 
     blocks = (k / DEF_BLOCK_SIZE)
         + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_vector_scale <<< blocks, DEF_BLOCK_SIZE >>>
+    k_vector_scale <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
         ( dest, c, v, k );
     cudaCheckError( );
 }
@@ -430,28 +405,28 @@ void Vector_Scale( real * const dest, real c, real const * const v,
  *  dest: vector containing the scaled sum
  */
 void Vector_Sum( real * const dest, real c, real const * const v,
-        real d, real const * const y, unsigned int k )
+        real d, real const * const y, unsigned int k, cudaStream_t s )
 {
     int blocks;
 
     blocks = (k / DEF_BLOCK_SIZE)
         + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_vector_sum <<< blocks, DEF_BLOCK_SIZE >>>
+    k_vector_sum <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
         ( dest, c, v, d, y, k );
     cudaCheckError( );
 }
 
 
 void Vector_Sum_rvec2( rvec2 * const dest, real c0, real c1, rvec2 const * const v,
-        real d0, real d1, rvec2 const * const y, unsigned int k )
+        real d0, real d1, rvec2 const * const y, unsigned int k, cudaStream_t s )
 {
     int blocks;
 
     blocks = (k / DEF_BLOCK_SIZE)
         + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_vector_sum_rvec2 <<< blocks, DEF_BLOCK_SIZE >>> 
+    k_vector_sum_rvec2 <<< blocks, DEF_BLOCK_SIZE, 0, s >>> 
         ( dest, c0, c1, v, d0, d1, y, k );
     cudaCheckError( );
 }
@@ -468,14 +443,14 @@ void Vector_Sum_rvec2( rvec2 * const dest, real c0, real c1, rvec2 const * const
  *  dest: vector to accumulate with the scaled sum
  */
 void Vector_Add( real * const dest, real c, real const * const v,
-        unsigned int k )
+        unsigned int k, cudaStream_t s )
 {
     int blocks;
 
     blocks = (k / DEF_BLOCK_SIZE)
         + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_vector_add <<< blocks, DEF_BLOCK_SIZE >>>
+    k_vector_add <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
         ( dest, c, v, k );
     cudaCheckError( );
 }
@@ -492,14 +467,14 @@ void Vector_Add( real * const dest, real c, real const * const v,
  *  dest: vector to accumulate with the scaled sum
  */
 void Vector_Add_rvec2( rvec2 * const dest, real c0, real c1, rvec2 const * const v,
-        unsigned int k )
+        unsigned int k, cudaStream_t s )
 {
     int blocks;
 
     blocks = (k / DEF_BLOCK_SIZE)
         + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_vector_add_rvec2 <<< blocks, DEF_BLOCK_SIZE >>>
+    k_vector_add_rvec2 <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
         ( dest, c0, c1, v, k );
     cudaCheckError( );
 }
@@ -514,14 +489,14 @@ void Vector_Add_rvec2( rvec2 * const dest, real c0, real c1, rvec2 const * const
  *  dest: vector with the result of the multiplication
  */
 void Vector_Mult( real * const dest, real const * const v1,
-        real const * const v2, unsigned int k )
+        real const * const v2, unsigned int k, cudaStream_t s )
 {
     int blocks;
 
     blocks = (k / DEF_BLOCK_SIZE)
         + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_vector_mult <<< blocks, DEF_BLOCK_SIZE >>>
+    k_vector_mult <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
         ( dest, v1, v2, k );
     cudaCheckError( );
 }
@@ -536,14 +511,14 @@ void Vector_Mult( real * const dest, real const * const v1,
  *  dest: vector with the result of the multiplication
  */
 void Vector_Mult_rvec2( rvec2 * const dest, rvec2 const * const v1,
-        rvec2 const * const v2, unsigned int k )
+        rvec2 const * const v2, unsigned int k, cudaStream_t s )
 {
     int blocks;
 
     blocks = (k / DEF_BLOCK_SIZE)
         + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_vector_mult_rvec2 <<< blocks, DEF_BLOCK_SIZE >>>
+    k_vector_mult_rvec2 <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
         ( dest, v1, v2, k );
     cudaCheckError( );
 }
@@ -556,13 +531,14 @@ void Vector_Mult_rvec2( rvec2 * const dest, rvec2 const * const v1,
  *  v1: dense vector
  *  k: number of entries in the vector
  *  comm: MPI communicator
+ *  s: CUDA stream
  * output:
  *  norm: 2-norm
  */
 real Norm( storage * const workspace,
-        real const * const v1, unsigned int k, MPI_Comm comm )
+        real const * const v1, unsigned int k, MPI_Comm comm, cudaStream_t s )
 {
-    return SQRT( Dot( workspace, v1, v1, k, comm ) );
+    return SQRT( Dot( workspace, v1, v1, k, comm, s ) );
 }
 
 
@@ -578,7 +554,7 @@ real Norm( storage * const workspace,
  */
 real Dot( storage * const workspace,
         real const * const v1, real const * const v2,
-        unsigned int k, MPI_Comm comm )
+        unsigned int k, MPI_Comm comm, cudaStream_t s )
 {
     int ret;
     real sum, *spad;
@@ -593,7 +569,7 @@ real Dot( storage * const workspace,
     Vector_Mult( spad, v1, v2, k );
 
     /* local reduction (sum) on device */
-    Cuda_Reduction_Sum( spad, &spad[k], k );
+    Cuda_Reduction_Sum( spad, &spad[k], k, s );
 
     /* global reduction (sum) of local device sums and store on host */
 //#if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
@@ -622,7 +598,7 @@ real Dot( storage * const workspace,
  */
 real Dot_local( storage * const workspace,
         real const * const v1, real const * const v2,
-        unsigned int k )
+        unsigned int k, cudaStream_t s )
 {
     real sum, *spad;
 
@@ -633,7 +609,7 @@ real Dot_local( storage * const workspace,
     Vector_Mult( spad, v1, v2, k );
 
     /* local reduction (sum) on device */
-    Cuda_Reduction_Sum( spad, &spad[k], k );
+    Cuda_Reduction_Sum( spad, &spad[k], k, s );
 
     //TODO: keep result of reduction on devie and pass directly to CUDA-aware MPI
     sCudaMemcpy( &sum, &spad[k], sizeof(real),
@@ -652,10 +628,9 @@ real Dot_local( storage * const workspace,
  * output:
  *  dot: inner product of the two vector
  */
-void Dot_local_rvec2( control_params const * const control,
-        storage * const workspace,
+void Dot_local_rvec2( storage * const workspace,
         rvec2 const * const v1, rvec2 const * const v2,
-        unsigned int k, real * sum1, real * sum2 )
+        unsigned int k, real * sum1, real * sum2, cudaStream_t s )
 {
     int blocks;
     rvec2 sum, *spad;
@@ -670,15 +645,15 @@ void Dot_local_rvec2( control_params const * const control,
     Vector_Mult_rvec2( spad, v1, v2, k );
 
     /* local reduction (sum) on device */
-//    Cuda_Reduction_Sum( spad, &spad[k], k );
+//    Cuda_Reduction_Sum( spad, &spad[k], k, s );
 
     k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE,
-                      sizeof(rvec2) * (DEF_BLOCK_SIZE / 32) >>>
+                      sizeof(rvec2) * (DEF_BLOCK_SIZE / 32), s >>>
         ( spad, &spad[k], k );
     cudaCheckError( );
 
     k_reduction_rvec2 <<< 1, ((blocks + 31) / 32) * 32,
-                      sizeof(rvec2) * ((blocks + 31) / 32) >>>
+                      sizeof(rvec2) * ((blocks + 31) / 32), s >>>
         ( &spad[k], &spad[k + blocks], blocks );
     cudaCheckError( );
 

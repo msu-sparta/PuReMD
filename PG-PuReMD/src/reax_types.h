@@ -356,6 +356,9 @@
   #else
     #define VDW_BLOCK_SIZE (256)
   #endif
+
+  /* max. num. of active CUDA streams */
+  #define CUDA_MAX_STREAMS (5)
 #endif
 
 
@@ -1655,6 +1658,8 @@ struct control_params
     /* num. of CUDA blocks rounded up to the nearest power of 2
      * for kernels with 1 thread per atom (local AND ghost) */
     int blocks_pow_2_n;
+    /* CUDA stream */
+    cudaStream_t streams[CUDA_MAX_STREAMS];
 #endif
 };
 

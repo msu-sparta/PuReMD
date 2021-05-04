@@ -828,8 +828,8 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_tab_full( reax_atom *my_atoms,
 }
 
 
-static void Cuda_Compute_Polarization_Energy( reax_system *system, storage *workspace,
-        simulation_data *data )
+static void Cuda_Compute_Polarization_Energy( reax_system *system,
+        control_params *control, storage *workspace, simulation_data *data )
 {
     int blocks;
 #if !defined(CUDA_ACCUM_ATOMIC)
@@ -847,7 +847,8 @@ static void Cuda_Compute_Polarization_Energy( reax_system *system, storage *work
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_compute_polarization_energy <<< blocks, DEF_BLOCK_SIZE >>>
+    k_compute_polarization_energy <<< blocks, DEF_BLOCK_SIZE, 0,
+                                  control->streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
           system->n,
 #if !defined(CUDA_ACCUM_ATOMIC)
@@ -909,7 +910,8 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
     {
         if ( control->virial == 1 )
         {
-//            k_vdW_coulomb_energy_virial_full <<< control->blocks, control->block_size >>>
+//            k_vdW_coulomb_energy_virial_full <<< control->blocks, control->block_size,
+//                                             0, control->streams[0] >>>
 //                ( system->d_my_atoms, system->reax_param.d_tbp, 
 //                  system->reax_param.d_gp, (control_params *) control->d_control_params, 
 //                  *(workspace->d_workspace), *(lists[FAR_NBRS]), 
@@ -924,7 +926,8 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
 //            );
 
         k_vdW_coulomb_energy_virial_full_opt <<< blocks, DEF_BLOCK_SIZE,
-                                 sizeof(real) * (DEF_BLOCK_SIZE / 32) >>>
+                                 sizeof(real) * (DEF_BLOCK_SIZE / 32),
+                                 control->streams[0] >>>
             ( system->d_my_atoms, system->reax_param.d_tbp, 
               system->reax_param.d_gp, (control_params *) control->d_control_params, 
               *(workspace->d_workspace), *(lists[FAR_NBRS]), 
@@ -940,7 +943,8 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
         }
         else
         {
-//            k_vdW_coulomb_energy_full <<< control->blocks, control->block_size >>>
+//            k_vdW_coulomb_energy_full <<< control->blocks, control->block_size,
+//                                      0, control->streams[0] >>>
 //                ( system->d_my_atoms, system->reax_param.d_tbp, 
 //                  system->reax_param.d_gp, (control_params *) control->d_control_params, 
 //                  *(workspace->d_workspace), *(lists[FAR_NBRS]), 
@@ -954,7 +958,8 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
 //                );
 
         k_vdW_coulomb_energy_full_opt <<< blocks, DEF_BLOCK_SIZE,
-                                 sizeof(real) * (DEF_BLOCK_SIZE / 32) >>>
+                                 sizeof(real) * (DEF_BLOCK_SIZE / 32),
+                                 control->streams[0] >>>
             ( system->d_my_atoms, system->reax_param.d_tbp, 
               system->reax_param.d_gp, (control_params *) control->d_control_params, 
               *(workspace->d_workspace), *(lists[FAR_NBRS]), 
@@ -971,7 +976,8 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
     }
     else
     {
-        k_vdW_coulomb_energy_tab_full <<< control->blocks, control->block_size >>>
+        k_vdW_coulomb_energy_tab_full <<< control->blocks, control->block_size,
+                                      0, control->streams[0] >>>
             ( system->d_my_atoms, system->reax_param.d_gp, 
               (control_params *) control->d_control_params, 
               *(workspace->d_workspace), *(lists[FAR_NBRS]), 
@@ -1010,12 +1016,14 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
 
         /* reduction for ext_press */
         k_reduction_rvec <<< control->blocks, control->block_size,
-                         sizeof(rvec) * (control->block_size / 32) >>>
+                         sizeof(rvec) * (control->block_size / 32),
+                         control->streams[0] >>>
             ( spad_rvec, &spad_rvec[system->n], system->n );
         cudaCheckError( );
 
         k_reduction_rvec <<< 1, control->blocks_pow_2,
-                         sizeof(rvec) * (control->blocks_pow_2 / 32) >>>
+                         sizeof(rvec) * (control->blocks_pow_2 / 32),
+                         control->streams[0] >>>
             ( &spad_rvec[system->n],
               &((simulation_data *)data->d_simulation_data)->my_ext_press,
               control->blocks );
@@ -1025,6 +1033,6 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
 
     if ( update_energy == TRUE )
     {
-        Cuda_Compute_Polarization_Energy( system, workspace, data );
+        Cuda_Compute_Polarization_Energy( system, control, workspace, data );
     }
 }

@@ -16,10 +16,11 @@ static void compute_nearest_multiple_32( int blocks, int *result )
 }
 
 
-extern "C" void Cuda_Setup_Environment( int rank, int nprocs, int gpus_per_node )
+extern "C" void Cuda_Setup_Environment( reax_system const * const system,
+        control_params * const control )
 {
 
-    int deviceCount;
+    int i, least_priority, greatest_priority, deviceCount;
     cudaError_t ret;
     
     ret = cudaGetDeviceCount( &deviceCount );
@@ -29,28 +30,64 @@ extern "C" void Cuda_Setup_Environment( int rank, int nprocs, int gpus_per_node 
         fprintf( stderr, "[ERROR] no CUDA capable device(s) found. Terminating...\n" );
         exit( CANNOT_INITIALIZE );
     }
-    else if ( deviceCount < gpus_per_node || gpus_per_node < 1 )
+    else if ( deviceCount < control->gpus_per_node || control->gpus_per_node < 1 )
     {
         fprintf( stderr, "[ERROR] invalid number of CUDA capable devices requested (gpus_per_node = %d). Terminating...\n",
-                gpus_per_node );
+                control->gpus_per_node );
         exit( INVALID_INPUT );
     }
 
     /* assign the GPU for each process */
     //TODO: handle condition where # CPU procs > # GPUs
-    ret = cudaSetDevice( rank % gpus_per_node );
+    ret = cudaSetDevice( system->my_rank % control->gpus_per_node );
 
     if ( ret == cudaErrorInvalidDevice )
     {
         fprintf( stderr, "[ERROR] invalid CUDA device ID set (%d). Terminating...\n",
-              rank % gpus_per_node );
+              system->my_rank % control->gpus_per_node );
         exit( CANNOT_INITIALIZE );
     }
     else if ( ret == cudaErrorDeviceAlreadyInUse )
     {
         fprintf( stderr, "[ERROR] CUDA device with specified ID already in use (%d). Terminating...\n",
-                rank % gpus_per_node );
+                system->my_rank % control->gpus_per_node );
         exit( CANNOT_INITIALIZE );
+    }
+
+    ret = cudaDeviceGetStreamPriorityRange( &least_priority, &greatest_priority );
+
+    if ( ret != cudaSuccess )
+    {
+        fprintf( stderr, "[ERROR] CUDA strema priority query failed. Terminating...\n" );
+        exit( CANNOT_INITIALIZE );
+    }
+
+    /* stream assignment:
+     * 0: init bonds, bond order (uncorrected/corrected), lone pair/over coord/under coord
+     * 1: (after bond order) bonds, valence angels, torsions
+     * 2: init hbonds, (after bonds) hbonds
+     * 3: van der Waals
+     * 4: init CM, CM, Coulomb
+     */
+    for ( i = 0; i < CUDA_MAX_STREAMS; ++i )
+    {
+        /* all non-CM streams of equal priority */
+        if ( i < CUDA_MAX_STREAMS - 1 )
+        {
+            ret = cudaStreamCreateWithPriority( &control->streams[i], cudaStreamNonBlocking, least_priority );
+        }
+        /* CM gets highest priority due to MPI comms and cudaMemcpy's */
+        else
+        {
+            ret = cudaStreamCreateWithPriority( &control->streams[i], cudaStreamNonBlocking, greatest_priority );
+        }
+
+        if ( ret != cudaSuccess )
+        {
+            fprintf( stderr, "[ERROR] CUDA strema creation failed (%d). Terminating...\n",
+                    i );
+            exit( CANNOT_INITIALIZE );
+        }
     }
 
     //TODO: revisit additional device configurations
@@ -70,8 +107,23 @@ extern "C" void Cuda_Init_Block_Sizes( reax_system *system,
 }
 
 
-extern "C" void Cuda_Cleanup_Environment( )
+extern "C" void Cuda_Cleanup_Environment( control_params const * const control )
 {
+    int i;
+    cudaError_t ret;
+
+    for ( i = 0; i < CUDA_MAX_STREAMS; ++i )
+    {
+        ret = cudaStreamDestroy( control->streams[i] );
+
+        if ( ret != cudaSuccess )
+        {
+            fprintf( stderr, "[ERROR] CUDA strema destruction failed (%d). Terminating...\n",
+                    i );
+            exit( CANNOT_INITIALIZE );
+        }
+    }
+
     cudaDeviceReset( );
     cudaDeviceSynchronize( );
 }

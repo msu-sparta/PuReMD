@@ -492,7 +492,8 @@ CUDA_GLOBAL void k_estimate_neighbors_full( reax_atom *my_atoms,
 
 
 extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
-        simulation_data *data, storage *workspace, reax_list **lists )
+        control_params *control, simulation_data *data, storage *workspace,
+        reax_list **lists )
 {
     int blocks, ret, ret_far_nbr;
 #if defined(LOG_PERFORMANCE)
@@ -517,7 +518,7 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
     blocks = (system->N / NBRS_BLOCK_SIZE) +
         ((system->N % NBRS_BLOCK_SIZE) == 0 ? 0 : 1);
 
-    k_generate_neighbor_lists_full <<< blocks, NBRS_BLOCK_SIZE >>>
+    k_generate_neighbor_lists_full <<< blocks, NBRS_BLOCK_SIZE, 0, control->streams[0] >>>
         ( system->d_my_atoms, system->my_ext_box,
           system->d_my_grid, *(lists[FAR_NBRS]),
           system->n, system->N,
@@ -529,7 +530,7 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
 //        (((system->N * NB_KER_THREADS_PER_ATOM) % NBRS_BLOCK_SIZE) == 0 ? 0 : 1);
 //    k_mt_generate_neighbor_lists <<< blocks, NBRS_BLOCK_SIZE, 
 //        //sizeof(int) * (NBRS_BLOCK_SIZE + NBRS_BLOCK_SIZE / NB_KER_THREADS_PER_ATOM) >>>
-//        sizeof(int) * 2 * NBRS_BLOCK_SIZE >>>
+//        sizeof(int) * 2 * NBRS_BLOCK_SIZE, control->streams[0] >>>
 //            ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
 //              *(lists[FAR_NBRS]), system->n, system->N );
 //    cudaCheckError( );
@@ -565,7 +566,8 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
 /* Estimate the number of far neighbors for each atoms 
  *
  * system: atomic system info */
-void Cuda_Estimate_Num_Neighbors( reax_system *system, simulation_data *data )
+void Cuda_Estimate_Num_Neighbors( reax_system *system, control_params *control,
+        simulation_data *data )
 {
     int blocks;
 #if defined(LOG_PERFORMANCE)
@@ -583,14 +585,14 @@ void Cuda_Estimate_Num_Neighbors( reax_system *system, simulation_data *data )
     blocks = system->total_cap / DEF_BLOCK_SIZE
         + (system->total_cap % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
-    k_estimate_neighbors_full <<< blocks, DEF_BLOCK_SIZE >>>
+    k_estimate_neighbors_full <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
         ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
           system->n, system->N, system->total_cap,
           system->d_far_nbrs, system->d_max_far_nbrs );
     cudaCheckError( );
 
     Cuda_Reduction_Sum( system->d_max_far_nbrs, system->d_total_far_nbrs,
-            system->total_cap );
+            system->total_cap, control->streams[0] );
     sCudaMemcpy( &system->total_far_nbrs, system->d_total_far_nbrs, sizeof(int), 
             cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
 

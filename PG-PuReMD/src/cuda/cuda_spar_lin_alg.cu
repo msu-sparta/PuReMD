@@ -546,28 +546,28 @@ CUDA_GLOBAL void k_dual_sparse_matvec_full_opt_csr( int *row_ptr_start,
 
 
 void dual_jacobi_apply( real const * const Hdia_inv, rvec2 const * const y,
-        rvec2 * const x, int n )
+        rvec2 * const x, int n, cudaStream_t s )
 {
     int blocks;
 
     blocks = (n / DEF_BLOCK_SIZE)
         + ((n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_dual_jacobi_apply <<< blocks, DEF_BLOCK_SIZE >>>
+    k_dual_jacobi_apply <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
         ( Hdia_inv, y, x, n );
     cudaCheckError( );
 }
 
 
 void jacobi_apply( real const * const Hdia_inv, real const * const y,
-        real * const x, int n )
+        real * const x, int n, cudaStream_t s )
 {
     int blocks;
 
     blocks = (n / DEF_BLOCK_SIZE)
         + ((n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_jacobi_apply <<< blocks, DEF_BLOCK_SIZE >>>
+    k_jacobi_apply <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
         ( Hdia_inv, y, x, n );
     cudaCheckError( );
 }
@@ -623,7 +623,7 @@ static void Dual_Sparse_MatVec_Comm_Part1( const reax_system * const system,
  */
 static void Dual_Sparse_MatVec_local( control_params const * const control,
         sparse_matrix const * const A, rvec2 const * const x,
-        rvec2 * const b, int n )
+        rvec2 * const b, int n, cudaStream_t s )
 {
     int blocks;
 
@@ -633,7 +633,7 @@ static void Dual_Sparse_MatVec_local( control_params const * const control,
         cuda_memset( b, 0, sizeof(rvec2) * n, "Dual_Sparse_MatVec_local::b" );
 
         /* 1 thread per row implementation */
-//        k_dual_sparse_matvec_half_csr <<< control->blocks, control->block_size >>>
+//        k_dual_sparse_matvec_half_csr <<< control->blocks, control->block_size, 0, s >>>
 //            ( A->start, A->end, A->j, A->val, x, b, A->n );
 
         blocks = A->n * 32 / DEF_BLOCK_SIZE
@@ -641,13 +641,13 @@ static void Dual_Sparse_MatVec_local( control_params const * const control,
         
         /* 32 threads per row implementation
          * using registers to accumulate partial row sums */
-        k_dual_sparse_matvec_half_opt_csr <<< blocks, DEF_BLOCK_SIZE >>>
+        k_dual_sparse_matvec_half_opt_csr <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
              ( A->start, A->end, A->j, A->val, x, b, A->n );
     }
     else if ( A->format == SYM_FULL_MATRIX )
     {
         /* 1 thread per row implementation */
-//        k_dual_sparse_matvec_full_csr <<< control->blocks_n, control->blocks_size_n >>>
+//        k_dual_sparse_matvec_full_csr <<< control->blocks_n, control->blocks_size_n, 0, s >>>
 //             ( *A, x, b, A->n );
 
         blocks = ((A->n * 32) / DEF_BLOCK_SIZE)
@@ -655,7 +655,7 @@ static void Dual_Sparse_MatVec_local( control_params const * const control,
         
         /* 32 threads per row implementation
          * using registers to accumulate partial row sums */
-        k_dual_sparse_matvec_full_opt_csr <<< blocks, DEF_BLOCK_SIZE >>>
+        k_dual_sparse_matvec_full_opt_csr <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
                 ( A->start, A->end, A->j, A->val, x, b, A->n );
     }
     cudaCheckError( );
@@ -738,7 +738,7 @@ static void Dual_Sparse_MatVec( const reax_system * const system,
     Update_Timing_Info( &time, &data->timing.cm_solver_comm );
 #endif
 
-    Dual_Sparse_MatVec_local( control, A, x, b, n );
+    Dual_Sparse_MatVec_local( control, A, x, b, n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_spmv );
@@ -800,7 +800,7 @@ static void Sparse_MatVec_Comm_Part1( const reax_system * const system,
  */
 static void Sparse_MatVec_local( control_params const * const control,
         sparse_matrix const * const A, real const * const x,
-        real * const b, int n )
+        real * const b, int n, cudaStream_t s )
 {
     int blocks;
 
@@ -810,7 +810,7 @@ static void Sparse_MatVec_local( control_params const * const control,
         cuda_memset( b, 0, sizeof(real) * n, "Sparse_MatVec_local::b" );
 
         /* 1 thread per row implementation */
-//        k_sparse_matvec_half_csr <<< control->blocks, control->block_size >>>
+//        k_sparse_matvec_half_csr <<< control->blocks, control->block_size, 0, s >>>
 //            ( A->start, A->end, A->j, A->val, x, b, A->n );
 
         blocks = (A->n * 32 / DEF_BLOCK_SIZE)
@@ -818,13 +818,13 @@ static void Sparse_MatVec_local( control_params const * const control,
 
         /* 32 threads per row implementation
          * using registers to accumulate partial row sums */
-        k_sparse_matvec_half_opt_csr <<< blocks, DEF_BLOCK_SIZE >>>
+        k_sparse_matvec_half_opt_csr <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
              ( A->start, A->end, A->j, A->val, x, b, A->n );
     }
     else if ( A->format == SYM_FULL_MATRIX )
     {
         /* 1 thread per row implementation */
-//        k_sparse_matvec_full_csr <<< control->blocks, control->blocks_size >>>
+//        k_sparse_matvec_full_csr <<< control->blocks, control->blocks_size, 0, s >>>
 //             ( A->start, A->end, A->j, A->val, x, b, A->n );
 
         blocks = ((A->n * 32) / DEF_BLOCK_SIZE)
@@ -832,7 +832,7 @@ static void Sparse_MatVec_local( control_params const * const control,
 
         /* 32 threads per row implementation
          * using registers to accumulate partial row sums */
-        k_sparse_matvec_full_opt_csr <<< blocks, DEF_BLOCK_SIZE >>>
+        k_sparse_matvec_full_opt_csr <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
              ( A->start, A->end, A->j, A->val, x, b, A->n );
     }
     cudaCheckError( );
@@ -913,7 +913,7 @@ static void Sparse_MatVec( reax_system const * const system,
     Update_Timing_Info( &time, &data->timing.cm_solver_comm );
 #endif
 
-    Sparse_MatVec_local( control, A, x, b, n );
+    Sparse_MatVec_local( control, A, x, b, n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_spmv );
@@ -957,15 +957,15 @@ int Cuda_dual_SDM( reax_system const * const system,
 #endif
 
     dual_jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r2,
-            workspace->d_workspace->d2, system->n );
+            workspace->d_workspace->d2, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
-    Dot_local_rvec2( control, workspace, b, b, system->n, &redux[0], &redux[1] );
-    Dot_local_rvec2( control, workspace, workspace->d_workspace->r2,
-            workspace->d_workspace->d2, system->n, &redux[2], &redux[3] );
+    Dot_local_rvec2( workspace, b, b, system->n, &redux[0], &redux[1], control->streams[0] );
+    Dot_local_rvec2( workspace, workspace->d_workspace->r2,
+            workspace->d_workspace->d2, system->n, &redux[2], &redux[3], control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -997,10 +997,10 @@ int Cuda_dual_SDM( reax_system const * const system,
         time = Get_Time( );
 #endif
 
-        Dot_local_rvec2( control, workspace, workspace->d_workspace->r2,
-                workspace->d_workspace->d2, system->n, &redux[0], &redux[1] );
-        Dot_local_rvec2( control, workspace, workspace->d_workspace->d2,
-                workspace->d_workspace->q2, system->n, &redux[2], &redux[3] );
+        Dot_local_rvec2( workspace, workspace->d_workspace->r2,
+                workspace->d_workspace->d2, system->n, &redux[0], &redux[1], control->streams[0] );
+        Dot_local_rvec2( workspace, workspace->d_workspace->d2,
+                workspace->d_workspace->q2, system->n, &redux[2], &redux[3], control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
@@ -1029,7 +1029,7 @@ int Cuda_dual_SDM( reax_system const * const system,
 #endif
 
         dual_jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r2,
-                workspace->d_workspace->d2, system->n );
+                workspace->d_workspace->d2, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -1108,15 +1108,15 @@ int Cuda_SDM( reax_system const * const system, control_params const * const con
 #endif
 
     jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r,
-            workspace->d_workspace->d, system->n );
+            workspace->d_workspace->d, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
-    redux[0] = Dot_local( workspace, b, b, system->n );
+    redux[0] = Dot_local( workspace, b, b, system->n, control->streams[0] );
     redux[1] = Dot_local( workspace, workspace->d_workspace->r,
-            workspace->d_workspace->d, system->n );
+            workspace->d_workspace->d, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1142,9 +1142,9 @@ int Cuda_SDM( reax_system const * const system, control_params const * const con
 #endif
 
         redux[0] = Dot_local( workspace, workspace->d_workspace->r,
-                workspace->d_workspace->d, system->n );
+                workspace->d_workspace->d, system->n, control->streams[0] );
         redux[1] = Dot_local( workspace, workspace->d_workspace->d,
-                workspace->d_workspace->q, system->n );
+                workspace->d_workspace->q, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
@@ -1170,7 +1170,7 @@ int Cuda_SDM( reax_system const * const system, control_params const * const con
 #endif
 
         jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r,
-                workspace->d_workspace->d, system->n );
+                workspace->d_workspace->d, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -1219,17 +1219,17 @@ int Cuda_dual_CG( reax_system const * const system,
 #endif
 
     dual_jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r2,
-            workspace->d_workspace->d2, system->n );
+            workspace->d_workspace->d2, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
-    Dot_local_rvec2( control, workspace, workspace->d_workspace->r2,
-            workspace->d_workspace->d2, system->n, &redux[0], &redux[1] );
-    Dot_local_rvec2( control, workspace, workspace->d_workspace->d2,
-            workspace->d_workspace->d2, system->n, &redux[2], &redux[3] );
-    Dot_local_rvec2( control, workspace, b, b, system->n, &redux[4], &redux[5] );
+    Dot_local_rvec2( workspace, workspace->d_workspace->r2,
+            workspace->d_workspace->d2, system->n, &redux[0], &redux[1], control->streams[0] );
+    Dot_local_rvec2( workspace, workspace->d_workspace->d2,
+            workspace->d_workspace->d2, system->n, &redux[2], &redux[3], control->streams[0] );
+    Dot_local_rvec2( workspace, b, b, system->n, &redux[4], &redux[5], control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1262,8 +1262,8 @@ int Cuda_dual_CG( reax_system const * const system,
         time = Get_Time( );
 #endif
 
-        Dot_local_rvec2( control, workspace, workspace->d_workspace->d2,
-                workspace->d_workspace->q2, system->n, &redux[0], &redux[1] );
+        Dot_local_rvec2( workspace, workspace->d_workspace->d2,
+                workspace->d_workspace->q2, system->n, &redux[0], &redux[1], control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1290,16 +1290,16 @@ int Cuda_dual_CG( reax_system const * const system,
 #endif
 
         dual_jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r2,
-                workspace->d_workspace->p2, system->n );
+                workspace->d_workspace->p2, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
-        Dot_local_rvec2( control, workspace, workspace->d_workspace->r2,
-                workspace->d_workspace->p2, system->n, &redux[0], &redux[1] );
-        Dot_local_rvec2( control, workspace, workspace->d_workspace->p2,
-                workspace->d_workspace->p2, system->n, &redux[2], &redux[3] );
+        Dot_local_rvec2( workspace, workspace->d_workspace->r2,
+                workspace->d_workspace->p2, system->n, &redux[0], &redux[1], control->streams[0] );
+        Dot_local_rvec2( workspace, workspace->d_workspace->p2,
+                workspace->d_workspace->p2, system->n, &redux[2], &redux[3], control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1403,17 +1403,17 @@ int Cuda_CG( reax_system const * const system, control_params const * const cont
 #endif
 
     jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r,
-            workspace->d_workspace->d, system->n );
+            workspace->d_workspace->d, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
     redux[0] = Dot_local( workspace, workspace->d_workspace->r,
-            workspace->d_workspace->d, system->n );
+            workspace->d_workspace->d, system->n, control->streams[0] );
     redux[1] = Dot_local( workspace, workspace->d_workspace->d,
-            workspace->d_workspace->d, system->n );
-    redux[2] = Dot_local( workspace, b, b, system->n );
+            workspace->d_workspace->d, system->n, control->streams[0] );
+    redux[2] = Dot_local( workspace, b, b, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1440,7 +1440,7 @@ int Cuda_CG( reax_system const * const system, control_params const * const cont
 #endif
 
         tmp = Dot( workspace, workspace->d_workspace->d, workspace->d_workspace->q,
-                system->n, MPI_COMM_WORLD );
+                system->n, MPI_COMM_WORLD, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
@@ -1456,16 +1456,16 @@ int Cuda_CG( reax_system const * const system, control_params const * const cont
 #endif
 
         jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r,
-                workspace->d_workspace->p, system->n );
+                workspace->d_workspace->p, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
         redux[0] = Dot_local( workspace, workspace->d_workspace->r,
-                workspace->d_workspace->p, system->n );
+                workspace->d_workspace->p, system->n, control->streams[0] );
         redux[1] = Dot_local( workspace, workspace->d_workspace->p,
-                workspace->d_workspace->p, system->n );
+                workspace->d_workspace->p, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1541,10 +1541,10 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
 
     Vector_Sum_rvec2( workspace->d_workspace->r2, 1.0, 1.0, b,
             -1.0, -1.0, workspace->d_workspace->d2, system->n );
-    Dot_local_rvec2( control, workspace, b,
-            b, system->n, &redux[0], &redux[1] );
-    Dot_local_rvec2( control, workspace, workspace->d_workspace->r2,
-            workspace->d_workspace->r2, system->n, &redux[2], &redux[3] );
+    Dot_local_rvec2( workspace, b,
+            b, system->n, &redux[0], &redux[1], control->streams[0] );
+    Dot_local_rvec2( workspace, workspace->d_workspace->r2,
+            workspace->d_workspace->r2, system->n, &redux[2], &redux[3], control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1588,8 +1588,8 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
             break;
         }
 
-        Dot_local_rvec2( control, workspace, workspace->d_workspace->r_hat2,
-                workspace->d_workspace->r2, system->n, &redux[0], &redux[1] );
+        Dot_local_rvec2( workspace, workspace->d_workspace->r_hat2,
+                workspace->d_workspace->r2, system->n, &redux[0], &redux[1], control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1631,7 +1631,7 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
 #endif
 
         dual_jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->p2,
-                workspace->d_workspace->d2, system->n );
+                workspace->d_workspace->d2, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -1644,8 +1644,8 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
         time = Get_Time( );
 #endif
 
-        Dot_local_rvec2( control, workspace, workspace->d_workspace->r_hat2,
-                workspace->d_workspace->z2, system->n, &redux[0], &redux[1] );
+        Dot_local_rvec2( workspace, workspace->d_workspace->r_hat2,
+                workspace->d_workspace->z2, system->n, &redux[0], &redux[1], control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1666,8 +1666,8 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
         Vector_Sum_rvec2( workspace->d_workspace->q2,
                 1.0, 1.0, workspace->d_workspace->r2,
                 -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->z2, system->n );
-        Dot_local_rvec2( control, workspace, workspace->d_workspace->q2,
-                workspace->d_workspace->q2, system->n, &redux[0], &redux[1] );
+        Dot_local_rvec2( workspace, workspace->d_workspace->q2,
+                workspace->d_workspace->q2, system->n, &redux[0], &redux[1], control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1695,7 +1695,7 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
 #endif
 
         dual_jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->q2,
-                workspace->d_workspace->q_hat2, system->n );
+                workspace->d_workspace->q_hat2, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -1708,10 +1708,10 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
         time = Get_Time( );
 #endif
 
-        Dot_local_rvec2( control, workspace, workspace->d_workspace->y2,
-                workspace->d_workspace->q2, system->n, &redux[0], &redux[1] );
-        Dot_local_rvec2( control, workspace, workspace->d_workspace->y2,
-                workspace->d_workspace->y2, system->n, &redux[2], &redux[3] );
+        Dot_local_rvec2( workspace, workspace->d_workspace->y2,
+                workspace->d_workspace->q2, system->n, &redux[0], &redux[1], control->streams[0] );
+        Dot_local_rvec2( workspace, workspace->d_workspace->y2,
+                workspace->d_workspace->y2, system->n, &redux[2], &redux[3], control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1738,8 +1738,8 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
         Vector_Sum_rvec2( workspace->d_workspace->r2,
                 1.0, 1.0, workspace->d_workspace->q2,
                 -1.0 * omega[0], -1.0 * omega[1], workspace->d_workspace->y2, system->n );
-        Dot_local_rvec2( control, workspace, workspace->d_workspace->r2,
-                workspace->d_workspace->r2, system->n, &redux[0], &redux[1] );
+        Dot_local_rvec2( workspace, workspace->d_workspace->r2,
+                workspace->d_workspace->r2, system->n, &redux[0], &redux[1], control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1848,9 +1848,9 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
 
     Vector_Sum( workspace->d_workspace->r, 1.0, b,
             -1.0, workspace->d_workspace->d, system->n );
-    redux[0] = Dot_local( workspace, b, b, system->n );
+    redux[0] = Dot_local( workspace, b, b, system->n, control->streams[0] );
     redux[1] = Dot_local( workspace, workspace->d_workspace->r,
-            workspace->d_workspace->r, system->n );
+            workspace->d_workspace->r, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1882,7 +1882,7 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
     for ( i = 0; i < control->cm_solver_max_iters && r_norm / b_norm > tol; ++i )
     {
         redux[0] = Dot_local( workspace, workspace->d_workspace->r_hat,
-                workspace->d_workspace->r, system->n );
+                workspace->d_workspace->r, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1922,7 +1922,7 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
 #endif
 
         jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->p,
-                workspace->d_workspace->d, system->n );
+                workspace->d_workspace->d, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -1936,7 +1936,7 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
 #endif
 
         redux[0] = Dot_local( workspace, workspace->d_workspace->r_hat,
-                workspace->d_workspace->z, system->n );
+                workspace->d_workspace->z, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1956,7 +1956,7 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
                 1.0, workspace->d_workspace->r,
                 -1.0 * alpha, workspace->d_workspace->z, system->n );
         redux[0] = Dot_local( workspace, workspace->d_workspace->q,
-                workspace->d_workspace->q, system->n );
+                workspace->d_workspace->q, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1983,7 +1983,7 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
 #endif
 
         jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->q,
-                workspace->d_workspace->q_hat, system->n );
+                workspace->d_workspace->q_hat, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -1997,9 +1997,9 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
 #endif
 
         redux[0] = Dot_local( workspace, workspace->d_workspace->y,
-                workspace->d_workspace->q, system->n );
+                workspace->d_workspace->q, system->n, control->streams[0] );
         redux[1] = Dot_local( workspace, workspace->d_workspace->y,
-                workspace->d_workspace->y, system->n );
+                workspace->d_workspace->y, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2024,7 +2024,7 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
                 1.0, workspace->d_workspace->q,
                 -1.0 * omega, workspace->d_workspace->y, system->n );
         redux[0] = Dot_local( workspace, workspace->d_workspace->r,
-                workspace->d_workspace->r, system->n );
+                workspace->d_workspace->r, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2100,7 +2100,7 @@ int Cuda_dual_PIPECG( reax_system const * const system, control_params const * c
 #endif
 
     dual_jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r2,
-            workspace->d_workspace->u2, system->n );
+            workspace->d_workspace->u2, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -2113,13 +2113,13 @@ int Cuda_dual_PIPECG( reax_system const * const system, control_params const * c
     time = Get_Time( );
 #endif
 
-    Dot_local_rvec2( control, workspace, workspace->d_workspace->w2,
-            workspace->d_workspace->u2, system->n, &redux[0], &redux[1] );
-    Dot_local_rvec2( control, workspace, workspace->d_workspace->r2,
-            workspace->d_workspace->u2, system->n, &redux[2], &redux[3] );
-    Dot_local_rvec2( control, workspace, workspace->d_workspace->u2,
-            workspace->d_workspace->u2, system->n, &redux[4], &redux[5] );
-    Dot_local_rvec2( control, workspace, b, b, system->n, &redux[6], &redux[7] );
+    Dot_local_rvec2( workspace, workspace->d_workspace->w2,
+            workspace->d_workspace->u2, system->n, &redux[0], &redux[1], control->streams[0] );
+    Dot_local_rvec2( workspace, workspace->d_workspace->r2,
+            workspace->d_workspace->u2, system->n, &redux[2], &redux[3], control->streams[0] );
+    Dot_local_rvec2( workspace, workspace->d_workspace->u2,
+            workspace->d_workspace->u2, system->n, &redux[4], &redux[5], control->streams[0] );
+    Dot_local_rvec2( workspace, b, b, system->n, &redux[6], &redux[7], control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2130,7 +2130,7 @@ int Cuda_dual_PIPECG( reax_system const * const system, control_params const * c
     Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     dual_jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->w2,
-            workspace->d_workspace->m2, system->n );
+            workspace->d_workspace->m2, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -2196,12 +2196,12 @@ int Cuda_dual_PIPECG( reax_system const * const system, control_params const * c
                 -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->z2, system->n );
         Vector_Sum_rvec2( workspace->d_workspace->r2, 1.0, 1.0, workspace->d_workspace->r2,
                 -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->d2, system->n );
-        Dot_local_rvec2( control, workspace, workspace->d_workspace->w2,
-                workspace->d_workspace->u2, system->n, &redux[0], &redux[1] );
-        Dot_local_rvec2( control, workspace, workspace->d_workspace->r2,
-                workspace->d_workspace->u2, system->n, &redux[2], &redux[3] );
-        Dot_local_rvec2( control, workspace, workspace->d_workspace->u2,
-                workspace->d_workspace->u2, system->n, &redux[4], &redux[5] );
+        Dot_local_rvec2( workspace, workspace->d_workspace->w2,
+                workspace->d_workspace->u2, system->n, &redux[0], &redux[1], control->streams[0] );
+        Dot_local_rvec2( workspace, workspace->d_workspace->r2,
+                workspace->d_workspace->u2, system->n, &redux[2], &redux[3], control->streams[0] );
+        Dot_local_rvec2( workspace, workspace->d_workspace->u2,
+                workspace->d_workspace->u2, system->n, &redux[4], &redux[5], control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2212,7 +2212,7 @@ int Cuda_dual_PIPECG( reax_system const * const system, control_params const * c
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         dual_jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->w2,
-                workspace->d_workspace->m2, system->n );
+                workspace->d_workspace->m2, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -2323,7 +2323,7 @@ int Cuda_PIPECG( reax_system const * const system, control_params const * const 
 #endif
 
     jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r,
-            workspace->d_workspace->u, system->n );
+            workspace->d_workspace->u, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -2337,12 +2337,12 @@ int Cuda_PIPECG( reax_system const * const system, control_params const * const 
 #endif
 
     redux[0] = Dot_local( workspace, workspace->d_workspace->w,
-            workspace->d_workspace->u, system->n );
+            workspace->d_workspace->u, system->n, control->streams[0] );
     redux[1] = Dot_local( workspace, workspace->d_workspace->r,
-            workspace->d_workspace->u, system->n );
+            workspace->d_workspace->u, system->n, control->streams[0] );
     redux[2] = Dot_local( workspace, workspace->d_workspace->u,
-            workspace->d_workspace->u, system->n );
-    redux[3] = Dot_local( workspace, b, b, system->n );
+            workspace->d_workspace->u, system->n, control->streams[0] );
+    redux[3] = Dot_local( workspace, b, b, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2353,7 +2353,7 @@ int Cuda_PIPECG( reax_system const * const system, control_params const * const 
     Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->w,
-            workspace->d_workspace->m, system->n );
+            workspace->d_workspace->m, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -2407,11 +2407,11 @@ int Cuda_PIPECG( reax_system const * const system, control_params const * const 
         Vector_Sum( workspace->d_workspace->r, 1.0, workspace->d_workspace->r,
                 -1.0 * alpha, workspace->d_workspace->d, system->n );
         redux[0] = Dot_local( workspace, workspace->d_workspace->w,
-                workspace->d_workspace->u, system->n );
+                workspace->d_workspace->u, system->n, control->streams[0] );
         redux[1] = Dot_local( workspace, workspace->d_workspace->r,
-                workspace->d_workspace->u, system->n );
+                workspace->d_workspace->u, system->n, control->streams[0] );
         redux[2] = Dot_local( workspace, workspace->d_workspace->u,
-                workspace->d_workspace->u, system->n );
+                workspace->d_workspace->u, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2422,7 +2422,7 @@ int Cuda_PIPECG( reax_system const * const system, control_params const * const 
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->w,
-                workspace->d_workspace->m, system->n );
+                workspace->d_workspace->m, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -2495,15 +2495,15 @@ int Cuda_dual_PIPECR( reax_system const * const system, control_params const * c
 #endif
 
     dual_jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r2,
-            workspace->d_workspace->u2, system->n );
+            workspace->d_workspace->u2, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
-    Dot_local_rvec2( control, workspace, b, b, system->n, &redux[0], &redux[1] );
-    Dot_local_rvec2( control, workspace, workspace->d_workspace->u2,
-            workspace->d_workspace->u2, system->n, &redux[2], &redux[3] );
+    Dot_local_rvec2( workspace, b, b, system->n, &redux[0], &redux[1], control->streams[0] );
+    Dot_local_rvec2( workspace, workspace->d_workspace->u2,
+            workspace->d_workspace->u2, system->n, &redux[2], &redux[3], control->streams[0] );
 
     ret = MPI_Iallreduce( MPI_IN_PLACE, redux, 4, MPI_DOUBLE, MPI_SUM,
             MPI_COMM_WORLD, &req );
@@ -2539,18 +2539,18 @@ int Cuda_dual_PIPECR( reax_system const * const system, control_params const * c
         }
 
         dual_jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->w2,
-                workspace->d_workspace->m2, system->n );
+                workspace->d_workspace->m2, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
-        Dot_local_rvec2( control, workspace, workspace->d_workspace->w2,
-                workspace->d_workspace->u2, system->n, &redux[0], &redux[1] );
-        Dot_local_rvec2( control, workspace, workspace->d_workspace->m2,
-                workspace->d_workspace->w2, system->n, &redux[2], &redux[3] );
-        Dot_local_rvec2( control, workspace, workspace->d_workspace->u2,
-                workspace->d_workspace->u2, system->n, &redux[4], &redux[5] );
+        Dot_local_rvec2( workspace, workspace->d_workspace->w2,
+                workspace->d_workspace->u2, system->n, &redux[0], &redux[1], control->streams[0] );
+        Dot_local_rvec2( workspace, workspace->d_workspace->m2,
+                workspace->d_workspace->w2, system->n, &redux[2], &redux[3], control->streams[0] );
+        Dot_local_rvec2( workspace, workspace->d_workspace->u2,
+                workspace->d_workspace->u2, system->n, &redux[4], &redux[5], control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2698,15 +2698,15 @@ int Cuda_PIPECR( reax_system const * const system, control_params const * const 
 #endif
 
     jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r,
-            workspace->d_workspace->u, system->n );
+            workspace->d_workspace->u, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
-    redux[0] = Dot_local( workspace, b, b, system->n );
+    redux[0] = Dot_local( workspace, b, b, system->n, control->streams[0] );
     redux[1] = Dot_local( workspace, workspace->d_workspace->u,
-            workspace->d_workspace->u, system->n );
+            workspace->d_workspace->u, system->n, control->streams[0] );
 
     ret = MPI_Iallreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE, MPI_SUM,
             MPI_COMM_WORLD, &req );
@@ -2735,18 +2735,18 @@ int Cuda_PIPECR( reax_system const * const system, control_params const * const 
     for ( i = 0; i < control->cm_solver_max_iters && r_norm / b_norm > tol; ++i )
     {
         jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->w,
-                workspace->d_workspace->m, system->n );
+                workspace->d_workspace->m, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
         redux[0] = Dot_local( workspace, workspace->d_workspace->w,
-                workspace->d_workspace->u, system->n );
+                workspace->d_workspace->u, system->n, control->streams[0] );
         redux[1] = Dot_local( workspace, workspace->d_workspace->m,
-                workspace->d_workspace->w, system->n );
+                workspace->d_workspace->w, system->n, control->streams[0] );
         redux[2] = Dot_local( workspace, workspace->d_workspace->u,
-                workspace->d_workspace->u, system->n );
+                workspace->d_workspace->u, system->n, control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );

@@ -923,7 +923,7 @@ void Cuda_Reallocate_Part2( reax_system *system, control_params *control,
     {
         Cuda_Reallocate_List( lists[FAR_NBRS], system->total_cap,
                 system->total_far_nbrs, TYP_FAR_NEIGHBOR );
-        Cuda_Init_Neighbor_Indices( system, lists[FAR_NBRS] );
+        Cuda_Init_Neighbor_Indices( system, control, lists[FAR_NBRS] );
         realloc->far_nbrs = FALSE;
     }
 

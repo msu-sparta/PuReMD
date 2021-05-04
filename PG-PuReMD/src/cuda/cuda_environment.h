@@ -9,11 +9,12 @@
 extern "C"  {
 #endif
 
-void Cuda_Setup_Environment( int, int, int );
+void Cuda_Setup_Environment( reax_system const * const,
+        control_params * const );
 
 void Cuda_Init_Block_Sizes( reax_system *, control_params * );
 
-void Cuda_Cleanup_Environment( );
+void Cuda_Cleanup_Environment( control_params const * const );
 
 #ifdef __cplusplus
 }

@@ -227,8 +227,7 @@ void* setup( const char * const geo_file, const char * const ffield_file,
             pmd_handle->workspace, pmd_handle->out_control, pmd_handle->mpi_data );
 
 #if defined(HAVE_CUDA)
-    Cuda_Setup_Environment( pmd_handle->system->my_rank,
-            pmd_handle->control->nprocs, pmd_handle->control->gpus_per_node );
+    Cuda_Setup_Environment( pmd_handle->system, pmd_handle->control );
 #endif
 
     return (void*) pmd_handle;
@@ -298,7 +297,7 @@ int simulate( const void * const handle )
 
         Cuda_Reset( system, control, data, workspace, lists );
 
-        Cuda_Generate_Neighbor_Lists( system, data, workspace, lists );
+        Cuda_Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
         Cuda_Compute_Forces( system, control, data, workspace, lists,
                 out_control, mpi_data );
@@ -501,7 +500,7 @@ int cleanup( const void * const handle )
 #if defined(HAVE_CUDA)
         //TODO: add Cuda_Finalize( ... )
 
-        Cuda_Cleanup_Environment( );
+        Cuda_Cleanup_Environment( pmd_handle->control );
 #else
         Finalize( pmd_handle->system, pmd_handle->control, pmd_handle->data,
                 pmd_handle->workspace, pmd_handle->lists, pmd_handle->out_control,

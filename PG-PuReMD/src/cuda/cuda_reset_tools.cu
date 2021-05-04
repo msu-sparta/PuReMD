@@ -55,14 +55,15 @@ CUDA_GLOBAL void k_reset_hindex( reax_atom *my_atoms, single_body_parameters *sb
 #endif
 }
 
-void Cuda_Reset_Workspace( reax_system *system, storage *workspace )
+void Cuda_Reset_Workspace( reax_system *system, control_params *control,
+        storage *workspace )
 {
     int blocks;
 
     blocks = system->total_cap / DEF_BLOCK_SIZE
         + ((system->total_cap % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
 
-    k_reset_workspace <<< blocks, DEF_BLOCK_SIZE >>>
+    k_reset_workspace <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
         ( *(workspace->d_workspace), system->total_cap );
     cudaCheckError( );
 }
@@ -80,7 +81,8 @@ void Cuda_Reset_Atoms_HBond_Indices( reax_system* system, control_params *contro
     hindex = (int *) workspace->scratch;
 #endif
 
-    k_reset_hindex <<< control->blocks_n, control->block_size_n >>>
+    k_reset_hindex <<< control->blocks_n, control->block_size_n, 0,
+                   control->streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
 #if !defined(CUDA_ACCUM_ATOMIC)
           hindex, 
@@ -111,5 +113,5 @@ extern "C" void Cuda_Reset( reax_system *system, control_params *control,
         Reset_Pressures( data );
     }
 
-    Cuda_Reset_Workspace( system, workspace );
+    Cuda_Reset_Workspace( system, control, workspace );
 }

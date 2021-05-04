@@ -54,14 +54,14 @@ CUDA_GLOBAL void k_jacobi( reax_atom const * const my_atoms,
 
 
 static void jacobi( reax_system const * const system,
-        storage const * const workspace )
+        control_params const * const control, storage const * const workspace )
 {
     int blocks;
 
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_jacobi <<< blocks, DEF_BLOCK_SIZE >>>
+    k_jacobi <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
           *(workspace->d_workspace), system->n );
     cudaCheckError( );
@@ -240,7 +240,8 @@ static void Spline_Extrapolate_Charges_QEq( reax_system const * const system,
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_spline_extrapolate_charges_qeq <<< blocks, DEF_BLOCK_SIZE >>>
+    k_spline_extrapolate_charges_qeq <<< blocks, DEF_BLOCK_SIZE, 0,
+                                     control->streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
           (control_params *)control->d_control_params,
           *(workspace->d_workspace), system->n );
@@ -339,7 +340,7 @@ static void Compute_Preconditioner_QEq( reax_system const * const system,
 
     if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
-        jacobi( system, workspace );
+        jacobi( system, control, workspace );
     }
     else if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
@@ -403,7 +404,8 @@ CUDA_GLOBAL void k_extrapolate_charges_qeq_part2( reax_atom *my_atoms,
 
 
 static void Extrapolate_Charges_QEq_Part2( reax_system const * const system,
-        storage * const workspace, real * const q, real u )
+        control_params const * const control, storage * const workspace,
+        real * const q, real u )
 {
     int blocks;
     real *spad;
@@ -417,7 +419,8 @@ static void Extrapolate_Charges_QEq_Part2( reax_system const * const system,
     spad = (real *) workspace->scratch;
     cuda_memset( spad, 0, sizeof(real) * system->n, "Extrapolate_Charges_QEq_Part2::spad" );
 
-    k_extrapolate_charges_qeq_part2 <<< blocks, DEF_BLOCK_SIZE >>>
+    k_extrapolate_charges_qeq_part2 <<< blocks, DEF_BLOCK_SIZE, 0,
+                                    control->streams[0] >>>
         ( system->d_my_atoms, *(workspace->d_workspace), u, spad, system->n );
     cudaCheckError( );
 
@@ -443,7 +446,8 @@ CUDA_GLOBAL void k_update_ghost_atom_charges( reax_atom *my_atoms, real *q,
 
 
 static void Update_Ghost_Atom_Charges( reax_system const * const system,
-        storage * const workspace, real * const q )
+        control_params const * const control, storage * const workspace,
+        real * const q )
 {
     int blocks;
     real *spad;
@@ -458,15 +462,15 @@ static void Update_Ghost_Atom_Charges( reax_system const * const system,
     sCudaMemcpy( spad, &q[system->n], sizeof(real) * (system->N - system->n),
             cudaMemcpyHostToDevice, __FILE__, __LINE__ );
 
-    k_update_ghost_atom_charges <<< blocks, DEF_BLOCK_SIZE >>>
+    k_update_ghost_atom_charges <<< blocks, DEF_BLOCK_SIZE, 0,
+                                control->streams[0] >>>
         ( system->d_my_atoms, spad, system->n, system->N );
     cudaCheckError( );
 }
 
 
 static void Calculate_Charges_QEq( reax_system const * const system,
-        control_params const * const control,
-        storage * const workspace,
+        control_params const * const control, storage * const workspace,
         mpi_datatypes * const mpi_data )
 {
     int ret;
@@ -492,12 +496,14 @@ static void Calculate_Charges_QEq( reax_system const * const system,
 
     /* compute local sums of pseudo-charges in s and t on device */
     k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE,
-                      sizeof(rvec2) * (DEF_BLOCK_SIZE / 32) >>>
+                      sizeof(rvec2) * (DEF_BLOCK_SIZE / 32),
+                      control->streams[0] >>>
         ( workspace->d_workspace->x, spad, system->n );
     cudaCheckError( );
 
     k_reduction_rvec2 <<< 1, ((blocks + 31) / 32) * 32,
-                      sizeof(rvec2) * ((blocks + 31) / 32) >>>
+                      sizeof(rvec2) * ((blocks + 31) / 32),
+                      control->streams[0] >>>
         ( spad, &spad[blocks], blocks );
     cudaCheckError( );
 
@@ -531,12 +537,12 @@ static void Calculate_Charges_QEq( reax_system const * const system,
 
     /* derive atomic charges from pseudo-charges
      * and set up extrapolation for next time step */
-    Extrapolate_Charges_QEq_Part2( system, workspace, q, u );
+    Extrapolate_Charges_QEq_Part2( system, control, workspace, q, u );
 
     Dist_FS( system, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE );
 
     /* copy atomic charges to ghost atoms in case of ownership transfer */
-    Update_Ghost_Atom_Charges( system, workspace, q );
+    Update_Ghost_Atom_Charges( system, control, workspace, q );
 }
 
 

@@ -5,7 +5,7 @@
 #include "../reax_types.h"
 
 
-void Cuda_Reset_Workspace( reax_system *, storage * );
+void Cuda_Reset_Workspace( reax_system *, control_params *, storage * );
 
 void Cuda_Reset_Atoms_HBond_Indices( reax_system *, control_params *, storage * );
 
