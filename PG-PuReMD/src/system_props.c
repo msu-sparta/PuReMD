@@ -107,8 +107,8 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data,
 }
 
 
-void Compute_Total_Energy( reax_system *system, simulation_data *data,
-        MPI_Comm comm )
+void Compute_Total_Energy( reax_system *system, control_params *control,
+        simulation_data *data, MPI_Comm comm )
 {
     int ret;
     real my_en[14], sys_en[14];
@@ -117,7 +117,7 @@ void Compute_Total_Energy( reax_system *system, simulation_data *data,
     my_en[13] = data->my_en.e_kin;
 
 #if defined(HAVE_CUDA)
-    Cuda_Copy_Simulation_Data_Device_to_Host( data,
+    Cuda_Copy_Simulation_Data_Device_to_Host( control, data,
             (simulation_data *)data->d_simulation_data );
 #endif
 

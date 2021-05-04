@@ -15,6 +15,9 @@ void cuda_check_malloc( void **, size_t *, size_t, const char * );
 void sCudaMemcpy( void * const, void const * const, size_t,
         enum cudaMemcpyKind, const char * const, int );
 
+void sCudaMemcpyAsync( void * const, void const * const, size_t,
+        enum cudaMemcpyKind, cudaStream_t, const char * const, int );
+
 void Cuda_Print_Mem_Usage( );
 
 

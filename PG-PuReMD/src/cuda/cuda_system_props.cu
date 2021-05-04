@@ -541,8 +541,9 @@ static void Cuda_Compute_Momentum( reax_system *system, control_params *control,
             ( spad, &spad[control->blocks], control->blocks );
     cudaCheckError( );
 
-    sCudaMemcpy( xcm, &spad[control->blocks], sizeof(rvec),
-            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( xcm, &spad[control->blocks], sizeof(rvec),
+            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
     
     // vcm
     cuda_memset( spad, 0, sizeof(rvec) * (control->blocks + 1),
@@ -560,8 +561,9 @@ static void Cuda_Compute_Momentum( reax_system *system, control_params *control,
         ( spad, &spad[control->blocks], control->blocks );
     cudaCheckError( );
 
-    sCudaMemcpy( vcm, &spad[control->blocks], sizeof(rvec),
-        cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( vcm, &spad[control->blocks], sizeof(rvec),
+        cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
     
     // amcm
     cuda_memset( spad, 0,  sizeof(rvec) * (control->blocks + 1),
@@ -579,8 +581,9 @@ static void Cuda_Compute_Momentum( reax_system *system, control_params *control,
         ( spad, &spad[control->blocks], control->blocks );
     cudaCheckError( );
 
-    sCudaMemcpy( amcm, &spad[control->blocks], sizeof(rvec),
-        cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( amcm, &spad[control->blocks], sizeof(rvec),
+        cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 }
 
 
@@ -624,9 +627,10 @@ static void Cuda_Compute_Inertial_Tensor( reax_system *system, control_params *c
         ( spad, &spad[6 * control->blocks], control->blocks );
     cudaCheckError( );
 
-    sCudaMemcpy( t, &spad[6 * control->blocks],
+    sCudaMemcpyAsync( t, &spad[6 * control->blocks],
         sizeof(real) * 6, cudaMemcpyDeviceToHost,
-        __FILE__, __LINE__ );
+        control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 }
 
 
@@ -698,8 +702,9 @@ extern "C" void Cuda_Compute_Kinetic_Energy( reax_system *system,
     Cuda_Reduction_Sum( kinetic_energy, &kinetic_energy[system->n], system->n,
             control->streams[0] );
 
-    sCudaMemcpy( &data->my_en.e_kin, &kinetic_energy[system->n],
-            sizeof(real), cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( &data->my_en.e_kin, &kinetic_energy[system->n],
+            sizeof(real), cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 
     ret = MPI_Allreduce( &data->my_en.e_kin, &data->sys_en.e_kin,
             1, MPI_DOUBLE, MPI_SUM, comm );
@@ -732,8 +737,9 @@ void Cuda_Compute_Total_Mass( reax_system *system, control_params *control,
 
     Cuda_Reduction_Sum( spad, &spad[system->n], system->n, control->streams[0] );
 
-    sCudaMemcpy( &my_M, &spad[system->n], sizeof(real), 
-            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( &my_M, &spad[system->n], sizeof(real), 
+            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 
     ret = MPI_Allreduce( &my_M, &data->M, 1, MPI_DOUBLE, MPI_SUM, comm );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
@@ -890,8 +896,9 @@ void Cuda_Compute_Pressure( reax_system* system, control_params *control,
               control->blocks );
         cudaCheckError( );
 
-        sCudaMemcpy( &int_press, &rvec_spad[system->n + control->blocks],
-                sizeof(rvec), cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+        sCudaMemcpyAsync( &int_press, &rvec_spad[system->n + control->blocks],
+                sizeof(rvec), cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+        cudaStreamSynchronize( control->streams[0] );
     }
 
     /* sum up internal and external pressure */

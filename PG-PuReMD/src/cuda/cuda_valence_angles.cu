@@ -1367,8 +1367,9 @@ static int Cuda_Estimate_Storage_Three_Body( reax_system *system, control_params
     Cuda_Reduction_Sum( thbody, system->d_total_thbodies, system->total_bonds,
            control->streams[0] );
 
-    sCudaMemcpy( &system->total_thbodies, system->d_total_thbodies,
-            sizeof(int), cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( &system->total_thbodies, system->d_total_thbodies,
+            sizeof(int), cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 
     if ( data->step - data->prev_steps == 0 )
     {

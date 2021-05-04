@@ -30,9 +30,9 @@ extern "C" void Cuda_Copy_LR_Lookup_Table_Host_to_Device( reax_system *system,
        existing_types[ system->atoms[i].type ] = 1;
      */
 
-    sCudaMemcpy( workspace->d_LR, workspace->LR,
+    sCudaMemcpyAsync( workspace->d_LR, workspace->LR,
             sizeof(LR_lookup_table) * (num_atom_types * num_atom_types), 
-            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
+            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
 
     for( i = 0; i < num_atom_types; ++i )
     {
@@ -44,59 +44,61 @@ extern "C" void Cuda_Copy_LR_Lookup_Table_Host_to_Device( reax_system *system,
                 {
                     cuda_malloc( (void **) &d_y, sizeof(LR_data) * (control->tabulate + 1),
                             FALSE, "LR_lookup:d_y" );
-                    sCudaMemcpy( d_y, workspace->LR[ index_lr(i, j, num_atom_types) ].y,
+                    sCudaMemcpyAsync( d_y, workspace->LR[ index_lr(i, j, num_atom_types) ].y,
                             sizeof(LR_data) * (control->tabulate + 1),
-                            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
-                    sCudaMemcpy( &workspace->d_LR[ index_lr(i, j, num_atom_types) ].y, &d_y,
+                            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
+                    sCudaMemcpyAsync( &workspace->d_LR[ index_lr(i, j, num_atom_types) ].y, &d_y,
                             sizeof(LR_data *),
-                            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
+                            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
 
                     cuda_malloc( (void **) &temp, sizeof(cubic_spline_coef) * (control->tabulate + 1),
                             FALSE, "LR_lookup:h" );
-                    sCudaMemcpy( temp, workspace->LR[ index_lr(i, j, num_atom_types) ].H,
+                    sCudaMemcpyAsync( temp, workspace->LR[ index_lr(i, j, num_atom_types) ].H,
                             sizeof(cubic_spline_coef) * (control->tabulate + 1),
-                            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
-                    sCudaMemcpy( &workspace->d_LR[ index_lr(i, j, num_atom_types) ].H, &temp,
+                            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
+                    sCudaMemcpyAsync( &workspace->d_LR[ index_lr(i, j, num_atom_types) ].H, &temp,
                             sizeof(cubic_spline_coef *),
-                            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
+                            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
 
                     cuda_malloc( (void **) &temp, sizeof(cubic_spline_coef) * (control->tabulate + 1),
                             FALSE, "LR_lookup:vdW" );
-                    sCudaMemcpy( temp, workspace->LR[ index_lr(i, j, num_atom_types) ].vdW,
+                    sCudaMemcpyAsync( temp, workspace->LR[ index_lr(i, j, num_atom_types) ].vdW,
                             sizeof(cubic_spline_coef) * (control->tabulate + 1),
-                            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
-                    sCudaMemcpy( &workspace->d_LR[ index_lr(i, j, num_atom_types) ].vdW, &temp,
+                            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
+                    sCudaMemcpyAsync( &workspace->d_LR[ index_lr(i, j, num_atom_types) ].vdW, &temp,
                             sizeof(cubic_spline_coef *),
-                            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
+                            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
 
                     cuda_malloc( (void **) &temp, sizeof(cubic_spline_coef) * (control->tabulate + 1),
                             FALSE, "LR_lookup:CEvd" );
-                    sCudaMemcpy( temp, workspace->LR[ index_lr(i, j, num_atom_types) ].CEvd,
+                    sCudaMemcpyAsync( temp, workspace->LR[ index_lr(i, j, num_atom_types) ].CEvd,
                             sizeof(cubic_spline_coef) * (control->tabulate + 1),
-                            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
-                    sCudaMemcpy( &workspace->d_LR[ index_lr(i, j, num_atom_types) ].CEvd, &temp,
+                            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
+                    sCudaMemcpyAsync( &workspace->d_LR[ index_lr(i, j, num_atom_types) ].CEvd, &temp,
                             sizeof(cubic_spline_coef *),
-                            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
+                            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
 
                     cuda_malloc( (void **) &temp, sizeof(cubic_spline_coef) * (control->tabulate + 1),
                             FALSE, "LR_lookup:ele" );
-                    sCudaMemcpy( temp,workspace->LR[ index_lr(i, j, num_atom_types) ].ele,
+                    sCudaMemcpyAsync( temp,workspace->LR[ index_lr(i, j, num_atom_types) ].ele,
                             sizeof(cubic_spline_coef) * (control->tabulate + 1),
-                            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
-                    sCudaMemcpy( &workspace->d_LR[ index_lr(i, j, num_atom_types) ].ele, &temp,
+                            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
+                    sCudaMemcpyAsync( &workspace->d_LR[ index_lr(i, j, num_atom_types) ].ele, &temp,
                             sizeof(cubic_spline_coef *),
-                            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
+                            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
 
                     cuda_malloc( (void **) &temp, sizeof(cubic_spline_coef) * (control->tabulate + 1),
                             FALSE, "LR_lookup:ceclmb" );
-                    sCudaMemcpy( temp, workspace->LR[ index_lr(i, j, num_atom_types) ].CEclmb,
+                    sCudaMemcpyAsync( temp, workspace->LR[ index_lr(i, j, num_atom_types) ].CEclmb,
                             sizeof(cubic_spline_coef) * (control->tabulate + 1),
-                            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
-                    sCudaMemcpy( &workspace->d_LR[ index_lr(i, j, num_atom_types) ].CEclmb, &temp,
+                            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
+                    sCudaMemcpyAsync( &workspace->d_LR[ index_lr(i, j, num_atom_types) ].CEclmb, &temp,
                             sizeof(cubic_spline_coef *),
-                            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
+                            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
                 }
             }
         }
     }
+
+    cudaStreamSynchronize( control->streams[0] );
 }

@@ -601,14 +601,16 @@ static void Dual_Sparse_MatVec_Comm_Part1( const reax_system * const system,
             "Dual_Sparse_MatVec_Comm_Part1::workspace->host_scratch" );
     spad = (rvec2 *) workspace->host_scratch;
 
-    sCudaMemcpy( spad, (void *) x, sizeof(rvec2) * n,
-            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( spad, (void *) x, sizeof(rvec2) * n,
+            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
     Dist( system, mpi_data, spad, buf_type, mpi_type );
 
-    sCudaMemcpy( (void *) x, spad, sizeof(rvec2) * n,
-            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( (void *) x, spad, sizeof(rvec2) * n,
+            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 #endif
 }
 
@@ -696,13 +698,15 @@ static void Dual_Sparse_MatVec_Comm_Part2( const reax_system * const system,
                 sizeof(rvec2) * n1, TRUE, SAFE_ZONE,
                 "Dual_Sparse_MatVec_Comm_Part2::workspace->host_scratch" );
         spad = (rvec2 *) workspace->host_scratch;
-        sCudaMemcpy( spad, b, sizeof(rvec2) * n1,
-                cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+        sCudaMemcpyAsync( spad, b, sizeof(rvec2) * n1,
+                cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+        cudaStreamSynchronize( control->streams[0] );
 
         Coll( system, mpi_data, spad, buf_type, mpi_type );
 
-        sCudaMemcpy( b, spad, sizeof(rvec2) * n2,
-                cudaMemcpyHostToDevice, __FILE__, __LINE__ );
+        sCudaMemcpyAsync( b, spad, sizeof(rvec2) * n2,
+                cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
+        cudaStreamSynchronize( control->streams[0] );
 #endif
     }
 }
@@ -778,14 +782,16 @@ static void Sparse_MatVec_Comm_Part1( const reax_system * const system,
             sizeof(real) * n, TRUE, SAFE_ZONE,
             "Sparse_MatVec_Comm_Part1::workspace->host_scratch" );
     spad = (real *) workspace->host_scratch;
-    sCudaMemcpy( spad, (void *) x, sizeof(real) * n,
-            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( spad, (void *) x, sizeof(real) * n,
+            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
     Dist( system, mpi_data, spad, buf_type, mpi_type );
 
-    sCudaMemcpy( (void *) x, spad, sizeof(real) * n,
-            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( (void *) x, spad, sizeof(real) * n,
+            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 #endif
 }
 
@@ -871,13 +877,15 @@ static void Sparse_MatVec_Comm_Part2( const reax_system * const system,
                 sizeof(real) * n1, TRUE, SAFE_ZONE,
                 "Sparse_MatVec_Comm_Part2::workspace->host_scratch" );
         spad = (real *) workspace->host_scratch;
-        sCudaMemcpy( spad, b, sizeof(real) * n1,
-                cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+        sCudaMemcpyAsync( spad, b, sizeof(real) * n1,
+                cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+        cudaStreamSynchronize( control->streams[0] );
 
         Coll( system, mpi_data, spad, buf_type, mpi_type );
 
-        sCudaMemcpy( b, spad, sizeof(real) * n2,
-                cudaMemcpyHostToDevice, __FILE__, __LINE__ );
+        sCudaMemcpyAsync( b, spad, sizeof(real) * n2,
+                cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
+        cudaStreamSynchronize( control->streams[0] );
 #endif
     }
 }

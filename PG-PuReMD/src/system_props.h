@@ -33,7 +33,7 @@ void Temperature_Control( control_params*, simulation_data* );
 
 void Compute_Kinetic_Energy( reax_system*, simulation_data*, MPI_Comm );
 
-void Compute_Total_Energy( reax_system*, simulation_data*, MPI_Comm );
+void Compute_Total_Energy( reax_system*, control_params *, simulation_data*, MPI_Comm );
 
 void Check_Energy( simulation_data* );
 

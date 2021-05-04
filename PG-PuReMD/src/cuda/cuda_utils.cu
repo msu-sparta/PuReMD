@@ -142,6 +142,40 @@ void sCudaMemcpy( void * const dest, void const * const src, size_t size,
 }
 
 
+/* Safe wrapper around cudaMemcpyAsync
+ *
+ * dest: address to be copied to
+ * src: address to be copied from
+ * size: num. bytes to copy
+ * dir: CUDA enum specifying address types for dest and src
+ * s: CUDA stream to perform the copy in
+ * filename: NULL-terminated source filename where function call originated
+ * line: line of source filen where function call originated
+ */
+void sCudaMemcpyAsync( void * const dest, void const * const src, size_t size,
+        cudaMemcpyKind dir, cudaStream_t s, const char * const filename, int line )
+{
+    int rank;
+    cudaError_t ret;
+
+    ret = cudaMemcpyAsync( dest, src, size, dir, s );
+
+    if ( ret != cudaSuccess )
+    {
+        MPI_Comm_rank( MPI_COMM_WORLD, &rank );
+        const char *str = cudaGetErrorString( ret );
+
+        fprintf( stderr, "[ERROR] CUDA error: memory copy async failure\n" );
+        fprintf( stderr, "  [INFO] At line %d in file %.*s on MPI processor %d\n",
+                line, (int) strlen(filename), filename, rank );
+        fprintf( stderr, "  [INFO] Error code: %d\n", ret );
+        fprintf( stderr, "  [INFO] Error message: %.*s\n", (int) strlen(str), str );
+
+        MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+    }
+}
+
+
 void Cuda_Print_Mem_Usage( )
 {
     size_t total, free;

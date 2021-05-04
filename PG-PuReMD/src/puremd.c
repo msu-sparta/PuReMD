@@ -120,7 +120,7 @@ static void Cuda_Post_Evolve( reax_system * const system, control_params * const
             || (out_control->write_steps > 0
                 && data->step % out_control->write_steps == 0) )
     {
-        Compute_Total_Energy( system, data, MPI_COMM_WORLD );
+        Compute_Total_Energy( system, control, data, MPI_COMM_WORLD );
     }
 }
 #else
@@ -292,8 +292,8 @@ int simulate( const void * const handle )
 
         Cuda_Init_Block_Sizes( system, control );
 
-        Cuda_Copy_Atoms_Host_to_Device( system );
-        Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
+        Cuda_Copy_Atoms_Host_to_Device( system, control );
+        Cuda_Copy_Grid_Host_to_Device( control, &system->my_grid, &system->d_my_grid );
 
         Cuda_Reset( system, control, data, workspace, lists );
 
@@ -305,7 +305,7 @@ int simulate( const void * const handle )
         Cuda_Compute_Kinetic_Energy( system, control, workspace,
                 data, mpi_data->comm_mesh3D );
 
-        Compute_Total_Energy( system, data, MPI_COMM_WORLD );
+        Compute_Total_Energy( system, control, data, MPI_COMM_WORLD );
 
         Output_Results( system, control, data, lists, out_control, mpi_data );
 

@@ -51,7 +51,7 @@ static void Cuda_Init_System( reax_system *system, control_params *control,
     Cuda_Init_Block_Sizes( system, control );
 
     Cuda_Allocate_System( system );
-    Cuda_Copy_System_Host_to_Device( system );
+    Cuda_Copy_System_Host_to_Device( system, control );
 
     Cuda_Reset_Atoms_HBond_Indices( system, control, workspace );
 
@@ -269,8 +269,8 @@ extern "C" void Cuda_Initialize( reax_system *system, control_params *control,
     /* reset for step 0 */
     Reset_Simulation_Data( data );
 
-    Cuda_Allocate_Grid( system );
-    Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
+    Cuda_Allocate_Grid( system, control );
+    Cuda_Copy_Grid_Host_to_Device( control, &system->my_grid, &system->d_my_grid );
 
     Cuda_Init_Workspace( system, control, workspace, mpi_data );
 

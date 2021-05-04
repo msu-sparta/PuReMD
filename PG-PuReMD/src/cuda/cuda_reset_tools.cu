@@ -96,8 +96,9 @@ void Cuda_Reset_Atoms_HBond_Indices( reax_system* system, control_params *contro
     Cuda_Reduction_Sum( hindex, system->d_numH, system->N );
 #endif
 
-    sCudaMemcpy( &system->numH, system->d_numH, sizeof(int), 
-            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( &system->numH, system->d_numH, sizeof(int), 
+            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 }
 
 

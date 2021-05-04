@@ -6,7 +6,7 @@
 
 void Cuda_Allocate_System( reax_system * );
 
-void Cuda_Allocate_Grid( reax_system * );
+void Cuda_Allocate_Grid( reax_system *, control_params * );
 
 void Cuda_Allocate_Simulation_Data( simulation_data * );
 

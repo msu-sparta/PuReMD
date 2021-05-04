@@ -256,8 +256,9 @@ static real Velocity_Verlet_Nose_Hoover_NVT_Part3( reax_system *system,
 
     Cuda_Reduction_Sum( d_my_ekin, d_total_my_ekin, system->n, control->streams[0] );
 
-    sCudaMemcpy( &my_ekin, d_total_my_ekin, sizeof(real), 
-            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( &my_ekin, d_total_my_ekin, sizeof(real), 
+            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 
     return my_ekin;
 }
@@ -311,7 +312,7 @@ int Cuda_Velocity_Verlet_NVE( reax_system *system, control_params *control,
 
         Cuda_Reallocate_Part1( system, control, data, workspace, lists, mpi_data );
 
-        Cuda_Copy_Atoms_Device_to_Host( system );
+        Cuda_Copy_Atoms_Device_to_Host( system, control );
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
 
 #if defined(CUDA_DEVICE_PACK)
@@ -331,11 +332,11 @@ int Cuda_Velocity_Verlet_NVE( reax_system *system, control_params *control,
 
     if ( cuda_copy == FALSE )
     {
-        Cuda_Copy_Atoms_Host_to_Device( system );
+        Cuda_Copy_Atoms_Host_to_Device( system, control );
 
         if ( renbr == TRUE )
         {
-            Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
+            Cuda_Copy_Grid_Host_to_Device( control, &system->my_grid, &system->d_my_grid );
         }
 
         Cuda_Reset( system, control, data, workspace, lists );
@@ -409,7 +410,7 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
             Update_Grid( system, control, MPI_COMM_WORLD );
         }
 
-        Cuda_Copy_Atoms_Device_to_Host( system );
+        Cuda_Copy_Atoms_Device_to_Host( system, control );
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
 
 #if defined(CUDA_DEVICE_PACK)
@@ -429,11 +430,11 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
 
     if ( cuda_copy == FALSE )
     {
-        Cuda_Copy_Atoms_Host_to_Device( system );
+        Cuda_Copy_Atoms_Host_to_Device( system, control );
 
         if ( renbr == TRUE )
         {
-            Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
+            Cuda_Copy_Grid_Host_to_Device( control, &system->my_grid, &system->d_my_grid );
         }
 
         Cuda_Reset( system, control, data, workspace, lists );
@@ -540,7 +541,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
             Update_Grid( system, control, MPI_COMM_WORLD );
         }
 
-        Cuda_Copy_Atoms_Device_to_Host( system );
+        Cuda_Copy_Atoms_Device_to_Host( system, control );
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
 
 #if defined(CUDA_DEVICE_PACK)
@@ -560,11 +561,11 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
 
     if ( cuda_copy == FALSE )
     {
-        Cuda_Copy_Atoms_Host_to_Device( system );
+        Cuda_Copy_Atoms_Host_to_Device( system, control );
 
         if ( renbr == TRUE )
         {
-            Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
+            Cuda_Copy_Grid_Host_to_Device( control, &system->my_grid, &system->d_my_grid );
         }
 
         Cuda_Reset( system, control, data, workspace, lists );
@@ -653,7 +654,7 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
             Update_Grid( system, control, MPI_COMM_WORLD );
         }
 
-        Cuda_Copy_Atoms_Device_to_Host( system );
+        Cuda_Copy_Atoms_Device_to_Host( system, control );
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
 
 #if defined(CUDA_DEVICE_PACK)
@@ -673,11 +674,11 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
 
     if ( cuda_copy == FALSE )
     {
-        Cuda_Copy_Atoms_Host_to_Device( system );
+        Cuda_Copy_Atoms_Host_to_Device( system, control );
 
         if ( renbr == TRUE )
         {
-            Cuda_Copy_Grid_Host_to_Device( &system->my_grid, &system->d_my_grid );
+            Cuda_Copy_Grid_Host_to_Device( control, &system->my_grid, &system->d_my_grid );
         }
 
         Cuda_Reset( system, control, data, workspace, lists );

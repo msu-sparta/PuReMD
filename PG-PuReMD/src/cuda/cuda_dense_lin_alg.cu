@@ -576,8 +576,9 @@ real Dot( storage * const workspace,
 //    ret = MPI_Allreduce( &spad[k], &sum, 1, MPI_DOUBLE, MPI_SUM, comm );
 //    Check_MPI_Error( ret, __FILE__, __LINE__ );
 //#else
-    sCudaMemcpy( &temp, &spad[k], sizeof(real),
-            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( &temp, &spad[k], sizeof(real),
+            cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
+    cudaStreamSynchronize( s );
 
     ret = MPI_Allreduce( &temp, &sum, 1, MPI_DOUBLE, MPI_SUM, comm );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
@@ -612,8 +613,9 @@ real Dot_local( storage * const workspace,
     Cuda_Reduction_Sum( spad, &spad[k], k, s );
 
     //TODO: keep result of reduction on devie and pass directly to CUDA-aware MPI
-    sCudaMemcpy( &sum, &spad[k], sizeof(real),
-            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( &sum, &spad[k], sizeof(real),
+            cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
+    cudaStreamSynchronize( s );
 
     return sum;
 }
@@ -658,8 +660,9 @@ void Dot_local_rvec2( storage * const workspace,
     cudaCheckError( );
 
     //TODO: keep result of reduction on devie and pass directly to CUDA-aware MPI
-    sCudaMemcpy( &sum, &spad[k + blocks], sizeof(rvec2),
-            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( &sum, &spad[k + blocks], sizeof(rvec2),
+            cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
+    cudaStreamSynchronize( s );
 
     *sum1 = sum[0];
     *sum2 = sum[1];

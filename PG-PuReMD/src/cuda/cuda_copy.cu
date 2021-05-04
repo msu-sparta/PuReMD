@@ -8,7 +8,8 @@
 
 
 /* Copy grid info from host to device */
-extern "C" void Cuda_Copy_Grid_Host_to_Device( grid *host, grid *device )
+extern "C" void Cuda_Copy_Grid_Host_to_Device( control_params *control,
+        grid *host, grid *device )
 {
     int total;
 
@@ -32,62 +33,71 @@ extern "C" void Cuda_Copy_Grid_Host_to_Device( grid *host, grid *device )
     ivec_Copy( device->ghost_hbond_span, host->ghost_hbond_span );
     ivec_Copy( device->ghost_bond_span, host->ghost_bond_span );
 
-    sCudaMemcpy( device->str, host->str, sizeof(int) * total,
-            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
-    sCudaMemcpy( device->end, host->end, sizeof(int) * total,
-            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
-    sCudaMemcpy( device->cutoff, host->cutoff, sizeof(real) * total,
-            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
-    sCudaMemcpy( device->nbrs_x, host->nbrs_x, sizeof(ivec) * total * host->max_nbrs,
-            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
-    sCudaMemcpy( device->nbrs_cp, host->nbrs_cp, sizeof(rvec) * total * host->max_nbrs,
-            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( device->str, host->str, sizeof(int) * total,
+            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
+    sCudaMemcpyAsync( device->end, host->end, sizeof(int) * total,
+            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
+    sCudaMemcpyAsync( device->cutoff, host->cutoff, sizeof(real) * total,
+            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
+    sCudaMemcpyAsync( device->nbrs_x, host->nbrs_x, sizeof(ivec) * total * host->max_nbrs,
+            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
+    sCudaMemcpyAsync( device->nbrs_cp, host->nbrs_cp, sizeof(rvec) * total * host->max_nbrs,
+            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
 
-    sCudaMemcpy( device->rel_box, host->rel_box, sizeof(ivec) * total,
-            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( device->rel_box, host->rel_box, sizeof(ivec) * total,
+            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
+
+    cudaStreamSynchronize( control->streams[0] );
 
     device->max_nbrs = host->max_nbrs;
 }
 
 
 /* Copy atom info from host to device */
-extern "C" void Cuda_Copy_Atoms_Host_to_Device( reax_system *system )
+extern "C" void Cuda_Copy_Atoms_Host_to_Device( reax_system *system, control_params *control )
 {
-    sCudaMemcpy( system->d_my_atoms, system->my_atoms, sizeof(reax_atom) * system->N,
-            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( system->d_my_atoms, system->my_atoms, sizeof(reax_atom) * system->N,
+            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
+
+    cudaStreamSynchronize( control->streams[0] );
 }
 
 
 /* Copy atomic system info from host to device */
-extern "C" void Cuda_Copy_System_Host_to_Device( reax_system *system )
+extern "C" void Cuda_Copy_System_Host_to_Device( reax_system *system,
+        control_params *control )
 {
-    Cuda_Copy_Atoms_Host_to_Device( system );
+    Cuda_Copy_Atoms_Host_to_Device( system, control );
 
-    sCudaMemcpy( system->d_my_box, &system->my_box,
-            sizeof(simulation_box), cudaMemcpyHostToDevice, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( system->d_my_box, &system->my_box,
+            sizeof(simulation_box),
+            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
 
-    sCudaMemcpy( system->d_my_ext_box, &system->my_ext_box,
-            sizeof(simulation_box), cudaMemcpyHostToDevice, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( system->d_my_ext_box, &system->my_ext_box,
+            sizeof(simulation_box),
+            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
 
-    sCudaMemcpy( system->reax_param.d_sbp, system->reax_param.sbp,
+    sCudaMemcpyAsync( system->reax_param.d_sbp, system->reax_param.sbp,
             sizeof(single_body_parameters) * system->reax_param.num_atom_types,
-            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
-    sCudaMemcpy( system->reax_param.d_tbp, system->reax_param.tbp,
+            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
+    sCudaMemcpyAsync( system->reax_param.d_tbp, system->reax_param.tbp,
             sizeof(two_body_parameters) * POW(system->reax_param.num_atom_types, 2),
-            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
-    sCudaMemcpy( system->reax_param.d_thbp, system->reax_param.thbp,
+            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
+    sCudaMemcpyAsync( system->reax_param.d_thbp, system->reax_param.thbp,
             sizeof(three_body_header) * POW(system->reax_param.num_atom_types, 3),
-            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
-    sCudaMemcpy( system->reax_param.d_hbp, system->reax_param.hbp,
+            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
+    sCudaMemcpyAsync( system->reax_param.d_hbp, system->reax_param.hbp,
             sizeof(hbond_parameters) * POW(system->reax_param.num_atom_types, 3),
-            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
-    sCudaMemcpy( system->reax_param.d_fbp, system->reax_param.fbp,
+            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
+    sCudaMemcpyAsync( system->reax_param.d_fbp, system->reax_param.fbp,
             sizeof(four_body_header) * POW(system->reax_param.num_atom_types, 4),
-            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
+            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
 
-    sCudaMemcpy( system->reax_param.d_gp.l, system->reax_param.gp.l,
+    sCudaMemcpyAsync( system->reax_param.d_gp.l, system->reax_param.gp.l,
             sizeof(real) * system->reax_param.gp.n_global,
-            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
+            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
+
+    cudaStreamSynchronize( control->streams[0] );
 
     system->reax_param.d_gp.n_global = system->reax_param.gp.n_global; 
     system->reax_param.d_gp.vdw_type = system->reax_param.gp.vdw_type; 
@@ -95,31 +105,37 @@ extern "C" void Cuda_Copy_System_Host_to_Device( reax_system *system )
 
 
 /* Copy atom info from device to host */
-extern "C" void Cuda_Copy_Atoms_Device_to_Host( reax_system *system )
+extern "C" void Cuda_Copy_Atoms_Device_to_Host( reax_system *system, control_params *control )
 {
-    sCudaMemcpy( system->my_atoms, system->d_my_atoms,
+    sCudaMemcpyAsync( system->my_atoms, system->d_my_atoms,
             sizeof(reax_atom) * system->N,
-            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+
+    cudaStreamSynchronize( control->streams[0] );
 }
 
 
 /* Copy simulation data from device to host */
-extern "C" void Cuda_Copy_Simulation_Data_Device_to_Host( simulation_data *host, simulation_data *dev )
+extern "C" void Cuda_Copy_Simulation_Data_Device_to_Host( control_params *control,
+        simulation_data *host, simulation_data *dev )
 {
-    sCudaMemcpy( &host->my_en, &dev->my_en, sizeof(energy_data), 
-            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
-    sCudaMemcpy( &host->kin_press, &dev->kin_press, sizeof(real), 
-            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
-    sCudaMemcpy( host->int_press, dev->int_press, sizeof(rvec), 
-            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
-    sCudaMemcpy( host->ext_press, dev->ext_press, sizeof(rvec), 
-            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( &host->my_en, &dev->my_en, sizeof(energy_data), 
+            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    sCudaMemcpyAsync( &host->kin_press, &dev->kin_press, sizeof(real), 
+            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    sCudaMemcpyAsync( host->int_press, dev->int_press, sizeof(rvec), 
+            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    sCudaMemcpyAsync( host->ext_press, dev->ext_press, sizeof(rvec), 
+            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+
+    cudaStreamSynchronize( control->streams[0] );
 }
 
 
 /* Copy interaction lists from device to host,
  * with allocation for the host list */
-extern "C" void Cuda_Copy_List_Device_to_Host( reax_list *host_list, reax_list *device_list, int type )
+extern "C" void Cuda_Copy_List_Device_to_Host( control_params *control,
+        reax_list *host_list, reax_list *device_list, int type )
 {
     int format;
 
@@ -138,47 +154,47 @@ extern "C" void Cuda_Copy_List_Device_to_Host( reax_list *host_list, reax_list *
     fprintf( stderr, " [INFO] trying to copy %d list from device to host\n", type );
 #endif
 
-    sCudaMemcpy( host_list->index, device_list->index,
+    sCudaMemcpyAsync( host_list->index, device_list->index,
             sizeof(int) * device_list->n,
-            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
-    sCudaMemcpy( host_list->end_index, device_list->end_index,
+            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    sCudaMemcpyAsync( host_list->end_index, device_list->end_index,
             sizeof(int) * device_list->n,
-            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
 
     switch ( type )
     {   
         case TYP_FAR_NEIGHBOR:
-            sCudaMemcpy( host_list->far_nbr_list.nbr, device_list->far_nbr_list.nbr,
+            sCudaMemcpyAsync( host_list->far_nbr_list.nbr, device_list->far_nbr_list.nbr,
                     sizeof(int) * device_list->max_intrs,
-                    cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
-            sCudaMemcpy( host_list->far_nbr_list.rel_box, device_list->far_nbr_list.rel_box,
+                    cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+            sCudaMemcpyAsync( host_list->far_nbr_list.rel_box, device_list->far_nbr_list.rel_box,
                     sizeof(ivec) * device_list->max_intrs,
-                    cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
-            sCudaMemcpy( host_list->far_nbr_list.d, device_list->far_nbr_list.d,
+                    cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+            sCudaMemcpyAsync( host_list->far_nbr_list.d, device_list->far_nbr_list.d,
                     sizeof(real) * device_list->max_intrs,
-                    cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
-            sCudaMemcpy( host_list->far_nbr_list.dvec, device_list->far_nbr_list.dvec,
+                    cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+            sCudaMemcpyAsync( host_list->far_nbr_list.dvec, device_list->far_nbr_list.dvec,
                     sizeof(rvec) * device_list->max_intrs,
-                    cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+                    cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
             break;
 
         case TYP_BOND:
-            sCudaMemcpy( host_list->bond_list, device_list->bond_list,
+            sCudaMemcpyAsync( host_list->bond_list, device_list->bond_list,
                     sizeof(bond_data) * device_list->max_intrs,
-                    cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+                    cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
             break;
 
         case TYP_HBOND:
-            sCudaMemcpy( host_list->hbond_list, device_list->hbond_list,
+            sCudaMemcpyAsync( host_list->hbond_list, device_list->hbond_list,
                     sizeof(hbond_data) * device_list->max_intrs,
-                    cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+                    cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
             break;
 
         case TYP_THREE_BODY:
-            sCudaMemcpy( host_list->three_body_list,
+            sCudaMemcpyAsync( host_list->three_body_list,
                     device_list->three_body_list,
                     sizeof(three_body_interaction_data ) * device_list->max_intrs,
-                    cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+                    cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
             break;
 
         default:
@@ -187,10 +203,13 @@ extern "C" void Cuda_Copy_List_Device_to_Host( reax_list *host_list, reax_list *
             exit( INVALID_INPUT );
             break;
     }  
+
+    cudaStreamSynchronize( control->streams[0] );
 }
 
 /* Copy atom info from device to host */
-extern "C" void Cuda_Copy_MPI_Data_Host_to_Device( mpi_datatypes *mpi_data )
+extern "C" void Cuda_Copy_MPI_Data_Host_to_Device( control_params *control,
+        mpi_datatypes *mpi_data )
 {
     cuda_check_malloc( &mpi_data->d_in1_buffer, &mpi_data->d_in1_buffer_size,
             mpi_data->in1_buffer_size, "Cuda_Copy_MPI_Data_Host_to_Device::mpi_data->d_in1_buffer" );
@@ -211,8 +230,10 @@ extern "C" void Cuda_Copy_MPI_Data_Host_to_Device( mpi_datatypes *mpi_data )
     {
         /* index is set during SendRecv and reused during MPI comms afterward,
          * so copy to device while SendRecv is still done on the host */
-        sCudaMemcpy( mpi_data->d_out_buffers[i].index, mpi_data->out_buffers[i].index,
+        sCudaMemcpyAsync( mpi_data->d_out_buffers[i].index, mpi_data->out_buffers[i].index,
                 mpi_data->d_out_buffers[i].index_size,
-                cudaMemcpyHostToDevice, __FILE__, __LINE__ );
+                cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
     }
+
+    cudaStreamSynchronize( control->streams[0] );
 }

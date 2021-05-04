@@ -73,7 +73,8 @@ static void jacobi( reax_system const * const system,
  *
  * A: sparse matrix for which to sort nonzeros within a row, stored in CSR format
  */
-void Sort_Matrix_Rows( sparse_matrix * const A, reax_system const * const system )
+void Sort_Matrix_Rows( sparse_matrix * const A, reax_system const * const system,
+       control_params const * const control )
 {
     int i, num_entries, *start, *end, *d_j_temp;
     real *d_val_temp;
@@ -87,20 +88,24 @@ void Sort_Matrix_Rows( sparse_matrix * const A, reax_system const * const system
     /* copy row indices from device */
     start = (int *) smalloc( sizeof(int) * system->total_cap, "Sort_Matrix_Rows::start" );
     end = (int *) smalloc( sizeof(int) * system->total_cap, "Sort_Matrix_Rows::end" );
-    sCudaMemcpy( start, A->start, sizeof(int) * system->total_cap, 
-            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
-    sCudaMemcpy( end, A->end, sizeof(int) * system->total_cap, 
-            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( start, A->start, sizeof(int) * system->total_cap, 
+            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
+    sCudaMemcpyAsync( end, A->end, sizeof(int) * system->total_cap, 
+            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 
     /* make copies of column indices and non-zero values */
     cuda_malloc( (void **) &d_j_temp, sizeof(int) * system->total_cm_entries,
             FALSE, "Sort_Matrix_Rows::d_j_temp" );
     cuda_malloc( (void **) &d_val_temp, sizeof(real) * system->total_cm_entries,
             FALSE, "Sort_Matrix_Rows::d_val_temp" );
-    sCudaMemcpy( d_j_temp, A->j, sizeof(int) * system->total_cm_entries,
-            cudaMemcpyDeviceToDevice, __FILE__, __LINE__ );
-    sCudaMemcpy( d_val_temp, A->val, sizeof(real) * system->total_cm_entries,
-            cudaMemcpyDeviceToDevice, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( d_j_temp, A->j, sizeof(int) * system->total_cm_entries,
+            cudaMemcpyDeviceToDevice, control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
+    sCudaMemcpyAsync( d_val_temp, A->val, sizeof(real) * system->total_cm_entries,
+            cudaMemcpyDeviceToDevice, control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 
     for ( i = 0; i < system->n; ++i )
     {
@@ -271,7 +276,7 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
 #endif
 
     /* sort H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
-//    Sort_Matrix_Rows( &workspace->d_workspace->H, system );
+//    Sort_Matrix_Rows( &workspace->d_workspace->H, system, control );
     
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_sort );
@@ -424,8 +429,9 @@ static void Extrapolate_Charges_QEq_Part2( reax_system const * const system,
         ( system->d_my_atoms, *(workspace->d_workspace), u, spad, system->n );
     cudaCheckError( );
 
-    sCudaMemcpy( q, spad, sizeof(real) * system->n, 
-            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( q, spad, sizeof(real) * system->n, 
+            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 }
 
 
@@ -459,8 +465,9 @@ static void Update_Ghost_Atom_Charges( reax_system const * const system,
             sizeof(real) * (system->N - system->n),
             "Update_Ghost_Atom_Charges::workspace->scratch" );
     spad = (real *) workspace->scratch;
-    sCudaMemcpy( spad, &q[system->n], sizeof(real) * (system->N - system->n),
-            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( spad, &q[system->n], sizeof(real) * (system->N - system->n),
+            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 
     k_update_ghost_atom_charges <<< blocks, DEF_BLOCK_SIZE, 0,
                                 control->streams[0] >>>
@@ -507,8 +514,9 @@ static void Calculate_Charges_QEq( reax_system const * const system,
         ( spad, &spad[blocks], blocks );
     cudaCheckError( );
 
-    sCudaMemcpy( &my_sum, &spad[blocks],
-            sizeof(rvec2), cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( &my_sum, &spad[blocks], sizeof(rvec2),
+            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 #else
     cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
             sizeof(real) * 2,
@@ -519,8 +527,9 @@ static void Calculate_Charges_QEq( reax_system const * const system,
     Cuda_Reduction_Sum( workspace->d_workspace->s, &spad[0], system->n );
     Cuda_Reduction_Sum( workspace->d_workspace->t, &spad[1], system->n );
 
-    sCudaMemcpy( my_sum, spad, sizeof(real) * 2,
-            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( my_sum, spad, sizeof(real) * 2,
+            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 #endif
 
     /* global reduction on pseudo-charges for s and t */

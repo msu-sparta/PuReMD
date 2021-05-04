@@ -1774,8 +1774,9 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
 
         Cuda_Reduction_Sum( system->d_max_cm_entries, system->d_total_cm_entries,
                 workspace->d_workspace->H.n_max, control->streams[0] );
-        sCudaMemcpy( &system->total_cm_entries, system->d_total_cm_entries,
-                sizeof(int), cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+        sCudaMemcpyAsync( &system->total_cm_entries, system->d_total_cm_entries,
+                sizeof(int), cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+        cudaStreamSynchronize( control->streams[0] );
     }
 
     if ( realloc_bonds == TRUE )
@@ -1794,8 +1795,9 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
 
         Cuda_Reduction_Sum( system->d_max_bonds, system->d_total_bonds,
                 system->total_cap, control->streams[0] );
-        sCudaMemcpy( &system->total_bonds, system->d_total_bonds, sizeof(int), 
-                cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+        sCudaMemcpyAsync( &system->total_bonds, system->d_total_bonds, sizeof(int), 
+                cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+        cudaStreamSynchronize( control->streams[0] );
     }
 
     if ( system->numH > 0 && control->hbond_cut > 0.0 && realloc_hbonds == TRUE )
@@ -1814,8 +1816,9 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
 
         Cuda_Reduction_Sum( system->d_max_hbonds, system->d_total_hbonds,
                 system->total_cap, control->streams[0] );
-        sCudaMemcpy( &system->total_hbonds, system->d_total_hbonds, sizeof(int), 
-                cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+        sCudaMemcpyAsync( &system->total_hbonds, system->d_total_hbonds, sizeof(int), 
+                cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+        cudaStreamSynchronize( control->streams[0] );
     }
     else if ( step == 0 && (system->numH == 0 || control->hbond_cut <= 0.0) )
     {
@@ -2020,12 +2023,14 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
 #endif
 
     /* check reallocation flags on device */
-    sCudaMemcpy( &realloc_cm, system->d_realloc_cm_entries, sizeof(int), 
-            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
-    sCudaMemcpy( &realloc_bonds, system->d_realloc_bonds, sizeof(int), 
-            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
-    sCudaMemcpy( &realloc_hbonds, system->d_realloc_hbonds, sizeof(int), 
-            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( &realloc_cm, system->d_realloc_cm_entries, sizeof(int), 
+            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    sCudaMemcpyAsync( &realloc_bonds, system->d_realloc_bonds, sizeof(int), 
+            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    sCudaMemcpyAsync( &realloc_hbonds, system->d_realloc_hbonds, sizeof(int), 
+            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+
+    cudaStreamSynchronize( control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
     if ( cudaEventQuery( time_event[0] ) != cudaSuccess ) 
@@ -2233,10 +2238,12 @@ int Cuda_Init_Forces_No_Charges( reax_system *system, control_params *control,
 #endif
 
     /* check reallocation flags on device */
-    sCudaMemcpy( &realloc_bonds, system->d_realloc_bonds, sizeof(int), 
-            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
-    sCudaMemcpy( &realloc_hbonds, system->d_realloc_hbonds, sizeof(int), 
-            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( &realloc_bonds, system->d_realloc_bonds, sizeof(int), 
+            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    sCudaMemcpyAsync( &realloc_hbonds, system->d_realloc_hbonds, sizeof(int), 
+            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+
+    cudaStreamSynchronize( control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
     if ( cudaEventQuery( time_event[0] ) != cudaSuccess ) 
@@ -2380,13 +2387,15 @@ static void Cuda_Compute_Total_Force( reax_system *system, control_params *contr
      * based on the neighbors information each processor has had.
      * final values of force on each atom needs to be computed by adding up
      * all partially-final pieces */
-    sCudaMemcpy( f, workspace->d_workspace->f, sizeof(rvec) * system->N ,
-            cudaMemcpyDeviceToHost, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( f, workspace->d_workspace->f, sizeof(rvec) * system->N ,
+            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 
     Coll( system, mpi_data, f, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
 
-    sCudaMemcpy( workspace->d_workspace->f, f, sizeof(rvec) * system->N,
-            cudaMemcpyHostToDevice, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( workspace->d_workspace->f, f, sizeof(rvec) * system->N,
+            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 
     Cuda_Total_Forces_Part2( system, control, workspace );
 }
