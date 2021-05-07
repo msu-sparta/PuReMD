@@ -75,9 +75,9 @@ void Cuda_Reset_Atoms_HBond_Indices( reax_system* system, control_params *contro
 #if !defined(CUDA_ACCUM_ATOMIC)
     int *hindex;
 
-    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
             sizeof(int) * system->total_cap, __FILE__, __LINE__ );
-    hindex = (int *) workspace->scratch;
+    hindex = (int *) workspace->scratch[0];
 #endif
 
     k_reset_hindex <<< control->blocks_n, control->block_size_n, 0,
@@ -97,6 +97,7 @@ void Cuda_Reset_Atoms_HBond_Indices( reax_system* system, control_params *contro
 
     sCudaMemcpyAsync( &system->numH, system->d_numH, sizeof(int), 
             cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+
     cudaStreamSynchronize( control->streams[0] );
 }
 

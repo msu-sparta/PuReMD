@@ -835,20 +835,20 @@ static void Cuda_Compute_Polarization_Energy( reax_system *system,
 #if !defined(CUDA_ACCUM_ATOMIC)
     real *spad;
 
-    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
             sizeof(real) * system->n, __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch;
+    spad = (real *) workspace->scratch[0];
 #else
     sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_pol,
-            0, sizeof(real), control->streams[0], __FILE__, __LINE__ );
-    cudaStreamSynchronize( control->streams[0] );
+            0, sizeof(real), control->streams[4], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[4] );
 #endif
 
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
     k_compute_polarization_energy <<< blocks, DEF_BLOCK_SIZE, 0,
-                                  control->streams[0] >>>
+                                  control->streams[4] >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
           system->n,
 #if !defined(CUDA_ACCUM_ATOMIC)
@@ -890,22 +890,22 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
     {
         s = sizeof(real) * 2 * system->n;
     }
-    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
             s, __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch;
+    spad = (real *) workspace->scratch[0];
 #endif
 
 #if defined(CUDA_ACCUM_ATOMIC)
         sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_vdW,
-                0, sizeof(real), control->streams[0], __FILE__, __LINE__ );
+                0, sizeof(real), control->streams[4], __FILE__, __LINE__ );
         sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_ele,
-                0, sizeof(real), control->streams[0], __FILE__, __LINE__ );
+                0, sizeof(real), control->streams[4], __FILE__, __LINE__ );
         if ( control->virial == 1 )
         {
             sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_ext_press,
-                    0, sizeof(rvec), control->streams[0], __FILE__, __LINE__ );
+                    0, sizeof(rvec), control->streams[4], __FILE__, __LINE__ );
         }
-        cudaStreamSynchronize( control->streams[0] );
+        cudaStreamSynchronize( control->streams[4] );
 #endif
 
     blocks = system->n * 32 / DEF_BLOCK_SIZE
@@ -916,7 +916,7 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
         if ( control->virial == 1 )
         {
 //            k_vdW_coulomb_energy_virial_full <<< control->blocks, control->block_size,
-//                                             0, control->streams[0] >>>
+//                                             0, control->streams[4] >>>
 //                ( system->d_my_atoms, system->reax_param.d_tbp, 
 //                  system->reax_param.d_gp, (control_params *) control->d_control_params, 
 //                  *(workspace->d_workspace), *(lists[FAR_NBRS]), 
@@ -932,7 +932,7 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
 
         k_vdW_coulomb_energy_virial_full_opt <<< blocks, DEF_BLOCK_SIZE,
                                  sizeof(real) * (DEF_BLOCK_SIZE / 32),
-                                 control->streams[0] >>>
+                                 control->streams[4] >>>
             ( system->d_my_atoms, system->reax_param.d_tbp, 
               system->reax_param.d_gp, (control_params *) control->d_control_params, 
               *(workspace->d_workspace), *(lists[FAR_NBRS]), 
@@ -949,7 +949,7 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
         else
         {
 //            k_vdW_coulomb_energy_full <<< control->blocks, control->block_size,
-//                                      0, control->streams[0] >>>
+//                                      0, control->streams[4] >>>
 //                ( system->d_my_atoms, system->reax_param.d_tbp, 
 //                  system->reax_param.d_gp, (control_params *) control->d_control_params, 
 //                  *(workspace->d_workspace), *(lists[FAR_NBRS]), 
@@ -964,7 +964,7 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
 
         k_vdW_coulomb_energy_full_opt <<< blocks, DEF_BLOCK_SIZE,
                                  sizeof(real) * (DEF_BLOCK_SIZE / 32),
-                                 control->streams[0] >>>
+                                 control->streams[4] >>>
             ( system->d_my_atoms, system->reax_param.d_tbp, 
               system->reax_param.d_gp, (control_params *) control->d_control_params, 
               *(workspace->d_workspace), *(lists[FAR_NBRS]), 
@@ -982,7 +982,7 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
     else
     {
         k_vdW_coulomb_energy_tab_full <<< control->blocks, control->block_size,
-                                      0, control->streams[0] >>>
+                                      0, control->streams[4] >>>
             ( system->d_my_atoms, system->reax_param.d_gp, 
               (control_params *) control->d_control_params, 
               *(workspace->d_workspace), *(lists[FAR_NBRS]), 
@@ -1022,13 +1022,13 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
         /* reduction for ext_press */
         k_reduction_rvec <<< control->blocks, control->block_size,
                          sizeof(rvec) * (control->block_size / 32),
-                         control->streams[0] >>>
+                         control->streams[4] >>>
             ( spad_rvec, &spad_rvec[system->n], system->n );
         cudaCheckError( );
 
         k_reduction_rvec <<< 1, control->blocks_pow_2,
                          sizeof(rvec) * (control->blocks_pow_2 / 32),
-                         control->streams[0] >>>
+                         control->streams[4] >>>
             ( &spad_rvec[system->n],
               &((simulation_data *)data->d_simulation_data)->my_ext_press,
               control->blocks );

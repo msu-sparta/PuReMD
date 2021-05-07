@@ -749,10 +749,10 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system *system, control_params *control,
     real *spad;
     rvec *rvec_spad;
 
-    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
             (sizeof(real) * 3 + sizeof(rvec)) * system->N + sizeof(rvec) * control->blocks_n,
             __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch;
+    spad = (real *) workspace->scratch[0];
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
 #else
@@ -763,7 +763,6 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system *system, control_params *control,
         sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_ext_press,
                 0, sizeof(rvec), control->streams[0], __FILE__, __LINE__ );
     }
-    cudaStreamSynchronize( control->streams[0] );
 #endif
 
     if ( control->virial == 1 )

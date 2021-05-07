@@ -210,17 +210,19 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
 
     Cuda_Allocate_Matrix( &workspace->d_workspace->H, system->n,
             system->local_cap, system->total_cm_entries, SYM_FULL_MATRIX );
-    Cuda_Init_Sparse_Matrix_Indices( system, control, &workspace->d_workspace->H );
+    Cuda_Init_Sparse_Matrix_Indices( system, &workspace->d_workspace->H,
+           control->streams[0] );
 
     Cuda_Make_List( system->total_cap, system->total_bonds,
             TYP_BOND, lists[BONDS] );
-    Cuda_Init_Bond_Indices( system, control, lists[BONDS] );
+    Cuda_Init_Bond_Indices( system, lists[BONDS], control->streams[0] );
 
     if ( control->hbond_cut > 0.0 && system->numH > 0 )
     {
         Cuda_Make_List( system->total_cap, system->total_hbonds,
                 TYP_HBOND, lists[HBONDS] );
-        Cuda_Init_HBond_Indices( system, control, workspace, lists[HBONDS] );
+        Cuda_Init_HBond_Indices( system, workspace, lists[HBONDS],
+                control->streams[0] );
     }
 
     /* 3bodies list: since a more accurate estimate of the num.
@@ -234,6 +236,8 @@ extern "C" void Cuda_Initialize( reax_system *system, control_params *control,
         reax_list **lists, output_controls *out_control,
         mpi_datatypes *mpi_data )
 {
+    int i;
+
     Init_MPI_Datatypes( system, workspace, mpi_data );
 
 #if defined(CUDA_DEVICE_PACK)
@@ -249,7 +253,7 @@ extern "C" void Cuda_Initialize( reax_system *system, control_params *control,
     mpi_data->d_in2_buffer = NULL;
     mpi_data->d_in2_buffer_size = 0;
 
-    for ( int i = 0; i < MAX_NBRS; ++i )
+    for ( i = 0; i < MAX_NBRS; ++i )
     {
         mpi_data->d_out_buffers[i].cnt = 0;
         mpi_data->d_out_buffers[i].index = NULL;
@@ -263,8 +267,11 @@ extern "C" void Cuda_Initialize( reax_system *system, control_params *control,
 
     /* scratch space - set before Cuda_Init_Workspace
      * as Cuda_Init_System utilizes these variables */
-    workspace->scratch = NULL;
-    workspace->scratch_size = 0;
+    for ( i = 0; i < MAX_CUDA_STREAMS; ++i )
+    {
+        workspace->scratch[i] = NULL;
+        workspace->scratch_size[i] = 0;
+    }
     workspace->host_scratch = NULL;
     workspace->host_scratch_size = 0;
 

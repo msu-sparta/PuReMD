@@ -520,9 +520,9 @@ static void Cuda_Compute_Momentum( reax_system *system, control_params *control,
 {
     rvec *spad;
 
-    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
             sizeof(rvec) * (control->blocks + 1), __FILE__, __LINE__ );
-    spad = (rvec *) workspace->scratch;
+    spad = (rvec *) workspace->scratch[0];
 
     // xcm
     sCudaMemsetAsync( spad, 0, sizeof(rvec) * (control->blocks + 1),
@@ -594,9 +594,9 @@ static void Cuda_Compute_Inertial_Tensor( reax_system *system, control_params *c
 {
     real *spad;
 
-    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
             sizeof(real) * 6 * (control->blocks + 1), __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch;
+    spad = (real *) workspace->scratch[0];
     sCudaMemsetAsync( spad, 0, sizeof(real) * 6 * (control->blocks + 1),
             control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
@@ -690,9 +690,9 @@ extern "C" void Cuda_Compute_Kinetic_Energy( reax_system *system,
     int ret;
     real *kinetic_energy;
 
-    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
             sizeof(real) * (system->n + 1), __FILE__, __LINE__ );
-    kinetic_energy = (real *) workspace->scratch;
+    kinetic_energy = (real *) workspace->scratch[0];
 
     k_compute_kinetic_energy <<< control->blocks, control->block_size, 0, control->streams[0] >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, kinetic_energy, system->n );
@@ -727,9 +727,9 @@ void Cuda_Compute_Total_Mass( reax_system *system, control_params *control,
     int ret;
     real my_M, *spad;
 
-    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
             sizeof(real) * (system->n + 1), __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch;
+    spad = (real *) workspace->scratch[0];
 
     k_compute_total_mass <<< control->blocks, control->block_size, 0, control->streams[0]  >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad, system->n );
@@ -873,10 +873,10 @@ void Cuda_Compute_Pressure( reax_system* system, control_params *control,
     /* 0: both int and ext, 1: ext only, 2: int only */
     if ( control->press_mode == 0 || control->press_mode == 2 )
     {
-        sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+        sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
                 sizeof(rvec) * (system->n + control->blocks + 1),
                 __FILE__, __LINE__ );
-        rvec_spad = (rvec *) workspace->scratch;
+        rvec_spad = (rvec *) workspace->scratch[0];
 
         k_compute_pressure <<< control->blocks, control->block_size, 0,
                            control->streams[0] >>>

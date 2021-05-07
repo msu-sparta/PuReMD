@@ -279,19 +279,20 @@ void Cuda_Compute_Bonds( reax_system *system, control_params *control,
     int update_energy;
     real *spad;
 
-    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
             sizeof(real) * system->n, __FILE__, __LINE__ );
 
-    spad = (real *) workspace->scratch;
+    spad = (real *) workspace->scratch[0];
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
 #else
     sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_bond,
-            0, sizeof(real), control->streams[0], __FILE__, __LINE__ );
-    cudaStreamSynchronize( control->streams[0] );
+            0, sizeof(real), control->streams[1], __FILE__, __LINE__ );
 #endif
 
-//    k_bonds <<< control->blocks, control->block_size, 0, control->streams[0] >>>
+    cudaStreamWaitEvent( control->streams[1], control->stream_events[4] );
+
+//    k_bonds <<< control->blocks, control->block_size, 0, control->streams[1] >>>
 //        ( system->d_my_atoms, system->reax_param.d_gp,
 //          system->reax_param.d_sbp, system->reax_param.d_tbp,
 //          *(workspace->d_workspace), *(lists[BONDS]), 
@@ -309,7 +310,7 @@ void Cuda_Compute_Bonds( reax_system *system, control_params *control,
 
     k_bonds_opt <<< blocks, DEF_BLOCK_SIZE,
                 sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32),
-                control->streams[0] >>>
+                control->streams[1] >>>
         ( system->d_my_atoms, system->reax_param.d_gp,
           system->reax_param.d_sbp, system->reax_param.d_tbp,
           *(workspace->d_workspace), *(lists[BONDS]), 
@@ -329,4 +330,6 @@ void Cuda_Compute_Bonds( reax_system *system, control_params *control,
                 system->n );
     }
 #endif
+
+    cudaEventRecord( control->stream_events[5], control->streams[1] );
 }

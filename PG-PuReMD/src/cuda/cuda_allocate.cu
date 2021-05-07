@@ -43,10 +43,10 @@ static void Cuda_Reallocate_System_Part1( reax_system *system,
 {
     int *temp;
 
-    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
             sizeof(int) * local_cap_old,
             __FILE__, __LINE__ );
-    temp = (int *) workspace->scratch;
+    temp = (int *) workspace->scratch[0];
 
     sCudaMemcpyAsync( temp, system->d_cm_entries, sizeof(int) * local_cap_old,
             cudaMemcpyDeviceToDevice, control->streams[0], __FILE__, __LINE__ );
@@ -76,11 +76,11 @@ static void Cuda_Reallocate_System_Part2( reax_system *system, control_params *c
     int *temp;
     reax_atom *temp_atom;
 
-    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
             MAX( sizeof(reax_atom), sizeof(int) ) * total_cap_old,
             __FILE__, __LINE__ );
-    temp = (int *) workspace->scratch;
-    temp_atom = (reax_atom *) workspace->scratch;
+    temp = (int *) workspace->scratch[0];
+    temp_atom = (reax_atom *) workspace->scratch[0];
 
     /* free the existing storage for atoms, leave other info allocated */
     sCudaMemcpyAsync( temp_atom, system->d_my_atoms, sizeof(reax_atom) * total_cap_old,
@@ -173,7 +173,7 @@ void Cuda_Allocate_Grid( reax_system *system, control_params *control )
 //    grid_cell local_cell;
     grid *host = &system->my_grid;
     grid *device = &system->d_my_grid;
-//    ivec *nbrs_x = (ivec *) workspace->scratch;
+//    ivec *nbrs_x = (ivec *) workspace->scratch[0];
 
     total = host->ncells[0] * host->ncells[1] * host->ncells[2];
     ivec_Copy( device->ncells, host->ncells );

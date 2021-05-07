@@ -1348,7 +1348,6 @@ static int Cuda_Estimate_Storage_Three_Body( reax_system *system, control_params
 
     sCudaMemsetAsync( thbody, 0, system->total_bonds * sizeof(int),
             control->streams[0], __FILE__, __LINE__ );
-    cudaStreamSynchronize( control->streams[0] );
 
 //    k_estimate_valence_angles <<< control->blocks_n, control->block_size_n, 0, control->streams[0] >>>
 //        ( system->d_my_atoms, (control_params *)control->d_control_params, 
@@ -1437,12 +1436,12 @@ int Cuda_Compute_Valence_Angles( reax_system *system, control_params *control,
     s = sizeof(int) * system->total_bonds;
 #endif
 
-    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
             s, __FILE__, __LINE__ );
 
-    thbody = (int *) workspace->scratch;
+    thbody = (int *) workspace->scratch[0];
 #if !defined(CUDA_ACCUM_ATOMIC)
-    spad = (real *) workspace->scratch;
+    spad = (real *) workspace->scratch[0];
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
 #endif
@@ -1463,7 +1462,6 @@ int Cuda_Compute_Valence_Angles( reax_system *system, control_params *control,
                 0, sizeof(real), control->streams[0], __FILE__, __LINE__ );
         sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_ext_press,
                 0, sizeof(rvec), control->streams[0], __FILE__, __LINE__ );
-        cudaStreamSynchronize( control->streams[0] );
 #endif
 
         if ( control->virial == 1 )

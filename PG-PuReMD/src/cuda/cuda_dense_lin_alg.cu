@@ -562,9 +562,9 @@ real Dot( storage * const workspace,
     real temp;
 //#endif
 
-    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+    sCudaCheckMalloc( &workspace->scratch[4], &workspace->scratch_size[4],
             sizeof(real) * (k + 1), __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch;
+    spad = (real *) workspace->scratch[4];
 
     Vector_Mult( spad, v1, v2, k );
 
@@ -578,6 +578,7 @@ real Dot( storage * const workspace,
 //#else
     sCudaMemcpyAsync( &temp, &spad[k], sizeof(real),
             cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
+
     cudaStreamSynchronize( s );
 
     ret = MPI_Allreduce( &temp, &sum, 1, MPI_DOUBLE, MPI_SUM, comm );
@@ -603,9 +604,9 @@ real Dot_local( storage * const workspace,
 {
     real sum, *spad;
 
-    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+    sCudaCheckMalloc( &workspace->scratch[4], &workspace->scratch_size[4],
             sizeof(real) * (k + 1), __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch;
+    spad = (real *) workspace->scratch[4];
 
     Vector_Mult( spad, v1, v2, k );
 
@@ -615,6 +616,7 @@ real Dot_local( storage * const workspace,
     //TODO: keep result of reduction on devie and pass directly to CUDA-aware MPI
     sCudaMemcpyAsync( &sum, &spad[k], sizeof(real),
             cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
+
     cudaStreamSynchronize( s );
 
     return sum;
@@ -640,9 +642,9 @@ void Dot_local_rvec2( storage * const workspace,
     blocks = (k / DEF_BLOCK_SIZE)
         + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+    sCudaCheckMalloc( &workspace->scratch[4], &workspace->scratch_size[4],
             sizeof(rvec2) * (k + blocks + 1), __FILE__, __LINE__ );
-    spad = (rvec2 *) workspace->scratch;
+    spad = (rvec2 *) workspace->scratch[4];
 
     Vector_Mult_rvec2( spad, v1, v2, k );
 
@@ -662,6 +664,7 @@ void Dot_local_rvec2( storage * const workspace,
     //TODO: keep result of reduction on devie and pass directly to CUDA-aware MPI
     sCudaMemcpyAsync( &sum, &spad[k + blocks], sizeof(rvec2),
             cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
+
     cudaStreamSynchronize( s );
 
     *sum1 = sum[0];

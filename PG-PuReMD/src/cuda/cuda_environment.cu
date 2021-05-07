@@ -62,17 +62,17 @@ extern "C" void Cuda_Setup_Environment( reax_system const * const system,
         exit( CANNOT_INITIALIZE );
     }
 
-    /* stream assignment:
-     * 0: init bonds, bond order (uncorrected/corrected), lone pair/over coord/under coord
-     * 1: (after bond order) bonds, valence angels, torsions
-     * 2: init hbonds, (after bonds) hbonds
-     * 3: van der Waals
-     * 4: init CM, CM, Coulomb
+    /* stream assignment (default to 0 for any kernel not listed):
+     * 0: init dist, init CM, bond order (uncorrected/corrected), lone pair/over coord/under coord
+     * 1: (after init dist) init bonds, (after bond order) bonds, valence angles, torsions
+     * 2: (after init dist) init hbonds, (after bonds) hbonds
+     * 3: (after init dist) van der Waals
+     * 4: (after init CM) CM, Coulomb
      */
-    for ( i = 0; i < CUDA_MAX_STREAMS; ++i )
+    for ( i = 0; i < MAX_CUDA_STREAMS; ++i )
     {
         /* all non-CM streams of equal priority */
-        if ( i < CUDA_MAX_STREAMS - 1 )
+        if ( i < MAX_CUDA_STREAMS - 1 )
         {
             ret = cudaStreamCreateWithPriority( &control->streams[i], cudaStreamNonBlocking, least_priority );
         }
@@ -84,7 +84,27 @@ extern "C" void Cuda_Setup_Environment( reax_system const * const system,
 
         if ( ret != cudaSuccess )
         {
-            fprintf( stderr, "[ERROR] CUDA strema creation failed (%d). Terminating...\n",
+            fprintf( stderr, "[ERROR] CUDA stream creation failed (%d). Terminating...\n",
+                    i );
+            exit( CANNOT_INITIALIZE );
+        }
+    }
+
+    /* stream event assignment:
+     * 0: init dist done (stream 0)
+     * 1: init CM done (stream 4)
+     * 2: init bonds done (stream 1)
+     * 3: init hbonds done (stream 2)
+     * 4: bond orders done (stream 0)
+     * 5: bonds done (stream 1)
+     */
+    for ( i = 0; i < MAX_CUDA_STREAM_EVENTS; ++i )
+    {
+        ret = cudaEventCreateWithFlags( &control->stream_events[i], cudaEventDisableTiming );
+
+        if ( ret != cudaSuccess )
+        {
+            fprintf( stderr, "[ERROR] CUDA event creation failed (%d). Terminating...\n",
                     i );
             exit( CANNOT_INITIALIZE );
         }
@@ -112,7 +132,7 @@ extern "C" void Cuda_Cleanup_Environment( control_params const * const control )
     int i;
     cudaError_t ret;
 
-    for ( i = 0; i < CUDA_MAX_STREAMS; ++i )
+    for ( i = 0; i < MAX_CUDA_STREAMS; ++i )
     {
         ret = cudaStreamDestroy( control->streams[i] );
 

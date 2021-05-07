@@ -999,6 +999,8 @@ void Cuda_Compute_Bond_Orders( reax_system * const system, control_params * cons
 {
     int blocks;
 
+    cudaStreamWaitEvent( control->streams[0], control->stream_events[2] );
+
     k_bond_order_part1 <<< control->blocks_n, control->block_size_n, 0,
                        control->streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
@@ -1032,6 +1034,8 @@ void Cuda_Compute_Bond_Orders( reax_system * const system, control_params * cons
         ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp, 
          *(workspace->d_workspace), system->N );
     cudaCheckError( );
+
+    cudaEventRecord( control->stream_events[4], control->streams[0] );
 }
 
 
@@ -1062,9 +1066,9 @@ void Cuda_Total_Forces_Part1( reax_system * const system, control_params * const
     }
     else
     {
-        sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+        sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
                 sizeof(rvec) * 2 * system->N, __FILE__, __LINE__ );
-        spad_rvec = (rvec *) workspace->scratch;
+        spad_rvec = (rvec *) workspace->scratch[0];
         sCudaMemsetAsync( spad_rvec, 0, sizeof(rvec) * 2 * system->N,
                 control->streams[0], __FILE__, __LINE__ );
         cudaStreamSynchronize( control->streams[0] );

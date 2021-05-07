@@ -358,7 +358,10 @@
   #endif
 
   /* max. num. of active CUDA streams */
-  #define CUDA_MAX_STREAMS (5)
+  #define MAX_CUDA_STREAMS (5)
+
+  /* max. num. of CUDA events used for synchronizing streams */
+  #define MAX_CUDA_STREAM_EVENTS (6)
 #endif
 
 
@@ -1659,7 +1662,9 @@ struct control_params
      * for kernels with 1 thread per atom (local AND ghost) */
     int blocks_pow_2_n;
     /* CUDA stream */
-    cudaStream_t streams[CUDA_MAX_STREAMS];
+    cudaStream_t streams[MAX_CUDA_STREAMS];
+    /* CUDA events for synchronizing streams */
+    cudaEvent_t stream_events[MAX_CUDA_STREAM_EVENTS];
 #endif
 };
 
@@ -2322,9 +2327,9 @@ struct storage
     /* size of temporary host workspace, in bytes */
     size_t host_scratch_size;
     /* temporary workspace (GPU) */
-    void *scratch;
+    void *scratch[MAX_CUDA_STREAMS];
     /* size of temporary workspace (GPU), in bytes */
-    size_t scratch_size;
+    size_t scratch_size[MAX_CUDA_STREAMS];
     /* lookup table for force tabulation (GPU) */
     LR_lookup_table *d_LR;
     /* storage (GPU) */
