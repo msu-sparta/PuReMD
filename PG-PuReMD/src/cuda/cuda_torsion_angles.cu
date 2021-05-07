@@ -1299,22 +1299,23 @@ void Cuda_Compute_Torsion_Angles( reax_system *system, control_params *control,
     {
         s = (sizeof(real) * 2 * system->n;
     }
-    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-            s, "Cuda_Compute_Torsion_Angles::workspace->scratch" );
+    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+            s, __FILE__, __LINE__ );
 
     spad = (real *) workspace->scratch;
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
 #else
-    cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_tor,
-            0, sizeof(real), "Cuda_Compute_Torsion_Angles::e_tor" );
-    cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_con,
-            0, sizeof(real), "Cuda_Compute_Torsion_Angles::e_con" );
+    sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_tor,
+            0, sizeof(real), control->streams[0], __FILE__, __LINE__ );
+    sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_con,
+            0, sizeof(real), control->streams[0], __FILE__, __LINE__ );
     if ( control->virial == 1 )
     {
-        cuda_memset( &((simulation_data *)data->d_simulation_data)->my_ext_press,
-                0, sizeof(rvec), "Cuda_Compute_Torsion_Angles::my_ext_press" );
+        sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_ext_press,
+                0, sizeof(rvec), control->streams[0], __FILE__, __LINE__ );
     }
+    cudaStreamSynchronize( control->streams[0] );
 #endif
 
     if ( control->virial == 1 )

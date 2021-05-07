@@ -198,7 +198,8 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
 
     Cuda_Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
-    /* first call to Cuda_Estimate_Storages requires setting these manually before allocation */
+    /* first call to Cuda_Estimate_Storages requires
+     * setting these manually before allocation */
     workspace->d_workspace->H.n = system->n;
     workspace->d_workspace->H.n_max = system->local_cap;
     workspace->d_workspace->H.format = SYM_FULL_MATRIX;
@@ -211,12 +212,14 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
             system->local_cap, system->total_cm_entries, SYM_FULL_MATRIX );
     Cuda_Init_Sparse_Matrix_Indices( system, control, &workspace->d_workspace->H );
 
-    Cuda_Make_List( system->total_cap, system->total_bonds, TYP_BOND, lists[BONDS] );
+    Cuda_Make_List( system->total_cap, system->total_bonds,
+            TYP_BOND, lists[BONDS] );
     Cuda_Init_Bond_Indices( system, control, lists[BONDS] );
 
     if ( control->hbond_cut > 0.0 && system->numH > 0 )
     {
-        Cuda_Make_List( system->total_cap, system->total_hbonds, TYP_HBOND, lists[HBONDS] );
+        Cuda_Make_List( system->total_cap, system->total_hbonds,
+                TYP_HBOND, lists[HBONDS] );
         Cuda_Init_HBond_Indices( system, control, workspace, lists[HBONDS] );
     }
 

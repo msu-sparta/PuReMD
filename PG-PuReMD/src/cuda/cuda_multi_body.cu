@@ -548,20 +548,20 @@ void Cuda_Compute_Atom_Energy( reax_system *system, control_params *control,
     int update_energy;
     real *spad;
 
-    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-            sizeof(real) * 3 * system->n,
-            "Cuda_Compute_Atom_Energy::workspace->scratch" );
+    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+            sizeof(real) * 3 * system->n, __FILE__, __LINE__ );
 
     spad = (real *) workspace->scratch;
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
 #else
-    cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_lp,
-            0, sizeof(real), "Cuda_Compute_Atom_Energy::e_lp" );
-    cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_ov,
-            0, sizeof(real), "Cuda_Compute_Atom_Energy::e_ov" );
-    cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_un,
-            0, sizeof(real), "Cuda_Compute_Atom_Energy::e_un" );
+    sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_lp,
+            0, sizeof(real), control->streams[0], __FILE__, __LINE__ );
+    sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_ov,
+            0, sizeof(real), control->streams[0], __FILE__, __LINE__ );
+    sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_un,
+            0, sizeof(real), control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 #endif
 
 //    k_atom_energy_part1 <<< control->blocks, control->block_size, 0, control->streams[0] >>>

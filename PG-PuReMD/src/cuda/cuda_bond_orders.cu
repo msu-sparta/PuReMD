@@ -1062,12 +1062,12 @@ void Cuda_Total_Forces_Part1( reax_system * const system, control_params * const
     }
     else
     {
-        cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-                sizeof(rvec) * 2 * system->N,
-                "Cuda_Total_Forces_Part1::workspace->scratch" );
+        sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+                sizeof(rvec) * 2 * system->N, __FILE__, __LINE__ );
         spad_rvec = (rvec *) workspace->scratch;
-        cuda_memset( spad_rvec, 0, sizeof(rvec) * 2 * system->N,
-                "total_forces:ext_press" );
+        sCudaMemsetAsync( spad_rvec, 0, sizeof(rvec) * 2 * system->N,
+                control->streams[0], __FILE__, __LINE__ );
+        cudaStreamSynchronize( control->streams[0] );
 
         blocks = system->N / DEF_BLOCK_SIZE
             + ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);

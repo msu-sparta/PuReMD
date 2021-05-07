@@ -96,10 +96,10 @@ void Sort_Matrix_Rows( sparse_matrix * const A, reax_system const * const system
     cudaStreamSynchronize( control->streams[0] );
 
     /* make copies of column indices and non-zero values */
-    cuda_malloc( (void **) &d_j_temp, sizeof(int) * system->total_cm_entries,
-            FALSE, "Sort_Matrix_Rows::d_j_temp" );
-    cuda_malloc( (void **) &d_val_temp, sizeof(real) * system->total_cm_entries,
-            FALSE, "Sort_Matrix_Rows::d_val_temp" );
+    sCudaMalloc( (void **) &d_j_temp, sizeof(int) * system->total_cm_entries,
+            __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &d_val_temp, sizeof(real) * system->total_cm_entries,
+            __FILE__, __LINE__ );
     sCudaMemcpyAsync( d_j_temp, A->j, sizeof(int) * system->total_cm_entries,
             cudaMemcpyDeviceToDevice, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
@@ -119,17 +119,17 @@ void Sort_Matrix_Rows( sparse_matrix * const A, reax_system const * const system
         if ( d_temp_storage == NULL )
         {
             /* allocate temporary storage */
-            cuda_malloc( &d_temp_storage, temp_storage_bytes, FALSE,
-                    "Sort_Matrix_Rows::d_temp_storage" );
+            sCudaMalloc( &d_temp_storage, temp_storage_bytes,
+                    __FILE__, __LINE__ );
         }
         else if ( max_temp_storage_bytes < temp_storage_bytes )
         {
             /* deallocate temporary storage */
-            cuda_free( d_temp_storage, "Sort_Matrix_Rows::d_temp_storage" );
+            sCudaFree( d_temp_storage, __FILE__, __LINE__ );
 
             /* allocate temporary storage */
-            cuda_malloc( &d_temp_storage, temp_storage_bytes, FALSE,
-                    "Sort_Matrix_Rows::d_temp_storage" );
+            sCudaMalloc( &d_temp_storage, temp_storage_bytes,
+                    __FILE__, __LINE__ );
 
             max_temp_storage_bytes = temp_storage_bytes;
         }
@@ -142,9 +142,9 @@ void Sort_Matrix_Rows( sparse_matrix * const A, reax_system const * const system
     }
 
     /* deallocate temporary storage */
-    cuda_free( d_temp_storage, "Sort_Matrix_Rows::d_temp_storage" );
-    cuda_free( d_j_temp, "Sort_Matrix_Rows::d_j_temp" );
-    cuda_free( d_val_temp, "Sort_Matrix_Rows::d_val_temp" );
+    sCudaFree( d_temp_storage, __FILE__, __LINE__ );
+    sCudaFree( d_j_temp, __FILE__, __LINE__ );
+    sCudaFree( d_val_temp, __FILE__, __LINE__ );
     sfree( start, "Sort_Matrix_Rows::start" );
     sfree( end, "Sort_Matrix_Rows::end" );
 }
@@ -418,11 +418,12 @@ static void Extrapolate_Charges_QEq_Part2( reax_system const * const system,
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-            sizeof(real) * system->n,
-            "Extrapolate_Charges_QEq_Part2::workspace->scratch" );
+    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+            sizeof(real) * system->n, __FILE__, __LINE__ );
     spad = (real *) workspace->scratch;
-    cuda_memset( spad, 0, sizeof(real) * system->n, "Extrapolate_Charges_QEq_Part2::spad" );
+    sCudaMemsetAsync( spad, 0, sizeof(real) * system->n,
+            control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 
     k_extrapolate_charges_qeq_part2 <<< blocks, DEF_BLOCK_SIZE, 0,
                                     control->streams[0] >>>
@@ -461,9 +462,8 @@ static void Update_Ghost_Atom_Charges( reax_system const * const system,
     blocks = (system->N - system->n) / DEF_BLOCK_SIZE
         + (((system->N - system->n) % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-            sizeof(real) * (system->N - system->n),
-            "Update_Ghost_Atom_Charges::workspace->scratch" );
+    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+            sizeof(real) * (system->N - system->n), __FILE__, __LINE__ );
     spad = (real *) workspace->scratch;
     sCudaMemcpyAsync( spad, &q[system->n], sizeof(real) * (system->N - system->n),
             cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
@@ -494,12 +494,12 @@ static void Calculate_Charges_QEq( reax_system const * const system,
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-            sizeof(rvec2) * (blocks + 1),
-            "Calculate_Charges_QEq::workspace->scratch" );
+    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+            sizeof(rvec2) * (blocks + 1), __FILE__, __LINE__ );
     spad = (rvec2 *) workspace->scratch;
-    cuda_memset( spad, 0, sizeof(rvec2) * (blocks + 1),
-            "Calculate_Charges_QEq::spad" );
+    sCudaMemsetAsync( spad, 0, sizeof(rvec2) * (blocks + 1),
+            control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 
     /* compute local sums of pseudo-charges in s and t on device */
     k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE,
@@ -518,9 +518,8 @@ static void Calculate_Charges_QEq( reax_system const * const system,
             cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
 #else
-    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-            sizeof(real) * 2,
-            "Calculate_Charges_QEq::workspace->scratch" );
+    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+            sizeof(real) * 2, __FILE__, __LINE__ );
     spad = (real *) workspace->scratch;
 
     /* local reductions (sums) on device */

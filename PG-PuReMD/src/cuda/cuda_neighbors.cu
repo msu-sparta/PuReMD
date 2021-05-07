@@ -505,14 +505,15 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
         cudaEventCreate( &time_event[i] );
     }
 
-    cudaEventRecord( time_event[0] );
+    cudaEventRecord( time_event[0], control->streams[0] );
 #endif
 
     /* reset reallocation flag on device */
     /* careful: this wrapper around cudaMemset(...) performs a byte-wide assignment
      * to the provided literal */
-    cuda_memset( system->d_realloc_far_nbrs, FALSE, sizeof(int), 
-            "Cuda_Generate_Neighbor_Lists::d_realloc_far_nbrs" );
+    sCudaMemsetAsync( system->d_realloc_far_nbrs, FALSE, sizeof(int), 
+            control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 
     /* one thread per atom implementation */
     blocks = (system->N / NBRS_BLOCK_SIZE) +
@@ -544,7 +545,7 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
     workspace->d_workspace->realloc.far_nbrs = ret_far_nbr;
 
 #if defined(LOG_PERFORMANCE)
-    cudaEventRecord( time_event[1] );
+    cudaEventRecord( time_event[1], control->streams[0] );
 
     if ( cudaEventQuery( time_event[0] ) != cudaSuccess ) 
     {
@@ -580,7 +581,7 @@ void Cuda_Estimate_Num_Neighbors( reax_system *system, control_params *control,
         cudaEventCreate( &time_event[i] );
     }
 
-    cudaEventRecord( time_event[0] );
+    cudaEventRecord( time_event[0], control->streams[0] );
 #endif
 
     blocks = system->total_cap / DEF_BLOCK_SIZE
@@ -599,7 +600,7 @@ void Cuda_Estimate_Num_Neighbors( reax_system *system, control_params *control,
     cudaStreamSynchronize( control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
-    cudaEventRecord( time_event[1] );
+    cudaEventRecord( time_event[1], control->streams[0] );
 
     if ( cudaEventQuery( time_event[0] ) != cudaSuccess ) 
     {

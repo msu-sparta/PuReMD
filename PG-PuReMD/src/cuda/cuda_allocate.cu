@@ -30,7 +30,8 @@ CUDA_GLOBAL void k_init_nbrs( ivec *nbrs, int N )
 }
 
 
-static void Cuda_Reallocate_List( reax_list *list, size_t n, size_t max_intrs, int type )
+static void Cuda_Reallocate_List( reax_list *list, size_t n, size_t max_intrs,
+        int type )
 {
     Cuda_Delete_List( list );
     Cuda_Make_List( n, max_intrs, type, list );
@@ -42,17 +43,17 @@ static void Cuda_Reallocate_System_Part1( reax_system *system,
 {
     int *temp;
 
-    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
+    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
             sizeof(int) * local_cap_old,
-            "Cuda_Reallocate_System_Part1::workspace->scratch" );
+            __FILE__, __LINE__ );
     temp = (int *) workspace->scratch;
 
     sCudaMemcpyAsync( temp, system->d_cm_entries, sizeof(int) * local_cap_old,
             cudaMemcpyDeviceToDevice, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
-    cuda_free( system->d_cm_entries, "Cuda_Reallocate_System_Part1::d_cm_entries" );
-    cuda_malloc( (void **) &system->d_cm_entries,
-            sizeof(int) * system->local_cap, TRUE, "Cuda_Reallocate_System_Part1::d_cm_entries" );
+    sCudaFree( system->d_cm_entries, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &system->d_cm_entries,
+            sizeof(int) * system->local_cap, __FILE__, __LINE__ );
     sCudaMemcpyAsync( system->d_cm_entries, temp, sizeof(int) * local_cap_old,
             cudaMemcpyDeviceToDevice, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
@@ -60,9 +61,9 @@ static void Cuda_Reallocate_System_Part1( reax_system *system,
     sCudaMemcpyAsync( temp, system->d_max_cm_entries, sizeof(int) * local_cap_old,
             cudaMemcpyDeviceToDevice, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
-    cuda_free( system->d_max_cm_entries, "Cuda_Reallocate_System_Part1::d_max_cm_entries" );
-    cuda_malloc( (void **) &system->d_max_cm_entries,
-            sizeof(int) * system->local_cap, TRUE, "Cuda_Reallocate_System_Part1::d_max_cm_entries" );
+    sCudaFree( system->d_max_cm_entries, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &system->d_max_cm_entries,
+            sizeof(int) * system->local_cap, __FILE__, __LINE__ );
     sCudaMemcpyAsync( system->d_max_cm_entries, temp, sizeof(int) * local_cap_old,
             cudaMemcpyDeviceToDevice, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
@@ -75,9 +76,9 @@ static void Cuda_Reallocate_System_Part2( reax_system *system, control_params *c
     int *temp;
     reax_atom *temp_atom;
 
-    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
+    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
             MAX( sizeof(reax_atom), sizeof(int) ) * total_cap_old,
-            "Cuda_Reallocate_System_Part2::workspace->scratch" );
+            __FILE__, __LINE__ );
     temp = (int *) workspace->scratch;
     temp_atom = (reax_atom *) workspace->scratch;
 
@@ -85,10 +86,9 @@ static void Cuda_Reallocate_System_Part2( reax_system *system, control_params *c
     sCudaMemcpyAsync( temp_atom, system->d_my_atoms, sizeof(reax_atom) * total_cap_old,
             cudaMemcpyDeviceToDevice, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
-    cuda_free( system->d_my_atoms, "system::d_my_atoms" );
-    cuda_malloc( (void **) &system->d_my_atoms,
-            sizeof(reax_atom) * system->total_cap, TRUE,
-            "Cuda_Reallocate_System_Part2::d_my_atoms" );
+    sCudaFree( system->d_my_atoms, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &system->d_my_atoms,
+            sizeof(reax_atom) * system->total_cap, __FILE__, __LINE__ );
     sCudaMemcpyAsync( system->d_my_atoms, temp_atom, sizeof(reax_atom) * total_cap_old,
             cudaMemcpyDeviceToDevice, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
@@ -97,10 +97,9 @@ static void Cuda_Reallocate_System_Part2( reax_system *system, control_params *c
     sCudaMemcpyAsync( temp, system->d_far_nbrs, sizeof(int) * total_cap_old,
             cudaMemcpyDeviceToDevice, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
-    cuda_free( system->d_far_nbrs, "Cuda_Reallocate_System_Part2::d_far_nbrs" );
-    cuda_malloc( (void **) &system->d_far_nbrs,
-            sizeof(int) * system->total_cap, TRUE,
-            "Cuda_Reallocate_System_Part2::d_far_nbrs" );
+    sCudaFree( system->d_far_nbrs, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &system->d_far_nbrs,
+            sizeof(int) * system->total_cap, __FILE__, __LINE__ );
     sCudaMemcpyAsync( system->d_far_nbrs, temp, sizeof(int) * total_cap_old,
             cudaMemcpyDeviceToDevice, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
@@ -108,10 +107,9 @@ static void Cuda_Reallocate_System_Part2( reax_system *system, control_params *c
     sCudaMemcpyAsync( temp, system->d_max_far_nbrs, sizeof(int) * total_cap_old,
             cudaMemcpyDeviceToDevice, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
-    cuda_free( system->d_max_far_nbrs, "Cuda_Reallocate_System_Part2::d_max_far_nbrs" );
-    cuda_malloc( (void **) &system->d_max_far_nbrs,
-            sizeof(int) * system->total_cap, TRUE,
-            "Cuda_Reallocate_System_Part2::d_max_far_nbrs" );
+    sCudaFree( system->d_max_far_nbrs, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &system->d_max_far_nbrs,
+            sizeof(int) * system->total_cap, __FILE__, __LINE__ );
     sCudaMemcpyAsync( system->d_max_far_nbrs, temp, sizeof(int) * total_cap_old,
             cudaMemcpyDeviceToDevice, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
@@ -119,10 +117,9 @@ static void Cuda_Reallocate_System_Part2( reax_system *system, control_params *c
     sCudaMemcpyAsync( temp, system->d_bonds, sizeof(int) * total_cap_old,
             cudaMemcpyDeviceToDevice, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
-    cuda_free( system->d_bonds, "Cuda_Reallocate_System_Part2::d_bonds" );
-    cuda_malloc( (void **) &system->d_bonds,
-            sizeof(int) * system->total_cap, TRUE,
-            "Cuda_Reallocate_System_Part2::d_bonds" );
+    sCudaFree( system->d_bonds, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &system->d_bonds,
+            sizeof(int) * system->total_cap, __FILE__, __LINE__ );
     sCudaMemcpyAsync( system->d_bonds, temp, sizeof(int) * total_cap_old,
             cudaMemcpyDeviceToDevice, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
@@ -130,10 +127,9 @@ static void Cuda_Reallocate_System_Part2( reax_system *system, control_params *c
     sCudaMemcpyAsync( temp, system->d_max_bonds, sizeof(int) * total_cap_old,
             cudaMemcpyDeviceToDevice, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
-    cuda_free( system->d_max_bonds, "Cuda_Reallocate_System_Part2::d_max_bonds" );
-    cuda_malloc( (void **) &system->d_max_bonds,
-            sizeof(int) * system->total_cap, TRUE,
-            "Cuda_Reallocate_System_Part2::d_max_bonds" );
+    sCudaFree( system->d_max_bonds, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &system->d_max_bonds,
+            sizeof(int) * system->total_cap, __FILE__, __LINE__ );
     sCudaMemcpyAsync( system->d_max_bonds, temp, sizeof(int) * total_cap_old,
             cudaMemcpyDeviceToDevice, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
@@ -141,10 +137,9 @@ static void Cuda_Reallocate_System_Part2( reax_system *system, control_params *c
     sCudaMemcpyAsync( temp, system->d_hbonds, sizeof(int) * total_cap_old,
             cudaMemcpyDeviceToDevice, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
-    cuda_free( system->d_hbonds, "system::d_hbonds" );
-    cuda_malloc( (void **) &system->d_hbonds,
-            sizeof(int) * system->total_cap, TRUE,
-            "Cuda_Reallocate_System_Part2::d_hbonds" );
+    sCudaFree( system->d_hbonds, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &system->d_hbonds,
+            sizeof(int) * system->total_cap, __FILE__, __LINE__ );
     sCudaMemcpyAsync( system->d_hbonds, temp, sizeof(int) * total_cap_old,
             cudaMemcpyDeviceToDevice, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
@@ -152,10 +147,9 @@ static void Cuda_Reallocate_System_Part2( reax_system *system, control_params *c
     sCudaMemcpyAsync( temp, system->d_max_hbonds, sizeof(int) * total_cap_old,
             cudaMemcpyDeviceToDevice, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
-    cuda_free( system->d_max_hbonds, "system::d_max_hbonds" );
-    cuda_malloc( (void **) &system->d_max_hbonds,
-            sizeof(int) * system->total_cap, TRUE,
-            "Cuda_Reallocate_System_Part2::d_max_hbonds" );
+    sCudaFree( system->d_max_hbonds, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &system->d_max_hbonds,
+            sizeof(int) * system->total_cap, __FILE__, __LINE__ );
     sCudaMemcpyAsync( system->d_max_hbonds, temp, sizeof(int) * total_cap_old,
             cudaMemcpyDeviceToDevice, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
@@ -164,8 +158,8 @@ static void Cuda_Reallocate_System_Part2( reax_system *system, control_params *c
 
 void Cuda_Allocate_Control( control_params *control )
 {
-    cuda_malloc( (void **)&control->d_control_params,
-            sizeof(control_params), TRUE, "control_params" );
+    sCudaMalloc( (void **)&control->d_control_params,
+            sizeof(control_params), __FILE__, __LINE__ );
     sCudaMemcpyAsync( control->d_control_params, control,
             sizeof(control_params), cudaMemcpyHostToDevice,
             control->streams[0], __FILE__, __LINE__ );
@@ -200,19 +194,19 @@ void Cuda_Allocate_Grid( reax_system *system, control_params *control )
     ivec_Copy( device->ghost_hbond_span, host->ghost_hbond_span );
     ivec_Copy( device->ghost_bond_span, host->ghost_bond_span );
 
-    cuda_malloc( (void **) &device->str, sizeof(int) * total, TRUE,
-            "Cuda_Allocate_Grid::grid->str" );
-    cuda_malloc( (void **) &device->end, sizeof(int) * total, TRUE,
-            "Cuda_Allocate_Grid::grid->end" );
-    cuda_malloc( (void **) &device->cutoff, sizeof(real) * total, TRUE,
-            "Cuda_Allocate_Grid::grid->cutoff" );
+    sCudaMalloc( (void **) &device->str, sizeof(int) * total,
+            __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &device->end, sizeof(int) * total,
+            __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &device->cutoff, sizeof(real) * total,
+            __FILE__, __LINE__ );
 
-    cuda_malloc( (void **) &device->nbrs_x, sizeof(ivec) * total * host->max_nbrs,
-            TRUE, "Cuda_Allocate_Grid::grid->nbrs_x" );
-    cuda_malloc( (void **) &device->nbrs_cp, sizeof(rvec) * total * host->max_nbrs,
-            TRUE, "Cuda_Allocate_Grid::grid->nbrs_cp" );
-    cuda_malloc( (void **) &device->rel_box, sizeof(ivec) * total,
-            TRUE, "Cuda_Allocate_Grid::grid->rel_box" );
+    sCudaMalloc( (void **) &device->nbrs_x, sizeof(ivec) * total * host->max_nbrs,
+            __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &device->nbrs_cp, sizeof(rvec) * total * host->max_nbrs,
+            __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &device->rel_box, sizeof(ivec) * total,
+            __FILE__, __LINE__ );
 
 //    int block_size = 512;
 //    int blocks = (host->max_nbrs) / block_size + ((host->max_nbrs) % block_size == 0 ? 0 : 1); 
@@ -221,11 +215,11 @@ void Cuda_Allocate_Grid( reax_system *system, control_params *control )
 //        ( nbrs_x, host->max_nbrs );
 //    cudaCheckError( );
 //
-//    cuda_malloc( (void **)& device->cells, sizeof(grid_cell) * total,
-//            TRUE, "grid:cells");
+//    sCudaMalloc( (void **)& device->cells, sizeof(grid_cell) * total,
+//            __FILE__, __LINE__ );
 //    fprintf( stderr, " Device cells address --> %ld \n", device->cells );
-//    cuda_malloc( (void **) &device->order,
-//            sizeof(ivec) * (host->total + 1), TRUE, "grid:order" );
+//    sCudaMalloc( (void **) &device->order,
+//            sizeof(ivec) * (host->total + 1), __FILE__, __LINE__ );
 //
 //    local_cell.top = local_cell.mark = local_cell.str = local_cell.end = 0;
 //    fprintf( stderr, "Total cells to be allocated -- > %d \n", total );
@@ -233,23 +227,23 @@ void Cuda_Allocate_Grid( reax_system *system, control_params *control )
 //    {
 //        //fprintf( stderr, "Address of the local atom -> %ld  \n", &local_cell );
 //
-//        cuda_malloc( (void **) &local_cell.atoms, sizeof(int) * host->max_atoms,
-//                TRUE, "alloc:grid:cells:atoms" );
+//        sCudaMalloc( (void **) &local_cell.atoms, sizeof(int) * host->max_atoms,
+//                __FILE__, __LINE__ );
 //        //fprintf( stderr, "Allocated address of the atoms --> %ld  (%d)\n", local_cell.atoms, host->max_atoms );
 //
-//        cuda_malloc( (void **) &local_cell.nbrs_x, sizeof(ivec) * host->max_nbrs,
-//                TRUE, "alloc:grid:cells:nbrs_x" );
+//        sCudaMalloc( (void **) &local_cell.nbrs_x, sizeof(ivec) * host->max_nbrs,
+//                __FILE__, __LINE__ );
 //        sCudaMemcpyAsync( local_cell.nbrs_x, nbrs_x, host->max_nbrs * sizeof(ivec),
 //                cudaMemcpyDeviceToDevice, control->streams[0], __FILE__, __LINE__ );
 //        cudaStreamSynchronize( control->streams[0] );
 //        //fprintf( stderr, "Allocated address of the nbrs_x--> %ld \n", local_cell.nbrs_x );
 //
-//        cuda_malloc( (void **) &local_cell.nbrs_cp, sizeof(rvec) * host->max_nbrs,
-//                TRUE, "alloc:grid:cells:nbrs_cp" );
+//        sCudaMalloc( (void **) &local_cell.nbrs_cp, sizeof(rvec) * host->max_nbrs,
+//                __FILE__, __LINE__ );
 //        //fprintf( stderr, "Allocated address of the nbrs_cp--> %ld \n", local_cell.nbrs_cp );
 //
-//        //cuda_malloc( (void **) &local_cell.nbrs, sizeof(grid_cell *) * host->max_nbrs,
-//        //                TRUE, "alloc:grid:cells:nbrs" );
+//        //sCudaMalloc( (void **) &local_cell.nbrs, sizeof(grid_cell *) * host->max_nbrs,
+//        //      __FILE__, __LINE__ );
 //        //fprintf( stderr, "Allocated address of the nbrs--> %ld \n", local_cell.nbrs );
 //
 //        sCudaMemcpyAsync( &device->cells[i], &local_cell, sizeof(grid_cell),
@@ -275,8 +269,7 @@ void Cuda_Deallocate_Grid_Cell_Atoms( reax_system *system, control_params *contr
                 cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
         cudaStreamSynchronize( control->streams[0] );
 
-        cuda_free( local_cell.atoms,
-                "Cuda_Deallocate_Grid_Cell_Atoms::grid_cell.atoms" );
+        sCudaFree( local_cell.atoms, __FILE__, __LINE__ );
     }
 }
 
@@ -297,8 +290,8 @@ void Cuda_Allocate_Grid_Cell_Atoms( reax_system *system, control_params *control
         sCudaMemcpyAsync( &local_cell, &device->cells[i], sizeof(grid_cell),
                 cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
         cudaStreamSynchronize( control->streams[0] );
-        cuda_malloc( (void **)&local_cell.atoms, sizeof(int) * cap, 
-                TRUE, "realloc:grid:cells:atoms" );
+        sCudaMalloc( (void **)&local_cell.atoms, sizeof(int) * cap, 
+                __FILE__, __LINE__ );
         sCudaMemcpyAsync( &local_cell, &device->cells[i], sizeof(grid_cell),
                 cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
         cudaStreamSynchronize( control->streams[0] );
@@ -309,82 +302,82 @@ void Cuda_Allocate_Grid_Cell_Atoms( reax_system *system, control_params *control
 void Cuda_Allocate_System( reax_system *system )
 {
     /* atoms */
-    cuda_malloc( (void **) &system->d_my_atoms,
-            system->total_cap * sizeof(reax_atom),
-            TRUE, "system:d_my_atoms" );
-    cuda_malloc( (void **) &system->d_numH, sizeof(int), TRUE, "system:d_numH" );
+    sCudaMalloc( (void **) &system->d_my_atoms,
+            system->total_cap * sizeof(reax_atom), __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &system->d_numH, sizeof(int), __FILE__, __LINE__ );
 
     /* list management */
-    cuda_malloc( (void **) &system->d_far_nbrs,
-            system->total_cap * sizeof(int), TRUE, "system:d_far_nbrs" );
-    cuda_malloc( (void **) &system->d_max_far_nbrs,
-            system->total_cap * sizeof(int), TRUE, "system:d_max_far_nbrs" );
-    cuda_malloc( (void **) &system->d_total_far_nbrs,
-            sizeof(int), TRUE, "system:d_total_far_nbrs" );
-    cuda_malloc( (void **) &system->d_realloc_far_nbrs,
-            sizeof(int), TRUE, "system:d_realloc_far_nbrs" );
+    sCudaMalloc( (void **) &system->d_far_nbrs,
+            system->total_cap * sizeof(int), __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &system->d_max_far_nbrs,
+            system->total_cap * sizeof(int), __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &system->d_total_far_nbrs,
+            sizeof(int), __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &system->d_realloc_far_nbrs,
+            sizeof(int), __FILE__, __LINE__ );
 
-    cuda_malloc( (void **) &system->d_bonds,
-            system->total_cap * sizeof(int), TRUE, "system:d_bonds" );
-    cuda_malloc( (void **) &system->d_max_bonds,
-            system->total_cap * sizeof(int), TRUE, "system:d_max_bonds" );
-    cuda_malloc( (void **) &system->d_total_bonds,
-            sizeof(int), TRUE, "system:d_total_bonds" );
-    cuda_malloc( (void **) &system->d_realloc_bonds,
-            sizeof(int), TRUE, "system:d_realloc_bonds" );
+    sCudaMalloc( (void **) &system->d_bonds,
+            system->total_cap * sizeof(int), __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &system->d_max_bonds,
+            system->total_cap * sizeof(int), __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &system->d_total_bonds,
+            sizeof(int), __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &system->d_realloc_bonds,
+            sizeof(int), __FILE__, __LINE__ );
 
-    cuda_malloc( (void **) &system->d_hbonds,
-            system->total_cap * sizeof(int), TRUE, "system:d_hbonds" );
-    cuda_malloc( (void **) &system->d_max_hbonds,
-            system->total_cap * sizeof(int), TRUE, "system:d_max_hbonds" );
-    cuda_malloc( (void **) &system->d_total_hbonds,
-            sizeof(int), TRUE, "system:d_total_hbonds" );
-    cuda_malloc( (void **) &system->d_realloc_hbonds,
-            sizeof(int), TRUE, "system:d_realloc_hbonds" );
+    sCudaMalloc( (void **) &system->d_hbonds,
+            system->total_cap * sizeof(int), __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &system->d_max_hbonds,
+            system->total_cap * sizeof(int), __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &system->d_total_hbonds,
+            sizeof(int), __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &system->d_realloc_hbonds,
+            sizeof(int), __FILE__, __LINE__ );
 
-    cuda_malloc( (void **) &system->d_cm_entries,
-            system->local_cap * sizeof(int), TRUE, "system:d_cm_entries" );
-    cuda_malloc( (void **) &system->d_max_cm_entries,
-            system->local_cap * sizeof(int), TRUE, "system:d_max_cm_entries" );
-    cuda_malloc( (void **) &system->d_total_cm_entries,
-            sizeof(int), TRUE, "system:d_total_cm_entries" );
-    cuda_malloc( (void **) &system->d_realloc_cm_entries,
-            sizeof(int), TRUE, "system:d_realloc_cm_entries" );
+    sCudaMalloc( (void **) &system->d_cm_entries,
+            system->local_cap * sizeof(int), __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &system->d_max_cm_entries,
+            system->local_cap * sizeof(int), __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &system->d_total_cm_entries,
+            sizeof(int), __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &system->d_realloc_cm_entries,
+            sizeof(int), __FILE__, __LINE__ );
 
-    cuda_malloc( (void **) &system->d_total_thbodies,
-            sizeof(int), TRUE, "system:d_total_thbodies" );
+    sCudaMalloc( (void **) &system->d_total_thbodies,
+            sizeof(int), __FILE__, __LINE__ );
 
     /* simulation boxes */
-    cuda_malloc( (void **) &system->d_big_box,
-            sizeof(simulation_box), TRUE, "system:d_big_box" );
-    cuda_malloc( (void **) &system->d_my_box,
-            sizeof(simulation_box), TRUE, "system:d_my_box" );
-    cuda_malloc( (void **) &system->d_my_ext_box,
-            sizeof(simulation_box), TRUE, "d_my_ext_box" );
+    sCudaMalloc( (void **) &system->d_big_box,
+            sizeof(simulation_box), __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &system->d_my_box,
+            sizeof(simulation_box), __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &system->d_my_ext_box,
+            sizeof(simulation_box), __FILE__, __LINE__ );
 
     /* interaction parameters */
-    cuda_malloc( (void **) &system->reax_param.d_sbp,
+    sCudaMalloc( (void **) &system->reax_param.d_sbp,
             system->reax_param.num_atom_types * sizeof(single_body_parameters),
-            TRUE, "system:d_sbp" );
+            __FILE__, __LINE__ );
 
-    cuda_malloc( (void **) &system->reax_param.d_tbp,
+    sCudaMalloc( (void **) &system->reax_param.d_tbp,
             POW( system->reax_param.num_atom_types, 2.0 ) * sizeof(two_body_parameters), 
-            TRUE, "system:d_tbp" );
+            __FILE__, __LINE__ );
 
-    cuda_malloc( (void **) &system->reax_param.d_thbp,
+    sCudaMalloc( (void **) &system->reax_param.d_thbp,
             POW( system->reax_param.num_atom_types, 3.0 ) * sizeof(three_body_header),
-            TRUE, "system:d_thbp" );
+            __FILE__, __LINE__ );
 
-    cuda_malloc( (void **) &system->reax_param.d_hbp,
+    sCudaMalloc( (void **) &system->reax_param.d_hbp,
             POW( system->reax_param.num_atom_types, 3.0 ) * sizeof(hbond_parameters),
-            TRUE, "system:d_hbp" );
+            __FILE__, __LINE__ );
 
-    cuda_malloc( (void **) &system->reax_param.d_fbp,
+    sCudaMalloc( (void **) &system->reax_param.d_fbp,
             POW( system->reax_param.num_atom_types, 4.0 ) * sizeof(four_body_header),
-            TRUE, "system:d_fbp" );
+            __FILE__, __LINE__ );
 
-    cuda_malloc( (void **) &system->reax_param.d_gp.l,
-            system->reax_param.gp.n_global * sizeof(real), TRUE, "system:d_gp.l" );
+    sCudaMalloc( (void **) &system->reax_param.d_gp.l,
+            system->reax_param.gp.n_global * sizeof(real),
+            __FILE__, __LINE__ );
 
     system->reax_param.d_gp.n_global = 0;
     system->reax_param.d_gp.vdw_type = 0;
@@ -393,8 +386,8 @@ void Cuda_Allocate_System( reax_system *system )
 
 void Cuda_Allocate_Simulation_Data( simulation_data *data )
 {
-    cuda_malloc( (void **) &data->d_simulation_data,
-            sizeof(simulation_data), TRUE, "simulation_data" );
+    sCudaMalloc( (void **) &data->d_simulation_data,
+            sizeof(simulation_data), __FILE__, __LINE__ );
 }
 
 
@@ -408,14 +401,17 @@ void Cuda_Allocate_Workspace_Part1( reax_system *system, control_params *control
     /* integrator storage */
     if ( control->ensemble == nhNVT )
     {
-        cuda_malloc( (void **) &workspace->v_const, local_rvec, TRUE, "v_const" );
+        sCudaMalloc( (void **) &workspace->v_const, local_rvec,
+                __FILE__, __LINE__ );
     }
 
     /* storage for analysis */
     if ( control->molecular_analysis || control->diffusion_coef )
     {
-        cuda_malloc( (void **) &workspace->mark, local_cap * sizeof(int), TRUE, "mark" );
-        cuda_malloc( (void **) &workspace->old_mark, local_cap * sizeof(int), TRUE, "old_mark" );
+        sCudaMalloc( (void **) &workspace->mark, local_cap * sizeof(int),
+                __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->old_mark, local_cap * sizeof(int),
+                __FILE__, __LINE__ );
     }
     else
     {
@@ -425,7 +421,8 @@ void Cuda_Allocate_Workspace_Part1( reax_system *system, control_params *control
 
     if ( control->diffusion_coef )
     {
-        cuda_malloc( (void **) &workspace->x_old, local_cap * sizeof(rvec), TRUE, "x_old" );
+        sCudaMalloc( (void **) &workspace->x_old, local_cap * sizeof(rvec),
+                __FILE__, __LINE__ );
     }
     else
     {
@@ -449,160 +446,162 @@ void Cuda_Allocate_Workspace_Part2( reax_system *system, control_params *control
 #endif
 
     /* bond order related storage  */
-    cuda_malloc( (void **) &workspace->total_bond_order, total_real, TRUE, "total_bo" );
-    cuda_malloc( (void **) &workspace->Deltap, total_real, TRUE, "Deltap" );
-    cuda_malloc( (void **) &workspace->Deltap_boc, total_real, TRUE, "Deltap_boc" );
-    cuda_malloc( (void **) &workspace->dDeltap_self, total_rvec, TRUE, "dDeltap_self" );
-    cuda_malloc( (void **) &workspace->Delta, total_real, TRUE, "Delta" );
-    cuda_malloc( (void **) &workspace->Delta_lp, total_real, TRUE, "Delta_lp" );
-    cuda_malloc( (void **) &workspace->Delta_lp_temp, total_real, TRUE, "Delta_lp_temp" );
-    cuda_malloc( (void **) &workspace->dDelta_lp, total_real, TRUE, "Delta_lp_temp" );
-    cuda_malloc( (void **) &workspace->dDelta_lp_temp, total_real, TRUE, "dDelta_lp_temp" );
-    cuda_malloc( (void **) &workspace->Delta_e, total_real, TRUE, "Delta_e" );
-    cuda_malloc( (void **) &workspace->Delta_boc, total_real, TRUE, "Delta_boc" );
-    cuda_malloc( (void **) &workspace->nlp, total_real, TRUE, "nlp" );
-    cuda_malloc( (void **) &workspace->nlp_temp, total_real, TRUE, "nlp_temp" );
-    cuda_malloc( (void **) &workspace->Clp, total_real, TRUE, "Clp" );
-    cuda_malloc( (void **) &workspace->vlpex, total_real, TRUE, "vlpex" );
-    cuda_malloc( (void **) &workspace->bond_mark, total_real, TRUE, "bond_mark" );
+    sCudaMalloc( (void **) &workspace->total_bond_order, total_real, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &workspace->Deltap, total_real, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &workspace->Deltap_boc, total_real, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &workspace->dDeltap_self, total_rvec, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &workspace->Delta, total_real, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &workspace->Delta_lp, total_real, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &workspace->Delta_lp_temp, total_real, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &workspace->dDelta_lp, total_real, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &workspace->dDelta_lp_temp, total_real, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &workspace->Delta_e, total_real, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &workspace->Delta_boc, total_real, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &workspace->nlp, total_real, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &workspace->nlp_temp, total_real, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &workspace->Clp, total_real, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &workspace->vlpex, total_real, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &workspace->bond_mark, total_real, __FILE__, __LINE__ );
 
     /* charge matrix storage */
     if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
-        cuda_malloc( (void **) &workspace->Hdia_inv, total_real, TRUE, "Hdia_inv" );
+        sCudaMalloc( (void **) &workspace->Hdia_inv, total_real,
+                __FILE__, __LINE__ );
     }
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
             || control->cm_solver_pre_comp_type == ILUTP_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
-        cuda_malloc( (void **) &workspace->droptol, total_real, TRUE, "droptol" );
+        sCudaMalloc( (void **) &workspace->droptol, total_real,
+                __FILE__, __LINE__ );
     }
-    cuda_malloc( (void **) &workspace->b_s, total_real, TRUE, "b_s" );
-    cuda_malloc( (void **) &workspace->b_t, total_real, TRUE, "b_t" );
-    cuda_malloc( (void **) &workspace->s, total_real, TRUE, "s" );
-    cuda_malloc( (void **) &workspace->t, total_real, TRUE, "t" );
+    sCudaMalloc( (void **) &workspace->b_s, total_real, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &workspace->b_t, total_real, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &workspace->s, total_real, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &workspace->t, total_real, __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
-    cuda_malloc( (void **) &workspace->b, total_rvec2, TRUE, "b" );
-    cuda_malloc( (void **) &workspace->x, total_rvec2, TRUE, "x" );
+    sCudaMalloc( (void **) &workspace->b, total_rvec2, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &workspace->x, total_rvec2, __FILE__, __LINE__ );
 #endif
 
     switch ( control->cm_solver_type )
     {
     case GMRES_S:
     case GMRES_H_S:
-        cuda_malloc( (void **) &workspace->b_prc,
-                total_real, TRUE, "b_prc" );
-        cuda_malloc( (void **) &workspace->b_prm,
-                total_real, TRUE, "b_prm" );
-        cuda_malloc( (void **) &workspace->y,
-                (control->cm_solver_restart + 1) * sizeof(real), TRUE, "y" );
-        cuda_malloc( (void **) &workspace->z,
-                (control->cm_solver_restart + 1) * sizeof(real), TRUE, "z" );
-        cuda_malloc( (void **) &workspace->g,
-                (control->cm_solver_restart + 1) * sizeof(real), TRUE, "g" );
-        cuda_malloc( (void **) &workspace->h,
-                SQR(control->cm_solver_restart + 1) * sizeof(real), TRUE, "h" );
-        cuda_malloc( (void **) &workspace->hs,
-                (control->cm_solver_restart + 1) * sizeof(real), TRUE, "hs" );
-        cuda_malloc( (void **) &workspace->hc,
-                (control->cm_solver_restart + 1) * sizeof(real), TRUE, "hc" );
-        cuda_malloc( (void **) &workspace->v,
-                SQR(control->cm_solver_restart + 1) * sizeof(real), TRUE, "v" );
+        sCudaMalloc( (void **) &workspace->b_prc,
+                total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->b_prm,
+                total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->y,
+                (control->cm_solver_restart + 1) * sizeof(real), __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->z,
+                (control->cm_solver_restart + 1) * sizeof(real), __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->g,
+                (control->cm_solver_restart + 1) * sizeof(real), __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->h,
+                SQR(control->cm_solver_restart + 1) * sizeof(real), __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->hs,
+                (control->cm_solver_restart + 1) * sizeof(real), __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->hc,
+                (control->cm_solver_restart + 1) * sizeof(real), __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->v,
+                SQR(control->cm_solver_restart + 1) * sizeof(real), __FILE__, __LINE__ );
         break;
 
     case SDM_S:
-        cuda_malloc( (void **) &workspace->r, total_real, TRUE, "r" );
-        cuda_malloc( (void **) &workspace->d, total_real, TRUE, "d" );
-        cuda_malloc( (void **) &workspace->q, total_real, TRUE, "q" );
-        cuda_malloc( (void **) &workspace->p, total_real, TRUE, "p" );
+        sCudaMalloc( (void **) &workspace->r, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->d, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->q, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->p, total_real, __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
-        cuda_malloc( (void **) &workspace->r2, total_rvec2, TRUE, "r2" );
-        cuda_malloc( (void **) &workspace->d2, total_rvec2, TRUE, "d2" );
-        cuda_malloc( (void **) &workspace->q2, total_rvec2, TRUE, "q2" );
-        cuda_malloc( (void **) &workspace->p2, total_rvec2, TRUE, "p2" );
+        sCudaMalloc( (void **) &workspace->r2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->d2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->q2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->p2, total_rvec2, __FILE__, __LINE__ );
 #endif
         break;
 
     case CG_S:
-        cuda_malloc( (void **) &workspace->r, total_real, TRUE, "r" );
-        cuda_malloc( (void **) &workspace->d, total_real, TRUE, "d" );
-        cuda_malloc( (void **) &workspace->q, total_real, TRUE, "q" );
-        cuda_malloc( (void **) &workspace->p, total_real, TRUE, "p" );
+        sCudaMalloc( (void **) &workspace->r, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->d, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->q, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->p, total_real, __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
-        cuda_malloc( (void **) &workspace->r2, total_rvec2, TRUE, "r2" );
-        cuda_malloc( (void **) &workspace->d2, total_rvec2, TRUE, "d2" );
-        cuda_malloc( (void **) &workspace->q2, total_rvec2, TRUE, "q2" );
-        cuda_malloc( (void **) &workspace->p2, total_rvec2, TRUE, "p2" );
+        sCudaMalloc( (void **) &workspace->r2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->d2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->q2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->p2, total_rvec2, __FILE__, __LINE__ );
 #endif
         break;
 
     case BiCGStab_S:
-        cuda_malloc( (void **) &workspace->y, total_real, TRUE, "y" );
-        cuda_malloc( (void **) &workspace->g, total_real, TRUE, "g" );
-        cuda_malloc( (void **) &workspace->z, total_real, TRUE, "z" );
-        cuda_malloc( (void **) &workspace->r, total_real, TRUE, "r" );
-        cuda_malloc( (void **) &workspace->d, total_real, TRUE, "d" );
-        cuda_malloc( (void **) &workspace->q, total_real, TRUE, "q" );
-        cuda_malloc( (void **) &workspace->p, total_real, TRUE, "p" );
-        cuda_malloc( (void **) &workspace->r_hat, total_real, TRUE, "r_hat" );
-        cuda_malloc( (void **) &workspace->q_hat, total_real, TRUE, "q_hat" );
+        sCudaMalloc( (void **) &workspace->y, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->g, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->z, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->r, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->d, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->q, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->p, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->r_hat, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->q_hat, total_real, __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
-        cuda_malloc( (void **) &workspace->y2, total_rvec2, TRUE, "y" );
-        cuda_malloc( (void **) &workspace->g2, total_rvec2, TRUE, "g" );
-        cuda_malloc( (void **) &workspace->z2, total_rvec2, TRUE, "z" );
-        cuda_malloc( (void **) &workspace->r2, total_rvec2, TRUE, "r" );
-        cuda_malloc( (void **) &workspace->d2, total_rvec2, TRUE, "d" );
-        cuda_malloc( (void **) &workspace->q2, total_rvec2, TRUE, "q" );
-        cuda_malloc( (void **) &workspace->p2, total_rvec2, TRUE, "p" );
-        cuda_malloc( (void **) &workspace->r_hat2, total_rvec2, TRUE, "r_hat" );
-        cuda_malloc( (void **) &workspace->q_hat2, total_rvec2, TRUE, "q_hat" );
+        sCudaMalloc( (void **) &workspace->y2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->g2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->z2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->r2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->d2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->q2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->p2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->r_hat2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->q_hat2, total_rvec2, __FILE__, __LINE__ );
 #endif
         break;
 
     case PIPECG_S:
-        cuda_malloc( (void **) &workspace->z, total_real, TRUE, "z" );
-        cuda_malloc( (void **) &workspace->r, total_real, TRUE, "r" );
-        cuda_malloc( (void **) &workspace->d, total_real, TRUE, "d" );
-        cuda_malloc( (void **) &workspace->q, total_real, TRUE, "q" );
-        cuda_malloc( (void **) &workspace->p, total_real, TRUE, "p" );
-        cuda_malloc( (void **) &workspace->m, total_real, TRUE, "m" );
-        cuda_malloc( (void **) &workspace->n, total_real, TRUE, "n" );
-        cuda_malloc( (void **) &workspace->u, total_real, TRUE, "u" );
-        cuda_malloc( (void **) &workspace->w, total_real, TRUE, "w" );
+        sCudaMalloc( (void **) &workspace->z, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->r, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->d, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->q, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->p, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->m, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->n, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->u, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->w, total_real, __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
-        cuda_malloc( (void **) &workspace->z2, total_rvec2, TRUE, "z2" );
-        cuda_malloc( (void **) &workspace->r2, total_rvec2, TRUE, "r2" );
-        cuda_malloc( (void **) &workspace->d2, total_rvec2, TRUE, "d2" );
-        cuda_malloc( (void **) &workspace->q2, total_rvec2, TRUE, "q2" );
-        cuda_malloc( (void **) &workspace->p2, total_rvec2, TRUE, "p2" );
-        cuda_malloc( (void **) &workspace->m2, total_rvec2, TRUE, "m2" );
-        cuda_malloc( (void **) &workspace->n2, total_rvec2, TRUE, "n2" );
-        cuda_malloc( (void **) &workspace->u2, total_rvec2, TRUE, "u2" );
-        cuda_malloc( (void **) &workspace->w2, total_rvec2, TRUE, "w2" );
+        sCudaMalloc( (void **) &workspace->z2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->r2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->d2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->q2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->p2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->m2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->n2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->u2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->w2, total_rvec2, __FILE__, __LINE__ );
 #endif
         break;
 
     case PIPECR_S:
-        cuda_malloc( (void **) &workspace->z, total_real, TRUE, "z" );
-        cuda_malloc( (void **) &workspace->r, total_real, TRUE, "r" );
-        cuda_malloc( (void **) &workspace->d, total_real, TRUE, "d" );
-        cuda_malloc( (void **) &workspace->q, total_real, TRUE, "q" );
-        cuda_malloc( (void **) &workspace->p, total_real, TRUE, "p" );
-        cuda_malloc( (void **) &workspace->m, total_real, TRUE, "m" );
-        cuda_malloc( (void **) &workspace->n, total_real, TRUE, "n" );
-        cuda_malloc( (void **) &workspace->u, total_real, TRUE, "u" );
-        cuda_malloc( (void **) &workspace->w, total_real, TRUE, "w" );
+        sCudaMalloc( (void **) &workspace->z, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->r, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->d, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->q, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->p, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->m, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->n, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->u, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->w, total_real, __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
-        cuda_malloc( (void **) &workspace->z2, total_rvec2, TRUE, "z2" );
-        cuda_malloc( (void **) &workspace->r2, total_rvec2, TRUE, "r2" );
-        cuda_malloc( (void **) &workspace->d2, total_rvec2, TRUE, "d2" );
-        cuda_malloc( (void **) &workspace->q2, total_rvec2, TRUE, "q2" );
-        cuda_malloc( (void **) &workspace->p2, total_rvec2, TRUE, "p2" );
-        cuda_malloc( (void **) &workspace->m2, total_rvec2, TRUE, "m2" );
-        cuda_malloc( (void **) &workspace->n2, total_rvec2, TRUE, "n2" );
-        cuda_malloc( (void **) &workspace->u2, total_rvec2, TRUE, "u2" );
-        cuda_malloc( (void **) &workspace->w2, total_rvec2, TRUE, "w2" );
+        sCudaMalloc( (void **) &workspace->z2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->r2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->d2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->q2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->p2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->m2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->n2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->u2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->w2, total_rvec2, __FILE__, __LINE__ );
 #endif
         break;
 
@@ -613,8 +612,10 @@ void Cuda_Allocate_Workspace_Part2( reax_system *system, control_params *control
     }
 
     /* force related storage */
-    cuda_malloc( (void **) &workspace->f, sizeof(rvec) * total_cap, TRUE, "f" );
-    cuda_malloc( (void **) &workspace->CdDelta, sizeof(rvec) * total_cap, TRUE, "CdDelta" );
+    sCudaMalloc( (void **) &workspace->f, sizeof(rvec) * total_cap,
+            __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &workspace->CdDelta, sizeof(rvec) * total_cap,
+            __FILE__, __LINE__ );
 }
 
 
@@ -623,14 +624,14 @@ void Cuda_Deallocate_Workspace_Part1( control_params *control, storage *workspac
     /* Nose-Hoover integrator */
     if ( control->ensemble == nhNVT )
     {
-        cuda_free( workspace->v_const, "v_const" );
+        sCudaFree( workspace->v_const, __FILE__, __LINE__ );
     }
 
     /* storage for analysis */
     if ( control->molecular_analysis || control->diffusion_coef )
     {
-        cuda_free( workspace->mark, "mark" );
-        cuda_free( workspace->old_mark, "old_mark" );
+        sCudaFree( workspace->mark, __FILE__, __LINE__ );
+        sCudaFree( workspace->old_mark, __FILE__, __LINE__ );
     }
     else
     {
@@ -640,7 +641,7 @@ void Cuda_Deallocate_Workspace_Part1( control_params *control, storage *workspac
 
     if ( control->diffusion_coef )
     {
-        cuda_free( workspace->x_old, "x_old" );
+        sCudaFree( workspace->x_old, __FILE__, __LINE__ );
     }
     else
     {
@@ -652,151 +653,151 @@ void Cuda_Deallocate_Workspace_Part1( control_params *control, storage *workspac
 void Cuda_Deallocate_Workspace_Part2( control_params *control, storage *workspace )
 {
     /* bond order related storage  */
-    cuda_free( workspace->total_bond_order, "total_bo" );
-    cuda_free( workspace->Deltap, "Deltap" );
-    cuda_free( workspace->Deltap_boc, "Deltap_boc" );
-    cuda_free( workspace->dDeltap_self, "dDeltap_self" );
-    cuda_free( workspace->Delta, "Delta" );
-    cuda_free( workspace->Delta_lp, "Delta_lp" );
-    cuda_free( workspace->Delta_lp_temp, "Delta_lp_temp" );
-    cuda_free( workspace->dDelta_lp, "Delta_lp_temp" );
-    cuda_free( workspace->dDelta_lp_temp, "dDelta_lp_temp" );
-    cuda_free( workspace->Delta_e, "Delta_e" );
-    cuda_free( workspace->Delta_boc, "Delta_boc" );
-    cuda_free( workspace->nlp, "nlp" );
-    cuda_free( workspace->nlp_temp, "nlp_temp" );
-    cuda_free( workspace->Clp, "Clp" );
-    cuda_free( workspace->vlpex, "vlpex" );
-    cuda_free( workspace->bond_mark, "bond_mark" );
+    sCudaFree( workspace->total_bond_order, __FILE__, __LINE__ );
+    sCudaFree( workspace->Deltap, __FILE__, __LINE__ );
+    sCudaFree( workspace->Deltap_boc, __FILE__, __LINE__ );
+    sCudaFree( workspace->dDeltap_self, __FILE__, __LINE__ );
+    sCudaFree( workspace->Delta, __FILE__, __LINE__ );
+    sCudaFree( workspace->Delta_lp, __FILE__, __LINE__ );
+    sCudaFree( workspace->Delta_lp_temp, __FILE__, __LINE__ );
+    sCudaFree( workspace->dDelta_lp, __FILE__, __LINE__ );
+    sCudaFree( workspace->dDelta_lp_temp, __FILE__, __LINE__ );
+    sCudaFree( workspace->Delta_e, __FILE__, __LINE__ );
+    sCudaFree( workspace->Delta_boc, __FILE__, __LINE__ );
+    sCudaFree( workspace->nlp, __FILE__, __LINE__ );
+    sCudaFree( workspace->nlp_temp, __FILE__, __LINE__ );
+    sCudaFree( workspace->Clp, __FILE__, __LINE__ );
+    sCudaFree( workspace->vlpex, __FILE__, __LINE__ );
+    sCudaFree( workspace->bond_mark, __FILE__, __LINE__ );
 
     /* charge matrix storage */
     if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
-        cuda_free( workspace->Hdia_inv, "Hdia_inv" );
+        sCudaFree( workspace->Hdia_inv, __FILE__, __LINE__ );
     }
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
             || control->cm_solver_pre_comp_type == ILUTP_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
-        cuda_free( workspace->droptol, "droptol" );
+        sCudaFree( workspace->droptol, __FILE__, __LINE__ );
     }
-    cuda_free( workspace->b_s, "b_s" );
-    cuda_free( workspace->b_t, "b_t" );
-    cuda_free( workspace->s, "s" );
-    cuda_free( workspace->t, "t" );
+    sCudaFree( workspace->b_s, __FILE__, __LINE__ );
+    sCudaFree( workspace->b_t, __FILE__, __LINE__ );
+    sCudaFree( workspace->s, __FILE__, __LINE__ );
+    sCudaFree( workspace->t, __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
-    cuda_free( workspace->b, "b" );
-    cuda_free( workspace->x, "x" );
+    sCudaFree( workspace->b, __FILE__, __LINE__ );
+    sCudaFree( workspace->x, __FILE__, __LINE__ );
 #endif
 
     switch ( control->cm_solver_type )
     {
         case GMRES_S:
         case GMRES_H_S:
-            cuda_free( workspace->b_prc, "b_prc" );
-            cuda_free( workspace->b_prm, "b_prm" );
-            cuda_free( workspace->y, "y" );
-            cuda_free( workspace->z, "z" );
-            cuda_free( workspace->g, "g" );
-            cuda_free( workspace->h, "h" );
-            cuda_free( workspace->hs, "hs" );
-            cuda_free( workspace->hc, "hc" );
-            cuda_free( workspace->v, "v" );
+            sCudaFree( workspace->b_prc, __FILE__, __LINE__ );
+            sCudaFree( workspace->b_prm, __FILE__, __LINE__ );
+            sCudaFree( workspace->y, __FILE__, __LINE__ );
+            sCudaFree( workspace->z, __FILE__, __LINE__ );
+            sCudaFree( workspace->g, __FILE__, __LINE__ );
+            sCudaFree( workspace->h, __FILE__, __LINE__ );
+            sCudaFree( workspace->hs, __FILE__, __LINE__ );
+            sCudaFree( workspace->hc, __FILE__, __LINE__ );
+            sCudaFree( workspace->v, __FILE__, __LINE__ );
             break;
 
         case CG_S:
-            cuda_free( workspace->r, "r" );
-            cuda_free( workspace->d, "d" );
-            cuda_free( workspace->q, "q" );
-            cuda_free( workspace->p, "p" );
+            sCudaFree( workspace->r, __FILE__, __LINE__ );
+            sCudaFree( workspace->d, __FILE__, __LINE__ );
+            sCudaFree( workspace->q, __FILE__, __LINE__ );
+            sCudaFree( workspace->p, __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
-            cuda_free( workspace->r2, "r2" );
-            cuda_free( workspace->d2, "d2" );
-            cuda_free( workspace->q2, "q2" );
-            cuda_free( workspace->p2, "p2" );
+            sCudaFree( workspace->r2, __FILE__, __LINE__ );
+            sCudaFree( workspace->d2, __FILE__, __LINE__ );
+            sCudaFree( workspace->q2, __FILE__, __LINE__ );
+            sCudaFree( workspace->p2, __FILE__, __LINE__ );
 #endif
             break;
 
         case SDM_S:
-            cuda_free( workspace->r, "r" );
-            cuda_free( workspace->d, "d" );
-            cuda_free( workspace->q, "q" );
-            cuda_free( workspace->p, "p" );
+            sCudaFree( workspace->r, __FILE__, __LINE__ );
+            sCudaFree( workspace->d, __FILE__, __LINE__ );
+            sCudaFree( workspace->q, __FILE__, __LINE__ );
+            sCudaFree( workspace->p, __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
-            cuda_free( workspace->r2, "r2" );
-            cuda_free( workspace->d2, "d2" );
-            cuda_free( workspace->q2, "q2" );
-            cuda_free( workspace->p2, "p2" );
+            sCudaFree( workspace->r2, __FILE__, __LINE__ );
+            sCudaFree( workspace->d2, __FILE__, __LINE__ );
+            sCudaFree( workspace->q2, __FILE__, __LINE__ );
+            sCudaFree( workspace->p2, __FILE__, __LINE__ );
 #endif
             break;
 
         case BiCGStab_S:
-            cuda_free( workspace->y, "y" );
-            cuda_free( workspace->g, "g" );
-            cuda_free( workspace->z, "z" );
-            cuda_free( workspace->r, "r" );
-            cuda_free( workspace->d, "d" );
-            cuda_free( workspace->q, "q" );
-            cuda_free( workspace->p, "p" );
-            cuda_free( workspace->r_hat, "r_hat" );
-            cuda_free( workspace->q_hat, "q_hat" );
+            sCudaFree( workspace->y, __FILE__, __LINE__ );
+            sCudaFree( workspace->g, __FILE__, __LINE__ );
+            sCudaFree( workspace->z, __FILE__, __LINE__ );
+            sCudaFree( workspace->r, __FILE__, __LINE__ );
+            sCudaFree( workspace->d, __FILE__, __LINE__ );
+            sCudaFree( workspace->q, __FILE__, __LINE__ );
+            sCudaFree( workspace->p, __FILE__, __LINE__ );
+            sCudaFree( workspace->r_hat, __FILE__, __LINE__ );
+            sCudaFree( workspace->q_hat, __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
-            cuda_free( workspace->y2, "y2" );
-            cuda_free( workspace->g2, "g2" );
-            cuda_free( workspace->z2, "z2" );
-            cuda_free( workspace->r2, "r2" );
-            cuda_free( workspace->d2, "d2" );
-            cuda_free( workspace->q2, "q2" );
-            cuda_free( workspace->p2, "p2" );
-            cuda_free( workspace->r_hat2, "r_hat2" );
-            cuda_free( workspace->q_hat2, "q_hat2" );
+            sCudaFree( workspace->y2, __FILE__, __LINE__ );
+            sCudaFree( workspace->g2, __FILE__, __LINE__ );
+            sCudaFree( workspace->z2, __FILE__, __LINE__ );
+            sCudaFree( workspace->r2, __FILE__, __LINE__ );
+            sCudaFree( workspace->d2, __FILE__, __LINE__ );
+            sCudaFree( workspace->q2, __FILE__, __LINE__ );
+            sCudaFree( workspace->p2, __FILE__, __LINE__ );
+            sCudaFree( workspace->r_hat2, __FILE__, __LINE__ );
+            sCudaFree( workspace->q_hat2, __FILE__, __LINE__ );
 #endif
             break;
 
         case PIPECG_S:
-            cuda_free( workspace->z, "z" );
-            cuda_free( workspace->r, "r" );
-            cuda_free( workspace->d, "d" );
-            cuda_free( workspace->q, "q" );
-            cuda_free( workspace->p, "p" );
-            cuda_free( workspace->m, "m" );
-            cuda_free( workspace->n, "n" );
-            cuda_free( workspace->u, "u" );
-            cuda_free( workspace->w, "w" );
+            sCudaFree( workspace->z, __FILE__, __LINE__ );
+            sCudaFree( workspace->r, __FILE__, __LINE__ );
+            sCudaFree( workspace->d, __FILE__, __LINE__ );
+            sCudaFree( workspace->q, __FILE__, __LINE__ );
+            sCudaFree( workspace->p, __FILE__, __LINE__ );
+            sCudaFree( workspace->m, __FILE__, __LINE__ );
+            sCudaFree( workspace->n, __FILE__, __LINE__ );
+            sCudaFree( workspace->u, __FILE__, __LINE__ );
+            sCudaFree( workspace->w, __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
-            cuda_free( workspace->z2, "z2" );
-            cuda_free( workspace->r2, "r2" );
-            cuda_free( workspace->d2, "d2" );
-            cuda_free( workspace->q2, "q2" );
-            cuda_free( workspace->p2, "p2" );
-            cuda_free( workspace->m2, "m2" );
-            cuda_free( workspace->n2, "n2" );
-            cuda_free( workspace->u2, "u2" );
-            cuda_free( workspace->w2, "w2" );
+            sCudaFree( workspace->z2, __FILE__, __LINE__ );
+            sCudaFree( workspace->r2, __FILE__, __LINE__ );
+            sCudaFree( workspace->d2, __FILE__, __LINE__ );
+            sCudaFree( workspace->q2, __FILE__, __LINE__ );
+            sCudaFree( workspace->p2, __FILE__, __LINE__ );
+            sCudaFree( workspace->m2, __FILE__, __LINE__ );
+            sCudaFree( workspace->n2, __FILE__, __LINE__ );
+            sCudaFree( workspace->u2, __FILE__, __LINE__ );
+            sCudaFree( workspace->w2, __FILE__, __LINE__ );
 #endif
             break;
 
         case PIPECR_S:
-            cuda_free( workspace->z, "z" );
-            cuda_free( workspace->r, "r" );
-            cuda_free( workspace->d, "d" );
-            cuda_free( workspace->q, "q" );
-            cuda_free( workspace->p, "p" );
-            cuda_free( workspace->m, "m" );
-            cuda_free( workspace->n, "n" );
-            cuda_free( workspace->u, "u" );
-            cuda_free( workspace->w, "w" );
+            sCudaFree( workspace->z, __FILE__, __LINE__ );
+            sCudaFree( workspace->r, __FILE__, __LINE__ );
+            sCudaFree( workspace->d, __FILE__, __LINE__ );
+            sCudaFree( workspace->q, __FILE__, __LINE__ );
+            sCudaFree( workspace->p, __FILE__, __LINE__ );
+            sCudaFree( workspace->m, __FILE__, __LINE__ );
+            sCudaFree( workspace->n, __FILE__, __LINE__ );
+            sCudaFree( workspace->u, __FILE__, __LINE__ );
+            sCudaFree( workspace->w, __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
-            cuda_free( workspace->z2, "z2" );
-            cuda_free( workspace->r2, "r2" );
-            cuda_free( workspace->d2, "d2" );
-            cuda_free( workspace->q2, "q2" );
-            cuda_free( workspace->p2, "p2" );
-            cuda_free( workspace->m2, "m2" );
-            cuda_free( workspace->n2, "n2" );
-            cuda_free( workspace->u2, "u2" );
-            cuda_free( workspace->w2, "w2" );
+            sCudaFree( workspace->z2, __FILE__, __LINE__ );
+            sCudaFree( workspace->r2, __FILE__, __LINE__ );
+            sCudaFree( workspace->d2, __FILE__, __LINE__ );
+            sCudaFree( workspace->q2, __FILE__, __LINE__ );
+            sCudaFree( workspace->p2, __FILE__, __LINE__ );
+            sCudaFree( workspace->m2, __FILE__, __LINE__ );
+            sCudaFree( workspace->n2, __FILE__, __LINE__ );
+            sCudaFree( workspace->u2, __FILE__, __LINE__ );
+            sCudaFree( workspace->w2, __FILE__, __LINE__ );
 #endif
             break;
 
@@ -807,8 +808,8 @@ void Cuda_Deallocate_Workspace_Part2( control_params *control, storage *workspac
     }
 
     /* force related storage */
-    cuda_free( workspace->f, "f" );
-    cuda_free( workspace->CdDelta, "CdDelta" );
+    sCudaFree( workspace->f, __FILE__, __LINE__ );
+    sCudaFree( workspace->CdDelta, __FILE__, __LINE__ );
 }
 
 
@@ -829,14 +830,10 @@ void Cuda_Allocate_Matrix( sparse_matrix * const H, int n, int n_max, int m,
     H->m = m;
     H->format = format;
 
-    cuda_malloc( (void **) &H->start, sizeof(int) * n_max, TRUE,
-            "Cuda_Allocate_Matrix::H->start" );
-    cuda_malloc( (void **) &H->end, sizeof(int) * n_max, TRUE,
-            "Cuda_Allocate_Matrix::H->end" );
-    cuda_malloc( (void **) &H->j, sizeof(int) * m, TRUE,
-            "Cuda_Allocate_Matrix::H->j" );
-    cuda_malloc( (void **) &H->val, sizeof(real) * m, TRUE,
-            "Cuda_Allocate_Matrix::H->val" );
+    sCudaMalloc( (void **) &H->start, sizeof(int) * n_max, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &H->end, sizeof(int) * n_max, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &H->j, sizeof(int) * m, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &H->val, sizeof(real) * m, __FILE__, __LINE__ );
 }
 
 
@@ -847,10 +844,10 @@ void Cuda_Deallocate_Matrix( sparse_matrix *H )
     H->n_max = 0;
     H->m = 0;
 
-    cuda_free( H->start, "Cuda_Deallocate_Matrix::start" );
-    cuda_free( H->end, "Cuda_Deallocate_Matrix::end" );
-    cuda_free( H->j, "Cuda_Deallocate_Matrix::j" );
-    cuda_free( H->val, "Cuda_Deallocate_Matrix::val" );
+    sCudaFree( H->start, __FILE__, __LINE__ );
+    sCudaFree( H->end, __FILE__, __LINE__ );
+    sCudaFree( H->j, __FILE__, __LINE__ );
+    sCudaFree( H->val, __FILE__, __LINE__ );
 }
 
 

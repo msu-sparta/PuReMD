@@ -75,9 +75,8 @@ void Cuda_Reset_Atoms_HBond_Indices( reax_system* system, control_params *contro
 #if !defined(CUDA_ACCUM_ATOMIC)
     int *hindex;
 
-    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-            sizeof(int) * system->total_cap,
-            "Cuda_Reset_Atoms_HBond_Indices::workspace->scratch" );
+    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+            sizeof(int) * system->total_cap, __FILE__, __LINE__ );
     hindex = (int *) workspace->scratch;
 #endif
 

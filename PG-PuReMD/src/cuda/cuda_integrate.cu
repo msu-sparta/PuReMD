@@ -472,10 +472,10 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
         my_ekin = G_xi_new = v_xi_old = 0;
         itr = 0;
 
-        cuda_malloc( (void **) &d_my_ekin, sizeof(real) * system->n, FALSE,
-                "Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein::d_my_ekin" );
-        cuda_malloc( (void **) &d_total_my_ekin, sizeof(real), FALSE,
-                "Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein::d_total_my_ekin" );
+        sCudaMalloc( (void **) &d_my_ekin, sizeof(real) * system->n,
+                __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &d_total_my_ekin, sizeof(real),
+                __FILE__, __LINE__ );
 
         do
         {
@@ -500,10 +500,8 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
         therm->v_xi = v_xi_new;
         therm->G_xi = G_xi_new;
 
-        cuda_free( d_total_my_ekin,
-                "Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein::d_total_my_ekin" );
-        cuda_free( d_my_ekin,
-                "Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein::d_my_ekin" );
+        sCudaFree( d_total_my_ekin, __FILE__, __LINE__ );
+        sCudaFree( d_my_ekin, __FILE__, __LINE__ );
 
         verlet_part1_done = FALSE;
         cuda_copy = FALSE;

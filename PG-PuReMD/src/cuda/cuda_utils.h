@@ -4,13 +4,15 @@
 #include "../reax_types.h"
 
 
-void cuda_malloc( void **, size_t, int, const char * );
+void sCudaMalloc( void **, size_t, const char * const, int );
 
-void cuda_free( void *, const char * );
+void sCudaFree( void *, const char * const, int );
 
-void cuda_memset( void *, int , size_t , const char * );
+void sCudaMemset( void *, int, size_t, const char * const, int );
 
-void cuda_check_malloc( void **, size_t *, size_t, const char * );
+void sCudaMemsetAsync( void *, int, size_t, cudaStream_t, const char * const, int );
+
+void sCudaCheckMalloc( void **, size_t *, size_t, const char * const, int );
 
 void sCudaMemcpy( void * const, void const * const, size_t,
         enum cudaMemcpyKind, const char * const, int );

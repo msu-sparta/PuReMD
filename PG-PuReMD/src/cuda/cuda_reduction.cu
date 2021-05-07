@@ -41,8 +41,7 @@ void Cuda_Reduction_Sum( int *d_array, int *d_dest, size_t n, cudaStream_t s )
     cudaCheckError( );
 
     /* allocate temporary storage */
-    cuda_malloc( &d_temp_storage, temp_storage_bytes, FALSE,
-            "Cuda_Reduction_Sum::d_temp_storage" );
+    sCudaMalloc( &d_temp_storage, temp_storage_bytes, __FILE__, __LINE__ );
 
     /* run sum-reduction */
     cub::DeviceReduce::Sum( d_temp_storage, temp_storage_bytes,
@@ -50,7 +49,7 @@ void Cuda_Reduction_Sum( int *d_array, int *d_dest, size_t n, cudaStream_t s )
     cudaCheckError( );
 
     /* deallocate temporary storage */
-    cuda_free( d_temp_storage, "Cuda_Reduction_Sum::d_temp_storage" );
+    sCudaFree( d_temp_storage, __FILE__, __LINE__ );
 }
 
 
@@ -69,8 +68,7 @@ void Cuda_Reduction_Sum( real *d_array, real *d_dest, size_t n, cudaStream_t s )
     cudaCheckError( );
 
     /* allocate temporary storage */
-    cuda_malloc( &d_temp_storage, temp_storage_bytes, FALSE,
-            "Cuda_Reduction_Sum::d_temp_storage" );
+    sCudaMalloc( &d_temp_storage, temp_storage_bytes, __FILE__, __LINE__ );
 
     /* run sum-reduction */
     cub::DeviceReduce::Sum( d_temp_storage, temp_storage_bytes,
@@ -78,7 +76,7 @@ void Cuda_Reduction_Sum( real *d_array, real *d_dest, size_t n, cudaStream_t s )
     cudaCheckError( );
 
     /* deallocate temporary storage */
-    cuda_free( d_temp_storage, "Cuda_Reduction_Sum::d_temp_storage" );
+    sCudaFree( d_temp_storage, __FILE__, __LINE__ );
 }
 
 
@@ -99,8 +97,7 @@ void Cuda_Reduction_Sum( real *d_array, real *d_dest, size_t n, cudaStream_t s )
 //    cudaCheckError( );
 //
 //    /* allocate temporary storage */
-//    cuda_malloc( &d_temp_storage, temp_storage_bytes, FALSE,
-//            "cub::reduce::temp_storage" );
+//    sCudaMalloc( &d_temp_storage, temp_storage_bytes, __FILE__, __LINE__ );
 //
 //    /* run sum-reduction */
 //    cub::DeviceReduce::Reduce( d_temp_storage, temp_storage_bytes,
@@ -108,7 +105,7 @@ void Cuda_Reduction_Sum( real *d_array, real *d_dest, size_t n, cudaStream_t s )
 //    cudaCheckError( );
 //
 //    /* deallocate temporary storage */
-//    cuda_free( d_temp_storage, "cub::reduce::temp_storage" );
+//    sCudaFree( d_temp_storage, __FILE__, __LINE__ );
 //}
 
 
@@ -127,8 +124,7 @@ void Cuda_Reduction_Max( int *d_array, int *d_dest, size_t n, cudaStream_t s )
     cudaCheckError( );
 
     /* allocate temporary storage */
-    cuda_malloc( &d_temp_storage, temp_storage_bytes, FALSE,
-            "Cuda_Reduction_Max::temp_storage" );
+    sCudaMalloc( &d_temp_storage, temp_storage_bytes, __FILE__, __LINE__ );
 
     /* run exclusive prefix sum */
     cub::DeviceReduce::Max( d_temp_storage, temp_storage_bytes,
@@ -136,7 +132,7 @@ void Cuda_Reduction_Max( int *d_array, int *d_dest, size_t n, cudaStream_t s )
     cudaCheckError( );
 
     /* deallocate temporary storage */
-    cuda_free( d_temp_storage, "Cuda_Reduction_Max::temp_storage" );
+    sCudaFree( d_temp_storage, __FILE__, __LINE__ );
 }
 
 
@@ -155,8 +151,7 @@ void Cuda_Scan_Excl_Sum( int *d_src, int *d_dest, size_t n, cudaStream_t s )
     cudaCheckError( );
 
     /* allocate temporary storage */
-    cuda_malloc( &d_temp_storage, temp_storage_bytes, FALSE,
-            "Cuda_Scan_Excl_Sum::temp_storage" );
+    sCudaMalloc( &d_temp_storage, temp_storage_bytes, __FILE__, __LINE__ );
 
     /* run exclusive prefix sum */
     cub::DeviceScan::ExclusiveSum( d_temp_storage, temp_storage_bytes,
@@ -164,7 +159,7 @@ void Cuda_Scan_Excl_Sum( int *d_src, int *d_dest, size_t n, cudaStream_t s )
     cudaCheckError( );
 
     /* deallocate temporary storage */
-    cuda_free( d_temp_storage, "Cuda_Scan_Excl_Sum::temp_storage" );
+    sCudaFree( d_temp_storage, __FILE__, __LINE__ );
 }
 
 

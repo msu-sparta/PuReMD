@@ -632,7 +632,8 @@ static void Dual_Sparse_MatVec_local( control_params const * const control,
     if ( A->format == SYM_HALF_MATRIX )
     {
         /* half-format requires entries of b be initialized to zero */
-        cuda_memset( b, 0, sizeof(rvec2) * n, "Dual_Sparse_MatVec_local::b" );
+        sCudaMemsetAsync( b, 0, sizeof(rvec2) * n, s, __FILE__, __LINE__ );
+        cudaStreamSynchronize( s );
 
         /* 1 thread per row implementation */
 //        k_dual_sparse_matvec_half_csr <<< control->blocks, control->block_size, 0, s >>>
@@ -813,7 +814,8 @@ static void Sparse_MatVec_local( control_params const * const control,
     if ( A->format == SYM_HALF_MATRIX )
     {
         /* half-format requires entries of b be initialized to zero */
-        cuda_memset( b, 0, sizeof(real) * n, "Sparse_MatVec_local::b" );
+        sCudaMemsetAsync( b, 0, sizeof(real) * n, s, __FILE__, __LINE__ );
+        cudaStreamSynchronize( s );
 
         /* 1 thread per row implementation */
 //        k_sparse_matvec_half_csr <<< control->blocks, control->block_size, 0, s >>>

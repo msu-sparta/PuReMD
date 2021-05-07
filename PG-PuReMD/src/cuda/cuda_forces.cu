@@ -1679,9 +1679,8 @@ void Cuda_Init_HBond_Indices( reax_system *system, control_params *control,
     blocks = system->total_cap / DEF_BLOCK_SIZE
         + (system->total_cap % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
-    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-            sizeof(int) * system->total_cap,
-            "Cuda_Init_HBond_Indices::workspace->scratch" );
+    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+            sizeof(int) * system->total_cap, __FILE__, __LINE__ );
     temp = (int *) workspace->scratch;
 
     /* init indices and end_indices */
@@ -1860,15 +1859,16 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
     renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
 
     /* reset reallocation flags on device */
-    cuda_memset( system->d_realloc_cm_entries, FALSE, sizeof(int), 
-            "Cuda_Init_Forces::d_realloc_cm_entries" );
-    cuda_memset( system->d_realloc_bonds, FALSE, sizeof(int), 
-            "Cuda_Init_Forces::d_realloc_bonds" );
-    cuda_memset( system->d_realloc_hbonds, FALSE, sizeof(int), 
-            "Cuda_Init_Forces::d_realloc_hbonds" );
+    sCudaMemsetAsync( system->d_realloc_cm_entries, FALSE, sizeof(int), 
+            control->streams[0], __FILE__, __LINE__ );
+    sCudaMemsetAsync( system->d_realloc_bonds, FALSE, sizeof(int), 
+            control->streams[0], __FILE__, __LINE__ );
+    sCudaMemsetAsync( system->d_realloc_hbonds, FALSE, sizeof(int), 
+            control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
-    cudaEventRecord( time_event[0] );
+    cudaEventRecord( time_event[0], control->streams[0] );
 #endif
 
     if ( renbr == FALSE && dist_done == FALSE )
@@ -1887,7 +1887,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
     }
 
 #if defined(LOG_PERFORMANCE)
-    cudaEventRecord( time_event[1] );
+    cudaEventRecord( time_event[1], control->streams[0] );
 #endif
 
     if ( cm_done == FALSE )
@@ -1954,7 +1954,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
     }
 
 #if defined(LOG_PERFORMANCE)
-    cudaEventRecord( time_event[2] );
+    cudaEventRecord( time_event[2], control->streams[0] );
 #endif
 
     if ( bonds_done == FALSE )
@@ -2019,16 +2019,37 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
     }
 
 #if defined(LOG_PERFORMANCE)
-    cudaEventRecord( time_event[3] );
+    cudaEventRecord( time_event[3], control->streams[0] );
 #endif
 
     /* check reallocation flags on device */
-    sCudaMemcpyAsync( &realloc_cm, system->d_realloc_cm_entries, sizeof(int), 
-            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
-    sCudaMemcpyAsync( &realloc_bonds, system->d_realloc_bonds, sizeof(int), 
-            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
-    sCudaMemcpyAsync( &realloc_hbonds, system->d_realloc_hbonds, sizeof(int), 
-            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    if ( cm_done == FALSE )
+    {
+        sCudaMemcpyAsync( &realloc_cm, system->d_realloc_cm_entries, sizeof(int), 
+                cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    }
+    else
+    {
+        realloc_cm = FALSE;
+    }
+    if ( bonds_done == FALSE )
+    {
+        sCudaMemcpyAsync( &realloc_bonds, system->d_realloc_bonds, sizeof(int), 
+                cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    }
+    else
+    {
+        realloc_bonds = FALSE;
+    }
+    if ( hbonds_done == FALSE )
+    {
+        sCudaMemcpyAsync( &realloc_hbonds, system->d_realloc_hbonds, sizeof(int), 
+                cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    }
+    else
+    {
+        realloc_hbonds = FALSE;
+    }
 
     cudaStreamSynchronize( control->streams[0] );
 
@@ -2145,13 +2166,14 @@ int Cuda_Init_Forces_No_Charges( reax_system *system, control_params *control,
     renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
 
     /* reset reallocation flags on device */
-    cuda_memset( system->d_realloc_bonds, FALSE, sizeof(int), 
-            "Cuda_Init_Forces::d_realloc_bonds" );
-    cuda_memset( system->d_realloc_hbonds, FALSE, sizeof(int), 
-            "Cuda_Init_Forces::d_realloc_hbonds" );
+    sCudaMemsetAsync( system->d_realloc_bonds, FALSE, sizeof(int), 
+            control->streams[0], __FILE__, __LINE__ );
+    sCudaMemsetAsync( system->d_realloc_hbonds, FALSE, sizeof(int), 
+            control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 
 #if defined(LOG_PERFORMANCE)
-    cudaEventRecord( time_event[0] );
+    cudaEventRecord( time_event[0], control->streams[0] );
 #endif
 
     if ( renbr == FALSE && dist_done == FALSE )
@@ -2170,7 +2192,7 @@ int Cuda_Init_Forces_No_Charges( reax_system *system, control_params *control,
     }
 
 #if defined(LOG_PERFORMANCE)
-    cudaEventRecord( time_event[1] );
+    cudaEventRecord( time_event[1], control->streams[0] );
 #endif
 
     if ( bonds_done == FALSE )
@@ -2234,14 +2256,28 @@ int Cuda_Init_Forces_No_Charges( reax_system *system, control_params *control,
     }
 
 #if defined(LOG_PERFORMANCE)
-    cudaEventRecord( time_event[2] );
+    cudaEventRecord( time_event[2], control->streams[0] );
 #endif
 
     /* check reallocation flags on device */
-    sCudaMemcpyAsync( &realloc_bonds, system->d_realloc_bonds, sizeof(int), 
-            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
-    sCudaMemcpyAsync( &realloc_hbonds, system->d_realloc_hbonds, sizeof(int), 
-            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    if ( bonds_done == FALSE )
+    {
+        sCudaMemcpyAsync( &realloc_bonds, system->d_realloc_bonds, sizeof(int), 
+                cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    }
+    else
+    {
+        realloc_bonds = FALSE;
+    }
+    if ( hbonds_done == FALSE )
+    {
+        sCudaMemcpyAsync( &realloc_hbonds, system->d_realloc_hbonds, sizeof(int), 
+                cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    }
+    else
+    {
+        realloc_hbonds = FALSE;
+    }
 
     cudaStreamSynchronize( control->streams[0] );
 
@@ -2430,7 +2466,7 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
     }
 
 #if defined(LOG_PERFORMANCE)
-    cudaEventRecord( time_event[0] );
+    cudaEventRecord( time_event[0], control->streams[0] );
 #endif
 
     if ( init_forces_done == FALSE )
@@ -2453,7 +2489,7 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
     }
 
 #if defined(LOG_PERFORMANCE)
-    cudaEventRecord( time_event[1] );
+    cudaEventRecord( time_event[1], control->streams[0] );
 #endif
 
     if ( ret == SUCCESS )
@@ -2463,7 +2499,7 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
     }
 
 #if defined(LOG_PERFORMANCE)
-    cudaEventRecord( time_event[2] );
+    cudaEventRecord( time_event[2], control->streams[0] );
 #endif
 
     if ( ret == SUCCESS )
@@ -2475,20 +2511,20 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
         }
 
 #if defined(LOG_PERFORMANCE)
-        cudaEventRecord( time_event[3] );
+        cudaEventRecord( time_event[3], control->streams[0] );
 #endif
 
         Cuda_Compute_NonBonded_Forces( system, control, data, workspace,
                 lists, out_control );
 
 #if defined(LOG_PERFORMANCE)
-        cudaEventRecord( time_event[4] );
+        cudaEventRecord( time_event[4], control->streams[0] );
 #endif
 
         Cuda_Compute_Total_Force( system, control, data, workspace, lists, mpi_data );
 
 #if defined(LOG_PERFORMANCE)
-        cudaEventRecord( time_event[5] );
+        cudaEventRecord( time_event[5], control->streams[0] );
 #endif
 
         init_forces_done = FALSE;

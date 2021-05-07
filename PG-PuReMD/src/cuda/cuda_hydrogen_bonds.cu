@@ -749,20 +749,21 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system *system, control_params *control,
     real *spad;
     rvec *rvec_spad;
 
-    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-                (sizeof(real) * 3 + sizeof(rvec)) * system->N + sizeof(rvec) * control->blocks_n,
-            "Cuda_Compute_Hydrogen_Bonds::workspace->scratch" );
+    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+            (sizeof(real) * 3 + sizeof(rvec)) * system->N + sizeof(rvec) * control->blocks_n,
+            __FILE__, __LINE__ );
     spad = (real *) workspace->scratch;
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
 #else
-    cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_hb,
-            0, sizeof(real), "Cuda_Compute_Hydrogen_Bonds::e_hb" );
+    sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_hb,
+            0, sizeof(real), control->streams[0], __FILE__, __LINE__ );
     if ( control->virial == 1 )
     {
-        cuda_memset( &((simulation_data *)data->d_simulation_data)->my_ext_press,
-                0, sizeof(rvec), "Cuda_Compute_Hydrogen_Bonds::my_ext_press" );
+        sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_ext_press,
+                0, sizeof(rvec), control->streams[0], __FILE__, __LINE__ );
     }
+    cudaStreamSynchronize( control->streams[0] );
 #endif
 
     if ( control->virial == 1 )

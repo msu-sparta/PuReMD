@@ -211,19 +211,21 @@ extern "C" void Cuda_Copy_List_Device_to_Host( control_params *control,
 extern "C" void Cuda_Copy_MPI_Data_Host_to_Device( control_params *control,
         mpi_datatypes *mpi_data )
 {
-    cuda_check_malloc( &mpi_data->d_in1_buffer, &mpi_data->d_in1_buffer_size,
-            mpi_data->in1_buffer_size, "Cuda_Copy_MPI_Data_Host_to_Device::mpi_data->d_in1_buffer" );
+    sCudaCheckMalloc( &mpi_data->d_in1_buffer, &mpi_data->d_in1_buffer_size,
+            mpi_data->in1_buffer_size, __FILE__, __LINE__ );
 
-    cuda_check_malloc( &mpi_data->d_in2_buffer, &mpi_data->d_in2_buffer_size,
-            mpi_data->in2_buffer_size, "Cuda_Copy_MPI_Data_Host_to_Device::mpi_data->d_in2_buffer" );
+    sCudaCheckMalloc( &mpi_data->d_in2_buffer, &mpi_data->d_in2_buffer_size,
+            mpi_data->in2_buffer_size, __FILE__, __LINE__ );
 
     for ( int i = 0; i < MAX_NBRS; ++i )
     {
         mpi_data->d_out_buffers[i].cnt = mpi_data->out_buffers[i].cnt;
-        cuda_check_malloc( (void **) &mpi_data->d_out_buffers[i].index, &mpi_data->d_out_buffers[i].index_size,
-                mpi_data->out_buffers[i].index_size, "Cuda_Copy_MPI_Data_Host_to_Device::mpi_data->d_out_buffers[i].index" );
-        cuda_check_malloc( &mpi_data->d_out_buffers[i].out_atoms, &mpi_data->d_out_buffers[i].out_atoms_size,
-                mpi_data->out_buffers[i].out_atoms_size, "Cuda_Copy_MPI_Data_Host_to_Device::mpi_data->d_out_buffers[i].out_atoms" );
+        sCudaCheckMalloc( (void **) &mpi_data->d_out_buffers[i].index,
+                &mpi_data->d_out_buffers[i].index_size,
+                mpi_data->out_buffers[i].index_size, __FILE__, __LINE__ );
+        sCudaCheckMalloc( &mpi_data->d_out_buffers[i].out_atoms,
+                &mpi_data->d_out_buffers[i].out_atoms_size,
+                mpi_data->out_buffers[i].out_atoms_size, __FILE__, __LINE__ );
     }
 
     for ( int i = 0; i < MAX_NBRS; ++i )

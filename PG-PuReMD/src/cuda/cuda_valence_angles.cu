@@ -1346,8 +1346,9 @@ static int Cuda_Estimate_Storage_Three_Body( reax_system *system, control_params
 
     ret = SUCCESS;
 
-    cuda_memset( thbody, 0, system->total_bonds * sizeof(int),
-            "Cuda_Estimate_Storage_Three_Body::thbody" );
+    sCudaMemsetAsync( thbody, 0, system->total_bonds * sizeof(int),
+            control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 
 //    k_estimate_valence_angles <<< control->blocks_n, control->block_size_n, 0, control->streams[0] >>>
 //        ( system->d_my_atoms, (control_params *)control->d_control_params, 
@@ -1436,8 +1437,8 @@ int Cuda_Compute_Valence_Angles( reax_system *system, control_params *control,
     s = sizeof(int) * system->total_bonds;
 #endif
 
-    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-            s, "Cuda_Compute_Valence_Angles::workspace->scratch" );
+    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+            s, __FILE__, __LINE__ );
 
     thbody = (int *) workspace->scratch;
 #if !defined(CUDA_ACCUM_ATOMIC)
@@ -1454,14 +1455,15 @@ int Cuda_Compute_Valence_Angles( reax_system *system, control_params *control,
         Cuda_Init_Three_Body_Indices( control, thbody, system->total_thbodies_indices, lists );
 
 #if defined(CUDA_ACCUM_ATOMIC)
-        cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_ang,
-                0, sizeof(real), "Cuda_Compute_Valence_Angles::e_ang" );
-        cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_pen,
-                0, sizeof(real), "Cuda_Compute_Valence_Angles::e_pen" );
-        cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_coa,
-                0, sizeof(real), "Cuda_Compute_Valence_Angles::e_coa" );
-        cuda_memset( &((simulation_data *)data->d_simulation_data)->my_ext_press,
-                0, sizeof(rvec), "Cuda_Compute_Valence_Angles::my_ext_press" );
+        sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_ang,
+                0, sizeof(real), control->streams[0], __FILE__, __LINE__ );
+        sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_pen,
+                0, sizeof(real), control->streams[0], __FILE__, __LINE__ );
+        sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_coa,
+                0, sizeof(real), control->streams[0], __FILE__, __LINE__ );
+        sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_ext_press,
+                0, sizeof(rvec), control->streams[0], __FILE__, __LINE__ );
+        cudaStreamSynchronize( control->streams[0] );
 #endif
 
         if ( control->virial == 1 )

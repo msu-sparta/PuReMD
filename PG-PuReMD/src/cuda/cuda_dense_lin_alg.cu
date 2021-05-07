@@ -562,8 +562,8 @@ real Dot( storage * const workspace,
     real temp;
 //#endif
 
-    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-            sizeof(real) * (k + 1), "Dot::workspace->scratch" );
+    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+            sizeof(real) * (k + 1), __FILE__, __LINE__ );
     spad = (real *) workspace->scratch;
 
     Vector_Mult( spad, v1, v2, k );
@@ -603,8 +603,8 @@ real Dot_local( storage * const workspace,
 {
     real sum, *spad;
 
-    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-            sizeof(real) * (k + 1), "Dot_local::workspace->scratch" );
+    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+            sizeof(real) * (k + 1), __FILE__, __LINE__ );
     spad = (real *) workspace->scratch;
 
     Vector_Mult( spad, v1, v2, k );
@@ -640,8 +640,8 @@ void Dot_local_rvec2( storage * const workspace,
     blocks = (k / DEF_BLOCK_SIZE)
         + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-            sizeof(rvec2) * (k + blocks + 1), "Dot_local_rvec2::workspace->scratch" );
+    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+            sizeof(rvec2) * (k + blocks + 1), __FILE__, __LINE__ );
     spad = (rvec2 *) workspace->scratch;
 
     Vector_Mult_rvec2( spad, v1, v2, k );

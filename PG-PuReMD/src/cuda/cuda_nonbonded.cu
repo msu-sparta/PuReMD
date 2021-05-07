@@ -835,13 +835,13 @@ static void Cuda_Compute_Polarization_Energy( reax_system *system,
 #if !defined(CUDA_ACCUM_ATOMIC)
     real *spad;
 
-    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-            sizeof(real) * system->n,
-            "Cuda_Compute_Polarization_Energy::workspace->scratch" );
+    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+            sizeof(real) * system->n, __FILE__, __LINE__ );
     spad = (real *) workspace->scratch;
 #else
-    cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_pol,
-            0, sizeof(real), "Cuda_Compute_Bonded_Forces::e_pol" );
+    sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_pol,
+            0, sizeof(real), control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 #endif
 
     blocks = system->n / DEF_BLOCK_SIZE
@@ -883,24 +883,29 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
 
 #if !defined(CUDA_ACCUM_ATOMIC)
     if ( control->virial == 1 )
+    {
         s = (sizeof(real) * 2 + sizeof(rvec)) * system->n + sizeof(rvec) * control->blocks;
+    }
     else
+    {
         s = sizeof(real) * 2 * system->n;
-    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-            s, "Cuda_Compute_NonBonded_Forces::workspace->scratch" );
+    }
+    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+            s, __FILE__, __LINE__ );
     spad = (real *) workspace->scratch;
 #endif
 
 #if defined(CUDA_ACCUM_ATOMIC)
-        cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_vdW,
-                0, sizeof(real), "Cuda_Compute_Bonded_Forces::e_vdW" );
-        cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_ele,
-                0, sizeof(real), "Cuda_Compute_Bonded_Forces::e_ele" );
+        sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_vdW,
+                0, sizeof(real), control->streams[0], __FILE__, __LINE__ );
+        sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_ele,
+                0, sizeof(real), control->streams[0], __FILE__, __LINE__ );
         if ( control->virial == 1 )
         {
-            cuda_memset( &((simulation_data *)data->d_simulation_data)->my_ext_press,
-                    0, sizeof(rvec), "Cuda_Compute_Bonded_Forces::my_ext_press" );
+            sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_ext_press,
+                    0, sizeof(rvec), control->streams[0], __FILE__, __LINE__ );
         }
+        cudaStreamSynchronize( control->streams[0] );
 #endif
 
     blocks = system->n * 32 / DEF_BLOCK_SIZE

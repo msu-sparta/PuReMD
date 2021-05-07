@@ -279,16 +279,16 @@ void Cuda_Compute_Bonds( reax_system *system, control_params *control,
     int update_energy;
     real *spad;
 
-    cuda_check_malloc( &workspace->scratch, &workspace->scratch_size,
-            sizeof(real) * system->n,
-            "Cuda_Compute_Bonds::workspace->scratch" );
+    sCudaCheckMalloc( &workspace->scratch, &workspace->scratch_size,
+            sizeof(real) * system->n, __FILE__, __LINE__ );
 
     spad = (real *) workspace->scratch;
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
 #else
-    cuda_memset( &((simulation_data *)data->d_simulation_data)->my_en.e_bond,
-            0, sizeof(real), "Cuda_Compute_Bonds::e_bond" );
+    sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_bond,
+            0, sizeof(real), control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
 #endif
 
 //    k_bonds <<< control->blocks, control->block_size, 0, control->streams[0] >>>

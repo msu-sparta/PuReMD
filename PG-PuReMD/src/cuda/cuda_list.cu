@@ -44,44 +44,36 @@ extern "C" void Cuda_Make_List( int n, int max_intrs, int type, reax_list * cons
     l->type = type;
 //    l->format = format;
 
-    cuda_malloc( (void **) &l->index, sizeof(int) * n,
-            TRUE, "Cuda_Make_List::index" );
-    cuda_malloc( (void **) &l->end_index, sizeof(int) * n,
-            TRUE, "Cuda_Make_List::end_index" );
+    sCudaMalloc( (void **) &l->index, sizeof(int) * n, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &l->end_index, sizeof(int) * n, __FILE__, __LINE__ );
 
     switch ( l->type )
     {
         case TYP_FAR_NEIGHBOR:
-            cuda_malloc( (void **) &l->far_nbr_list.nbr, 
-                    sizeof(int) * l->max_intrs, TRUE,
-                    "Cuda_Make_List::far_nbr_list.nbr" );
-            cuda_malloc( (void **) &l->far_nbr_list.rel_box, 
-                    sizeof(ivec) * l->max_intrs, TRUE,
-                    "Cuda_Make_List::far_nbr_list.rel_box" );
-            cuda_malloc( (void **) &l->far_nbr_list.d, 
-                    sizeof(real) * l->max_intrs, TRUE,
-                    "Cuda_Make_List::far_nbr_list.d" );
-            cuda_malloc( (void **) &l->far_nbr_list.dvec, 
-                    sizeof(rvec) * l->max_intrs, TRUE,
-                    "Cuda_Make_List::far_nbr_list.dvec" );
+            sCudaMalloc( (void **) &l->far_nbr_list.nbr, 
+                    sizeof(int) * l->max_intrs, __FILE__, __LINE__ );
+            sCudaMalloc( (void **) &l->far_nbr_list.rel_box, 
+                    sizeof(ivec) * l->max_intrs, __FILE__, __LINE__ );
+            sCudaMalloc( (void **) &l->far_nbr_list.d, 
+                    sizeof(real) * l->max_intrs, __FILE__, __LINE__ );
+            sCudaMalloc( (void **) &l->far_nbr_list.dvec, 
+                    sizeof(rvec) * l->max_intrs, __FILE__, __LINE__ );
             break;
 
         case TYP_BOND:
-            cuda_malloc( (void **) &l->bond_list,
-                    sizeof(bond_data) * l->max_intrs, TRUE,
-                    "Cuda_Make_List::bonds" );
+            sCudaMalloc( (void **) &l->bond_list,
+                    sizeof(bond_data) * l->max_intrs, __FILE__, __LINE__ );
             break;
 
         case TYP_HBOND:
-            cuda_malloc( (void **) &l->hbond_list, 
-                    sizeof(hbond_data) * l->max_intrs, TRUE,
-                    "Cuda_Make_List::hbonds" );
+            sCudaMalloc( (void **) &l->hbond_list, 
+                    sizeof(hbond_data) * l->max_intrs, __FILE__, __LINE__ );
             break;            
 
         case TYP_THREE_BODY:
-            cuda_malloc( (void **) &l->three_body_list,
-                    sizeof(three_body_interaction_data) * l->max_intrs, TRUE,
-                    "Cuda_Make_List::three_bodies" );
+            sCudaMalloc( (void **) &l->three_body_list,
+                    sizeof(three_body_interaction_data) * l->max_intrs,
+                    __FILE__, __LINE__ );
             break;
 
         default:
@@ -105,28 +97,28 @@ extern "C" void Cuda_Delete_List( reax_list *l )
     l->n = 0;
     l->max_intrs = 0;
 
-    cuda_free( l->index, "Cuda_Delete_List::index" );
-    cuda_free( l->end_index, "Cuda_Delete_List::end_index" );
+    sCudaFree( l->index, __FILE__, __LINE__ );
+    sCudaFree( l->end_index, __FILE__, __LINE__ );
 
     switch ( l->type )
     {
         case TYP_FAR_NEIGHBOR:
-            cuda_free( l->far_nbr_list.nbr, "Cuda_Delete_List::far_nbr_list.nbr" );
-            cuda_free( l->far_nbr_list.rel_box, "Cuda_Delete_List::far_nbr_list.rel_box" );
-            cuda_free( l->far_nbr_list.d, "Cuda_Delete_List::far_nbr_list.d" );
-            cuda_free( l->far_nbr_list.dvec, "Cuda_Delete_List::far_nbr_list.dvec" );
+            sCudaFree( l->far_nbr_list.nbr, __FILE__, __LINE__ );
+            sCudaFree( l->far_nbr_list.rel_box, __FILE__, __LINE__ );
+            sCudaFree( l->far_nbr_list.d, __FILE__, __LINE__ );
+            sCudaFree( l->far_nbr_list.dvec, __FILE__, __LINE__ );
             break;
 
         case TYP_BOND:
-            cuda_free( l->bond_list, "Cuda_Delete_List::bonds" );
+            sCudaFree( l->bond_list, __FILE__, __LINE__ );
             break;
 
         case TYP_HBOND:
-            cuda_free( l->hbond_list, "Cuda_Delete_List::hbonds" );
+            sCudaFree( l->hbond_list, __FILE__, __LINE__ );
             break;
 
         case TYP_THREE_BODY:
-            cuda_free( l->three_body_list, "Cuda_Delete_List::three_bodies" );
+            sCudaFree( l->three_body_list, __FILE__, __LINE__ );
             break;
 
         default:
