@@ -50,7 +50,7 @@ static void Cuda_Init_System( reax_system *system, control_params *control,
 
     Cuda_Init_Block_Sizes( system, control );
 
-    Cuda_Allocate_System( system );
+    Cuda_Allocate_System( system, control );
     Cuda_Copy_System_Host_to_Device( system, control );
 
     Cuda_Reset_Atoms_HBond_Indices( system, control, workspace );

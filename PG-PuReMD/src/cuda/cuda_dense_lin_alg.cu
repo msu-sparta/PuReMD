@@ -5,6 +5,9 @@
 
 #include "../comm_tools.h"
 
+#include "../cub/cub/block/block_reduce.cuh"
+//#include <cub/block/block_reduce.cuh>
+
 
 /* sets all entries of a dense vector to zero
  *
@@ -566,7 +569,7 @@ real Dot( storage * const workspace,
             sizeof(real) * (k + 1), __FILE__, __LINE__ );
     spad = (real *) workspace->scratch[4];
 
-    Vector_Mult( spad, v1, v2, k );
+    Vector_Mult( spad, v1, v2, k, s );
 
     /* local reduction (sum) on device */
     Cuda_Reduction_Sum( spad, &spad[k], k, s );
@@ -608,7 +611,7 @@ real Dot_local( storage * const workspace,
             sizeof(real) * (k + 1), __FILE__, __LINE__ );
     spad = (real *) workspace->scratch[4];
 
-    Vector_Mult( spad, v1, v2, k );
+    Vector_Mult( spad, v1, v2, k, s );
 
     /* local reduction (sum) on device */
     Cuda_Reduction_Sum( spad, &spad[k], k, s );
@@ -637,33 +640,53 @@ void Dot_local_rvec2( storage * const workspace,
         unsigned int k, real * sum1, real * sum2, cudaStream_t s )
 {
     int blocks;
+    size_t sz;
     rvec2 sum, *spad;
 
     blocks = (k / DEF_BLOCK_SIZE)
         + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
+#if !defined(CUDA_ACCUM_ATOMIC)
+    sz = sizeof(rvec2) * (k + blocks + 1);
+#else
+    sz = sizeof(rvec2) * (k + 1);
+#endif
+
     sCudaCheckMalloc( &workspace->scratch[4], &workspace->scratch_size[4],
-            sizeof(rvec2) * (k + blocks + 1), __FILE__, __LINE__ );
+            sz, __FILE__, __LINE__ );
     spad = (rvec2 *) workspace->scratch[4];
 
-    Vector_Mult_rvec2( spad, v1, v2, k );
+    Vector_Mult_rvec2( spad, v1, v2, k, s );
 
     /* local reduction (sum) on device */
 //    Cuda_Reduction_Sum( spad, &spad[k], k, s );
 
+#if defined(CUDA_ACCUM_ATOMIC)
+    sCudaMemsetAsync( &spad[k], 0, sizeof(rvec2), s, __FILE__, __LINE__ );
+#endif
+
     k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE,
-                      sizeof(rvec2) * (DEF_BLOCK_SIZE / 32), s >>>
+                      sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage),
+                      s >>>
         ( spad, &spad[k], k );
     cudaCheckError( );
 
+#if !defined(CUDA_ACCUM_ATOMIC)
     k_reduction_rvec2 <<< 1, ((blocks + 31) / 32) * 32,
-                      sizeof(rvec2) * ((blocks + 31) / 32), s >>>
+                      sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage),
+                      s >>>
         ( &spad[k], &spad[k + blocks], blocks );
     cudaCheckError( );
+#endif
 
     //TODO: keep result of reduction on devie and pass directly to CUDA-aware MPI
-    sCudaMemcpyAsync( &sum, &spad[k + blocks], sizeof(rvec2),
-            cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( &sum,
+#if !defined(CUDA_ACCUM_ATOMIC)
+            &spad[k + blocks],
+#else
+            &spad[k],
+#endif
+            sizeof(rvec2), cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
 
     cudaStreamSynchronize( s );
 

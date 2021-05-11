@@ -361,7 +361,7 @@
   #define MAX_CUDA_STREAMS (5)
 
   /* max. num. of CUDA events used for synchronizing streams */
-  #define MAX_CUDA_STREAM_EVENTS (6)
+  #define MAX_CUDA_STREAM_EVENTS (4)
 #endif
 
 
@@ -1661,7 +1661,7 @@ struct control_params
     /* num. of CUDA blocks rounded up to the nearest power of 2
      * for kernels with 1 thread per atom (local AND ghost) */
     int blocks_pow_2_n;
-    /* CUDA stream */
+    /* CUDA streams */
     cudaStream_t streams[MAX_CUDA_STREAMS];
     /* CUDA events for synchronizing streams */
     cudaEvent_t stream_events[MAX_CUDA_STREAM_EVENTS];

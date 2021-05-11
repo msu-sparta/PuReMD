@@ -89,6 +89,9 @@ static void Cuda_Reallocate_System_Part2( reax_system *system, control_params *c
     sCudaFree( system->d_my_atoms, __FILE__, __LINE__ );
     sCudaMalloc( (void **) &system->d_my_atoms,
             sizeof(reax_atom) * system->total_cap, __FILE__, __LINE__ );
+    sCudaMemsetAsync( system->d_my_atoms, FALSE,
+            sizeof(reax_atom) * system->total_cap, 
+            control->streams[0], __FILE__, __LINE__ );
     sCudaMemcpyAsync( system->d_my_atoms, temp_atom, sizeof(reax_atom) * total_cap_old,
             cudaMemcpyDeviceToDevice, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
@@ -299,11 +302,15 @@ void Cuda_Allocate_Grid_Cell_Atoms( reax_system *system, control_params *control
 }
 
 
-void Cuda_Allocate_System( reax_system *system )
+void Cuda_Allocate_System( reax_system *system, control_params *control )
 {
     /* atoms */
     sCudaMalloc( (void **) &system->d_my_atoms,
             system->total_cap * sizeof(reax_atom), __FILE__, __LINE__ );
+    sCudaMemsetAsync( system->d_my_atoms, FALSE,
+            system->total_cap * sizeof(reax_atom), 
+            control->streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->streams[0] );
     sCudaMalloc( (void **) &system->d_numH, sizeof(int), __FILE__, __LINE__ );
 
     /* list management */
@@ -468,6 +475,8 @@ void Cuda_Allocate_Workspace_Part2( reax_system *system, control_params *control
     {
         sCudaMalloc( (void **) &workspace->Hdia_inv, total_real,
                 __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->Hdia_inv, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
     }
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
@@ -478,12 +487,24 @@ void Cuda_Allocate_Workspace_Part2( reax_system *system, control_params *control
                 __FILE__, __LINE__ );
     }
     sCudaMalloc( (void **) &workspace->b_s, total_real, __FILE__, __LINE__ );
+    sCudaMemsetAsync( workspace->b_s, FALSE, total_real, 
+            control->streams[0], __FILE__, __LINE__ );
     sCudaMalloc( (void **) &workspace->b_t, total_real, __FILE__, __LINE__ );
+    sCudaMemsetAsync( workspace->b_t, FALSE, total_real, 
+            control->streams[0], __FILE__, __LINE__ );
     sCudaMalloc( (void **) &workspace->s, total_real, __FILE__, __LINE__ );
+    sCudaMemsetAsync( workspace->s, FALSE, total_real, 
+            control->streams[0], __FILE__, __LINE__ );
     sCudaMalloc( (void **) &workspace->t, total_real, __FILE__, __LINE__ );
+    sCudaMemsetAsync( workspace->t, FALSE, total_real, 
+            control->streams[0], __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
     sCudaMalloc( (void **) &workspace->b, total_rvec2, __FILE__, __LINE__ );
+    sCudaMemsetAsync( workspace->b, FALSE, total_rvec2, 
+            control->streams[0], __FILE__, __LINE__ );
     sCudaMalloc( (void **) &workspace->x, total_rvec2, __FILE__, __LINE__ );
+    sCudaMemsetAsync( workspace->x, FALSE, total_rvec2, 
+            control->streams[0], __FILE__, __LINE__ );
 #endif
 
     switch ( control->cm_solver_type )
@@ -525,14 +546,30 @@ void Cuda_Allocate_Workspace_Part2( reax_system *system, control_params *control
 
     case CG_S:
         sCudaMalloc( (void **) &workspace->r, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->r, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->d, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->d, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->q, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->q, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->p, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->p, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
         sCudaMalloc( (void **) &workspace->r2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->r2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->d2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->d2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->q2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->q2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->p2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->p2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
 #endif
         break;
 
@@ -610,6 +647,8 @@ void Cuda_Allocate_Workspace_Part2( reax_system *system, control_params *control
         exit( INVALID_INPUT );
         break;
     }
+
+    cudaStreamSynchronize( control->streams[0] );
 
     /* force related storage */
     sCudaMalloc( (void **) &workspace->f, sizeof(rvec) * total_cap,

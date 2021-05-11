@@ -1,7 +1,8 @@
-simulation_name         water_6540_notab_qeq    ! output files will carry this name + their specific extension
+simulation_name         water_6540_notab_qeq_3threads    ! output files will carry this name + their specific extension
 ensemble_type           0                       ! 0: NVE, 1: Berendsen NVT, 2: nose-Hoover NVT, 3: semi-isotropic NPT, 4: isotropic NPT, 5: anisotropic NPT
-nsteps                  10                      ! number of simulation steps
+nsteps                  0                      ! number of simulation steps
 dt                      0.25                    ! time step in fs
+num_threads             3
 periodic_boundaries     1                       ! 0: no periodic boundaries, 1: periodic boundaries
 
 reposition_atoms        0                       ! 0: just fit to periodic boundaries, 1: CoM to the center of box, 3: CoM to the origin
@@ -15,17 +16,17 @@ bond_graph_cutoff       0.3                     ! bond strength cutoff for bond 
 thb_cutoff              0.001                   ! cutoff value for three body interactions (Angstroms)
 hbond_cutoff            7.5                     ! cutoff distance for hydrogen bond interactions (Angstroms)
 
-charge_method                 0             ! charge method: 0 = QEq, 1 = EEM, 2 = ACKS2
+charge_method                 1             ! charge method: 0 = QEq, 1 = EEM, 2 = ACKS2
 cm_q_net                      0.0           ! net system charge
 cm_solver_type                0             ! iterative linear solver for charge method: 0 = GMRES(k), 1 = GMRES_H(k), 2 = CG, 3 = SDM
-cm_solver_max_iters           20            ! max solver iterations
+cm_solver_max_iters           200           ! max solver iterations
 cm_solver_restart             100           ! inner iterations of before restarting (GMRES(k)/GMRES_H(k))
-cm_solver_q_err               1e-6          ! relative residual norm threshold used in solver
+cm_solver_q_err               1.0e-8        ! relative residual norm threshold used in solver
 cm_domain_sparsity            1.0           ! scalar for scaling cut-off distance, used to sparsify charge matrix (between 0.0 and 1.0)
 cm_init_guess_extrap1         3             ! order of spline extrapolation for initial guess (s)
 cm_init_guess_extrap2         2             ! order of spline extrapolation for initial guess (t)
 cm_solver_pre_comp_type           1             ! method used to compute preconditioner, if applicable
-cm_solver_pre_comp_refactor       1000          ! number of steps before recomputing preconditioner (-1 for dynamic refactoring)
+cm_solver_pre_comp_refactor       1          ! number of steps before recomputing preconditioner (-1 for dynamic refactoring)
 cm_solver_pre_comp_droptol        0.0           ! threshold tolerance for dropping values in preconditioner computation (ICHOLT/ILUT/FG-ILUT)
 cm_solver_pre_comp_sweeps         3             ! number of sweeps used to compute preconditioner (FG-ILUT)
 cm_solver_pre_comp_sai_thres      0.1           ! ratio of charge matrix NNZ's used to compute preconditioner (SAI)
@@ -48,7 +49,7 @@ geo_format              1                       ! 0: custom, 1: pdb, 2: bgf 3: A
 write_freq              0                       ! write trajectory after so many steps
 traj_compress           0                       ! 0: no compression  1: uses zlib to compress trajectory output
 traj_format             0                       ! 0: our own format (below options apply to this only), 1: xyz, 2: bgf, 3: pdb
-traj_title              water_6540_notab_qeq    ! (no white spaces)
+traj_title              water_6540_notab_qeq_3threads   ! (no white spaces)
 atom_info               1                       ! 0: no atom info, 1: print basic atom info in the trajectory file
 atom_forces             0                       ! 0: basic atom format, 1: print force on each atom in the trajectory file
 atom_velocities         0                       ! 0: basic atom format, 1: print the velocity of each atom in the trajectory file

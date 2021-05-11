@@ -835,13 +835,12 @@ static void Cuda_Compute_Polarization_Energy( reax_system *system,
 #if !defined(CUDA_ACCUM_ATOMIC)
     real *spad;
 
-    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
+    sCudaCheckMalloc( &workspace->scratch[4], &workspace->scratch_size[4],
             sizeof(real) * system->n, __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch[0];
+    spad = (real *) workspace->scratch[4];
 #else
     sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_pol,
             0, sizeof(real), control->streams[4], __FILE__, __LINE__ );
-    cudaStreamSynchronize( control->streams[4] );
 #endif
 
     blocks = system->n / DEF_BLOCK_SIZE
@@ -890,9 +889,9 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
     {
         s = sizeof(real) * 2 * system->n;
     }
-    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
+    sCudaCheckMalloc( &workspace->scratch[4], &workspace->scratch_size[4],
             s, __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch[0];
+    spad = (real *) workspace->scratch[4];
 #endif
 
 #if defined(CUDA_ACCUM_ATOMIC)

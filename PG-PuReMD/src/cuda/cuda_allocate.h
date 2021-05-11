@@ -4,7 +4,7 @@
 #include "../reax_types.h"
 
 
-void Cuda_Allocate_System( reax_system * );
+void Cuda_Allocate_System( reax_system *, control_params * );
 
 void Cuda_Allocate_Grid( reax_system *, control_params * );
 

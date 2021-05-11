@@ -31,7 +31,9 @@
 #include "../tool_box.h"
 
 #include "../cub/cub/device/device_radix_sort.cuh"
+#include "../cub/cub/block/block_reduce.cuh"
 //#include <cub/device/device_radix_sort.cuh>
+//#include <cub/block/block_reduce.cuh>
 
 
 //TODO: move k_jacob and jacboi to cuda_lin_alg.cu
@@ -481,6 +483,7 @@ static void Calculate_Charges_QEq( reax_system const * const system,
         mpi_datatypes * const mpi_data )
 {
     int ret;
+    size_t s;
     real u, *q;
     rvec2 my_sum, all_sum;
 #if defined(DUAL_SOLVER)
@@ -494,28 +497,41 @@ static void Calculate_Charges_QEq( reax_system const * const system,
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
+#if !defined(CUDA_ACCUM_ATOMIC)
+    s = sizeof(rvec2) * (blocks + 1);
+#else
+    s = sizeof(rvec2);
+#endif
+
     sCudaCheckMalloc( &workspace->scratch[4], &workspace->scratch_size[4],
-            sizeof(rvec2) * (blocks + 1), __FILE__, __LINE__ );
+            s, __FILE__, __LINE__ );
     spad = (rvec2 *) workspace->scratch[4];
 
-    sCudaMemsetAsync( spad, 0, sizeof(rvec2) * (blocks + 1),
-            control->streams[4], __FILE__, __LINE__ );
+    sCudaMemsetAsync( spad, 0, s, control->streams[4], __FILE__, __LINE__ );
 
     /* compute local sums of pseudo-charges in s and t on device */
     k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE,
-                      sizeof(rvec2) * (DEF_BLOCK_SIZE / 32),
+                      sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage),
                       control->streams[4] >>>
         ( workspace->d_workspace->x, spad, system->n );
     cudaCheckError( );
 
+#if !defined(CUDA_ACCUM_ATOMIC)
     k_reduction_rvec2 <<< 1, ((blocks + 31) / 32) * 32,
-                      sizeof(rvec2) * ((blocks + 31) / 32),
+                      sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage),
                       control->streams[4] >>>
         ( spad, &spad[blocks], blocks );
     cudaCheckError( );
+#endif
 
-    sCudaMemcpyAsync( &my_sum, &spad[blocks], sizeof(rvec2),
-            cudaMemcpyDeviceToHost, control->streams[4], __FILE__, __LINE__ );
+    sCudaMemcpyAsync( &my_sum,
+#if !defined(CUDA_ACCUM_ATOMIC)
+            &spad[blocks],
+#else
+            spad,
+#endif
+            sizeof(rvec2), cudaMemcpyDeviceToHost,
+            control->streams[4], __FILE__, __LINE__ );
 
     cudaStreamSynchronize( control->streams[4] );
 #else
@@ -524,8 +540,10 @@ static void Calculate_Charges_QEq( reax_system const * const system,
     spad = (real *) workspace->scratch[4];
 
     /* local reductions (sums) on device */
-    Cuda_Reduction_Sum( workspace->d_workspace->s, &spad[0], system->n );
-    Cuda_Reduction_Sum( workspace->d_workspace->t, &spad[1], system->n );
+    Cuda_Reduction_Sum( workspace->d_workspace->s, &spad[0], system->n,
+		    control->streams[4] );
+    Cuda_Reduction_Sum( workspace->d_workspace->t, &spad[1], system->n,
+		    control->streams[4] );
 
     sCudaMemcpyAsync( my_sum, spad, sizeof(real) * 2,
             cudaMemcpyDeviceToHost, control->streams[4], __FILE__, __LINE__ );

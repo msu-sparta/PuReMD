@@ -279,10 +279,10 @@ void Cuda_Compute_Bonds( reax_system *system, control_params *control,
     int update_energy;
     real *spad;
 
-    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
+    sCudaCheckMalloc( &workspace->scratch[1], &workspace->scratch_size[1],
             sizeof(real) * system->n, __FILE__, __LINE__ );
 
-    spad = (real *) workspace->scratch[0];
+    spad = (real *) workspace->scratch[1];
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
 #else
@@ -290,7 +290,7 @@ void Cuda_Compute_Bonds( reax_system *system, control_params *control,
             0, sizeof(real), control->streams[1], __FILE__, __LINE__ );
 #endif
 
-    cudaStreamWaitEvent( control->streams[1], control->stream_events[4] );
+    cudaStreamWaitEvent( control->streams[1], control->stream_events[2], 0 );
 
 //    k_bonds <<< control->blocks, control->block_size, 0, control->streams[1] >>>
 //        ( system->d_my_atoms, system->reax_param.d_gp,
@@ -331,5 +331,5 @@ void Cuda_Compute_Bonds( reax_system *system, control_params *control,
     }
 #endif
 
-    cudaEventRecord( control->stream_events[5], control->streams[1] );
+    cudaEventRecord( control->stream_events[3], control->streams[1] );
 }

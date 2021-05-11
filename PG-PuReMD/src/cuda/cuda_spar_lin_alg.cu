@@ -961,7 +961,8 @@ int Cuda_dual_SDM( reax_system const * const system,
 #endif
 
     Vector_Sum_rvec2( workspace->d_workspace->r2, 1.0, 1.0, b,
-            -1.0, -1.0, workspace->d_workspace->q2, system->n );
+            -1.0, -1.0, workspace->d_workspace->q2, system->n,
+	   control->streams[4] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1031,9 +1032,9 @@ int Cuda_dual_SDM( reax_system const * const system,
         tmp[1] = redux[3];
         alpha[0] = sig[0] / tmp[0];
         alpha[1] = sig[1] / tmp[1];
-        Vector_Add_rvec2( x, alpha[0], alpha[1], workspace->d_workspace->d2, system->n );
+        Vector_Add_rvec2( x, alpha[0], alpha[1], workspace->d_workspace->d2, system->n, control->streams[4] );
         Vector_Add_rvec2( workspace->d_workspace->r2, -1.0 * alpha[0], -1.0 * alpha[1],
-                workspace->d_workspace->q2, system->n );
+                workspace->d_workspace->q2, system->n, control->streams[4] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1051,27 +1052,27 @@ int Cuda_dual_SDM( reax_system const * const system,
             && SQRT(sig[1]) / b_norm[1] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->t,
-                workspace->d_workspace->x, 1, system->n );
+                workspace->d_workspace->x, 1, system->n, control->streams[4] );
 
         matvecs = Cuda_SDM( system, control, data, workspace, H,
                 workspace->d_workspace->b_t, tol,
                 workspace->d_workspace->t, mpi_data );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->t, 1, system->n );
+                workspace->d_workspace->t, 1, system->n, control->streams[4] );
     }
     else if ( SQRT(sig[1]) / b_norm[1] <= tol
             && SQRT(sig[0]) / b_norm[0] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->s,
-                workspace->d_workspace->x, 0, system->n );
+                workspace->d_workspace->x, 0, system->n, control->streams[4] );
 
         matvecs = Cuda_SDM( system, control, data, workspace, H,
                 workspace->d_workspace->b_s, tol,
                 workspace->d_workspace->s, mpi_data );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->s, 0, system->n );
+                workspace->d_workspace->s, 0, system->n, control->streams[4] );
     }
     else
     {
@@ -1112,7 +1113,7 @@ int Cuda_SDM( reax_system const * const system, control_params const * const con
 #endif
 
     Vector_Sum( workspace->d_workspace->r, 1.0, b,
-            -1.0, workspace->d_workspace->q, system->n );
+            -1.0, workspace->d_workspace->q, system->n, control->streams[4] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1172,9 +1173,9 @@ int Cuda_SDM( reax_system const * const system, control_params const * const con
         sig = redux[0];
         tmp = redux[1];
         alpha = sig / tmp;
-        Vector_Add( x, alpha, workspace->d_workspace->d, system->n );
+        Vector_Add( x, alpha, workspace->d_workspace->d, system->n, control->streams[4] );
         Vector_Add( workspace->d_workspace->r, -1.0 * alpha,
-                workspace->d_workspace->q, system->n );
+                workspace->d_workspace->q, system->n, control->streams[4] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1223,7 +1224,7 @@ int Cuda_dual_CG( reax_system const * const system,
 #endif
 
     Vector_Sum_rvec2( workspace->d_workspace->r2, 1.0, 1.0, b,
-            -1.0, -1.0, workspace->d_workspace->q2, system->n );
+            -1.0, -1.0, workspace->d_workspace->q2, system->n, control->streams[4] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1292,9 +1293,9 @@ int Cuda_dual_CG( reax_system const * const system,
         alpha[0] = sig_new[0] / tmp[0];
         alpha[1] = sig_new[1] / tmp[1];
         Vector_Add_rvec2( x, alpha[0], alpha[1],
-                workspace->d_workspace->d2, system->n );
+                workspace->d_workspace->d2, system->n, control->streams[4] );
         Vector_Add_rvec2( workspace->d_workspace->r2, -1.0 * alpha[0], -1.0 * alpha[1],
-                workspace->d_workspace->q2, system->n );
+                workspace->d_workspace->q2, system->n, control->streams[4] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1334,7 +1335,7 @@ int Cuda_dual_CG( reax_system const * const system,
         /* d = p + beta * d */
         Vector_Sum_rvec2( workspace->d_workspace->d2,
                 1.0, 1.0, workspace->d_workspace->p2,
-                beta[0], beta[1], workspace->d_workspace->d2, system->n );
+                beta[0], beta[1], workspace->d_workspace->d2, system->n, control->streams[4] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1345,27 +1346,27 @@ int Cuda_dual_CG( reax_system const * const system,
             && r_norm[1] / b_norm[1] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->t,
-                workspace->d_workspace->x, 1, system->n );
+                workspace->d_workspace->x, 1, system->n, control->streams[4] );
 
         matvecs = Cuda_CG( system, control, data, workspace, H,
                 workspace->d_workspace->b_t, tol,
                 workspace->d_workspace->t, mpi_data );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->t, 1, system->n );
+                workspace->d_workspace->t, 1, system->n, control->streams[4] );
     }
     else if ( r_norm[1] / b_norm[1] <= tol
             && r_norm[0] / b_norm[0] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->s,
-                workspace->d_workspace->x, 0, system->n );
+                workspace->d_workspace->x, 0, system->n, control->streams[4] );
 
         matvecs = Cuda_CG( system, control, data, workspace, H,
                 workspace->d_workspace->b_s, tol,
                 workspace->d_workspace->s, mpi_data );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->s, 0, system->n );
+                workspace->d_workspace->s, 0, system->n, control->streams[4] );
     }
     else
     {
@@ -1407,7 +1408,7 @@ int Cuda_CG( reax_system const * const system, control_params const * const cont
 #endif
 
     Vector_Sum( workspace->d_workspace->r, 1.0, b,
-            -1.0, workspace->d_workspace->q, system->n );
+            -1.0, workspace->d_workspace->q, system->n, control->streams[4] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1458,9 +1459,9 @@ int Cuda_CG( reax_system const * const system, control_params const * const cont
 #endif
 
         alpha = sig_new / tmp;
-        Vector_Add( x, alpha, workspace->d_workspace->d, system->n );
+        Vector_Add( x, alpha, workspace->d_workspace->d, system->n, control->streams[4] );
         Vector_Add( workspace->d_workspace->r, -1.0 * alpha,
-                workspace->d_workspace->q, system->n );
+                workspace->d_workspace->q, system->n, control->streams[4] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1495,7 +1496,7 @@ int Cuda_CG( reax_system const * const system, control_params const * const cont
         r_norm = SQRT( redux[1] );
         beta = sig_new / sig_old;
         Vector_Sum( workspace->d_workspace->d, 1.0, workspace->d_workspace->p,
-                beta, workspace->d_workspace->d, system->n );
+                beta, workspace->d_workspace->d, system->n, control->streams[4] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1551,7 +1552,7 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
 #endif
 
     Vector_Sum_rvec2( workspace->d_workspace->r2, 1.0, 1.0, b,
-            -1.0, -1.0, workspace->d_workspace->d2, system->n );
+            -1.0, -1.0, workspace->d_workspace->d2, system->n, control->streams[4] );
     Dot_local_rvec2( workspace, b,
             b, system->n, &redux[0], &redux[1], control->streams[4] );
     Dot_local_rvec2( workspace, workspace->d_workspace->r2,
@@ -1582,7 +1583,7 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
         b_norm[1] = 1.0;
     }
     Vector_Copy_rvec2( workspace->d_workspace->r_hat2,
-            workspace->d_workspace->r2, system->n );
+            workspace->d_workspace->r2, system->n, control->streams[4] );
     omega[0] = 1.0;
     omega[1] = 1.0;
     rho[0] = 1.0;
@@ -1626,15 +1627,15 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
             beta[1] = (rho[1] / rho_old[1]) * (alpha[1] / omega[1]);
             Vector_Sum_rvec2( workspace->d_workspace->q2,
                     1.0, 1.0, workspace->d_workspace->p2,
-                    -1.0 * omega[0], -1.0 * omega[1], workspace->d_workspace->z2, system->n );
+                    -1.0 * omega[0], -1.0 * omega[1], workspace->d_workspace->z2, system->n, control->streams[4] );
             Vector_Sum_rvec2( workspace->d_workspace->p2,
                     1.0, 1.0, workspace->d_workspace->r2,
-                    beta[0], beta[1], workspace->d_workspace->q2, system->n );
+                    beta[0], beta[1], workspace->d_workspace->q2, system->n, control->streams[4] );
         }
         else
         {
             Vector_Copy_rvec2( workspace->d_workspace->p2,
-                    workspace->d_workspace->r2, system->n );
+                    workspace->d_workspace->r2, system->n, control->streams[4] );
         }
 
 #if defined(LOG_PERFORMANCE)
@@ -1676,7 +1677,7 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
         alpha[1] = rho[1] / tmp[1];
         Vector_Sum_rvec2( workspace->d_workspace->q2,
                 1.0, 1.0, workspace->d_workspace->r2,
-                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->z2, system->n );
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->z2, system->n, control->streams[4] );
         Dot_local_rvec2( workspace, workspace->d_workspace->q2,
                 workspace->d_workspace->q2, system->n, &redux[0], &redux[1], control->streams[4] );
 
@@ -1697,7 +1698,7 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
         /* early convergence check */
         if ( tmp[0] < tol || tmp[1] < tol )
         {
-            Vector_Add_rvec2( x, alpha[0], alpha[1], workspace->d_workspace->d2, system->n );
+            Vector_Add_rvec2( x, alpha[0], alpha[1], workspace->d_workspace->d2, system->n, control->streams[4] );
             break;
         }
 
@@ -1744,11 +1745,11 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
         omega[1] = sigma[1] / tmp[1];
         Vector_Sum_rvec2( workspace->d_workspace->g2,
                 alpha[0], alpha[1], workspace->d_workspace->d2,
-                omega[0], omega[1], workspace->d_workspace->q_hat2, system->n );
-        Vector_Add_rvec2( x, 1.0, 1.0, workspace->d_workspace->g2, system->n );
+                omega[0], omega[1], workspace->d_workspace->q_hat2, system->n, control->streams[4] );
+        Vector_Add_rvec2( x, 1.0, 1.0, workspace->d_workspace->g2, system->n, control->streams[4] );
         Vector_Sum_rvec2( workspace->d_workspace->r2,
                 1.0, 1.0, workspace->d_workspace->q2,
-                -1.0 * omega[0], -1.0 * omega[1], workspace->d_workspace->y2, system->n );
+                -1.0 * omega[0], -1.0 * omega[1], workspace->d_workspace->y2, system->n, control->streams[4] );
         Dot_local_rvec2( workspace, workspace->d_workspace->r2,
                 workspace->d_workspace->r2, system->n, &redux[0], &redux[1], control->streams[4] );
 
@@ -1782,27 +1783,27 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
             && r_norm[1] / b_norm[1] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->t,
-                workspace->d_workspace->x, 1, system->n );
+                workspace->d_workspace->x, 1, system->n, control->streams[4] );
 
         matvecs = Cuda_BiCGStab( system, control, data, workspace, H,
                 workspace->d_workspace->b_t, tol,
                 workspace->d_workspace->t, mpi_data );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->t, 1, system->n );
+                workspace->d_workspace->t, 1, system->n, control->streams[4] );
     }
     else if ( r_norm[1] / b_norm[1] <= tol
             && r_norm[0] / b_norm[0] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->s,
-                workspace->d_workspace->x, 0, system->n );
+                workspace->d_workspace->x, 0, system->n, control->streams[4] );
 
         matvecs = Cuda_BiCGStab( system, control, data, workspace, H,
                 workspace->d_workspace->b_s, tol,
                 workspace->d_workspace->s, mpi_data );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->s, 0, system->n );
+                workspace->d_workspace->s, 0, system->n, control->streams[4] );
     }
     else
     {
@@ -1858,7 +1859,7 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
 #endif
 
     Vector_Sum( workspace->d_workspace->r, 1.0, b,
-            -1.0, workspace->d_workspace->d, system->n );
+            -1.0, workspace->d_workspace->d, system->n, control->streams[4] );
     redux[0] = Dot_local( workspace, b, b, system->n, control->streams[4] );
     redux[1] = Dot_local( workspace, workspace->d_workspace->r,
             workspace->d_workspace->r, system->n, control->streams[4] );
@@ -1882,7 +1883,7 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
         b_norm = 1.0;
     }
     Vector_Copy( workspace->d_workspace->r_hat,
-            workspace->d_workspace->r, system->n );
+            workspace->d_workspace->r, system->n, control->streams[4] );
     omega = 1.0;
     rho = 1.0;
 
@@ -1917,15 +1918,15 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
             beta = (rho / rho_old) * (alpha / omega);
             Vector_Sum( workspace->d_workspace->q,
                     1.0, workspace->d_workspace->p,
-                    -1.0 * omega, workspace->d_workspace->z, system->n );
+                    -1.0 * omega, workspace->d_workspace->z, system->n, control->streams[4] );
             Vector_Sum( workspace->d_workspace->p,
                     1.0, workspace->d_workspace->r,
-                    beta, workspace->d_workspace->q, system->n );
+                    beta, workspace->d_workspace->q, system->n, control->streams[4] );
         }
         else
         {
             Vector_Copy( workspace->d_workspace->p,
-                    workspace->d_workspace->r, system->n );
+                    workspace->d_workspace->r, system->n, control->streams[4] );
         }
 
 #if defined(LOG_PERFORMANCE)
@@ -1965,7 +1966,7 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
         alpha = rho / tmp;
         Vector_Sum( workspace->d_workspace->q,
                 1.0, workspace->d_workspace->r,
-                -1.0 * alpha, workspace->d_workspace->z, system->n );
+                -1.0 * alpha, workspace->d_workspace->z, system->n, control->streams[4] );
         redux[0] = Dot_local( workspace, workspace->d_workspace->q,
                 workspace->d_workspace->q, system->n, control->streams[4] );
 
@@ -1985,7 +1986,7 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
         /* early convergence check */
         if ( tmp < tol )
         {
-            Vector_Add( x, alpha, workspace->d_workspace->d, system->n );
+            Vector_Add( x, alpha, workspace->d_workspace->d, system->n, control->streams[4] );
             break;
         }
 
@@ -2029,11 +2030,11 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
         omega = sigma / tmp;
         Vector_Sum( workspace->d_workspace->g,
                 alpha, workspace->d_workspace->d,
-                omega, workspace->d_workspace->q_hat, system->n );
-        Vector_Add( x, 1.0, workspace->d_workspace->g, system->n );
+                omega, workspace->d_workspace->q_hat, system->n, control->streams[4] );
+        Vector_Add( x, 1.0, workspace->d_workspace->g, system->n, control->streams[4] );
         Vector_Sum( workspace->d_workspace->r,
                 1.0, workspace->d_workspace->q,
-                -1.0 * omega, workspace->d_workspace->y, system->n );
+                -1.0 * omega, workspace->d_workspace->y, system->n, control->streams[4] );
         redux[0] = Dot_local( workspace, workspace->d_workspace->r,
                 workspace->d_workspace->r, system->n, control->streams[4] );
 
@@ -2104,7 +2105,7 @@ int Cuda_dual_PIPECG( reax_system const * const system, control_params const * c
 #endif
 
     Vector_Sum_rvec2( workspace->d_workspace->r2, 1.0, 1.0, b,
-            -1.0, -1.0, workspace->d_workspace->u2, system->n );
+            -1.0, -1.0, workspace->d_workspace->u2, system->n, control->streams[4] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2192,21 +2193,21 @@ int Cuda_dual_PIPECG( reax_system const * const system, control_params const * c
         }
 
         Vector_Sum_rvec2( workspace->d_workspace->z2, 1.0, 1.0, workspace->d_workspace->n2,
-                beta[0], beta[1], workspace->d_workspace->z2, system->n );
+                beta[0], beta[1], workspace->d_workspace->z2, system->n, control->streams[4] );
         Vector_Sum_rvec2( workspace->d_workspace->q2, 1.0, 1.0, workspace->d_workspace->m2,
-                beta[0], beta[1], workspace->d_workspace->q2, system->n );
+                beta[0], beta[1], workspace->d_workspace->q2, system->n, control->streams[4] );
         Vector_Sum_rvec2( workspace->d_workspace->p2, 1.0, 1.0, workspace->d_workspace->u2,
-                beta[0], beta[1], workspace->d_workspace->p2, system->n );
+                beta[0], beta[1], workspace->d_workspace->p2, system->n, control->streams[4] );
         Vector_Sum_rvec2( workspace->d_workspace->d2, 1.0, 1.0, workspace->d_workspace->w2,
-                beta[0], beta[1], workspace->d_workspace->d2, system->n );
+                beta[0], beta[1], workspace->d_workspace->d2, system->n, control->streams[4] );
         Vector_Sum_rvec2( x, 1.0, 1.0, x,
-                alpha[0], alpha[1], workspace->d_workspace->p2, system->n );
+                alpha[0], alpha[1], workspace->d_workspace->p2, system->n, control->streams[4] );
         Vector_Sum_rvec2( workspace->d_workspace->u2, 1.0, 1.0, workspace->d_workspace->u2,
-                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->q2, system->n );
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->q2, system->n, control->streams[4] );
         Vector_Sum_rvec2( workspace->d_workspace->w2, 1.0, 1.0, workspace->d_workspace->w2,
-                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->z2, system->n );
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->z2, system->n, control->streams[4] );
         Vector_Sum_rvec2( workspace->d_workspace->r2, 1.0, 1.0, workspace->d_workspace->r2,
-                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->d2, system->n );
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->d2, system->n, control->streams[4] );
         Dot_local_rvec2( workspace, workspace->d_workspace->w2,
                 workspace->d_workspace->u2, system->n, &redux[0], &redux[1], control->streams[4] );
         Dot_local_rvec2( workspace, workspace->d_workspace->r2,
@@ -2257,27 +2258,27 @@ int Cuda_dual_PIPECG( reax_system const * const system, control_params const * c
             && r_norm[1] / b_norm[1] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->t,
-                workspace->d_workspace->x, 1, system->n );
+                workspace->d_workspace->x, 1, system->n, control->streams[4] );
 
         matvecs = Cuda_PIPECG( system, control, data, workspace, H,
                 workspace->d_workspace->b_t, tol,
                 workspace->d_workspace->t, mpi_data );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->t, 1, system->n );
+                workspace->d_workspace->t, 1, system->n, control->streams[4] );
     }
     else if ( r_norm[1] / b_norm[1] <= tol
             && r_norm[0] / b_norm[0] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->s,
-                workspace->d_workspace->x, 0, system->n );
+                workspace->d_workspace->x, 0, system->n, control->streams[4] );
 
         matvecs = Cuda_PIPECG( system, control, data, workspace, H,
                 workspace->d_workspace->b_s, tol,
                 workspace->d_workspace->s, mpi_data );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->s, 0, system->n );
+                workspace->d_workspace->s, 0, system->n, control->streams[4] );
     }
     else
     {
@@ -2327,7 +2328,7 @@ int Cuda_PIPECG( reax_system const * const system, control_params const * const 
 #endif
 
     Vector_Sum( workspace->d_workspace->r, 1.0, b,
-            -1.0, workspace->d_workspace->u, system->n );
+            -1.0, workspace->d_workspace->u, system->n, control->streams[4] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2402,21 +2403,21 @@ int Cuda_PIPECG( reax_system const * const system, control_params const * const 
         }
 
         Vector_Sum( workspace->d_workspace->z, 1.0, workspace->d_workspace->n,
-                beta, workspace->d_workspace->z, system->n );
+                beta, workspace->d_workspace->z, system->n, control->streams[4] );
         Vector_Sum( workspace->d_workspace->q, 1.0, workspace->d_workspace->m,
-                beta, workspace->d_workspace->q, system->n );
+                beta, workspace->d_workspace->q, system->n, control->streams[4] );
         Vector_Sum( workspace->d_workspace->p, 1.0, workspace->d_workspace->u,
-                beta, workspace->d_workspace->p, system->n );
+                beta, workspace->d_workspace->p, system->n, control->streams[4] );
         Vector_Sum( workspace->d_workspace->d, 1.0, workspace->d_workspace->w,
-                beta, workspace->d_workspace->d, system->n );
+                beta, workspace->d_workspace->d, system->n, control->streams[4] );
         Vector_Sum( x, 1.0, x,
-                alpha, workspace->d_workspace->p, system->n );
+                alpha, workspace->d_workspace->p, system->n, control->streams[4] );
         Vector_Sum( workspace->d_workspace->u, 1.0, workspace->d_workspace->u,
-                -1.0 * alpha, workspace->d_workspace->q, system->n );
+                -1.0 * alpha, workspace->d_workspace->q, system->n, control->streams[4] );
         Vector_Sum( workspace->d_workspace->w, 1.0, workspace->d_workspace->w,
-                -1.0 * alpha, workspace->d_workspace->z, system->n );
+                -1.0 * alpha, workspace->d_workspace->z, system->n, control->streams[4] );
         Vector_Sum( workspace->d_workspace->r, 1.0, workspace->d_workspace->r,
-                -1.0 * alpha, workspace->d_workspace->d, system->n );
+                -1.0 * alpha, workspace->d_workspace->d, system->n, control->streams[4] );
         redux[0] = Dot_local( workspace, workspace->d_workspace->w,
                 workspace->d_workspace->u, system->n, control->streams[4] );
         redux[1] = Dot_local( workspace, workspace->d_workspace->r,
@@ -2499,7 +2500,7 @@ int Cuda_dual_PIPECR( reax_system const * const system, control_params const * c
 #endif
 
     Vector_Sum_rvec2( workspace->d_workspace->r2, 1.0, 1.0, b,
-            -1.0, -1.0, workspace->d_workspace->u2, system->n );
+            -1.0, -1.0, workspace->d_workspace->u2, system->n, control->streams[4] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2607,21 +2608,21 @@ int Cuda_dual_PIPECR( reax_system const * const system, control_params const * c
         }
 
         Vector_Sum_rvec2( workspace->d_workspace->z2, 1.0, 1.0, workspace->d_workspace->n2,
-                beta[0], beta[1], workspace->d_workspace->z2, system->n );
+                beta[0], beta[1], workspace->d_workspace->z2, system->n, control->streams[4] );
         Vector_Sum_rvec2( workspace->d_workspace->q2, 1.0, 1.0, workspace->d_workspace->m2,
-                beta[0], beta[1], workspace->d_workspace->q2, system->n );
+                beta[0], beta[1], workspace->d_workspace->q2, system->n, control->streams[4] );
         Vector_Sum_rvec2( workspace->d_workspace->p2, 1.0, 1.0, workspace->d_workspace->u2,
-                beta[0], beta[1], workspace->d_workspace->p2, system->n );
+                beta[0], beta[1], workspace->d_workspace->p2, system->n, control->streams[4] );
         Vector_Sum_rvec2( workspace->d_workspace->d2, 1.0, 1.0, workspace->d_workspace->w2,
-                beta[0], beta[1], workspace->d_workspace->d2, system->n );
+                beta[0], beta[1], workspace->d_workspace->d2, system->n, control->streams[4] );
         Vector_Sum_rvec2( x, 1.0, 1.0, x,
-                alpha[0], alpha[1], workspace->d_workspace->p2, system->n );
+                alpha[0], alpha[1], workspace->d_workspace->p2, system->n, control->streams[4] );
         Vector_Sum_rvec2( workspace->d_workspace->u2, 1.0, 1.0, workspace->d_workspace->u2,
-                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->q2, system->n );
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->q2, system->n, control->streams[4] );
         Vector_Sum_rvec2( workspace->d_workspace->w2, 1.0, 1.0, workspace->d_workspace->w2,
-                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->z2, system->n );
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->z2, system->n, control->streams[4] );
         Vector_Sum_rvec2( workspace->d_workspace->r2, 1.0, 1.0, workspace->d_workspace->r2,
-                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->d2, system->n );
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->d2, system->n, control->streams[4] );
 
         gamma_old[0] = gamma_new[0];
         gamma_old[1] = gamma_new[1];
@@ -2635,27 +2636,27 @@ int Cuda_dual_PIPECR( reax_system const * const system, control_params const * c
             && r_norm[1] / b_norm[1] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->t,
-                workspace->d_workspace->x, 1, system->n );
+                workspace->d_workspace->x, 1, system->n, control->streams[4] );
 
         matvecs = Cuda_PIPECR( system, control, data, workspace, H,
                 workspace->d_workspace->b_t, tol,
                 workspace->d_workspace->t, mpi_data );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->t, 1, system->n );
+                workspace->d_workspace->t, 1, system->n, control->streams[4] );
     }
     else if ( r_norm[1] / b_norm[1] <= tol
             && r_norm[0] / b_norm[0] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->s,
-                workspace->d_workspace->x, 0, system->n );
+                workspace->d_workspace->x, 0, system->n, control->streams[4] );
 
         matvecs = Cuda_PIPECR( system, control, data, workspace, H,
                 workspace->d_workspace->b_s, tol,
                 workspace->d_workspace->s, mpi_data );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->s, 0, system->n );
+                workspace->d_workspace->s, 0, system->n, control->streams[4] );
     }
     else
     {
@@ -2702,7 +2703,7 @@ int Cuda_PIPECR( reax_system const * const system, control_params const * const 
 #endif
 
     Vector_Sum( workspace->d_workspace->r, 1.0, b,
-            -1.0, workspace->d_workspace->u, system->n );
+            -1.0, workspace->d_workspace->u, system->n, control->streams[4] );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2796,21 +2797,21 @@ int Cuda_PIPECR( reax_system const * const system, control_params const * const 
         }
 
         Vector_Sum( workspace->d_workspace->z, 1.0, workspace->d_workspace->n,
-                beta, workspace->d_workspace->z, system->n );
+                beta, workspace->d_workspace->z, system->n, control->streams[4] );
         Vector_Sum( workspace->d_workspace->q, 1.0, workspace->d_workspace->m,
-                beta, workspace->d_workspace->q, system->n );
+                beta, workspace->d_workspace->q, system->n, control->streams[4] );
         Vector_Sum( workspace->d_workspace->p, 1.0, workspace->d_workspace->u,
-                beta, workspace->d_workspace->p, system->n );
+                beta, workspace->d_workspace->p, system->n, control->streams[4] );
         Vector_Sum( workspace->d_workspace->d, 1.0, workspace->d_workspace->w,
-                beta, workspace->d_workspace->d, system->n );
+                beta, workspace->d_workspace->d, system->n, control->streams[4] );
         Vector_Sum( x, 1.0, x,
-                alpha, workspace->d_workspace->p, system->n );
+                alpha, workspace->d_workspace->p, system->n, control->streams[4] );
         Vector_Sum( workspace->d_workspace->u, 1.0, workspace->d_workspace->u,
-                -1.0 * alpha, workspace->d_workspace->q, system->n );
+                -1.0 * alpha, workspace->d_workspace->q, system->n, control->streams[4] );
         Vector_Sum( workspace->d_workspace->w, 1.0, workspace->d_workspace->w,
-                -1.0 * alpha, workspace->d_workspace->z, system->n );
+                -1.0 * alpha, workspace->d_workspace->z, system->n, control->streams[4] );
         Vector_Sum( workspace->d_workspace->r, 1.0, workspace->d_workspace->r,
-                -1.0 * alpha, workspace->d_workspace->d, system->n );
+                -1.0 * alpha, workspace->d_workspace->d, system->n, control->streams[4] );
 
         gamma_old = gamma_new;
 

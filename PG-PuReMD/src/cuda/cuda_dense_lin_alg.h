@@ -5,40 +5,40 @@
 
 
 void Vector_MakeZero( real * const, unsigned int,
-        cudaStream_t = cudaStreamDefault );
+        cudaStream_t );
 
 void Vector_Copy( real * const, real const * const,
-        unsigned int, cudaStream_t = cudaStreamDefault );
+        unsigned int, cudaStream_t );
 
 void Vector_Copy_rvec2( rvec2 * const, rvec2 const * const,
-        unsigned int, cudaStream_t = cudaStreamDefault );
+        unsigned int, cudaStream_t );
 
 void Vector_Copy_From_rvec2( real * const, rvec2 const * const,
-        int, int, cudaStream_t = cudaStreamDefault );
+        int, int, cudaStream_t );
 
 void Vector_Copy_To_rvec2( rvec2 * const, real const * const,
-        int, int, cudaStream_t = cudaStreamDefault );
+        int, int, cudaStream_t );
 
 void Vector_Scale( real * const, real, real const * const,
-        unsigned int, cudaStream_t = cudaStreamDefault );
+        unsigned int, cudaStream_t );
 
 void Vector_Sum( real * const, real, real const * const,
-        real, real const * const, unsigned int, cudaStream_t = cudaStreamDefault );
+        real, real const * const, unsigned int, cudaStream_t );
 
 void Vector_Sum_rvec2( rvec2 * const, real, real, rvec2 const * const,
-        real, real, rvec2 const * const, unsigned int, cudaStream_t = cudaStreamDefault );
+        real, real, rvec2 const * const, unsigned int, cudaStream_t );
 
 void Vector_Add( real * const, real, real const * const,
-        unsigned int, cudaStream_t = cudaStreamDefault );
+        unsigned int, cudaStream_t );
 
 void Vector_Add_rvec2( rvec2 * const, real, real, rvec2 const * const,
-        unsigned int, cudaStream_t = cudaStreamDefault );
+        unsigned int, cudaStream_t );
 
 void Vector_Mult( real * const, real const * const,
-        real const * const, unsigned int, cudaStream_t = cudaStreamDefault );
+        real const * const, unsigned int, cudaStream_t );
 
 void Vector_Mult_rvec2( rvec2 * const, rvec2 const * const,
-        rvec2 const * const, unsigned int, cudaStream_t = cudaStreamDefault );
+        rvec2 const * const, unsigned int, cudaStream_t );
 
 real Norm( storage * const, real const * const, unsigned int, MPI_Comm, cudaStream_t );
 

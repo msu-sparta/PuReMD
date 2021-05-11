@@ -999,7 +999,7 @@ void Cuda_Compute_Bond_Orders( reax_system * const system, control_params * cons
 {
     int blocks;
 
-    cudaStreamWaitEvent( control->streams[0], control->stream_events[2] );
+    cudaStreamWaitEvent( control->streams[0], control->stream_events[1], 0 );
 
     k_bond_order_part1 <<< control->blocks_n, control->block_size_n, 0,
                        control->streams[0] >>>
@@ -1035,7 +1035,7 @@ void Cuda_Compute_Bond_Orders( reax_system * const system, control_params * cons
          *(workspace->d_workspace), system->N );
     cudaCheckError( );
 
-    cudaEventRecord( control->stream_events[4], control->streams[0] );
+    cudaEventRecord( control->stream_events[2], control->streams[0] );
 }
 
 

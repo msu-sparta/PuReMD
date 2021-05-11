@@ -19,8 +19,8 @@ static void compute_nearest_multiple_32( int blocks, int *result )
 extern "C" void Cuda_Setup_Environment( reax_system const * const system,
         control_params * const control )
 {
-
-    int i, least_priority, greatest_priority, deviceCount;
+    int i, least_priority, greatest_priority, is_stream_priority_supported;
+    int deviceCount;
     cudaError_t ret;
     
     ret = cudaGetDeviceCount( &deviceCount );
@@ -54,49 +54,81 @@ extern "C" void Cuda_Setup_Environment( reax_system const * const system,
         exit( CANNOT_INITIALIZE );
     }
 
-    ret = cudaDeviceGetStreamPriorityRange( &least_priority, &greatest_priority );
+    ret = cudaDeviceGetAttribute( &is_stream_priority_supported,
+		    cudaDevAttrStreamPrioritiesSupported,
+		    system->my_rank % control->gpus_per_node );
 
     if ( ret != cudaSuccess )
     {
-        fprintf( stderr, "[ERROR] CUDA strema priority query failed. Terminating...\n" );
+        fprintf( stderr, "[ERROR] cudaDeviceGetAttribute failure. Terminating...\n" );
         exit( CANNOT_INITIALIZE );
     }
 
-    /* stream assignment (default to 0 for any kernel not listed):
-     * 0: init dist, init CM, bond order (uncorrected/corrected), lone pair/over coord/under coord
-     * 1: (after init dist) init bonds, (after bond order) bonds, valence angles, torsions
-     * 2: (after init dist) init hbonds, (after bonds) hbonds
-     * 3: (after init dist) van der Waals
-     * 4: (after init CM) CM, Coulomb
-     */
-    for ( i = 0; i < MAX_CUDA_STREAMS; ++i )
+    if ( is_stream_priority_supported == 1 )
     {
-        /* all non-CM streams of equal priority */
-        if ( i < MAX_CUDA_STREAMS - 1 )
-        {
-            ret = cudaStreamCreateWithPriority( &control->streams[i], cudaStreamNonBlocking, least_priority );
-        }
-        /* CM gets highest priority due to MPI comms and cudaMemcpy's */
-        else
-        {
-            ret = cudaStreamCreateWithPriority( &control->streams[i], cudaStreamNonBlocking, greatest_priority );
-        }
-
+        ret = cudaDeviceGetStreamPriorityRange( &least_priority, &greatest_priority );
+    
         if ( ret != cudaSuccess )
         {
-            fprintf( stderr, "[ERROR] CUDA stream creation failed (%d). Terminating...\n",
-                    i );
+            fprintf( stderr, "[ERROR] CUDA stream priority query failed. Terminating...\n" );
             exit( CANNOT_INITIALIZE );
         }
+    
+        /* stream assignment (default to 0 for any kernel not listed):
+         * 0: init dist, bond order (uncorrected/corrected), lone pair/over coord/under coord
+         * 1: (after init dist) init bonds, (after bond order) bonds, valence angles, torsions
+         * 2: (after init dist) init hbonds, (after bonds) hbonds
+         * 3: (after init dist) van der Waals
+         * 4: init CM, CM, Coulomb
+         */
+        for ( i = 0; i < MAX_CUDA_STREAMS; ++i )
+        {
+            /* all non-CM streams of equal priority */
+            if ( i != MAX_CUDA_STREAMS - 1 )
+            {
+                ret = cudaStreamCreateWithPriority( &control->streams[i], cudaStreamNonBlocking, least_priority );
+            }
+            /* CM gets highest priority due to MPI comms and cudaMemcpy's */
+            else
+            {
+                ret = cudaStreamCreateWithPriority( &control->streams[i], cudaStreamNonBlocking, greatest_priority );
+            }
+    
+            if ( ret != cudaSuccess )
+            {
+                fprintf( stderr, "[ERROR] cudaStreamCreateWithPriority failure (%d). Terminating...\n",
+                        i );
+                exit( CANNOT_INITIALIZE );
+            }
+        }
+    }
+    else
+    {
+       /* stream assignment (default to 0 for any kernel not listed):
+        * 0: init dist, bond order (uncorrected/corrected), lone pair/over coord/under coord
+        * 1: (after init dist) init bonds, (after bond order) bonds, valence angles, torsions
+        * 2: (after init dist) init hbonds, (after bonds) hbonds
+        * 3: (after init dist) van der Waals
+        * 4: init CM, CM, Coulomb
+        */
+       for ( i = 0; i < MAX_CUDA_STREAMS; ++i )
+       {
+           ret = cudaStreamCreateWithFlags( &control->streams[i], cudaStreamNonBlocking );
+   
+           if ( ret != cudaSuccess )
+           {
+               fprintf( stderr, "[ERROR] cudaStreamCreateWithFlags failure (%d). Terminating...\n",
+                       i );
+               exit( CANNOT_INITIALIZE );
+           }
+       }
     }
 
     /* stream event assignment:
      * 0: init dist done (stream 0)
-     * 1: init CM done (stream 4)
-     * 2: init bonds done (stream 1)
-     * 3: init hbonds done (stream 2)
-     * 4: bond orders done (stream 0)
-     * 5: bonds done (stream 1)
+     * 1: init bonds done (stream 1)
+     * 2: bond orders done (stream 0)
+     * 3: bonds done (stream 1)
      */
     for ( i = 0; i < MAX_CUDA_STREAM_EVENTS; ++i )
     {
@@ -104,7 +136,7 @@ extern "C" void Cuda_Setup_Environment( reax_system const * const system,
 
         if ( ret != cudaSuccess )
         {
-            fprintf( stderr, "[ERROR] CUDA event creation failed (%d). Terminating...\n",
+            fprintf( stderr, "[ERROR] cudaEventCreateWithFlags failure (%d). Terminating...\n",
                     i );
             exit( CANNOT_INITIALIZE );
         }
@@ -138,7 +170,7 @@ extern "C" void Cuda_Cleanup_Environment( control_params const * const control )
 
         if ( ret != cudaSuccess )
         {
-            fprintf( stderr, "[ERROR] CUDA strema destruction failed (%d). Terminating...\n",
+            fprintf( stderr, "[ERROR] CUDA stream destruction failed (%d). Terminating...\n",
                     i );
             exit( CANNOT_INITIALIZE );
         }

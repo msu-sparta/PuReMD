@@ -1,6 +1,7 @@
 
 #include "cuda_reduction.h"
 
+#include "cuda_helpers.h"
 #include "cuda_utils.h"
 
 #include "../vector.h"
@@ -10,8 +11,10 @@
 
 #include "../cub/cub/device/device_reduce.cuh"
 #include "../cub/cub/device/device_scan.cuh"
+#include "../cub/cub/block/block_reduce.cuh"
 //#include <cub/device/device_reduce.cuh>
 //#include <cub/device/device_scan.cuh>
+//#include <cub/block/block_reduce.cuh>
 
 
 //struct RvecSum
@@ -221,52 +224,37 @@ CUDA_GLOBAL void k_reduction_rvec( rvec *input, rvec *results, size_t n )
 
 CUDA_GLOBAL void k_reduction_rvec2( rvec2 *input, rvec2 *results, size_t n )
 {
-    extern __shared__ rvec2 data_rvec2_s[];
+    extern __shared__ cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage temp_block[];
+    unsigned int i;
     rvec2 data;
-    unsigned int i, mask;
-    int offset;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
-    mask = __ballot_sync( FULL_MASK, i < n );
 
     if ( i < n )
     {
         data[0] = input[i][0];
         data[1] = input[i][1];
-
-        /* warp-level sum using registers within a warp */
-        for ( offset = warpSize >> 1; offset > 0; offset >>= 1 )
-        {
-            data[0] += __shfl_down_sync( mask, data[0], offset );
-            data[1] += __shfl_down_sync( mask, data[1], offset );
-        }
-
-        /* first thread within a warp writes warp-level sum to shared memory */
-        if ( threadIdx.x % warpSize == 0 )
-        {
-            data_rvec2_s[threadIdx.x >> 5][0] = data[0];
-            data_rvec2_s[threadIdx.x >> 5][1] = data[1];
-        }
     }
-    __syncthreads( );
-
-    /* block-level sum using shared memory */
-    for ( offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
+    else
     {
-        if ( threadIdx.x < offset )
-        {
-            data_rvec2_s[threadIdx.x][0] += data_rvec2_s[threadIdx.x + offset][0];
-            data_rvec2_s[threadIdx.x][1] += data_rvec2_s[threadIdx.x + offset][1];
-        }
-
-        __syncthreads( );
+        data[0] = 0.0;
+        data[1] = 0.0;
     }
+
+    data[0] = cub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(data[0]);
+    __syncthreads( );
+    data[1] = cub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(data[1]);
 
     /* one thread writes the block-level partial sum
      * of the reduction back to global memory */
     if ( threadIdx.x == 0 )
     {
-        results[blockIdx.x][0] = data_rvec2_s[0][0];
-        results[blockIdx.x][1] = data_rvec2_s[0][1];
+#if !defined(CUDA_ACCUM_ATOMIC)
+        results[blockIdx.x][0] = data[0];
+        results[blockIdx.x][1] = data[1];
+#else
+        atomicAdd( (double *) &results[0][0], (double) data[0] );
+        atomicAdd( (double *) &results[0][1], (double) data[1] );
+#endif
     }
 }

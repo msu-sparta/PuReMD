@@ -749,26 +749,28 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system *system, control_params *control,
     real *spad;
     rvec *rvec_spad;
 
-    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
+    sCudaCheckMalloc( &workspace->scratch[2], &workspace->scratch_size[2],
             (sizeof(real) * 3 + sizeof(rvec)) * system->N + sizeof(rvec) * control->blocks_n,
             __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch[0];
+    spad = (real *) workspace->scratch[2];
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
 #else
     sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_hb,
-            0, sizeof(real), control->streams[0], __FILE__, __LINE__ );
+            0, sizeof(real), control->streams[2], __FILE__, __LINE__ );
     if ( control->virial == 1 )
     {
         sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_ext_press,
-                0, sizeof(rvec), control->streams[0], __FILE__, __LINE__ );
+                0, sizeof(rvec), control->streams[2], __FILE__, __LINE__ );
     }
 #endif
+
+    cudaStreamWaitEvent( control->streams[2], control->stream_events[3], 0 );
 
     if ( control->virial == 1 )
     {
         k_hydrogen_bonds_virial_part1 <<< control->blocks, control->block_size,
-                                      0, control->streams[0] >>>
+                                      0, control->streams[2] >>>
                 ( system->d_my_atoms, system->reax_param.d_sbp,
                   system->reax_param.d_hbp, system->reax_param.d_gp,
                   (control_params *) control->d_control_params,
@@ -786,7 +788,7 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system *system, control_params *control,
     }
     else
     {
-//        k_hydrogen_bonds_part1 <<< control->blocks, control->block_size, 0, control->streams[0] >>>
+//        k_hydrogen_bonds_part1 <<< control->blocks, control->block_size, 0, control->streams[2] >>>
 //                ( system->d_my_atoms, system->reax_param.d_sbp,
 //                  system->reax_param.d_hbp, system->reax_param.d_gp,
 //                  (control_params *) control->d_control_params,
@@ -806,7 +808,7 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system *system, control_params *control,
         
         k_hydrogen_bonds_part1_opt <<< blocks, DEF_BLOCK_SIZE,
                                    sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32),
-                                   control->streams[0] >>>
+                                   control->streams[2] >>>
                 ( system->d_my_atoms, system->reax_param.d_sbp,
                   system->reax_param.d_hbp, system->reax_param.d_gp,
                   (control_params *) control->d_control_params,
@@ -836,13 +838,13 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system *system, control_params *control,
 
         k_reduction_rvec <<< control->blocks, control->block_size,
                          sizeof(rvec) * (control->block_size / 32),
-                         control->streams[0] >>>
+                         control->streams[2] >>>
             ( rvec_spad, &rvec_spad[system->n], system->n );
         cudaCheckError( );
 
         k_reduction_rvec <<< 1, control->blocks_pow_2,
                          sizeof(rvec) * (control->blocks_pow_2 / 32),
-                         control->streams[0] >>>
+                         control->streams[2] >>>
             ( &rvec_spad[system->n],
               &((simulation_data *)data->d_simulation_data)->my_ext_press,
               control->blocks );
@@ -855,7 +857,7 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system *system, control_params *control,
 
 #if !defined(CUDA_ACCUM_ATOMIC)
     k_hydrogen_bonds_part2 <<< control->blocks, control->block_size, 0,
-                           control->streams[0] >>>
+                           control->streams[2] >>>
         ( system->d_my_atoms, *(workspace->d_workspace),
           *(lists[BONDS]), system->n );
     cudaCheckError( );
@@ -864,10 +866,10 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system *system, control_params *control,
 //        (((system->n * HB_POST_PROC_KER_THREADS_PER_ATOM) % HB_POST_PROC_BLOCK_SIZE) == 0 ? 0 : 1);
 
     k_hydrogen_bonds_part3 <<< control->blocks, control->block_size, 0,
-                           control->streams[0] >>>
+                           control->streams[2] >>>
         ( system->d_my_atoms, *(workspace->d_workspace), *(lists[HBONDS]), system->n );
 //    k_hydrogen_bonds_part3_opt <<< hnbrs_blocks, HB_POST_PROC_BLOCK_SIZE, 
-//            sizeof(rvec) * HB_POST_PROC_BLOCK_SIZE, control->streams[0] >>>
+//            sizeof(rvec) * HB_POST_PROC_BLOCK_SIZE, control->streams[2] >>>
 //        ( system->d_my_atoms, *(workspace->d_workspace), *(lists[HBONDS]), system->n );
     cudaCheckError( );
 #endif
