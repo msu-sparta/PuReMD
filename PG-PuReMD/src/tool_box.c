@@ -468,6 +468,8 @@ void check_smalloc( void **ptr, size_t *cur_size, size_t new_size,
     fflush( stderr );
 #endif
 
+    assert( new_size > 0 );
+
     if ( new_size > *cur_size )
     {
         if ( *cur_size != 0 )

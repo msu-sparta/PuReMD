@@ -829,7 +829,7 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system *system, control_params *control,
     {
         Cuda_Reduction_Sum( spad,
                 &((simulation_data *)data->d_simulation_data)->my_en.e_hb,
-                system->n );
+                system->n, 2, control->streams[2] );
     }
 
     if ( control->virial == 1 )
@@ -851,7 +851,7 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system *system, control_params *control,
         cudaCheckError( );
 //        Cuda_Reduction_Sum( rvec_spad,
 //                &((simulation_data *)data->d_simulation_data)->my_ext_press,
-//                system->n );
+//                system->n, 2, control->streams[2] );
     }
 #endif
 

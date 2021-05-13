@@ -327,7 +327,7 @@ void Cuda_Compute_Bonds( reax_system *system, control_params *control,
     if ( update_energy == TRUE )
     {
         Cuda_Reduction_Sum( spad, &((simulation_data *)data->d_simulation_data)->my_en.e_bond,
-                system->n );
+                system->n, 1, control->streams[1] );
     }
 #endif
 

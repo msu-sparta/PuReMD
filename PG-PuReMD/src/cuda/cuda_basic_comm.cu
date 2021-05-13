@@ -437,8 +437,9 @@ static cuda_coll_unpacker Get_Unpacker( int type )
 }
 
 
-void Cuda_Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
-        void const * const buf, int buf_type, MPI_Datatype type, cudaStream_t s )
+void Cuda_Dist( reax_system const * const system, storage * const workspace,
+        mpi_datatypes * const mpi_data, void const * const buf,
+        int buf_type, MPI_Datatype type, cudaStream_t s )
 {
     int d, cnt1, cnt2, ret;
     mpi_out_data *out_bufs;
@@ -468,9 +469,24 @@ void Cuda_Dist( reax_system const * const system, mpi_datatypes * const mpi_data
         sCudaCheckMalloc( &out_bufs[2 * d].out_atoms,
                 &out_bufs[2 * d].out_atoms_size,
                 type_size * out_bufs[2 * d].cnt, __FILE__, __LINE__ );
-        sCudaCheckMalloc( (void **) &out_bufs[2 * d].index,
-                &out_bufs[2 * d].index_size,
-                sizeof(int) * out_bufs[2 * d].cnt, __FILE__, __LINE__ );
+	if ( out_bufs[2 * d].index_size < sizeof(int) * out_bufs[2 * d].cnt )
+	{
+            sCudaCheckMalloc( &workspace->scratch[3], &workspace->scratch_size[3],
+                    out_bufs[2 * d].index_size, __FILE__, __LINE__ );
+
+            sCudaMemcpyAsync( workspace->scratch[3], out_bufs[2 * d].index,
+                    out_bufs[2 * d].index_size,
+                    cudaMemcpyDeviceToDevice, s, __FILE__, __LINE__ );
+            sCudaFree( out_bufs[2 * d].index, __FILE__, __LINE__ );
+            sCudaMalloc( (void **) &out_bufs[2 * d].index,
+                    (size_t) CEIL( (sizeof(int) * out_bufs[2 * d].cnt) * SAFE_ZONE ),
+                    __FILE__, __LINE__ );
+            sCudaMemcpyAsync( out_bufs[2 * d].index, workspace->scratch[3],
+                    out_bufs[2 * d].index_size,
+                    cudaMemcpyDeviceToDevice, s, __FILE__, __LINE__ );
+
+            out_bufs[2 * d].index_size = (size_t) CEIL( (sizeof(int) * out_bufs[2 * d].cnt) * SAFE_ZONE );
+	}
 
         pack( buf, &out_bufs[2 * d], s );
 
@@ -481,9 +497,24 @@ void Cuda_Dist( reax_system const * const system, mpi_datatypes * const mpi_data
         sCudaCheckMalloc( &out_bufs[2 * d + 1].out_atoms,
                 &out_bufs[2 * d + 1].out_atoms_size,
                 type_size * out_bufs[2 * d + 1].cnt, __FILE__, __LINE__ );
-        sCudaCheckMalloc( (void **) &out_bufs[2 * d + 1].index,
-                &out_bufs[2 * d + 1].index_size,
-                sizeof(int) * out_bufs[2 * d + 1].cnt, __FILE__, __LINE__ );
+	if ( out_bufs[2 * d + 1].index_size < sizeof(int) * out_bufs[2 * d + 1].cnt )
+	{
+            sCudaCheckMalloc( &workspace->scratch[3], &workspace->scratch_size[3],
+                    out_bufs[2 * d + 1].index_size, __FILE__, __LINE__ );
+
+            sCudaMemcpyAsync( workspace->scratch[3], out_bufs[2 * d + 1].index,
+                    out_bufs[2 * d + 1].index_size,
+                    cudaMemcpyDeviceToDevice, s, __FILE__, __LINE__ );
+            sCudaFree( out_bufs[2 * d + 1].index, __FILE__, __LINE__ );
+            sCudaMalloc( (void **) &out_bufs[2 * d + 1].index,
+                    (size_t) CEIL( (sizeof(int) * out_bufs[2 * d + 1].cnt) * SAFE_ZONE ),
+                    __FILE__, __LINE__ );
+            sCudaMemcpyAsync( out_bufs[2 * d + 1].index, workspace->scratch[3],
+                    out_bufs[2 * d + 1].index_size,
+                    cudaMemcpyDeviceToDevice, s, __FILE__, __LINE__ );
+
+            out_bufs[2 * d + 1].index_size = (size_t) CEIL( (sizeof(int) * out_bufs[2 * d + 1].cnt) * SAFE_ZONE );
+	}
 
         pack( buf, &out_bufs[2 * d + 1], s );
 
@@ -504,7 +535,7 @@ void Cuda_Dist( reax_system const * const system, mpi_datatypes * const mpi_data
         }
         else if ( cnt1 + nbr1->atoms_str > system->total_cap )
         {
-            fprintf( stderr, "[ERROR] Dist: not enough space in recv buffer for nbr1 (dim = %d)\n", d );
+            fprintf( stderr, "[ERROR] Cuda_Dist: not enough space in recv buffer for nbr1 (dim = %d)\n", d );
             MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
         }
 
@@ -524,7 +555,7 @@ void Cuda_Dist( reax_system const * const system, mpi_datatypes * const mpi_data
         }
         else if ( cnt2 + nbr2->atoms_str > system->total_cap )
         {
-            fprintf( stderr, "[ERROR] Dist: not enough space in recv buffer for nbr2 (dim = %d)\n", d );
+            fprintf( stderr, "[ERROR] Cuda_Dist: not enough space in recv buffer for nbr2 (dim = %d)\n", d );
             MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
         }
 
@@ -540,8 +571,9 @@ void Cuda_Dist( reax_system const * const system, mpi_datatypes * const mpi_data
 }
 
 
-void Cuda_Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
-        void const * const buf, int buf_type, MPI_Datatype type, cudaStream_t s )
+void Cuda_Dist_FS( reax_system const * const system,  storage * const workspace,
+        mpi_datatypes * const mpi_data, void const * const buf,
+        int buf_type, MPI_Datatype type, cudaStream_t s )
 {
     int d, cnt1, cnt2, ret;
     mpi_out_data *out_bufs;
@@ -555,7 +587,8 @@ void Cuda_Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_d
 
     ret = MPI_Type_get_extent( type, &lower_bound, &extent );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
-    type_size = MPI_Aint_add( lower_bound, extent );
+//    type_size = MPI_Aint_add( lower_bound, extent );
+    type_size = extent;
 
     comm = mpi_data->comm_mesh3D;
     out_bufs = mpi_data->d_out_buffers;
@@ -570,9 +603,24 @@ void Cuda_Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_d
         sCudaCheckMalloc( &out_bufs[2 * d].out_atoms,
                 &out_bufs[2 * d].out_atoms_size,
                 type_size * out_bufs[2 * d].cnt, __FILE__, __LINE__ );
-        sCudaCheckMalloc( (void **) &out_bufs[2 * d].index,
-                &out_bufs[2 * d].index_size,
-                sizeof(int) * out_bufs[2 * d].cnt, __FILE__, __LINE__ );
+	if ( out_bufs[2 * d].index_size < sizeof(int) * out_bufs[2 * d].cnt )
+	{
+            sCudaCheckMalloc( &workspace->scratch[3], &workspace->scratch_size[3],
+                    out_bufs[2 * d].index_size, __FILE__, __LINE__ );
+
+            sCudaMemcpyAsync( workspace->scratch[3], out_bufs[2 * d].index,
+                    out_bufs[2 * d].index_size,
+                    cudaMemcpyDeviceToDevice, s, __FILE__, __LINE__ );
+            sCudaFree( out_bufs[2 * d].index, __FILE__, __LINE__ );
+            sCudaMalloc( (void **) &out_bufs[2 * d].index,
+                    (size_t) CEIL( (sizeof(int) * out_bufs[2 * d].cnt) * SAFE_ZONE ),
+                    __FILE__, __LINE__ );
+            sCudaMemcpyAsync( out_bufs[2 * d].index, workspace->scratch[3],
+                    out_bufs[2 * d].index_size,
+                    cudaMemcpyDeviceToDevice, s, __FILE__, __LINE__ );
+
+            out_bufs[2 * d].index_size = (size_t) CEIL( (sizeof(int) * out_bufs[2 * d].cnt) * SAFE_ZONE );
+	}
 
         pack( buf, &out_bufs[2 * d], s );
 
@@ -583,9 +631,24 @@ void Cuda_Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_d
         sCudaCheckMalloc( &out_bufs[2 * d + 1].out_atoms,
                 &out_bufs[2 * d + 1].out_atoms_size,
                 type_size * out_bufs[2 * d + 1].cnt, __FILE__, __LINE__ );
-        sCudaCheckMalloc( (void **) &out_bufs[2 * d + 1].index,
-                &out_bufs[2 * d + 1].index_size,
-                sizeof(int) * out_bufs[2 * d + 1].cnt, __FILE__, __LINE__ );
+	if ( out_bufs[2 * d + 1].index_size < sizeof(int) * out_bufs[2 * d + 1].cnt )
+	{
+            sCudaCheckMalloc( &workspace->scratch[3], &workspace->scratch_size[3],
+                    out_bufs[2 * d + 1].index_size, __FILE__, __LINE__ );
+
+            sCudaMemcpyAsync( workspace->scratch[3], out_bufs[2 * d + 1].index,
+                    out_bufs[2 * d + 1].index_size,
+                    cudaMemcpyDeviceToDevice, s, __FILE__, __LINE__ );
+            sCudaFree( out_bufs[2 * d + 1].index, __FILE__, __LINE__ );
+            sCudaMalloc( (void **) &out_bufs[2 * d + 1].index,
+                    (size_t) CEIL( (sizeof(int) * out_bufs[2 * d + 1].cnt) * SAFE_ZONE ),
+                    __FILE__, __LINE__ );
+            sCudaMemcpyAsync( out_bufs[2 * d + 1].index, workspace->scratch[3],
+                    out_bufs[2 * d + 1].index_size,
+                    cudaMemcpyDeviceToDevice, s, __FILE__, __LINE__ );
+
+            out_bufs[2 * d + 1].index_size = (size_t) CEIL( (sizeof(int) * out_bufs[2 * d + 1].cnt) * SAFE_ZONE );
+	}
 
         pack( buf, &out_bufs[2 * d + 1], s );
 
@@ -604,6 +667,11 @@ void Cuda_Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_d
             fprintf( stderr, "[ERROR] MPI_Get_count returned MPI_UNDEFINED\n" );
             MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
         }
+        else if ( cnt1 + nbr1->atoms_str > system->total_cap )
+        {
+            fprintf( stderr, "[ERROR] Cuda_Dist_FS: not enough space in recv buffer for nbr1 (dim = %d)\n", d );
+            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+        }
 
         ret = MPI_Recv( Get_Buffer_Offset( buf, nbr1->atoms_str, buf_type ),
                 cnt1, type, nbr1->rank, 2 * d + 1, comm, MPI_STATUS_IGNORE );
@@ -617,6 +685,11 @@ void Cuda_Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_d
         if ( cnt2 == MPI_UNDEFINED )
         {
             fprintf( stderr, "[ERROR] MPI_Get_count returned MPI_UNDEFINED\n" );
+            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+        }
+        else if ( cnt2 + nbr2->atoms_str > system->total_cap )
+        {
+            fprintf( stderr, "[ERROR] Cuda_Dist_FS: not enough space in recv buffer for nbr2 (dim = %d)\n", d );
             MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
         }
 

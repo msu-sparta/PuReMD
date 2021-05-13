@@ -701,7 +701,7 @@ extern "C" void Cuda_Compute_Kinetic_Energy( reax_system *system,
     /* note: above kernel sums the kinetic energy contribution within blocks,
      * and this call finishes the global reduction across all blocks */
     Cuda_Reduction_Sum( kinetic_energy, &kinetic_energy[system->n], system->n,
-            control->streams[0] );
+            0, control->streams[0] );
 
     sCudaMemcpyAsync( &data->my_en.e_kin, &kinetic_energy[system->n],
             sizeof(real), cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
@@ -735,7 +735,7 @@ void Cuda_Compute_Total_Mass( reax_system *system, control_params *control,
         ( system->reax_param.d_sbp, system->d_my_atoms, spad, system->n );
     cudaCheckError( );
 
-    Cuda_Reduction_Sum( spad, &spad[system->n], system->n, control->streams[0] );
+    Cuda_Reduction_Sum( spad, &spad[system->n], system->n, 0, control->streams[0] );
 
     sCudaMemcpyAsync( &my_M, &spad[system->n], sizeof(real), 
             cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );

@@ -594,7 +594,7 @@ void Cuda_Estimate_Num_Neighbors( reax_system *system, control_params *control,
     cudaCheckError( );
 
     Cuda_Reduction_Sum( system->d_max_far_nbrs, system->d_total_far_nbrs,
-            system->total_cap, control->streams[0] );
+            system->total_cap, 0, control->streams[0] );
     sCudaMemcpyAsync( &system->total_far_nbrs, system->d_total_far_nbrs, sizeof(int), 
             cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );

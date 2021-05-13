@@ -606,15 +606,15 @@ void Cuda_Compute_Atom_Energy( reax_system *system, control_params *control,
     {
         Cuda_Reduction_Sum( spad,
                 &((simulation_data *)data->d_simulation_data)->my_en.e_lp,
-                system->n );
+                system->n, 0, control->streams[0] );
 
         Cuda_Reduction_Sum( &spad[system->n],
                 &((simulation_data *)data->d_simulation_data)->my_en.e_ov,
-                system->n );
+                system->n, 0, control->streams[0] );
 
         Cuda_Reduction_Sum( &spad[2 * system->n],
                 &((simulation_data *)data->d_simulation_data)->my_en.e_un,
-                system->n );
+                system->n, 0, control->streams[0] );
     }
 #endif
 }

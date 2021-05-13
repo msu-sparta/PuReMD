@@ -92,7 +92,7 @@ void Cuda_Reset_Atoms_HBond_Indices( reax_system* system, control_params *contro
     cudaCheckError( );
 
 #if !defined(CUDA_ACCUM_ATOMIC)
-    Cuda_Reduction_Sum( hindex, system->d_numH, system->N );
+    Cuda_Reduction_Sum( hindex, system->d_numH, system->N, 0, control->streams[0] );
 #endif
 
     sCudaMemcpyAsync( &system->numH, system->d_numH, sizeof(int), 

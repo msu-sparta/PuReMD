@@ -1375,11 +1375,11 @@ void Cuda_Compute_Torsion_Angles( reax_system *system, control_params *control,
     {
         Cuda_Reduction_Sum( spad,
                 &((simulation_data *)data->d_simulation_data)->my_en.e_tor,
-                system->n );
+                system->n, 0, control->streams[0] );
 
         Cuda_Reduction_Sum( &spad[system->n],
                 &((simulation_data *)data->d_simulation_data)->my_en.e_con,
-                system->n );
+                system->n, 0, control->streams[0] );
     }
 
     if ( control->virial == 1 )
@@ -1401,7 +1401,7 @@ void Cuda_Compute_Torsion_Angles( reax_system *system, control_params *control,
         cudaCheckError( );
 //            Cuda_Reduction_Sum( rvec_spad,
 //                    &((simulation_data *)data->d_simulation_data)->my_ext_press,
-//                    system->n );
+//                    system->n, 0, control->streams[0] );
     }
 #endif
 

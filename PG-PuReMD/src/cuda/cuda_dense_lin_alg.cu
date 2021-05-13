@@ -561,9 +561,9 @@ real Dot( storage * const workspace,
 {
     int ret;
     real sum, *spad;
-//#if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
+#if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
     real temp;
-//#endif
+#endif
 
     sCudaCheckMalloc( &workspace->scratch[4], &workspace->scratch_size[4],
             sizeof(real) * (k + 1), __FILE__, __LINE__ );
@@ -572,13 +572,14 @@ real Dot( storage * const workspace,
     Vector_Mult( spad, v1, v2, k, s );
 
     /* local reduction (sum) on device */
-    Cuda_Reduction_Sum( spad, &spad[k], k, s );
+    Cuda_Reduction_Sum( spad, &spad[k], k, 4, s );
 
     /* global reduction (sum) of local device sums and store on host */
-//#if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
-//    ret = MPI_Allreduce( &spad[k], &sum, 1, MPI_DOUBLE, MPI_SUM, comm );
-//    Check_MPI_Error( ret, __FILE__, __LINE__ );
-//#else
+#if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
+    cudaStreamSynchronize( s );
+    ret = MPI_Allreduce( &spad[k], &sum, 1, MPI_DOUBLE, MPI_SUM, comm );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+#else
     sCudaMemcpyAsync( &temp, &spad[k], sizeof(real),
             cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
 
@@ -586,7 +587,7 @@ real Dot( storage * const workspace,
 
     ret = MPI_Allreduce( &temp, &sum, 1, MPI_DOUBLE, MPI_SUM, comm );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
-//#endif
+#endif
 
     return sum;
 }
@@ -614,7 +615,7 @@ real Dot_local( storage * const workspace,
     Vector_Mult( spad, v1, v2, k, s );
 
     /* local reduction (sum) on device */
-    Cuda_Reduction_Sum( spad, &spad[k], k, s );
+    Cuda_Reduction_Sum( spad, &spad[k], k, 4, s );
 
     //TODO: keep result of reduction on devie and pass directly to CUDA-aware MPI
     sCudaMemcpyAsync( &sum, &spad[k], sizeof(real),
@@ -659,7 +660,7 @@ void Dot_local_rvec2( storage * const workspace,
     Vector_Mult_rvec2( spad, v1, v2, k, s );
 
     /* local reduction (sum) on device */
-//    Cuda_Reduction_Sum( spad, &spad[k], k, s );
+//    Cuda_Reduction_Sum( spad, &spad[k], k, 4, s );
 
 #if defined(CUDA_ACCUM_ATOMIC)
     sCudaMemsetAsync( &spad[k], 0, sizeof(rvec2), s, __FILE__, __LINE__ );

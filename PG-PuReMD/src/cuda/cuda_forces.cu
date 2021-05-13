@@ -1658,7 +1658,7 @@ void Cuda_Init_Neighbor_Indices( reax_system *system, control_params *control,
 
     /* init indices */
     Cuda_Scan_Excl_Sum( system->d_max_far_nbrs, far_nbr_list->index,
-            far_nbr_list->n, control->streams[0] );
+            far_nbr_list->n, 0, control->streams[0] );
 
     /* init end_indices */
     k_init_end_index <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
@@ -1684,7 +1684,7 @@ void Cuda_Init_HBond_Indices( reax_system *system, storage *workspace,
     temp = (int *) workspace->scratch[2];
 
     /* init indices and end_indices */
-    Cuda_Scan_Excl_Sum( system->d_max_hbonds, temp, system->total_cap, s );
+    Cuda_Scan_Excl_Sum( system->d_max_hbonds, temp, system->total_cap, 2, s );
 
     k_init_hbond_indices <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, system->d_hbonds, temp, 
@@ -1706,7 +1706,7 @@ void Cuda_Init_Bond_Indices( reax_system *system, reax_list * bond_list,
 
     /* init indices */
     Cuda_Scan_Excl_Sum( system->d_max_bonds, bond_list->index,
-            system->total_cap, s );
+            system->total_cap, 1, s );
 
     /* init end_indices */
     k_init_end_index <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
@@ -1728,7 +1728,7 @@ void Cuda_Init_Sparse_Matrix_Indices( reax_system *system, sparse_matrix *H,
         + (H->n_max % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
     /* init indices */
-    Cuda_Scan_Excl_Sum( system->d_max_cm_entries, H->start, H->n_max, s );
+    Cuda_Scan_Excl_Sum( system->d_max_cm_entries, H->start, H->n_max, 4, s );
 
     //TODO: not needed for full format (Init_Forces sets H->end)
     /* init end_indices */
@@ -1770,7 +1770,7 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
         cudaCheckError( );
 
         Cuda_Reduction_Sum( system->d_max_cm_entries, system->d_total_cm_entries,
-                workspace->d_workspace->H.n_max, control->streams[4] );
+                workspace->d_workspace->H.n_max, 4, control->streams[4] );
         sCudaMemcpyAsync( &system->total_cm_entries, system->d_total_cm_entries,
                 sizeof(int), cudaMemcpyDeviceToHost, control->streams[4], __FILE__, __LINE__ );
     }
@@ -1790,7 +1790,7 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
         cudaCheckError( );
 
         Cuda_Reduction_Sum( system->d_max_bonds, system->d_total_bonds,
-                system->total_cap, control->streams[1] );
+                system->total_cap, 1, control->streams[1] );
         sCudaMemcpyAsync( &system->total_bonds, system->d_total_bonds, sizeof(int), 
                 cudaMemcpyDeviceToHost, control->streams[1], __FILE__, __LINE__ );
     }
@@ -1810,7 +1810,7 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
         cudaCheckError( );
 
         Cuda_Reduction_Sum( system->d_max_hbonds, system->d_total_hbonds,
-                system->total_cap, control->streams[2] );
+                system->total_cap, 2, control->streams[2] );
         sCudaMemcpyAsync( &system->total_hbonds, system->d_total_hbonds, sizeof(int), 
                 cudaMemcpyDeviceToHost, control->streams[2], __FILE__, __LINE__ );
     }

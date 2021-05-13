@@ -1365,7 +1365,7 @@ static int Cuda_Estimate_Storage_Three_Body( reax_system *system, control_params
     cudaCheckError( );
 
     Cuda_Reduction_Sum( thbody, system->d_total_thbodies, system->total_bonds,
-           control->streams[0] );
+           0, control->streams[0] );
 
     sCudaMemcpyAsync( &system->total_thbodies, system->d_total_thbodies,
             sizeof(int), cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
@@ -1413,7 +1413,7 @@ static void Cuda_Init_Three_Body_Indices( control_params *control, int *indices,
 
     thbody = lists[THREE_BODIES];
 
-    Cuda_Scan_Excl_Sum( indices, thbody->index, entries, control->streams[0] );
+    Cuda_Scan_Excl_Sum( indices, thbody->index, entries, 0, control->streams[0] );
 }
 
 
@@ -1529,15 +1529,15 @@ int Cuda_Compute_Valence_Angles( reax_system *system, control_params *control,
         {
             Cuda_Reduction_Sum( spad,
                     &((simulation_data *)data->d_simulation_data)->my_en.e_ang,
-                    system->N, control->streams[0] );
+                    system->N, 0, control->streams[0] );
 
             Cuda_Reduction_Sum( &spad[system->N],
                     &((simulation_data *)data->d_simulation_data)->my_en.e_pen,
-                    system->N, control->streams[0] );
+                    system->N, 0, control->streams[0] );
 
             Cuda_Reduction_Sum( &spad[2 * system->N],
                     &((simulation_data *)data->d_simulation_data)->my_en.e_coa,
-                    system->N, control->streams[0] );
+                    system->N, 0, control->streams[0] );
         }
 
         if ( control->virial == 1 )

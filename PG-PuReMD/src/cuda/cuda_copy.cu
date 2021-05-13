@@ -220,20 +220,19 @@ extern "C" void Cuda_Copy_MPI_Data_Host_to_Device( control_params *control,
     for ( int i = 0; i < MAX_NBRS; ++i )
     {
         mpi_data->d_out_buffers[i].cnt = mpi_data->out_buffers[i].cnt;
+
         sCudaCheckMalloc( (void **) &mpi_data->d_out_buffers[i].index,
                 &mpi_data->d_out_buffers[i].index_size,
                 mpi_data->out_buffers[i].index_size, __FILE__, __LINE__ );
+
         sCudaCheckMalloc( &mpi_data->d_out_buffers[i].out_atoms,
                 &mpi_data->d_out_buffers[i].out_atoms_size,
                 mpi_data->out_buffers[i].out_atoms_size, __FILE__, __LINE__ );
-    }
 
-    for ( int i = 0; i < MAX_NBRS; ++i )
-    {
         /* index is set during SendRecv and reused during MPI comms afterward,
          * so copy to device while SendRecv is still done on the host */
         sCudaMemcpyAsync( mpi_data->d_out_buffers[i].index, mpi_data->out_buffers[i].index,
-                mpi_data->d_out_buffers[i].index_size,
+                mpi_data->out_buffers[i].index_size,
                 cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
     }
 

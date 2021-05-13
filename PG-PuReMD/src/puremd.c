@@ -287,7 +287,7 @@ int simulate( const void * const handle )
 
 #if defined(CUDA_DEVICE_PACK)
         //TODO: remove once Comm_Atoms ported
-        Cuda_Copy_MPI_Data_Host_to_Device( mpi_data );
+        Cuda_Copy_MPI_Data_Host_to_Device( control, mpi_data );
 #endif
 
         Cuda_Init_Block_Sizes( system, control );

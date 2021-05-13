@@ -254,7 +254,7 @@ static real Velocity_Verlet_Nose_Hoover_NVT_Part3( reax_system *system,
           dt, v_xi_old, d_my_ekin, system->n );
     cudaCheckError( );
 
-    Cuda_Reduction_Sum( d_my_ekin, d_total_my_ekin, system->n, control->streams[0] );
+    Cuda_Reduction_Sum( d_my_ekin, d_total_my_ekin, system->n, 0, control->streams[0] );
 
     sCudaMemcpyAsync( &my_ekin, d_total_my_ekin, sizeof(real), 
             cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
@@ -319,7 +319,7 @@ int Cuda_Velocity_Verlet_NVE( reax_system *system, control_params *control,
         if ( renbr == TRUE )
         {
             //TODO: remove once Comm_Atoms ported
-            Cuda_Copy_MPI_Data_Host_to_Device( mpi_data );
+            Cuda_Copy_MPI_Data_Host_to_Device( control, mpi_data );
         }
 #endif
 
@@ -417,7 +417,7 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
         if ( renbr == TRUE )
         {
             //TODO: remove once Comm_Atoms ported
-            Cuda_Copy_MPI_Data_Host_to_Device( mpi_data );
+            Cuda_Copy_MPI_Data_Host_to_Device( control, mpi_data );
         }
 #endif
 
@@ -546,7 +546,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
         if ( renbr == TRUE )
         {
             //TODO: remove once Comm_Atoms ported
-            Cuda_Copy_MPI_Data_Host_to_Device( mpi_data );
+            Cuda_Copy_MPI_Data_Host_to_Device( control, mpi_data );
         }
 #endif
 
@@ -659,7 +659,7 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
         if ( renbr == TRUE )
         {
             //TODO: remove once Comm_Atoms ported
-            Cuda_Copy_MPI_Data_Host_to_Device( mpi_data );
+            Cuda_Copy_MPI_Data_Host_to_Device( control, mpi_data );
         }
 #endif
 

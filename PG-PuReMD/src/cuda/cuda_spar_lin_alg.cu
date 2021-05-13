@@ -590,12 +590,9 @@ static void Dual_Sparse_MatVec_Comm_Part1( const reax_system * const system,
         mpi_datatypes * const mpi_data, void const * const x, int n,
         int buf_type, MPI_Datatype mpi_type )
 {
+#if !defined(CUDA_DEVICE_PACK)
     rvec2 *spad;
 
-#if defined(CUDA_DEVICE_PACK)
-    /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
-    Cuda_Dist( system, mpi_data, x, buf_type, mpi_type, control->streams[4] );
-#else
     check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
             sizeof(rvec2) * n, TRUE, SAFE_ZONE,
             "Dual_Sparse_MatVec_Comm_Part1::workspace->host_scratch" );
@@ -611,6 +608,9 @@ static void Dual_Sparse_MatVec_Comm_Part1( const reax_system * const system,
 
     sCudaMemcpyAsync( (void *) x, spad, sizeof(rvec2) * n,
             cudaMemcpyHostToDevice, control->streams[4], __FILE__, __LINE__ );
+#else
+    /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
+    Cuda_Dist( system, workspace, mpi_data, x, buf_type, mpi_type, control->streams[4] );
 #endif
 }
 
@@ -686,14 +686,14 @@ static void Dual_Sparse_MatVec_Comm_Part2( const reax_system * const system,
         mpi_datatypes * const mpi_data, int mat_format,
         void * const b, int n1, int n2, int buf_type, MPI_Datatype mpi_type )
 {
+#if !defined(CUDA_DEVICE_PACK)
     rvec2 *spad;
+#endif
 
     /* reduction required for symmetric half matrix */
     if ( mat_format == SYM_HALF_MATRIX )
     {
-#if defined(CUDA_DEVICE_PACK)
-        Cuda_Coll( system, mpi_data, b, buf_type, mpi_type, control->streams[4] );
-#else
+#if !defined(CUDA_DEVICE_PACK)
         check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
                 sizeof(rvec2) * n1, TRUE, SAFE_ZONE,
                 "Dual_Sparse_MatVec_Comm_Part2::workspace->host_scratch" );
@@ -708,6 +708,8 @@ static void Dual_Sparse_MatVec_Comm_Part2( const reax_system * const system,
 
         sCudaMemcpyAsync( b, spad, sizeof(rvec2) * n2,
                 cudaMemcpyHostToDevice, control->streams[4], __FILE__, __LINE__ );
+#else
+        Cuda_Coll( system, mpi_data, b, buf_type, mpi_type, control->streams[4] );
 #endif
     }
 }
@@ -773,12 +775,9 @@ static void Sparse_MatVec_Comm_Part1( const reax_system * const system,
         mpi_datatypes * const mpi_data, void const * const x, int n,
         int buf_type, MPI_Datatype mpi_type )
 {
+#if !defined(CUDA_DEVICE_PACK)
     real *spad;
 
-#if defined(CUDA_DEVICE_PACK)
-    /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
-    Cuda_Dist( system, mpi_data, x, buf_type, mpi_type, control->streams[4] );
-#else
     check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
             sizeof(real) * n, TRUE, SAFE_ZONE,
             "Sparse_MatVec_Comm_Part1::workspace->host_scratch" );
@@ -794,6 +793,9 @@ static void Sparse_MatVec_Comm_Part1( const reax_system * const system,
 
     sCudaMemcpyAsync( (void *) x, spad, sizeof(real) * n,
             cudaMemcpyHostToDevice, control->streams[4], __FILE__, __LINE__ );
+#else
+    /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
+    Cuda_Dist( system, workspace, mpi_data, x, buf_type, mpi_type, control->streams[4] );
 #endif
 }
 
@@ -867,14 +869,14 @@ static void Sparse_MatVec_Comm_Part2( const reax_system * const system,
         mpi_datatypes * const mpi_data, int mat_format,
         void * const b, int n1, int n2, int buf_type, MPI_Datatype mpi_type )
 {
+#if !defined(CUDA_DEVICE_PACK)
     real *spad;
+#endif
 
     /* reduction required for symmetric half matrix */
     if ( mat_format == SYM_HALF_MATRIX )
     {
-#if defined(CUDA_DEVICE_PACK)
-        Cuda_Coll( system, mpi_data, b, buf_type, mpi_type, control->streams[4] );
-#else
+#if !defined(CUDA_DEVICE_PACK)
         check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
                 sizeof(real) * n1, TRUE, SAFE_ZONE,
                 "Sparse_MatVec_Comm_Part2::workspace->host_scratch" );
@@ -889,6 +891,8 @@ static void Sparse_MatVec_Comm_Part2( const reax_system * const system,
 
         sCudaMemcpyAsync( b, spad, sizeof(real) * n2,
                 cudaMemcpyHostToDevice, control->streams[4], __FILE__, __LINE__ );
+#else
+        Cuda_Coll( system, mpi_data, b, buf_type, mpi_type, control->streams[4] );
 #endif
     }
 }

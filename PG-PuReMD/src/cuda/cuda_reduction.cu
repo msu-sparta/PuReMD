@@ -33,26 +33,25 @@
  *
  * d_array: device array to reduce
  * d_dest: device pointer to hold result of reduction */
-void Cuda_Reduction_Sum( int *d_array, int *d_dest, size_t n, cudaStream_t s )
+void Cuda_Reduction_Sum( int *d_array, int *d_dest, size_t n, int s_index, cudaStream_t s )
 {
-    void *d_temp_storage = NULL;
-    size_t temp_storage_bytes = 0;
+    static void *d_temp_storage[MAX_CUDA_STREAMS] = { NULL };
+    static size_t temp_storage_bytes[MAX_CUDA_STREAMS] = { 0 };
+    void *temp = NULL;
+    size_t temp_bytes = 0;
 
     /* determine temporary device storage requirements */
-    cub::DeviceReduce::Sum( d_temp_storage, temp_storage_bytes,
-            d_array, d_dest, n, s );
+    cub::DeviceReduce::Sum( temp, temp_bytes, d_array, d_dest, n, s );
     cudaCheckError( );
 
     /* allocate temporary storage */
-    sCudaMalloc( &d_temp_storage, temp_storage_bytes, __FILE__, __LINE__ );
+    sCudaCheckMalloc( &d_temp_storage[s_index], &temp_storage_bytes[s_index],
+            temp_bytes, __FILE__, __LINE__ );
 
     /* run sum-reduction */
-    cub::DeviceReduce::Sum( d_temp_storage, temp_storage_bytes,
+    cub::DeviceReduce::Sum( d_temp_storage[s_index], temp_storage_bytes[s_index],
             d_array, d_dest, n, s );
     cudaCheckError( );
-
-    /* deallocate temporary storage */
-    sCudaFree( d_temp_storage, __FILE__, __LINE__ );
 }
 
 
@@ -60,26 +59,25 @@ void Cuda_Reduction_Sum( int *d_array, int *d_dest, size_t n, cudaStream_t s )
  *
  * d_array: device array to reduce
  * d_dest: device pointer to hold result of reduction */
-void Cuda_Reduction_Sum( real *d_array, real *d_dest, size_t n, cudaStream_t s )
+void Cuda_Reduction_Sum( real *d_array, real *d_dest, size_t n, int s_index, cudaStream_t s )
 {
-    void *d_temp_storage = NULL;
-    size_t temp_storage_bytes = 0;
+    static void *d_temp_storage[MAX_CUDA_STREAMS] = { NULL };
+    static size_t temp_storage_bytes[MAX_CUDA_STREAMS] = { 0 };
+    void *temp = NULL;
+    size_t temp_bytes = 0;
 
     /* determine temporary device storage requirements */
-    cub::DeviceReduce::Sum( d_temp_storage, temp_storage_bytes,
-            d_array, d_dest, n, s );
+    cub::DeviceReduce::Sum( temp, temp_bytes, d_array, d_dest, n, s );
     cudaCheckError( );
 
     /* allocate temporary storage */
-    sCudaMalloc( &d_temp_storage, temp_storage_bytes, __FILE__, __LINE__ );
+    sCudaCheckMalloc( &d_temp_storage[s_index], &temp_storage_bytes[s_index],
+            temp_bytes, __FILE__, __LINE__ );
 
     /* run sum-reduction */
-    cub::DeviceReduce::Sum( d_temp_storage, temp_storage_bytes,
+    cub::DeviceReduce::Sum( d_temp_storage[s_index], temp_storage_bytes[s_index],
             d_array, d_dest, n, s );
     cudaCheckError( );
-
-    /* deallocate temporary storage */
-    sCudaFree( d_temp_storage, __FILE__, __LINE__ );
 }
 
 
@@ -112,57 +110,29 @@ void Cuda_Reduction_Sum( real *d_array, real *d_dest, size_t n, cudaStream_t s )
 //}
 
 
-/* Perform a device-wide reduction (max operation)
- *
- * d_array: device array to reduce
- * d_dest: device pointer to hold result of reduction */
-void Cuda_Reduction_Max( int *d_array, int *d_dest, size_t n, cudaStream_t s )
-{
-    void *d_temp_storage = NULL;
-    size_t temp_storage_bytes = 0;
-
-    /* determine temporary device storage requirements */
-    cub::DeviceReduce::Max( d_temp_storage, temp_storage_bytes,
-            d_array, d_dest, n, s );
-    cudaCheckError( );
-
-    /* allocate temporary storage */
-    sCudaMalloc( &d_temp_storage, temp_storage_bytes, __FILE__, __LINE__ );
-
-    /* run exclusive prefix sum */
-    cub::DeviceReduce::Max( d_temp_storage, temp_storage_bytes,
-            d_array, d_dest, n, s );
-    cudaCheckError( );
-
-    /* deallocate temporary storage */
-    sCudaFree( d_temp_storage, __FILE__, __LINE__ );
-}
-
-
 /* Perform a device-wide scan (partial sum operation)
  *
  * d_src: device array to scan
  * d_dest: device array to hold result of scan */
-void Cuda_Scan_Excl_Sum( int *d_src, int *d_dest, size_t n, cudaStream_t s )
+void Cuda_Scan_Excl_Sum( int *d_src, int *d_dest, size_t n, int s_index, cudaStream_t s )
 {
-    void *d_temp_storage = NULL;
-    size_t temp_storage_bytes = 0;
+    static void *d_temp_storage[MAX_CUDA_STREAMS] = { NULL };
+    static size_t temp_storage_bytes[MAX_CUDA_STREAMS] = { 0 };
+    void *temp = NULL;
+    size_t temp_bytes = 0;
 
     /* determine temporary device storage requirements */
-    cub::DeviceScan::ExclusiveSum( d_temp_storage, temp_storage_bytes,
-            d_src, d_dest, n, s );
+    cub::DeviceScan::ExclusiveSum( temp, temp_bytes, d_src, d_dest, n, s );
     cudaCheckError( );
 
     /* allocate temporary storage */
-    sCudaMalloc( &d_temp_storage, temp_storage_bytes, __FILE__, __LINE__ );
+    sCudaCheckMalloc( &d_temp_storage[s_index], &temp_storage_bytes[s_index],
+            temp_bytes, __FILE__, __LINE__ );
 
     /* run exclusive prefix sum */
-    cub::DeviceScan::ExclusiveSum( d_temp_storage, temp_storage_bytes,
+    cub::DeviceScan::ExclusiveSum( d_temp_storage[s_index], temp_storage_bytes[s_index],
             d_src, d_dest, n, s );
     cudaCheckError( );
-
-    /* deallocate temporary storage */
-    sCudaFree( d_temp_storage, __FILE__, __LINE__ );
 }
 
 

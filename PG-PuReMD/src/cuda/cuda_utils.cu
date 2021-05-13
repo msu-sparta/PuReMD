@@ -17,7 +17,7 @@ void sCudaMalloc( void **ptr, size_t count, const char * const filename,
 #if defined(DEBUG_FOCUS)
     MPI_Comm_rank( MPI_COMM_WORLD, &rank );
 
-    fprintf( stderr, "[INFO] requesting %zu bytes at line %d in file %.*s on MPI processor %d\n",
+    fprintf( stderr, "[INFO] sCudaMalloc: requesting %zu bytes at line %d in file %.*s on MPI processor %d\n",
             count, line, (int) strlen(filename), filename, rank );
     fflush( stderr );
 #endif
@@ -39,7 +39,7 @@ void sCudaMalloc( void **ptr, size_t count, const char * const filename,
     }  
 
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "[INFO] granted memory at address %p at line %d in file %.*s on MPI processor %d\n",
+    fprintf( stderr, "[INFO] sCudaMalloc: granted memory at address %p at line %d in file %.*s on MPI processor %d\n",
             *ptr, line, (int) strlen(filename), filename, rank );
     fflush( stderr );
 #endif
@@ -61,6 +61,14 @@ void sCudaFree( void *ptr, const char * const filename, int line )
     {
         return;
     }  
+
+#if defined(DEBUG_FOCUS)
+    MPI_Comm_rank( MPI_COMM_WORLD, &rank );
+
+    fprintf( stderr, "[INFO] sCudaFree: freeing ptr at line %d in file %.*s on MPI processor %d\n",
+            line, (int) strlen(filename), filename, rank );
+    fflush( stderr );
+#endif
 
     ret = cudaFree( ptr );
 
@@ -160,21 +168,21 @@ void sCudaMemsetAsync( void *ptr, int data, size_t count,
 void sCudaCheckMalloc( void **ptr, size_t *cur_size, size_t new_size,
         const char * const filename, int line )
 {
-#if defined(DEBUG_FOCUS)
-    int rank;
-
-    MPI_Comm_rank( MPI_COMM_WORLD, &rank );
-
-    fprintf( stderr, "[INFO] requesting %zu bytes (%zu currently allocated) at line %d in file %.*s on MPI processor %d\n",
-            new_size, *cur_size, line, (int) strlen(filename), filename, rank );
-    fflush( stderr );
-#endif
-
     assert( new_size > 0 );
 
     if ( new_size > *cur_size )
     {
-        if ( *cur_size > 0 || *ptr != NULL )
+#if defined(DEBUG_FOCUS)
+        int rank;
+    
+        MPI_Comm_rank( MPI_COMM_WORLD, &rank );
+    
+        fprintf( stderr, "[INFO] sCudaCheckMalloc: requesting %zu bytes (%zu currently allocated) at line %d in file %.*s on MPI processor %d\n",
+                new_size, *cur_size, line, (int) strlen(filename), filename, rank );
+        fflush( stderr );
+#endif
+
+        if ( *cur_size != 0 )
         {
             sCudaFree( *ptr, filename, line );
         }

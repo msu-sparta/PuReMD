@@ -861,7 +861,7 @@ static void Cuda_Compute_Polarization_Energy( reax_system *system,
 #if !defined(CUDA_ACCUM_ATOMIC)
     Cuda_Reduction_Sum( spad,
             &((simulation_data *)data->d_simulation_data)->my_en.e_pol,
-            system->n );
+            system->n, 4, control->streams[4] );
 #endif
 }
 
@@ -1006,12 +1006,12 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
         /* reduction for vdw */
         Cuda_Reduction_Sum( spad,
                 &((simulation_data *)data->d_simulation_data)->my_en.e_vdW,
-                system->n );
+                system->n, 4, control->streams[4] );
 
         /* reduction for ele */
         Cuda_Reduction_Sum( &spad[system->n],
                 &((simulation_data *)data->d_simulation_data)->my_en.e_ele,
-                system->n );
+                system->n, 4, control->streams[4] );
     }
 
     if ( control->virial == 1 )
