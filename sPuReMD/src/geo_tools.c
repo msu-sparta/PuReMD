@@ -696,6 +696,40 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
         backup[MAX_LINE - 1] = '\0';
         token_cnt = Tokenize( line, &tokens, MAX_TOKEN_LEN );
 
+        if ( strncmp( tokens[0], "CRYSTX", 6 ) == 0 )
+        {
+            sscanf( backup, BGF_CRYSTX_FORMAT, descriptor,
+                    s_a, s_b, s_c, s_alpha, s_beta, s_gamma );
+
+            /* compute full volume tensor from the angles */
+            Setup_Box( sstrtod( s_a, __FILE__, __LINE__ ),
+                    sstrtod( s_b, __FILE__, __LINE__ ),
+                    sstrtod( s_c, __FILE__, __LINE__ ),
+                    sstrtod( s_alpha, __FILE__, __LINE__ ),
+                    sstrtod( s_beta, __FILE__, __LINE__ ),
+                    sstrtod( s_gamma, __FILE__, __LINE__ ),
+                    &system->box );
+
+            crystx_found = TRUE;
+            break;
+        }
+    }
+
+    if ( crystx_found == FALSE )
+    {
+        fprintf( stderr, "[ERROR] improperly formatted BGF file (no CRYSTX keyword found). Terminating...\n" );
+        exit( INVALID_INPUT );
+    }
+
+    fseek( bgf, 0, SEEK_SET );
+
+    while ( fgets( line, MAX_LINE, bgf ) )
+    {
+        /* read new line and tokenize it */
+        strncpy( backup, line, MAX_LINE - 1 );
+        backup[MAX_LINE - 1] = '\0';
+        token_cnt = Tokenize( line, &tokens, MAX_TOKEN_LEN );
+
         /* process lines with atom info (i.e., begin with keywords HETATM or ATOM),
          * format: "%6s %5d %-5s %3s %c %5s%10.5f%10.5f%10.5f %-5s%3d%2d %8.5f"
          *
@@ -777,22 +811,6 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
 
             atom_cnt++;
         }
-        else if ( strncmp( tokens[0], "CRYSTX", 6 ) == 0 )
-        {
-            sscanf( backup, BGF_CRYSTX_FORMAT, descriptor,
-                    s_a, s_b, s_c, s_alpha, s_beta, s_gamma );
-
-            /* compute full volume tensor from the angles */
-            Setup_Box( sstrtod( s_a, __FILE__, __LINE__ ),
-                    sstrtod( s_b, __FILE__, __LINE__ ),
-                    sstrtod( s_c, __FILE__, __LINE__ ),
-                    sstrtod( s_alpha, __FILE__, __LINE__ ),
-                    sstrtod( s_beta, __FILE__, __LINE__ ),
-                    sstrtod( s_gamma, __FILE__, __LINE__ ),
-                    &system->box );
-
-            crystx_found = TRUE;
-        }
         else if ( strncmp( tokens[0], "CONECT", 6 ) == 0 )
         {
             if ( control->restrict_bonds )
@@ -832,12 +850,6 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
     if ( ferror( bgf ) )
     {
         fprintf( stderr, "[ERROR] Unable to read BGF file. Terminating...\n" );
-        exit( INVALID_INPUT );
-    }
-
-    if ( crystx_found == FALSE )
-    {
-        fprintf( stderr, "[ERROR] improperly formatted BGF file (no CRYSTX keyword found). Terminating...\n" );
         exit( INVALID_INPUT );
     }
 
