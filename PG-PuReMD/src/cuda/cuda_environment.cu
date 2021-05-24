@@ -55,8 +55,8 @@ extern "C" void Cuda_Setup_Environment( reax_system const * const system,
     }
 
     ret = cudaDeviceGetAttribute( &is_stream_priority_supported,
-		    cudaDevAttrStreamPrioritiesSupported,
-		    system->my_rank % control->gpus_per_node );
+            cudaDevAttrStreamPrioritiesSupported,
+            system->my_rank % control->gpus_per_node );
 
     if ( ret != cudaSuccess )
     {
@@ -81,46 +81,60 @@ extern "C" void Cuda_Setup_Environment( reax_system const * const system,
          * 3: (after init dist) van der Waals
          * 4: init CM, CM, Coulomb
          */
-        for ( i = 0; i < MAX_CUDA_STREAMS; ++i )
+        for ( i = MAX_CUDA_STREAMS - 1; i >= 0; --i )
         {
-            /* all non-CM streams of equal priority */
-            if ( i != MAX_CUDA_STREAMS - 1 )
+            if ( MAX_CUDA_STREAMS - 1 + -1 * i < control->gpu_streams )
             {
-                ret = cudaStreamCreateWithPriority( &control->streams[i], cudaStreamNonBlocking, least_priority );
+                /* all non-CM streams of equal priority */
+                if ( i != MAX_CUDA_STREAMS - 1 )
+                {
+                    ret = cudaStreamCreateWithPriority( &control->streams[i], cudaStreamNonBlocking, least_priority );
+                }
+                /* CM gets highest priority due to MPI comms and cudaMemcpy's */
+                else
+                {
+                    ret = cudaStreamCreateWithPriority( &control->streams[i], cudaStreamNonBlocking, greatest_priority );
+                }
+        
+                if ( ret != cudaSuccess )
+                {
+                    fprintf( stderr, "[ERROR] cudaStreamCreateWithPriority failure (%d). Terminating...\n",
+                            i );
+                    exit( CANNOT_INITIALIZE );
+                }
             }
-            /* CM gets highest priority due to MPI comms and cudaMemcpy's */
             else
             {
-                ret = cudaStreamCreateWithPriority( &control->streams[i], cudaStreamNonBlocking, greatest_priority );
-            }
-    
-            if ( ret != cudaSuccess )
-            {
-                fprintf( stderr, "[ERROR] cudaStreamCreateWithPriority failure (%d). Terminating...\n",
-                        i );
-                exit( CANNOT_INITIALIZE );
+                control->streams[i] = control->streams[MAX_CUDA_STREAMS - 1 - ((MAX_CUDA_STREAMS - 1 + -1 * i) % control->gpu_streams)];
             }
         }
     }
     else
     {
-       /* stream assignment (default to 0 for any kernel not listed):
-        * 0: init dist, bond order (uncorrected/corrected), lone pair/over coord/under coord
-        * 1: (after init dist) init bonds, (after bond order) bonds, valence angles, torsions
-        * 2: (after init dist) init hbonds, (after bonds) hbonds
-        * 3: (after init dist) van der Waals
-        * 4: init CM, CM, Coulomb
-        */
-       for ( i = 0; i < MAX_CUDA_STREAMS; ++i )
-       {
-           ret = cudaStreamCreateWithFlags( &control->streams[i], cudaStreamNonBlocking );
-   
-           if ( ret != cudaSuccess )
-           {
-               fprintf( stderr, "[ERROR] cudaStreamCreateWithFlags failure (%d). Terminating...\n",
-                       i );
-               exit( CANNOT_INITIALIZE );
-           }
+        /* stream assignment (default to 0 for any kernel not listed):
+         * 0: init dist, bond order (uncorrected/corrected), lone pair/over coord/under coord
+         * 1: (after init dist) init bonds, (after bond order) bonds, valence angles, torsions
+         * 2: (after init dist) init hbonds, (after bonds) hbonds
+         * 3: (after init dist) van der Waals
+         * 4: init CM, CM, Coulomb
+         */
+        for ( i = MAX_CUDA_STREAMS - 1; i >= 0; --i )
+        {
+            if ( MAX_CUDA_STREAMS - 1 + -1 * i < control->gpu_streams )
+            {
+                ret = cudaStreamCreateWithFlags( &control->streams[i], cudaStreamNonBlocking );
+        
+                if ( ret != cudaSuccess )
+                {
+                    fprintf( stderr, "[ERROR] cudaStreamCreateWithFlags failure (%d). Terminating...\n",
+                            i );
+                    exit( CANNOT_INITIALIZE );
+                }
+            }
+            else
+            {
+                control->streams[i] = control->streams[MAX_CUDA_STREAMS - 1 - ((MAX_CUDA_STREAMS - 1 + -1 * i) % control->gpu_streams)];
+            }
        }
     }
 
@@ -164,18 +178,44 @@ extern "C" void Cuda_Cleanup_Environment( control_params const * const control )
     int i;
     cudaError_t ret;
 
-    for ( i = 0; i < MAX_CUDA_STREAMS; ++i )
+    for ( i = MAX_CUDA_STREAMS - 1; i >= 0; --i )
     {
-        ret = cudaStreamDestroy( control->streams[i] );
-
-        if ( ret != cudaSuccess )
+        if ( MAX_CUDA_STREAMS - 1 + -1 * i < control->gpu_streams )
         {
-            fprintf( stderr, "[ERROR] CUDA stream destruction failed (%d). Terminating...\n",
-                    i );
-            exit( CANNOT_INITIALIZE );
+            ret = cudaStreamDestroy( control->streams[i] );
+    
+            if ( ret != cudaSuccess )
+            {
+                fprintf( stderr, "[ERROR] CUDA stream destruction failed (%d). Terminating...\n",
+                        i );
+                exit( CANNOT_INITIALIZE );
+            }
         }
     }
+}
 
-    cudaDeviceReset( );
-    cudaDeviceSynchronize( );
+
+extern "C" void Cuda_Print_Mem_Usage( simulation_data const * const data )
+{
+    int rank;
+    size_t total, free;
+    cudaError_t ret;
+
+    MPI_Comm_rank( MPI_COMM_WORLD, &rank );
+    ret = cudaMemGetInfo( &free, &total );
+
+    if ( ret != cudaSuccess )
+    {
+        fprintf( stderr,
+                "[WARNING] could not get message usage info from device\n"
+                "    [INFO] CUDA API error code: %d\n",
+                ret );
+        return;
+    }
+
+    fprintf( stderr, "[INFO] step %d on MPI processor %d, Total: %zu bytes (%7.2f MB) Free %zu bytes (%7.2f MB)\n", 
+            data->step, rank,
+            total, (long long int) total / (1024.0 * 1024.0),
+            free, (long long int) free / (1024.0 * 1024.0) );
+    fflush( stderr );
 }

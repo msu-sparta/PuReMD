@@ -535,7 +535,7 @@ CUDA_GLOBAL void k_bond_order_part2_opt( reax_atom *my_atoms, global_parameters 
         storage workspace, reax_list bond_list, int num_atom_types, int N )
 {
     extern __shared__ cub::WarpReduce<double>::TempStorage temp2[];
-    int i, j, pj, type_i, type_j, thread_id, lane_id, itr;;
+    int i, j, pj, type_i, type_j, thread_id, warp_id, lane_id, itr;;
     int start_i, end_i;
     real val_i, Deltap_i, Deltap_boc_i;
     real val_j, Deltap_j, Deltap_boc_j;
@@ -560,6 +560,7 @@ CUDA_GLOBAL void k_bond_order_part2_opt( reax_atom *my_atoms, global_parameters 
         return;
     }
 
+    warp_id = threadIdx.x / warpSize;
     lane_id = thread_id % warpSize;
 
     p_boc1 = gp.l[0];
@@ -745,7 +746,7 @@ CUDA_GLOBAL void k_bond_order_part2_opt( reax_atom *my_atoms, global_parameters 
         pj += warpSize;
     }
 
-    total_bond_order_i = cub::WarpReduce<double>(temp2[i % (blockDim.x / warpSize)]).Sum(total_bond_order_i);
+    total_bond_order_i = cub::WarpReduce<double>(temp2[warp_id]).Sum(total_bond_order_i);
 
     if ( lane_id == 0 )
     {
@@ -885,7 +886,7 @@ CUDA_GLOBAL void k_total_forces_part1_opt( storage workspace, reax_list bond_lis
         int N )
 {
     extern __shared__ cub::WarpReduce<double>::TempStorage temp1[];
-    int i, pj, start_i, end_i, thread_id, lane_id, itr;
+    int i, pj, start_i, end_i, thread_id, warp_id, lane_id, itr;
     rvec f_i;
 
     thread_id = blockIdx.x * blockDim.x + threadIdx.x;
@@ -898,6 +899,7 @@ CUDA_GLOBAL void k_total_forces_part1_opt( storage workspace, reax_list bond_lis
         return;
     }
 
+    warp_id = threadIdx.x / warpSize;
     lane_id = thread_id % warpSize;
     start_i = Start_Index( i, &bond_list );
     end_i = End_Index( i, &bond_list );
@@ -913,9 +915,9 @@ CUDA_GLOBAL void k_total_forces_part1_opt( storage workspace, reax_list bond_lis
         pj += warpSize;
     }
 
-    f_i[0] = cub::WarpReduce<double>(temp1[i % (blockDim.x / warpSize)]).Sum(f_i[0]);
-    f_i[1] = cub::WarpReduce<double>(temp1[i % (blockDim.x / warpSize)]).Sum(f_i[1]);
-    f_i[2] = cub::WarpReduce<double>(temp1[i % (blockDim.x / warpSize)]).Sum(f_i[2]);
+    f_i[0] = cub::WarpReduce<double>(temp1[warp_id]).Sum(f_i[0]);
+    f_i[1] = cub::WarpReduce<double>(temp1[warp_id]).Sum(f_i[1]);
+    f_i[2] = cub::WarpReduce<double>(temp1[warp_id]).Sum(f_i[2]);
 
     if ( lane_id == 0 )
     {

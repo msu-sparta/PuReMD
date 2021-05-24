@@ -73,7 +73,7 @@ void* srealloc( void *, size_t, const char * );
 
 void *scalloc( size_t, size_t, const char* );
 
-void check_smalloc( void **, size_t *, size_t, int, real, const char * );
+void smalloc_check( void **, size_t *, size_t, int, real, const char * const, int );
 
 void check_srealloc( void **, size_t *, size_t, int, real, const char * );
 

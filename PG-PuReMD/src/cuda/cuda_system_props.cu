@@ -427,7 +427,7 @@ CUDA_GLOBAL void k_compute_total_mass( single_body_parameters *sbp, reax_atom *m
         return;
     }
 
-    M_g[blockIdx.x] = sbp[ my_atoms[i].type ].mass;
+    M_g[i] = sbp[ my_atoms[i].type ].mass;
 }
 
 

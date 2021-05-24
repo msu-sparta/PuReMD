@@ -311,6 +311,10 @@ int simulate( const void * const handle )
 
         Check_Energy( data );
 
+#if defined(DEBUG_FOCUS)
+        Cuda_Print_Mem_Usage( data );
+#endif
+
         ++data->step;
         retries = 0;
         while ( data->step <= control->nsteps && retries < MAX_RETRIES )
@@ -365,6 +369,10 @@ int simulate( const void * const handle )
                 fprintf( stderr, "[INFO] p%d: retrying step %d...\n", system->my_rank, data->step );
 #endif
             }
+
+#if defined(DEBUG_FOCUS)
+            Cuda_Print_Mem_Usage( data );
+#endif
         }
 
         if ( retries >= MAX_RETRIES )

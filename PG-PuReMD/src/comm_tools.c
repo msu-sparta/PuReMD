@@ -689,8 +689,8 @@ int SendRecv( reax_system * const system, mpi_datatypes * const mpi_data,
             MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
         }
 
-        check_smalloc( &mpi_data->in1_buffer, &mpi_data->in1_buffer_size,
-                type_size * cnt1, TRUE, SAFE_ZONE, "SendRecv::mpi_data->in1_buffer" );
+        smalloc_check( &mpi_data->in1_buffer, &mpi_data->in1_buffer_size,
+                type_size * cnt1, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
 
         ret = MPI_Recv( mpi_data->in1_buffer, cnt1, type,
                 nbr1->rank, 2 * d + 1, comm, MPI_STATUS_IGNORE );
@@ -711,8 +711,8 @@ int SendRecv( reax_system * const system, mpi_datatypes * const mpi_data,
             MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
         }
 
-        check_smalloc( &mpi_data->in2_buffer, &mpi_data->in2_buffer_size,
-                type_size * cnt2, TRUE, SAFE_ZONE, "SendRecv::mpi_data->in2_buffer" );
+        smalloc_check( &mpi_data->in2_buffer, &mpi_data->in2_buffer_size,
+                type_size * cnt2, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
 
         ret = MPI_Recv( mpi_data->in2_buffer, cnt2, type,
                 nbr2->rank, 2 * d, comm, MPI_STATUS_IGNORE );

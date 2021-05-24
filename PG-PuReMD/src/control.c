@@ -58,6 +58,7 @@ void Read_Control_File( const char * const control_file, control_params * const 
     control->procs_by_dim[2] = 1;
     control->geo_format = 1;
     control->gpus_per_node = 1;
+    control->gpu_streams = MAX_CUDA_STREAMS;
 
     control->random_vel = 0;
     control->restart = 0;
@@ -170,6 +171,18 @@ void Read_Control_File( const char * const control_file, control_params * const 
             {
                 ival = atoi(tmp[1]);
                 control->gpus_per_node = ival;
+            }
+            else if ( strncmp(tmp[0], "gpu_streams", MAX_LINE) == 0 )
+            {
+                ival = atoi(tmp[1]);
+                control->gpu_streams = ival;
+
+                if ( control->gpu_streams <= 0 || control->gpu_streams > MAX_CUDA_STREAMS )
+                {
+                    fprintf( stderr, "[ERROR] invalid control file value for gpu_streams (0 < gpu_streams <= %d). Terminating...\n",
+                            MAX_CUDA_STREAMS );
+                    exit( INVALID_INPUT );
+                }
             }
             else if ( strncmp(tmp[0], "proc_by_dim", MAX_LINE) == 0 )
             {

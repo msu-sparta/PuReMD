@@ -20,8 +20,6 @@ void sCudaMemcpy( void * const, void const * const, size_t,
 void sCudaMemcpyAsync( void * const, void const * const, size_t,
         enum cudaMemcpyKind, cudaStream_t, const char * const, int );
 
-void Cuda_Print_Mem_Usage( );
-
 
 #define cudaCheckError() __cudaCheckError( __FILE__, __LINE__ )
 static inline void __cudaCheckError( const char *file, const int line )

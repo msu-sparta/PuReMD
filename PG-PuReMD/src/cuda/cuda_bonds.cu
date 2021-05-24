@@ -40,7 +40,7 @@ CUDA_GLOBAL void k_bonds( reax_atom *my_atoms, global_parameters gp,
     int i, j, pj;
     int start_i, end_i;
     int type_i, type_j;
-    real pow_BOs_be2, exp_be12, CEbo, e_bond_l;
+    real pow_BOs_be2, exp_be12, CEbo, e_bond_;
     real gp3, gp4, gp7, gp10;
     real exphu, exphua1, exphub1, exphuov, hulpov;
     real decobdbo, decobdboua, decobdboub;
@@ -64,7 +64,7 @@ CUDA_GLOBAL void k_bonds( reax_atom *my_atoms, global_parameters gp,
     gp4 = gp.l[4];
     gp7 = gp.l[7];
     gp10 = gp.l[10];
-    e_bond_l = 0.0;
+    e_bond_ = 0.0;
     CdDelta_i = 0.0;
 
     start_i = Start_Index( i, bond_list );
@@ -89,7 +89,7 @@ CUDA_GLOBAL void k_bonds( reax_atom *my_atoms, global_parameters gp,
                 * (1.0 - twbp->p_be1 * twbp->p_be2 * pow_BOs_be2);
 
             /* calculate bond energy */
-            e_bond_l += -twbp->De_s * bo_ij->BO_s * exp_be12
+            e_bond_ += -twbp->De_s * bo_ij->BO_s * exp_be12
                 - twbp->De_p * bo_ij->BO_pi
                 - twbp->De_pp * bo_ij->BO_pi2;
 
@@ -116,7 +116,7 @@ CUDA_GLOBAL void k_bonds( reax_atom *my_atoms, global_parameters gp,
                     exphuov = EXP(gp4 * (workspace->Delta[i] + workspace->Delta[j]));
                     hulpov = 1.0 / (1.0 + 25.0 * exphuov);
 
-                    e_bond_l += gp10 * exphu * hulpov * (exphua1 + exphub1);
+                    e_bond_ += gp10 * exphu * hulpov * (exphua1 + exphub1);
 
                     decobdbo = gp10 * exphu * hulpov * (exphua1 + exphub1)
                         * ( gp3 - 2.0 * gp7 * (bo_ij->BO - 2.5) );
@@ -136,9 +136,9 @@ CUDA_GLOBAL void k_bonds( reax_atom *my_atoms, global_parameters gp,
     atomicAdd( &workspace->CdDelta[i], CdDelta_i );
 
 #if !defined(CUDA_ACCUM_ATOMIC)
-    e_bond_g[i] = e_bond_l;
+    e_bond_g[i] = e_bond_;
 #else
-    atomicAdd( (double *) e_bond_g, (double) e_bond_l );
+    atomicAdd( (double *) e_bond_g, (double) e_bond_ );
 #endif
 }
 
@@ -149,10 +149,10 @@ CUDA_GLOBAL void k_bonds_opt( reax_atom *my_atoms, global_parameters gp,
         real *e_bond_g )
 {
     extern __shared__ cub::WarpReduce<double>::TempStorage temp_d[];
-    int i, j, pj, thread_id, lane_id, itr;;
+    int i, j, pj, thread_id, warp_id, lane_id, itr;;
     int start_i, end_i;
     int type_i, type_j;
-    real pow_BOs_be2, exp_be12, CEbo, e_bond_l;
+    real pow_BOs_be2, exp_be12, CEbo, e_bond_;
     real gp3, gp4, gp7, gp10;
     real exphu, exphua1, exphub1, exphuov, hulpov;
     real decobdbo, decobdboua, decobdboub;
@@ -173,6 +173,7 @@ CUDA_GLOBAL void k_bonds_opt( reax_atom *my_atoms, global_parameters gp,
         return;
     }
 
+    warp_id = threadIdx.x / warpSize;
     lane_id = thread_id % warpSize;
     bond_list = &p_bond_list;
     workspace = &p_workspace;
@@ -180,7 +181,7 @@ CUDA_GLOBAL void k_bonds_opt( reax_atom *my_atoms, global_parameters gp,
     gp4 = gp.l[4];
     gp7 = gp.l[7];
     gp10 = gp.l[10];
-    e_bond_l = 0.0;
+    e_bond_ = 0.0;
     CdDelta_i = 0.0;
 
     start_i = Start_Index( i, bond_list );
@@ -207,7 +208,7 @@ CUDA_GLOBAL void k_bonds_opt( reax_atom *my_atoms, global_parameters gp,
                     * (1.0 - twbp->p_be1 * twbp->p_be2 * pow_BOs_be2);
 
                 /* calculate bond energy */
-                e_bond_l += -twbp->De_s * bo_ij->BO_s * exp_be12
+                e_bond_ += -twbp->De_s * bo_ij->BO_s * exp_be12
                     - twbp->De_p * bo_ij->BO_pi
                     - twbp->De_pp * bo_ij->BO_pi2;
 
@@ -234,7 +235,7 @@ CUDA_GLOBAL void k_bonds_opt( reax_atom *my_atoms, global_parameters gp,
                         exphuov = EXP(gp4 * (workspace->Delta[i] + workspace->Delta[j]));
                         hulpov = 1.0 / (1.0 + 25.0 * exphuov);
 
-                        e_bond_l += gp10 * exphu * hulpov * (exphua1 + exphub1);
+                        e_bond_ += gp10 * exphu * hulpov * (exphua1 + exphub1);
 
                         decobdbo = gp10 * exphu * hulpov * (exphua1 + exphub1)
                             * ( gp3 - 2.0 * gp7 * (bo_ij->BO - 2.5) );
@@ -254,17 +255,17 @@ CUDA_GLOBAL void k_bonds_opt( reax_atom *my_atoms, global_parameters gp,
         pj += warpSize;
     }
 
-    CdDelta_i = cub::WarpReduce<double>(temp_d[i % (blockDim.x / warpSize)]).Sum(CdDelta_i);
-    e_bond_l = cub::WarpReduce<double>(temp_d[i % (blockDim.x / warpSize)]).Sum(e_bond_l);
+    CdDelta_i = cub::WarpReduce<double>(temp_d[warp_id]).Sum(CdDelta_i);
+    e_bond_ = cub::WarpReduce<double>(temp_d[warp_id]).Sum(e_bond_);
 
     if ( lane_id == 0 )
     {
         atomicAdd( &workspace->CdDelta[i], CdDelta_i );
 
 #if !defined(CUDA_ACCUM_ATOMIC)
-        e_bond_g[i] = e_bond_l;
+        e_bond_g[i] = e_bond_;
 #else
-        atomicAdd( (double *) e_bond_g, (double) e_bond_l );
+        atomicAdd( (double *) e_bond_g, (double) e_bond_ );
 #endif
     }
 }

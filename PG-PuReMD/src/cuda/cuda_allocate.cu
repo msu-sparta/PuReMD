@@ -391,10 +391,15 @@ void Cuda_Allocate_System( reax_system *system, control_params *control )
 }
 
 
-void Cuda_Allocate_Simulation_Data( simulation_data *data )
+void Cuda_Allocate_Simulation_Data( simulation_data *data, cudaStream_t s )
 {
     sCudaMalloc( (void **) &data->d_simulation_data,
             sizeof(simulation_data), __FILE__, __LINE__ );
+
+    sCudaMemsetAsync( data->d_simulation_data, FALSE, sizeof(simulation_data), 
+            s, __FILE__, __LINE__ );
+
+    cudaStreamSynchronize( s );
 }
 
 
@@ -861,7 +866,7 @@ void Cuda_Deallocate_Workspace_Part2( control_params *control, storage *workspac
  * format: sparse matrix format
  */
 void Cuda_Allocate_Matrix( sparse_matrix * const H, int n, int n_max, int m,
-       int format )
+       int format, cudaStream_t s )
 {
     H->allocated = TRUE;
     H->n = n;
@@ -872,7 +877,10 @@ void Cuda_Allocate_Matrix( sparse_matrix * const H, int n, int n_max, int m,
     sCudaMalloc( (void **) &H->start, sizeof(int) * n_max, __FILE__, __LINE__ );
     sCudaMalloc( (void **) &H->end, sizeof(int) * n_max, __FILE__, __LINE__ );
     sCudaMalloc( (void **) &H->j, sizeof(int) * m, __FILE__, __LINE__ );
+    sCudaMemsetAsync( H->j, FALSE, sizeof(int) * m, s, __FILE__, __LINE__ );
     sCudaMalloc( (void **) &H->val, sizeof(real) * m, __FILE__, __LINE__ );
+    sCudaMemsetAsync( H->val, FALSE, sizeof(real) * m, s, __FILE__, __LINE__ );
+    cudaStreamSynchronize( s );
 }
 
 
@@ -992,7 +1000,7 @@ void Cuda_Reallocate_Part2( reax_system *system, control_params *control,
 
         Cuda_Deallocate_Matrix( H );
         Cuda_Allocate_Matrix( H, system->n, system->local_cap,
-                system->total_cm_entries, format );
+                system->total_cm_entries, format, control->streams[0] );
 
         realloc->cm = FALSE;
     }

@@ -168,7 +168,7 @@ void sCudaMemsetAsync( void *ptr, int data, size_t count,
 void sCudaCheckMalloc( void **ptr, size_t *cur_size, size_t new_size,
         const char * const filename, int line )
 {
-    assert( new_size > 0 );
+    assert( new_size > 0 || *cur_size > 0 );
 
     if ( new_size > *cur_size )
     {
@@ -260,26 +260,4 @@ void sCudaMemcpyAsync( void * const dest, void const * const src, size_t count,
 
         MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
     }
-}
-
-
-void Cuda_Print_Mem_Usage( )
-{
-    size_t total, free;
-    cudaError_t ret;
-
-    ret = cudaMemGetInfo( &free, &total );
-
-    if ( ret != cudaSuccess )
-    {
-        fprintf( stderr,
-                "[WARNING] could not get message usage info from device\n"
-                "    [INFO] CUDA API error code: %d\n",
-                ret );
-        return;
-    }
-
-    fprintf( stderr, "Total: %zu bytes (%7.2f MB)\nFree %zu bytes (%7.2f MB)\n", 
-            total, (long long int) total / (1024.0 * 1024.0),
-            free, (long long int) free / (1024.0 * 1024.0) );
 }

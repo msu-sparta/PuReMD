@@ -77,7 +77,7 @@ static void Cuda_Init_System( reax_system *system, control_params *control,
 void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
         simulation_data *data )
 {
-    Cuda_Allocate_Simulation_Data( data );
+    Cuda_Allocate_Simulation_Data( data, control->streams[0] );
 
     Reset_Simulation_Data( data );
     Reset_Timing( &data->timing );
@@ -209,7 +209,8 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
             TRUE, TRUE, TRUE, data->step - data->prev_steps );
 
     Cuda_Allocate_Matrix( &workspace->d_workspace->H, system->n,
-            system->local_cap, system->total_cm_entries, SYM_FULL_MATRIX );
+            system->local_cap, system->total_cm_entries, SYM_FULL_MATRIX,
+            control->streams[0] );
     Cuda_Init_Sparse_Matrix_Indices( system, &workspace->d_workspace->H,
            control->streams[0] );
 
@@ -296,6 +297,6 @@ extern "C" void Cuda_Initialize( reax_system *system, control_params *control,
     }
 
 #if defined(DEBUG_FOCUS)
-    Cuda_Print_Mem_Usage( );
+    Cuda_Print_Mem_Usage( data );
 #endif
 }

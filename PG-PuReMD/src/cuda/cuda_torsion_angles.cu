@@ -171,8 +171,8 @@ CUDA_GLOBAL void k_torsion_angles_part1( reax_atom *my_atoms, global_parameters 
     real CV, cmn, CEtors1, CEtors2, CEtors3, CEtors4;
     real CEtors5, CEtors6, CEtors7, CEtors8, CEtors9;
     real Cconj, CEconj1, CEconj2, CEconj3;
-    real CEconj4, CEconj5, CEconj6, e_tor_l, e_con_l;
-    rvec dvec_li, f_j_l;
+    real CEconj4, CEconj5, CEconj6, e_tor_, e_con_;
+    rvec dvec_li, f_j;
     four_body_header *fbh;
     four_body_parameters *fbp;
     bond_data *pbond_ij, *pbond_jk, *pbond_kl;
@@ -191,9 +191,9 @@ CUDA_GLOBAL void k_torsion_angles_part1( reax_atom *my_atoms, global_parameters 
     p_tor3 = gp.l[24];
     p_tor4 = gp.l[25];
     p_cot2 = gp.l[27];
-    e_tor_l = 0.0;
-    e_con_l = 0.0;
-    rvec_MakeZero( f_j_l );
+    e_tor_ = 0.0;
+    e_con_ = 0.0;
+    rvec_MakeZero( f_j );
 
     type_j = my_atoms[j].type;
     Delta_j = workspace.Delta_boc[j];
@@ -343,7 +343,7 @@ CUDA_GLOBAL void k_torsion_angles_part1( reax_atom *my_atoms, global_parameters 
 //                                    + fbp->V2 * exp_tor1 * (1.0 - SQR(cos_omega))
 //                                    + fbp->V3 * (0.5 + 2.0 * CUBE(cos_omega) - 1.5 * cos_omega);
 
-                                e_tor_l += fn10 * sin_ijk * sin_jkl * CV;
+                                e_tor_ += fn10 * sin_ijk * sin_jkl * CV;
 
                                 dfn11 = (-p_tor3 * exp_tor3_DjDk
                                         + (p_tor3 * exp_tor3_DjDk - p_tor4 * exp_tor4_DjDk)
@@ -379,7 +379,7 @@ CUDA_GLOBAL void k_torsion_angles_part1( reax_atom *my_atoms, global_parameters 
 
                                 /* 4-body conjugation energy */
                                 fn12 = exp_cot2_ij * exp_cot2_jk * exp_cot2_kl;
-                                e_con_l += fbp->p_cot1 * fn12
+                                e_con_ += fbp->p_cot1 * fn12
                                     * (1.0 + (SQR(cos_omega) - 1.0) * sin_ijk * sin_jkl);
 
                                 Cconj = -2.0 * fn12 * fbp->p_cot1 * p_cot2
@@ -422,13 +422,13 @@ CUDA_GLOBAL void k_torsion_angles_part1( reax_atom *my_atoms, global_parameters 
                                 /* dcos_theta_ijk */
                                 atomic_rvecScaledAdd( pbond_ij->ta_f, 
                                         CEtors7 + CEconj4, p_ijk->dcos_dk );
-                                rvec_ScaledAdd( f_j_l, 
+                                rvec_ScaledAdd( f_j, 
                                         CEtors7 + CEconj4, p_ijk->dcos_dj );
                                 atomic_rvecScaledAdd( pbond_jk->ta_f,
                                         CEtors7 + CEconj4, p_ijk->dcos_di );
 
                                 /* dcos_theta_jkl */
-                                rvec_ScaledAdd( f_j_l, 
+                                rvec_ScaledAdd( f_j, 
                                         CEtors8 + CEconj5, p_jkl->dcos_di );
                                 atomic_rvecScaledAdd( pbond_jk->ta_f,
                                         CEtors8 + CEconj5, p_jkl->dcos_dj );
@@ -438,7 +438,7 @@ CUDA_GLOBAL void k_torsion_angles_part1( reax_atom *my_atoms, global_parameters 
                                 /* dcos_omega */
                                 atomic_rvecScaledAdd( pbond_ij->ta_f,
                                         CEtors9 + CEconj6, dcos_omega_di );
-                                rvec_ScaledAdd( f_j_l, 
+                                rvec_ScaledAdd( f_j, 
                                         CEtors9 + CEconj6, dcos_omega_dj );
                                 atomic_rvecScaledAdd( pbond_jk->ta_f,
                                         CEtors9 + CEconj6, dcos_omega_dk );
@@ -448,13 +448,13 @@ CUDA_GLOBAL void k_torsion_angles_part1( reax_atom *my_atoms, global_parameters 
                                 /* dcos_theta_ijk */
                                 atomic_rvecScaledAdd( workspace.f[i], 
                                         CEtors7 + CEconj4, p_ijk->dcos_dk );
-                                rvec_ScaledAdd( f_j_l, 
+                                rvec_ScaledAdd( f_j, 
                                         CEtors7 + CEconj4, p_ijk->dcos_dj );
                                 atomic_rvecScaledAdd( workspace.f[k],
                                         CEtors7 + CEconj4, p_ijk->dcos_di );
 
                                 /* dcos_theta_jkl */
-                                rvec_ScaledAdd( f_j_l, 
+                                rvec_ScaledAdd( f_j, 
                                         CEtors8 + CEconj5, p_jkl->dcos_di );
                                 atomic_rvecScaledAdd( workspace.f[k],
                                         CEtors8 + CEconj5, p_jkl->dcos_dj );
@@ -464,7 +464,7 @@ CUDA_GLOBAL void k_torsion_angles_part1( reax_atom *my_atoms, global_parameters 
                                 /* dcos_omega */
                                 atomic_rvecScaledAdd( workspace.f[i],
                                         CEtors9 + CEconj6, dcos_omega_di );
-                                rvec_ScaledAdd( f_j_l, 
+                                rvec_ScaledAdd( f_j, 
                                         CEtors9 + CEconj6, dcos_omega_dj );
                                 atomic_rvecScaledAdd( workspace.f[k],
                                         CEtors9 + CEconj6, dcos_omega_dk );
@@ -481,13 +481,13 @@ CUDA_GLOBAL void k_torsion_angles_part1( reax_atom *my_atoms, global_parameters 
     //  } // j loop
 
 #if !defined(CUDA_ACCUM_ATOMIC)
-    rvec_Add( workspace.f[j], f_j_l );
-    e_tor_g[j] = e_tor_l;
-    e_con_g[j] = e_con_l;
+    rvec_Add( workspace.f[j], f_j );
+    e_tor_g[j] = e_tor_;
+    e_con_g[j] = e_con_;
 #else
-    atomic_rvecAdd( workspace.f[j], f_j_l );
-    atomicAdd( (double *) e_tor_g, (double) e_tor_l );
-    atomicAdd( (double *) e_con_g, (double) e_con_l );
+    atomic_rvecAdd( workspace.f[j], f_j );
+    atomicAdd( (double *) e_tor_g, (double) e_tor_ );
+    atomicAdd( (double *) e_con_g, (double) e_con_ );
 #endif
 }
 
@@ -498,7 +498,7 @@ CUDA_GLOBAL void k_torsion_angles_part1_opt( reax_atom *my_atoms, global_paramet
         real *e_tor_g, real *e_con_g )
 {
     extern __shared__ cub::WarpReduce<double>::TempStorage temp_d[];
-    int i, j, k, l, pi, pj, pk, pl, pij, plk, thread_id, lane_id, itr;
+    int i, j, k, l, pi, pj, pk, pl, pij, plk, thread_id, warp_id, lane_id, itr;
     int type_i, type_j, type_k, type_l;
     int start_j, end_j;
     int start_pj, end_pj, start_pk, end_pk;
@@ -518,8 +518,8 @@ CUDA_GLOBAL void k_torsion_angles_part1_opt( reax_atom *my_atoms, global_paramet
     real CV, cmn, CEtors1, CEtors2, CEtors3, CEtors4;
     real CEtors5, CEtors6, CEtors7, CEtors8, CEtors9;
     real Cconj, CEconj1, CEconj2, CEconj3;
-    real CEconj4, CEconj5, CEconj6, e_tor_l, e_con_l;
-    rvec dvec_li, f_j_l;
+    real CEconj4, CEconj5, CEconj6, e_tor_, e_con_;
+    rvec dvec_li, f_j;
     four_body_header *fbh;
     four_body_parameters *fbp;
     bond_data *pbond_ij, *pbond_jk, *pbond_kl;
@@ -537,14 +537,15 @@ CUDA_GLOBAL void k_torsion_angles_part1_opt( reax_atom *my_atoms, global_paramet
         return;
     }
 
+    warp_id = threadIdx.x / warpSize;
     lane_id = thread_id % warpSize;
     p_tor2 = gp.l[23];
     p_tor3 = gp.l[24];
     p_tor4 = gp.l[25];
     p_cot2 = gp.l[27];
-    e_tor_l = 0.0;
-    e_con_l = 0.0;
-    rvec_MakeZero( f_j_l );
+    e_tor_ = 0.0;
+    e_con_ = 0.0;
+    rvec_MakeZero( f_j );
 
     type_j = my_atoms[j].type;
     Delta_j = workspace.Delta_boc[j];
@@ -696,7 +697,7 @@ CUDA_GLOBAL void k_torsion_angles_part1_opt( reax_atom *my_atoms, global_paramet
     //                                    + fbp->V2 * exp_tor1 * (1.0 - SQR(cos_omega))
     //                                    + fbp->V3 * (0.5 + 2.0 * CUBE(cos_omega) - 1.5 * cos_omega);
 
-                                    e_tor_l += fn10 * sin_ijk * sin_jkl * CV;
+                                    e_tor_ += fn10 * sin_ijk * sin_jkl * CV;
 
                                     dfn11 = (-p_tor3 * exp_tor3_DjDk
                                             + (p_tor3 * exp_tor3_DjDk - p_tor4 * exp_tor4_DjDk)
@@ -732,7 +733,7 @@ CUDA_GLOBAL void k_torsion_angles_part1_opt( reax_atom *my_atoms, global_paramet
 
                                     /* 4-body conjugation energy */
                                     fn12 = exp_cot2_ij * exp_cot2_jk * exp_cot2_kl;
-                                    e_con_l += fbp->p_cot1 * fn12
+                                    e_con_ += fbp->p_cot1 * fn12
                                         * (1.0 + (SQR(cos_omega) - 1.0) * sin_ijk * sin_jkl);
 
                                     Cconj = -2.0 * fn12 * fbp->p_cot1 * p_cot2
@@ -775,13 +776,13 @@ CUDA_GLOBAL void k_torsion_angles_part1_opt( reax_atom *my_atoms, global_paramet
                                     /* dcos_theta_ijk */
                                     atomic_rvecScaledAdd( pbond_ij->ta_f, 
                                             CEtors7 + CEconj4, p_ijk->dcos_dk );
-                                    rvec_ScaledAdd( f_j_l, 
+                                    rvec_ScaledAdd( f_j, 
                                             CEtors7 + CEconj4, p_ijk->dcos_dj );
                                     atomic_rvecScaledAdd( pbond_jk->ta_f,
                                             CEtors7 + CEconj4, p_ijk->dcos_di );
 
                                     /* dcos_theta_jkl */
-                                    rvec_ScaledAdd( f_j_l, 
+                                    rvec_ScaledAdd( f_j, 
                                             CEtors8 + CEconj5, p_jkl->dcos_di );
                                     atomic_rvecScaledAdd( pbond_jk->ta_f,
                                             CEtors8 + CEconj5, p_jkl->dcos_dj );
@@ -791,7 +792,7 @@ CUDA_GLOBAL void k_torsion_angles_part1_opt( reax_atom *my_atoms, global_paramet
                                     /* dcos_omega */
                                     atomic_rvecScaledAdd( pbond_ij->ta_f,
                                             CEtors9 + CEconj6, dcos_omega_di );
-                                    rvec_ScaledAdd( f_j_l, 
+                                    rvec_ScaledAdd( f_j, 
                                             CEtors9 + CEconj6, dcos_omega_dj );
                                     atomic_rvecScaledAdd( pbond_jk->ta_f,
                                             CEtors9 + CEconj6, dcos_omega_dk );
@@ -801,13 +802,13 @@ CUDA_GLOBAL void k_torsion_angles_part1_opt( reax_atom *my_atoms, global_paramet
                                     /* dcos_theta_ijk */
                                     atomic_rvecScaledAdd( workspace.f[i], 
                                             CEtors7 + CEconj4, p_ijk->dcos_dk );
-                                    rvec_ScaledAdd( f_j_l, 
+                                    rvec_ScaledAdd( f_j, 
                                             CEtors7 + CEconj4, p_ijk->dcos_dj );
                                     atomic_rvecScaledAdd( workspace.f[k],
                                             CEtors7 + CEconj4, p_ijk->dcos_di );
 
                                     /* dcos_theta_jkl */
-                                    rvec_ScaledAdd( f_j_l, 
+                                    rvec_ScaledAdd( f_j, 
                                             CEtors8 + CEconj5, p_jkl->dcos_di );
                                     atomic_rvecScaledAdd( workspace.f[k],
                                             CEtors8 + CEconj5, p_jkl->dcos_dj );
@@ -817,7 +818,7 @@ CUDA_GLOBAL void k_torsion_angles_part1_opt( reax_atom *my_atoms, global_paramet
                                     /* dcos_omega */
                                     atomic_rvecScaledAdd( workspace.f[i],
                                             CEtors9 + CEconj6, dcos_omega_di );
-                                    rvec_ScaledAdd( f_j_l, 
+                                    rvec_ScaledAdd( f_j, 
                                             CEtors9 + CEconj6, dcos_omega_dj );
                                     atomic_rvecScaledAdd( workspace.f[k],
                                             CEtors9 + CEconj6, dcos_omega_dk );
@@ -836,22 +837,22 @@ CUDA_GLOBAL void k_torsion_angles_part1_opt( reax_atom *my_atoms, global_paramet
     } // pk loop ends
     //  } // j loop
 
-    f_j_l[0] = cub::WarpReduce<double>(temp_d[j % (blockDim.x / warpSize)]).Sum(f_j_l[0]);
-    f_j_l[1] = cub::WarpReduce<double>(temp_d[j % (blockDim.x / warpSize)]).Sum(f_j_l[1]);
-    f_j_l[2] = cub::WarpReduce<double>(temp_d[j % (blockDim.x / warpSize)]).Sum(f_j_l[2]);
-    e_tor_l = cub::WarpReduce<double>(temp_d[j % (blockDim.x / warpSize)]).Sum(e_tor_l);
-    e_con_l = cub::WarpReduce<double>(temp_d[j % (blockDim.x / warpSize)]).Sum(e_con_l);
+    f_j[0] = cub::WarpReduce<double>(temp_d[warp_id]).Sum(f_j[0]);
+    f_j[1] = cub::WarpReduce<double>(temp_d[warp_id]).Sum(f_j[1]);
+    f_j[2] = cub::WarpReduce<double>(temp_d[warp_id]).Sum(f_j[2]);
+    e_tor_ = cub::WarpReduce<double>(temp_d[warp_id]).Sum(e_tor_);
+    e_con_ = cub::WarpReduce<double>(temp_d[warp_id]).Sum(e_con_);
 
     if ( lane_id == 0 )
     {
 #if !defined(CUDA_ACCUM_ATOMIC)
-        rvec_Add( workspace.f[j], f_j_l );
-        e_tor_g[j] = e_tor_l;
-        e_con_g[j] = e_con_l;
+        rvec_Add( workspace.f[j], f_j );
+        e_tor_g[j] = e_tor_;
+        e_con_g[j] = e_con_;
 #else
-        atomic_rvecAdd( workspace.f[j], f_j_l );
-        atomicAdd( (double *) e_tor_g, (double) e_tor_l );
-        atomicAdd( (double *) e_con_g, (double) e_con_l );
+        atomic_rvecAdd( workspace.f[j], f_j );
+        atomicAdd( (double *) e_tor_g, (double) e_tor_ );
+        atomicAdd( (double *) e_con_g, (double) e_con_ );
 #endif
     }
 }
@@ -882,8 +883,8 @@ CUDA_GLOBAL void k_torsion_angles_virial_part1( reax_atom *my_atoms, global_para
     real CV, cmn, CEtors1, CEtors2, CEtors3, CEtors4;
     real CEtors5, CEtors6, CEtors7, CEtors8, CEtors9;
     real Cconj, CEconj1, CEconj2, CEconj3;
-    real CEconj4, CEconj5, CEconj6, e_tor_l, e_con_l;
-    rvec dvec_li, temp, f_j_l, ext_press_l;
+    real CEconj4, CEconj5, CEconj6, e_tor_, e_con_;
+    rvec dvec_li, temp, f_j, ext_press_;
     ivec rel_box_jl;
     four_body_header *fbh;
     four_body_parameters *fbp;
@@ -903,10 +904,10 @@ CUDA_GLOBAL void k_torsion_angles_virial_part1( reax_atom *my_atoms, global_para
     p_tor3 = gp.l[24];
     p_tor4 = gp.l[25];
     p_cot2 = gp.l[27];
-    e_tor_l = 0.0;
-    e_con_l = 0.0;
-    rvec_MakeZero( f_j_l );
-    rvec_MakeZero( ext_press_l );
+    e_tor_ = 0.0;
+    e_con_ = 0.0;
+    rvec_MakeZero( f_j );
+    rvec_MakeZero( ext_press_ );
 
     type_j = my_atoms[j].type;
     Delta_j = workspace.Delta_boc[j];
@@ -1056,7 +1057,7 @@ CUDA_GLOBAL void k_torsion_angles_virial_part1( reax_atom *my_atoms, global_para
 //                                    + fbp->V2 * exp_tor1 * (1.0 - SQR(cos_omega))
 //                                    + fbp->V3 * (0.5 + 2.0 * CUBE(cos_omega) - 1.5 * cos_omega);
 
-                                e_tor_l += fn10 * sin_ijk * sin_jkl * CV;
+                                e_tor_ += fn10 * sin_ijk * sin_jkl * CV;
 
                                 dfn11 = (-p_tor3 * exp_tor3_DjDk
                                         + (p_tor3 * exp_tor3_DjDk - p_tor4 * exp_tor4_DjDk)
@@ -1092,7 +1093,7 @@ CUDA_GLOBAL void k_torsion_angles_virial_part1( reax_atom *my_atoms, global_para
 
                                 /* 4-body conjugation energy */
                                 fn12 = exp_cot2_ij * exp_cot2_jk * exp_cot2_kl;
-                                e_con_l += fbp->p_cot1 * fn12
+                                e_con_ += fbp->p_cot1 * fn12
                                     * (1.0 + (SQR(cos_omega) - 1.0) * sin_ijk * sin_jkl);
 
                                 Cconj = -2.0 * fn12 * fbp->p_cot1 * p_cot2
@@ -1138,48 +1139,48 @@ CUDA_GLOBAL void k_torsion_angles_virial_part1( reax_atom *my_atoms, global_para
                                 rvec_Scale( temp, CEtors7 + CEconj4, p_ijk->dcos_dk );
                                 atomic_rvecAdd( pbond_ij->ta_f, temp );
                                 rvec_iMultiply( temp, pbond_ij->rel_box, temp );
-                                rvec_Add( ext_press_l, temp );
+                                rvec_Add( ext_press_, temp );
 
-                                rvec_ScaledAdd( f_j_l, 
+                                rvec_ScaledAdd( f_j, 
                                         CEtors7 + CEconj4, p_ijk->dcos_dj );
 
                                 rvec_Scale( temp, CEtors7 + CEconj4, p_ijk->dcos_di );
                                 atomic_rvecAdd( pbond_jk->ta_f, temp );
                                 rvec_iMultiply( temp, pbond_jk->rel_box, temp );
-                                rvec_Add( ext_press_l, temp );
+                                rvec_Add( ext_press_, temp );
 
                                 /* dcos_theta_jkl */
-                                rvec_ScaledAdd( f_j_l, 
+                                rvec_ScaledAdd( f_j, 
                                         CEtors8 + CEconj5, p_jkl->dcos_di );
 
                                 rvec_Scale( temp, CEtors8 + CEconj5, p_jkl->dcos_dj );
                                 atomic_rvecAdd( pbond_jk->ta_f, temp );
                                 rvec_iMultiply( temp, pbond_jk->rel_box, temp );
-                                rvec_Add( ext_press_l, temp );
+                                rvec_Add( ext_press_, temp );
 
                                 rvec_Scale( temp, CEtors8 + CEconj5, p_jkl->dcos_dk );
                                 rvec_Add( pbond_kl->ta_f, temp );
                                 rvec_iMultiply( temp, rel_box_jl, temp );
-                                rvec_Add( ext_press_l, temp );
+                                rvec_Add( ext_press_, temp );
 
                                 /* dcos_omega */                      
                                 rvec_Scale( temp, CEtors9 + CEconj6, dcos_omega_di );
                                 atomic_rvecAdd( pbond_ij->ta_f, temp );
                                 rvec_iMultiply( temp, pbond_ij->rel_box, temp );
-                                rvec_Add( ext_press_l, temp );
+                                rvec_Add( ext_press_, temp );
 
-                                rvec_ScaledAdd( f_j_l, 
+                                rvec_ScaledAdd( f_j, 
                                         CEtors9 + CEconj6, dcos_omega_dj );
 
                                 rvec_Scale( temp, CEtors9 + CEconj6, dcos_omega_dk );
                                 rvec_Add( pbond_jk->ta_f, temp );
                                 rvec_iMultiply( temp, pbond_jk->rel_box, temp );
-                                rvec_Add( ext_press_l, temp );
+                                rvec_Add( ext_press_, temp );
 
                                 rvec_Scale( temp, CEtors9 + CEconj6, dcos_omega_dl );
                                 rvec_Add( pbond_kl->ta_f, temp );
                                 rvec_iMultiply( temp, rel_box_jl, temp );
-                                rvec_Add( ext_press_l, temp );
+                                rvec_Add( ext_press_, temp );
 #else
                                 ivec_Sum( rel_box_jl, pbond_jk->rel_box, pbond_kl->rel_box );
 
@@ -1187,48 +1188,48 @@ CUDA_GLOBAL void k_torsion_angles_virial_part1( reax_atom *my_atoms, global_para
                                 rvec_Scale( temp, CEtors7 + CEconj4, p_ijk->dcos_dk );
                                 atomic_rvecAdd( workspace.f[i], temp );
                                 rvec_iMultiply( temp, pbond_ij->rel_box, temp );
-                                rvec_Add( ext_press_l, temp );
+                                rvec_Add( ext_press_, temp );
 
-                                rvec_ScaledAdd( f_j_l, 
+                                rvec_ScaledAdd( f_j, 
                                         CEtors7 + CEconj4, p_ijk->dcos_dj );
 
                                 rvec_Scale( temp, CEtors7 + CEconj4, p_ijk->dcos_di );
                                 atomic_rvecAdd( workspace.f[k], temp );
                                 rvec_iMultiply( temp, pbond_jk->rel_box, temp );
-                                rvec_Add( ext_press_l, temp );
+                                rvec_Add( ext_press_, temp );
 
                                 /* dcos_theta_jkl */
-                                rvec_ScaledAdd( f_j_l, 
+                                rvec_ScaledAdd( f_j, 
                                         CEtors8 + CEconj5, p_jkl->dcos_di );
 
                                 rvec_Scale( temp, CEtors8 + CEconj5, p_jkl->dcos_dj );
                                 atomic_rvecAdd( workspace.f[k], temp );
                                 rvec_iMultiply( temp, pbond_jk->rel_box, temp );
-                                rvec_Add( ext_press_l, temp );
+                                rvec_Add( ext_press_, temp );
 
                                 rvec_Scale( temp, CEtors8 + CEconj5, p_jkl->dcos_dk );
                                 atomic_rvecAdd( workspace.f[l], temp );
                                 rvec_iMultiply( temp, rel_box_jl, temp );
-                                rvec_Add( ext_press_l, temp );
+                                rvec_Add( ext_press_, temp );
 
                                 /* dcos_omega */                      
                                 rvec_Scale( temp, CEtors9 + CEconj6, dcos_omega_di );
                                 atomic_rvecAdd( workspace.f[i], temp );
                                 rvec_iMultiply( temp, pbond_ij->rel_box, temp );
-                                rvec_Add( ext_press_l, temp );
+                                rvec_Add( ext_press_, temp );
 
-                                rvec_ScaledAdd( f_j_l, 
+                                rvec_ScaledAdd( f_j, 
                                         CEtors9 + CEconj6, dcos_omega_dj );
 
                                 rvec_Scale( temp, CEtors9 + CEconj6, dcos_omega_dk );
                                 atomic_rvecAdd( workspace.f[k], temp );
                                 rvec_iMultiply( temp, pbond_jk->rel_box, temp );
-                                rvec_Add( ext_press_l, temp );
+                                rvec_Add( ext_press_, temp );
 
                                 rvec_Scale( temp, CEtors9 + CEconj6, dcos_omega_dl );
                                 rvec_Add( workspace.f[l], temp );
                                 rvec_iMultiply( temp, rel_box_jl, temp );
-                                rvec_Add( ext_press_l, temp );
+                                rvec_Add( ext_press_, temp );
 #endif
                             } // pl check ends
                         } // pl loop ends
@@ -1240,15 +1241,15 @@ CUDA_GLOBAL void k_torsion_angles_virial_part1( reax_atom *my_atoms, global_para
     //  } // j loop
 
 #if !defined(CUDA_ACCUM_ATOMIC)
-    rvec_Add( workspace.f[j], f_j_l );
-    e_tor_g[j] = e_tor_l;
-    e_con_g[j] = e_con_l;
+    rvec_Add( workspace.f[j], f_j );
+    e_tor_g[j] = e_tor_;
+    e_con_g[j] = e_con_;
     rvec_Copy( e_ext_press_g[j], e_ext_press_l );
 #else
-    atomic_rvecAdd( workspace.f[j], f_j_l );
-    atomicAdd( (double *) e_tor_g, (double) e_tor_l );
-    atomicAdd( (double *) e_con_g, (double) e_con_l );
-    atomic_rvecAdd( *ext_press_g, ext_press_l );
+    atomic_rvecAdd( workspace.f[j], f_j );
+    atomicAdd( (double *) e_tor_g, (double) e_tor_ );
+    atomicAdd( (double *) e_con_g, (double) e_con_ );
+    atomic_rvecAdd( *ext_press_g, ext_press_ );
 #endif
 }
 

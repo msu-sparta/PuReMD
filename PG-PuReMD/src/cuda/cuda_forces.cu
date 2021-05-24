@@ -510,7 +510,7 @@ CUDA_GLOBAL void k_init_cm_full_fs_opt( reax_atom *my_atoms, single_body_paramet
         int *max_cm_entries, int *realloc_cm_entries )
 {
     extern __shared__ cub::WarpScan<int>::TempStorage temp[];
-    int i, j, pj, thread_id, lane_id, itr;
+    int i, j, pj, thread_id, warp_id, lane_id, itr;
     int start_i, end_i, type_i, type_j;
     int cm_top, num_cm_entries, offset, flag;
     real r_ij;
@@ -529,6 +529,7 @@ CUDA_GLOBAL void k_init_cm_full_fs_opt( reax_atom *my_atoms, single_body_paramet
         return;
     }
 
+    warp_id = threadIdx.x / warpSize;
     lane_id = thread_id % warpSize;
     H = &workspace.H;
     cm_top = H->start[i];
@@ -554,7 +555,7 @@ CUDA_GLOBAL void k_init_cm_full_fs_opt( reax_atom *my_atoms, single_body_paramet
         {
             offset = (pj < end_i && far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut) ? 1 : 0;
             flag = (offset == 1) ? TRUE : FALSE;
-            cub::WarpScan<int>(temp[i % (blockDim.x / warpSize)]).ExclusiveSum(offset, offset);
+            cub::WarpScan<int>(temp[warp_id]).ExclusiveSum(offset, offset);
 
             if ( flag == TRUE )
             {
@@ -807,7 +808,7 @@ CUDA_GLOBAL void k_init_bonds_opt( reax_atom *my_atoms, single_body_parameters *
         int num_atom_types, int *max_bonds, int *realloc_bonds )
 {
     extern __shared__ cub::WarpScan<int>::TempStorage temp[];
-    int i, j, pj, thread_id, lane_id, itr;
+    int i, j, pj, thread_id, warp_id, lane_id, itr;
     int start_i, end_i;
     int type_i, type_j;
     int btop_i, offset, flag;
@@ -829,6 +830,7 @@ CUDA_GLOBAL void k_init_bonds_opt( reax_atom *my_atoms, single_body_parameters *
         return;
     }
 
+    warp_id = threadIdx.x / warpSize;
     lane_id = thread_id % warpSize;
     atom_i = &my_atoms[i];
     type_i = atom_i->type;
@@ -907,7 +909,7 @@ CUDA_GLOBAL void k_init_bonds_opt( reax_atom *my_atoms, single_body_parameters *
 
         offset = (pj < end_i && far_nbr_list.far_nbr_list.d[pj] <= cutoff && BO >= control->bo_cut) ? 1 : 0;
         flag = (offset == 1) ? TRUE : FALSE;
-        cub::WarpScan<int>(temp[i % (blockDim.x / warpSize)]).ExclusiveSum(offset, offset);
+        cub::WarpScan<int>(temp[warp_id]).ExclusiveSum(offset, offset);
 
         if ( flag == TRUE )
         {
@@ -1076,7 +1078,7 @@ CUDA_GLOBAL void k_init_hbonds_opt( reax_atom *my_atoms, single_body_parameters 
         int n, int N, int num_atom_types, int *max_hbonds, int *realloc_hbonds )
 {
     extern __shared__ cub::WarpScan<int>::TempStorage temp[];
-    int i, j, pj, thread_id, lane_id, itr;
+    int i, j, pj, thread_id, warp_id, lane_id, itr;
     int start_i, end_i;
     int type_i, type_j;
     int ihb, jhb, ihb_top, offset, flag;
@@ -1095,6 +1097,7 @@ CUDA_GLOBAL void k_init_hbonds_opt( reax_atom *my_atoms, single_body_parameters 
         return;
     }
 
+    warp_id = threadIdx.x / warpSize;
     lane_id = thread_id % warpSize;
     atom_i = &my_atoms[i];
     type_i = atom_i->type;
@@ -1111,18 +1114,26 @@ CUDA_GLOBAL void k_init_hbonds_opt( reax_atom *my_atoms, single_body_parameters 
     {
         for ( itr = 0, pj = start_i + lane_id; itr < (end_i - start_i + warpSize - 1) / warpSize; ++itr )
         {
-            j = far_nbr_list.far_nbr_list.nbr[pj];
-            atom_j = &my_atoms[j];
-            type_j = atom_j->type;
-            sbp_j = &sbp[type_j];
-            jhb = sbp_j->p_hbond;
+            if ( pj < end_i )
+            {
+                j = far_nbr_list.far_nbr_list.nbr[pj];
+                atom_j = &my_atoms[j];
+                type_j = atom_j->type;
+                sbp_j = &sbp[type_j];
+                jhb = sbp_j->p_hbond;
 
-            offset = (pj < end_i && far_nbr_list.far_nbr_list.d[pj] <= cutoff
-                    && ((i >= n && j < n && ihb == H_BONDING_ATOM && jhb == H_ATOM)
-                        || (i < n && ihb == H_ATOM && jhb == H_BONDING_ATOM)
-                        || (i < n && ihb == H_BONDING_ATOM && jhb == H_ATOM && j < n))) ? 1 : 0;
+                offset = (pj < end_i && far_nbr_list.far_nbr_list.d[pj] <= cutoff
+                        && ((i >= n && j < n && ihb == H_BONDING_ATOM && jhb == H_ATOM)
+                            || (i < n && ihb == H_ATOM && jhb == H_BONDING_ATOM)
+                            || (i < n && ihb == H_BONDING_ATOM && jhb == H_ATOM && j < n))) ? 1 : 0;
+            }
+            else
+            {
+                offset = 0;
+            }
+
             flag = (offset == 1) ? TRUE : FALSE;
-            cub::WarpScan<int>(temp[i % (blockDim.x / warpSize)]).ExclusiveSum(offset, offset);
+            cub::WarpScan<int>(temp[warp_id]).ExclusiveSum(offset, offset);
 
             if ( flag == TRUE )
             {
@@ -1847,11 +1858,17 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
     static int dist_done = FALSE, cm_done = FALSE, bonds_done = FALSE, hbonds_done = FALSE;
 #if defined(LOG_PERFORMANCE)
     float time_elapsed;
-    cudaEvent_t time_event[8];
+    static cudaEvent_t time_event[8];
+    static int time_events_alloc = FALSE;
     
-    for ( int i = 0; i < 8; ++i )
+    if ( time_events_alloc == FALSE )
     {
-        cudaEventCreate( &time_event[i] );
+        for ( int i = 0; i < 8; ++i )
+        {
+            cudaEventCreate( &time_event[i] );
+        }
+
+        time_events_alloc = TRUE;
     }
 #endif
 
@@ -2137,11 +2154,6 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
 
     cudaEventElapsedTime( &time_elapsed, time_event[6], time_event[7] ); 
     data->timing.init_bond += (real) (time_elapsed / 1000.0);
-    
-    for ( int i = 0; i < 8; ++i )
-    {
-        cudaEventDestroy( time_event[i] );
-    }
 #endif
 
     ret = (realloc_cm == FALSE && realloc_bonds == FALSE && realloc_hbonds == FALSE
@@ -2210,11 +2222,17 @@ int Cuda_Init_Forces_No_Charges( reax_system *system, control_params *control,
     static int dist_done = FALSE, bonds_done = FALSE, hbonds_done = FALSE;
 #if defined(LOG_PERFORMANCE)
     float time_elapsed;
-    cudaEvent_t time_event[3];
+    static cudaEvent_t time_event[3];
+    static int time_events_alloc = FALSE;
     
-    for ( int i = 0; i < 3; ++i )
+    if ( time_events_alloc == FALSE )
     {
-        cudaEventCreate( &time_event[i] );
+        for ( int i = 0; i < 3; ++i )
+        {
+            cudaEventCreate( &time_event[i] );
+        }
+
+        time_events_alloc = TRUE;
     }
 #endif
 
@@ -2358,11 +2376,6 @@ int Cuda_Init_Forces_No_Charges( reax_system *system, control_params *control,
 
     cudaEventElapsedTime( &time_elapsed, time_event[1], time_event[2] ); 
     data->timing.init_bond += (real) (time_elapsed / 1000.0);
-    
-    for ( int i = 0; i < 3; ++i )
-    {
-        cudaEventDestroy( time_event[i] );
-    }
 #endif
 
     ret = (realloc_bonds == FALSE && realloc_hbonds == FALSE
@@ -2467,9 +2480,9 @@ static void Cuda_Compute_Total_Force( reax_system *system, control_params *contr
 {
     rvec *f;
 
-    check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
+    smalloc_check( &workspace->host_scratch, &workspace->host_scratch_size,
             sizeof(rvec) * system->N, TRUE, SAFE_ZONE,
-            "Cuda_Compute_Total_Force::workspace->host_scratch" );
+            __FILE__, __LINE__ );
     f = (rvec *) workspace->host_scratch;
     memset( f, 0, sizeof(rvec) * system->N );
 
@@ -2479,15 +2492,14 @@ static void Cuda_Compute_Total_Force( reax_system *system, control_params *contr
      * based on the neighbors information each processor has had.
      * final values of force on each atom needs to be computed by adding up
      * all partially-final pieces */
-    sCudaMemcpyAsync( f, workspace->d_workspace->f, sizeof(rvec) * system->N ,
+    sCudaMemcpyAsync( f, workspace->d_workspace->f, sizeof(rvec) * system->N,
             cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
 
-    Coll( system, mpi_data, f, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll_FS( system, mpi_data, f, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
 
     sCudaMemcpyAsync( workspace->d_workspace->f, f, sizeof(rvec) * system->N,
             cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
-    cudaStreamSynchronize( control->streams[0] );
 
     Cuda_Total_Forces_Part2( system, control, workspace );
 }
@@ -2501,11 +2513,17 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
     static int init_forces_done = FALSE;
 #if defined(LOG_PERFORMANCE)
     float time_elapsed;
-    cudaEvent_t time_event[6];
+    static cudaEvent_t time_event[8];
+    static int time_events_alloc = FALSE;
     
-    for ( i = 0; i < 6; ++i )
+    if ( time_events_alloc == FALSE )
     {
-        cudaEventCreate( &time_event[i] );
+        for ( int i = 0; i < 8; ++i )
+        {
+            cudaEventCreate( &time_event[i] );
+        }
+
+        time_events_alloc = TRUE;
     }
 #endif
 
@@ -2556,6 +2574,7 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
 
 #if defined(LOG_PERFORMANCE)
     cudaEventRecord( time_event[2], control->streams[0] );
+    cudaEventRecord( time_event[3], control->streams[4] );
 #endif
 
     if ( ret == SUCCESS )
@@ -2567,14 +2586,15 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
         }
 
 #if defined(LOG_PERFORMANCE)
-        cudaEventRecord( time_event[3], control->streams[0] );
+        cudaEventRecord( time_event[4], control->streams[4] );
 #endif
 
         Cuda_Compute_NonBonded_Forces( system, control, data, workspace,
                 lists, out_control );
 
 #if defined(LOG_PERFORMANCE)
-        cudaEventRecord( time_event[4], control->streams[0] );
+        cudaEventRecord( time_event[5], control->streams[4] );
+        cudaEventRecord( time_event[6], control->streams[0] );
 #endif
 
         for ( i = 0; i < MAX_CUDA_STREAMS; ++i )
@@ -2585,7 +2605,7 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
         Cuda_Compute_Total_Force( system, control, data, workspace, lists, mpi_data );
 
 #if defined(LOG_PERFORMANCE)
-        cudaEventRecord( time_event[5], control->streams[0] );
+        cudaEventRecord( time_event[7], control->streams[0] );
 #endif
 
         init_forces_done = FALSE;
@@ -2620,16 +2640,13 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
             cudaEventSynchronize( time_event[3] );
         }
 
-        cudaEventElapsedTime( &time_elapsed, time_event[2], time_event[3] ); 
-        data->timing.cm += (real) (time_elapsed / 1000.0);
-
         if ( cudaEventQuery( time_event[4] ) != cudaSuccess ) 
         {
             cudaEventSynchronize( time_event[4] );
         }
 
         cudaEventElapsedTime( &time_elapsed, time_event[3], time_event[4] ); 
-        data->timing.nonb += (real) (time_elapsed / 1000.0);
+        data->timing.cm += (real) (time_elapsed / 1000.0);
 
         if ( cudaEventQuery( time_event[5] ) != cudaSuccess ) 
         {
@@ -2637,12 +2654,20 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
         }
 
         cudaEventElapsedTime( &time_elapsed, time_event[4], time_event[5] ); 
+        data->timing.nonb += (real) (time_elapsed / 1000.0);
+
+        if ( cudaEventQuery( time_event[6] ) != cudaSuccess ) 
+        {
+            cudaEventSynchronize( time_event[6] );
+        }
+
+        if ( cudaEventQuery( time_event[7] ) != cudaSuccess ) 
+        {
+            cudaEventSynchronize( time_event[7] );
+        }
+
+        cudaEventElapsedTime( &time_elapsed, time_event[6], time_event[7] ); 
         data->timing.bonded += (real) (time_elapsed / 1000.0);
-    }
-    
-    for ( i = 0; i < 6; ++i )
-    {
-        cudaEventDestroy( time_event[i] );
     }
 #endif
 

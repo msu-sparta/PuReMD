@@ -75,7 +75,7 @@ CUDA_GLOBAL void k_valence_angles_part1( reax_atom *my_atoms,
     real dSBO1, dSBO2, SBO, SBO2, CSBO2, SBOp, prod_SBO, vlpadj;
     real CEval1, CEval2, CEval3, CEval4, CEval5, CEval6, CEval7, CEval8;
     real CEpen1, CEpen2, CEpen3;
-    real e_ang_l, e_coa, e_coa_l, e_pen, e_pen_l;
+    real e_ang_, e_coa, e_coa_, e_pen, e_pen_;
     real CEcoa1, CEcoa2, CEcoa3, CEcoa4, CEcoa5;
     real Cf7ij, Cf7jk, Cf8j, Cf9j;
     real f7_ij, f7_jk, f8_Dj, f9_Dj;
@@ -105,9 +105,9 @@ CUDA_GLOBAL void k_valence_angles_part1( reax_atom *my_atoms,
     p_val8 = gp.l[33];
     p_val9 = gp.l[16];
     p_val10 = gp.l[17];
-    e_ang_l = 0.0;
-    e_coa_l = 0.0;
-    e_pen_l = 0.0;
+    e_ang_ = 0.0;
+    e_coa_ = 0.0;
+    e_pen_ = 0.0;
     rvec_MakeZero( f_j_l );
 
     type_j = my_atoms[j].type;
@@ -300,7 +300,7 @@ CUDA_GLOBAL void k_valence_angles_part1( reax_atom *my_atoms,
 
                     if ( pk < pi )
                     {
-                        e_ang_l += f7_ij * f7_jk * f8_Dj * expval12theta;
+                        e_ang_ += f7_ij * f7_jk * f8_Dj * expval12theta;
                     }
 
                     /* calculate penalty for double bonds in valency angles */
@@ -319,7 +319,7 @@ CUDA_GLOBAL void k_valence_angles_part1( reax_atom *my_atoms,
                     e_pen = p_pen1 * f9_Dj * exp_pen2ij * exp_pen2jk;
                     if ( pk < pi )
                     {
-                        e_pen_l += e_pen;
+                        e_pen_ += e_pen;
                     }
 
                     CEpen1 = e_pen * Cf9j / f9_Dj;
@@ -340,7 +340,7 @@ CUDA_GLOBAL void k_valence_angles_part1( reax_atom *my_atoms,
 
                     if ( pk < pi )
                     {
-                        e_coa_l += e_coa;
+                        e_coa_ += e_coa;
                     }
 
                     CEcoa1 = -2.0 * p_coa4 * (BOA_ij - 1.5) * e_coa;
@@ -404,14 +404,14 @@ CUDA_GLOBAL void k_valence_angles_part1( reax_atom *my_atoms,
 
 #if !defined(CUDA_ACCUM_ATOMIC)
     rvec_Add( workspace.f[j], f_j_l );
-    e_ang_g[j] = e_ang_l;
-    e_coa_g[j] = e_coa_l;
-    e_pen_g[j] = e_pen_l;
+    e_ang_g[j] = e_ang_;
+    e_coa_g[j] = e_coa_;
+    e_pen_g[j] = e_pen_;
 #else
     atomic_rvecAdd( workspace.f[j], f_j_l );
-    atomicAdd( (double *) e_ang_g, (double) e_ang_l );
-    atomicAdd( (double *) e_coa_g, (double) e_coa_l );
-    atomicAdd( (double *) e_pen_g, (double) e_pen_l );
+    atomicAdd( (double *) e_ang_g, (double) e_ang_ );
+    atomicAdd( (double *) e_coa_g, (double) e_coa_ );
+    atomicAdd( (double *) e_pen_g, (double) e_pen_ );
 #endif
 }
 
@@ -425,8 +425,8 @@ CUDA_GLOBAL void k_valence_angles_part1_opt( reax_atom *my_atoms,
         real *e_ang_g, real *e_pen_g, real *e_coa_g )
 {
     extern __shared__ cub::WarpScan<int>::TempStorage temp_i[];
-    __shared__ cub::WarpReduce<double>::TempStorage *temp_d;
-    int i, j, pi, k, pk, t, thread_id, lane_id, itr;
+    cub::WarpReduce<double>::TempStorage *temp_d;
+    int i, j, pi, k, pk, t, thread_id, warp_id, lane_id, itr;
     int type_i, type_j, type_k;
     int start_j, end_j;
     int cnt, num_thb_intrs, offset, flag;
@@ -440,13 +440,13 @@ CUDA_GLOBAL void k_valence_angles_part1_opt( reax_atom *my_atoms,
     real dSBO1, dSBO2, SBO, SBO2, CSBO2, SBOp, prod_SBO, vlpadj;
     real CEval1, CEval2, CEval3, CEval4, CEval5, CEval6, CEval7, CEval8;
     real CEpen1, CEpen2, CEpen3;
-    real e_ang_l, e_coa, e_coa_l, e_pen, e_pen_l;
+    real e_ang_, e_coa, e_coa_, e_pen, e_pen_;
     real CEcoa1, CEcoa2, CEcoa3, CEcoa4, CEcoa5;
     real Cf7ij, Cf7jk, Cf8j, Cf9j;
     real f7_ij, f7_jk, f8_Dj, f9_Dj;
     real Ctheta_0, theta_0, theta_00, theta, cos_theta, sin_theta;
     real BOA_ij, BOA_jk;
-    rvec f_j_l;
+    rvec f_j;
     three_body_header *thbh;
     three_body_parameters *thbp;
     three_body_interaction_data *p_ijk;
@@ -464,6 +464,7 @@ CUDA_GLOBAL void k_valence_angles_part1_opt( reax_atom *my_atoms,
     }
 
     temp_d = (cub::WarpReduce<double>::TempStorage *) &temp_i[blockDim.x / warpSize];
+    warp_id = threadIdx.x / warpSize;
     lane_id = thread_id % warpSize;
     p_pen2 = gp.l[19];
     p_pen3 = gp.l[20];
@@ -475,10 +476,10 @@ CUDA_GLOBAL void k_valence_angles_part1_opt( reax_atom *my_atoms,
     p_val8 = gp.l[33];
     p_val9 = gp.l[16];
     p_val10 = gp.l[17];
-    e_ang_l = 0.0;
-    e_coa_l = 0.0;
-    e_pen_l = 0.0;
-    rvec_MakeZero( f_j_l );
+    e_ang_ = 0.0;
+    e_coa_ = 0.0;
+    e_pen_ = 0.0;
+    rvec_MakeZero( f_j );
 
     type_j = my_atoms[j].type;
     start_j = Start_Index( j, &bond_list );
@@ -508,8 +509,8 @@ CUDA_GLOBAL void k_valence_angles_part1_opt( reax_atom *my_atoms,
         t += warpSize;
     }
 
-    SBOp = cub::WarpReduce<double>(temp_d[j % (blockDim.x / warpSize)]).Sum(SBOp);
-    prod_SBO = cub::WarpReduce<double>(temp_d[j % (blockDim.x / warpSize)]).Reduce(prod_SBO, Prod());
+    SBOp = cub::WarpReduce<double>(temp_d[warp_id]).Sum(SBOp);
+    prod_SBO = cub::WarpReduce<double>(temp_d[warp_id]).Reduce(prod_SBO, Prod());
 
     /* broadcast redux results from lane 0 */
     SBOp = __shfl_sync( FULL_MASK, SBOp, 0 );
@@ -568,13 +569,21 @@ CUDA_GLOBAL void k_valence_angles_part1_opt( reax_atom *my_atoms,
             /* compute _ALL_ 3-body intrs */
             for ( itr = 0, pk = start_j + lane_id; itr < (end_j - start_j + warpSize - 1) / warpSize; ++itr )
             {
-                pbond_jk = &bond_list.bond_list[pk];
-                bo_jk = &pbond_jk->bo_data;
-                BOA_jk = bo_jk->BO - control->thb_cut;
+                if ( pk != pi && pk < end_j )
+                {
+                    pbond_jk = &bond_list.bond_list[pk];
+                    bo_jk = &pbond_jk->bo_data;
+                    BOA_jk = bo_jk->BO - control->thb_cut;
+    
+                    offset = (BOA_jk >= 0.0) ? 1 : 0;
+                }
+                else
+                {
+                    offset = 0;
+                }
 
-                offset = (pk < end_j && pk != pi && BOA_jk >= 0.0) ? 1 : 0;
                 flag = (offset == 1) ? TRUE : FALSE;
-                cub::WarpScan<int>(temp_i[j % (blockDim.x / warpSize)]).ExclusiveSum(offset, offset);
+                cub::WarpScan<int>(temp_i[warp_id]).ExclusiveSum(offset, offset);
 
                 if ( flag == TRUE )
                 {
@@ -673,7 +682,7 @@ CUDA_GLOBAL void k_valence_angles_part1_opt( reax_atom *my_atoms,
 
                             if ( pk < pi )
                             {
-                                e_ang_l += f7_ij * f7_jk * f8_Dj * expval12theta;
+                                e_ang_ += f7_ij * f7_jk * f8_Dj * expval12theta;
                             }
 
                             /* calculate penalty for double bonds in valency angles */
@@ -692,7 +701,7 @@ CUDA_GLOBAL void k_valence_angles_part1_opt( reax_atom *my_atoms,
                             e_pen = p_pen1 * f9_Dj * exp_pen2ij * exp_pen2jk;
                             if ( pk < pi )
                             {
-                                e_pen_l += e_pen;
+                                e_pen_ += e_pen;
                             }
 
                             CEpen1 = e_pen * Cf9j / f9_Dj;
@@ -713,7 +722,7 @@ CUDA_GLOBAL void k_valence_angles_part1_opt( reax_atom *my_atoms,
 
                             if ( pk < pi )
                             {
-                                e_coa_l += e_coa;
+                                e_coa_ += e_coa;
                             }
 
                             CEcoa1 = -2.0 * p_coa4 * (BOA_ij - 1.5) * e_coa;
@@ -760,11 +769,11 @@ CUDA_GLOBAL void k_valence_angles_part1_opt( reax_atom *my_atoms,
 
 #if !defined(CUDA_ACCUM_ATOMIC)
                                 rvec_ScaledAdd( pbond_ij->va_f, CEval8, p_ijk->dcos_di );
-                                rvec_ScaledAdd( f_j_l, CEval8, p_ijk->dcos_dj );
+                                rvec_ScaledAdd( f_j, CEval8, p_ijk->dcos_dj );
                                 rvec_ScaledAdd( pbond_jk->va_f, CEval8, p_ijk->dcos_dk );
 #else
                                 atomic_rvecScaledAdd( workspace.f[i], CEval8, p_ijk->dcos_di );
-                                rvec_ScaledAdd( f_j_l, CEval8, p_ijk->dcos_dj );
+                                rvec_ScaledAdd( f_j, CEval8, p_ijk->dcos_dj );
                                 atomic_rvecScaledAdd( workspace.f[k], CEval8, p_ijk->dcos_dk );
 #endif
                             }
@@ -786,25 +795,25 @@ CUDA_GLOBAL void k_valence_angles_part1_opt( reax_atom *my_atoms,
         }
     }
 
-    f_j_l[0] = cub::WarpReduce<double>(temp_d[j % (blockDim.x / warpSize)]).Sum(f_j_l[0]);
-    f_j_l[1] = cub::WarpReduce<double>(temp_d[j % (blockDim.x / warpSize)]).Sum(f_j_l[1]);
-    f_j_l[2] = cub::WarpReduce<double>(temp_d[j % (blockDim.x / warpSize)]).Sum(f_j_l[2]);
-    e_ang_l = cub::WarpReduce<double>(temp_d[j % (blockDim.x / warpSize)]).Sum(e_ang_l);
-    e_coa_l = cub::WarpReduce<double>(temp_d[j % (blockDim.x / warpSize)]).Sum(e_coa_l);
-    e_pen_l = cub::WarpReduce<double>(temp_d[j % (blockDim.x / warpSize)]).Sum(e_pen_l);
+    f_j[0] = cub::WarpReduce<double>(temp_d[warp_id]).Sum(f_j[0]);
+    f_j[1] = cub::WarpReduce<double>(temp_d[warp_id]).Sum(f_j[1]);
+    f_j[2] = cub::WarpReduce<double>(temp_d[warp_id]).Sum(f_j[2]);
+    e_ang_ = cub::WarpReduce<double>(temp_d[warp_id]).Sum(e_ang_);
+    e_coa_ = cub::WarpReduce<double>(temp_d[warp_id]).Sum(e_coa_);
+    e_pen_ = cub::WarpReduce<double>(temp_d[warp_id]).Sum(e_pen_);
 
     if ( lane_id == 0 )
     {
 #if !defined(CUDA_ACCUM_ATOMIC)
-        rvec_Add( workspace.f[j], f_j_l );
-        e_ang_g[j] = e_ang_l;
-        e_coa_g[j] = e_coa_l;
-        e_pen_g[j] = e_pen_l;
+        rvec_Add( workspace.f[j], f_j );
+        e_ang_g[j] = e_ang_;
+        e_coa_g[j] = e_coa_;
+        e_pen_g[j] = e_pen_;
 #else
-        atomic_rvecAdd( workspace.f[j], f_j_l );
-        atomicAdd( (double *) e_ang_g, (double) e_ang_l );
-        atomicAdd( (double *) e_coa_g, (double) e_coa_l );
-        atomicAdd( (double *) e_pen_g, (double) e_pen_l );
+        atomic_rvecAdd( workspace.f[j], f_j );
+        atomicAdd( (double *) e_ang_g, (double) e_ang_ );
+        atomicAdd( (double *) e_coa_g, (double) e_coa_ );
+        atomicAdd( (double *) e_pen_g, (double) e_pen_ );
 #endif
     }
 }
@@ -832,7 +841,7 @@ CUDA_GLOBAL void k_valence_angles_virial_part1( reax_atom *my_atoms,
     real dSBO1, dSBO2, SBO, SBO2, CSBO2, SBOp, prod_SBO, vlpadj;
     real CEval1, CEval2, CEval3, CEval4, CEval5, CEval6, CEval7, CEval8;
     real CEpen1, CEpen2, CEpen3;
-    real e_ang_l, e_coa, e_coa_l, e_pen, e_pen_l;
+    real e_ang_, e_coa, e_coa_, e_pen, e_pen_;
     real CEcoa1, CEcoa2, CEcoa3, CEcoa4, CEcoa5;
     real Cf7ij, Cf7jk, Cf8j, Cf9j;
     real f7_ij, f7_jk, f8_Dj, f9_Dj;
@@ -862,9 +871,9 @@ CUDA_GLOBAL void k_valence_angles_virial_part1( reax_atom *my_atoms,
     p_val8 = gp.l[33];
     p_val9 = gp.l[16];
     p_val10 = gp.l[17];
-    e_ang_l = 0.0;
-    e_coa_l = 0.0;
-    e_pen_l = 0.0;
+    e_ang_ = 0.0;
+    e_coa_ = 0.0;
+    e_pen_ = 0.0;
     rvec_MakeZero( f_j_l );
     rvec_MakeZero( ext_press_l );
 
@@ -1058,7 +1067,7 @@ CUDA_GLOBAL void k_valence_angles_virial_part1( reax_atom *my_atoms,
 
                     if ( pk < pi )
                     {
-                        e_ang_l += f7_ij * f7_jk * f8_Dj * expval12theta;
+                        e_ang_ += f7_ij * f7_jk * f8_Dj * expval12theta;
                     }
 
                     /* calculate penalty for double bonds in valency angles */
@@ -1077,7 +1086,7 @@ CUDA_GLOBAL void k_valence_angles_virial_part1( reax_atom *my_atoms,
                     e_pen = p_pen1 * f9_Dj * exp_pen2ij * exp_pen2jk;
                     if ( pk < pi )
                     {
-                        e_pen_l += e_pen;
+                        e_pen_ += e_pen;
                     }
 
                     CEpen1 = e_pen * Cf9j / f9_Dj;
@@ -1098,7 +1107,7 @@ CUDA_GLOBAL void k_valence_angles_virial_part1( reax_atom *my_atoms,
 
                     if ( pk < pi )
                     {
-                        e_coa_l += e_coa;
+                        e_coa_ += e_coa;
                     }
 
                     CEcoa1 = -2.0 * p_coa4 * (BOA_ij - 1.5) * e_coa;
@@ -1182,15 +1191,15 @@ CUDA_GLOBAL void k_valence_angles_virial_part1( reax_atom *my_atoms,
 
 #if !defined(CUDA_ACCUM_ATOMIC)
     rvec_Add( workspace.f[j], f_j_l );
-    e_ang_g[j] = e_ang_l;
-    e_coa_g[j] = e_coa_l;
-    e_pen_g[j] = e_pen_l;
+    e_ang_g[j] = e_ang_;
+    e_coa_g[j] = e_coa_;
+    e_pen_g[j] = e_pen_;
     rvec_Copy( ext_press_g[j], ext_press_l );
 #else
     atomic_rvecAdd( workspace.f[j], f_j_l );
-    atomicAdd( (double *) e_ang_g, (double) e_ang_l );
-    atomicAdd( (double *) e_coa_g, (double) e_coa_l );
-    atomicAdd( (double *) e_pen_g, (double) e_pen_l );
+    atomicAdd( (double *) e_ang_g, (double) e_ang_ );
+    atomicAdd( (double *) e_coa_g, (double) e_coa_ );
+    atomicAdd( (double *) e_pen_g, (double) e_pen_ );
     atomic_rvecAdd( *ext_press_g, ext_press_l );
 #endif
 }
@@ -1284,7 +1293,7 @@ CUDA_GLOBAL void k_estimate_valence_angles_opt( reax_atom *my_atoms,
         control_params *control, reax_list bond_list, int n, int N, int *count )
 {
     extern __shared__ cub::WarpReduce<int>::TempStorage temp_i2[];
-    int j, pi, pk, start_j, end_j, thread_id, lane_id, itr;
+    int j, pi, pk, start_j, end_j, thread_id, warp_id, lane_id, itr;
     int num_thb_intrs;
     real BOA_ij, BOA_jk;
     bond_data *pbond_ij, *pbond_jk;
@@ -1300,6 +1309,7 @@ CUDA_GLOBAL void k_estimate_valence_angles_opt( reax_atom *my_atoms,
         return;
     }
 
+    warp_id = threadIdx.x / warpSize;
     lane_id = thread_id % warpSize;
     start_j = Start_Index( j, &bond_list );
     end_j = End_Index( j, &bond_list );
@@ -1316,19 +1326,22 @@ CUDA_GLOBAL void k_estimate_valence_angles_opt( reax_atom *my_atoms,
         {
             for ( itr = 0, pk = start_j + lane_id; itr < (end_j - start_j + warpSize - 1) / warpSize; ++itr )
             {
-                pbond_jk = &bond_list.bond_list[pk];
-                bo_jk = &pbond_jk->bo_data;
-                BOA_jk = bo_jk->BO - control->thb_cut;
-
-                if ( BOA_jk >= 0.0 )
+                if ( pk < end_j )
                 {
-                    ++num_thb_intrs;
+                    pbond_jk = &bond_list.bond_list[pk];
+                    bo_jk = &pbond_jk->bo_data;
+                    BOA_jk = bo_jk->BO - control->thb_cut;
+    
+                    if ( BOA_jk >= 0.0 )
+                    {
+                        ++num_thb_intrs;
+                    }
                 }
 
                 pk += warpSize;
             }
 
-            num_thb_intrs = cub::WarpReduce<int>(temp_i2[j % (blockDim.x / warpSize)]).Sum(num_thb_intrs);
+            num_thb_intrs = cub::WarpReduce<int>(temp_i2[warp_id]).Sum(num_thb_intrs);
         }
 
         if ( lane_id == 0 )
@@ -1346,7 +1359,7 @@ static int Cuda_Estimate_Storage_Three_Body( reax_system *system, control_params
 
     ret = SUCCESS;
 
-    sCudaMemsetAsync( thbody, 0, system->total_bonds * sizeof(int),
+    sCudaMemsetAsync( thbody, 0, sizeof(int) * system->total_bonds,
             control->streams[0], __FILE__, __LINE__ );
 
 //    k_estimate_valence_angles <<< control->blocks_n, control->block_size_n, 0, control->streams[0] >>>

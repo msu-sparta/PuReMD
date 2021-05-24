@@ -457,24 +457,29 @@ void * scalloc( size_t n, size_t size, const char *name )
  * ptr: pointer to memory allocation
  * cur_size: num. of bytes currently allocated
  * new_size: num. of bytes to be newly allocated, if needed
- * msg: message with details about pointer, used for warnings/errors
+ * filename: NULL-terminated source filename where function call originated
+ * line: line of source file where function call originated
  * */
-void check_smalloc( void **ptr, size_t *cur_size, size_t new_size, 
-        int over_alloc, real over_alloc_factor, const char *msg )
+void smalloc_check( void **ptr, size_t *cur_size, size_t new_size, 
+        int over_alloc, real over_alloc_factor, const char * const filename, int line )
 {
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "[INFO] requesting %zu bytes for %s (%zu currently allocated)\n",
-            new_size, msg, *cur_size );
-    fflush( stderr );
-#endif
-
-    assert( new_size > 0 );
+    assert( new_size > 0 || *cur_size > 0 );
 
     if ( new_size > *cur_size )
     {
+#if defined(DEBUG_FOCUS)
+        int rank;
+    
+        MPI_Comm_rank( MPI_COMM_WORLD, &rank );
+    
+        fprintf( stderr, "[INFO] smalloc_check: requesting %zu bytes (%zu currently allocated) at line %d in file %.*s on MPI processor %d\n",
+                new_size, *cur_size, line, (int) strlen(filename), filename, rank );
+        fflush( stderr );
+#endif
+
         if ( *cur_size != 0 )
         {
-            sfree( *ptr, msg );
+            sfree( *ptr, filename );
         }
 
         if ( over_alloc == TRUE )
@@ -487,7 +492,7 @@ void check_smalloc( void **ptr, size_t *cur_size, size_t new_size,
         }
 
         //TODO: look into using aligned alloc's
-        *ptr = smalloc( *cur_size, msg );
+        *ptr = smalloc( *cur_size, filename );
     }
 }
 

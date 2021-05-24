@@ -16,6 +16,8 @@ void Cuda_Init_Block_Sizes( reax_system *, control_params * );
 
 void Cuda_Cleanup_Environment( control_params const * const );
 
+void Cuda_Print_Mem_Usage( simulation_data const * const );
+
 #ifdef __cplusplus
 }
 #endif

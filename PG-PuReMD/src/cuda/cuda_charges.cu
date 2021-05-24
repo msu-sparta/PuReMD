@@ -584,9 +584,9 @@ static void Calculate_Charges_QEq( reax_system const * const system,
     u = all_sum[0] / all_sum[1];
 
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
-    check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
+    smalloc_check( &workspace->host_scratch, &workspace->host_scratch_size,
             sizeof(real) * system->N, TRUE, SAFE_ZONE,
-            "Calculate_Charges_QEq::workspace->host_scratch" );
+            __FILE__, __LINE__ );
     q = (real *) workspace->host_scratch;
 #else
     sCudaCheckMalloc( &workspace->scratch[4], &workspace->scratch_size[4],

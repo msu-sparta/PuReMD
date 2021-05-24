@@ -1486,6 +1486,8 @@ struct control_params
     int nprocs;
     /* number of GPUs per node, as supplied via control file */
     int gpus_per_node;
+    /* number of CUDA streams per GPU, as supplied via control file */
+    int gpu_streams;
     /* MPI processors per each simulation dimension (cartesian topology),
      * as supplied via control file */
     ivec procs_by_dim;

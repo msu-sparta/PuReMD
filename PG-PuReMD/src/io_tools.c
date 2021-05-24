@@ -1368,7 +1368,7 @@ void Output_Results( reax_system *system, control_params *control,
 #endif
 #endif //LOG_PERFORMANCE
 
-                if ( control->virial )
+                if ( control->virial == 1 )
                 {
                     fprintf( out_control->prs,
                              "%8d%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f%13.6f\n",

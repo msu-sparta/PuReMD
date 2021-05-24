@@ -255,7 +255,7 @@ CUDA_GLOBAL void k_atom_energy_part1_opt( reax_atom *my_atoms, global_parameters
         real *e_lp_g, real *e_ov_g, real *e_un_g )
 {
     extern __shared__ cub::WarpReduce<double>::TempStorage temp_d[];
-    int i, j, pj, type_i, type_j, thread_id, lane_id, itr;
+    int i, j, pj, type_i, type_j, thread_id, warp_id, lane_id, itr;
     int start_i, end_i;
     real Delta_lpcorr, dfvl;
     real expvd2, inv_expvd2, dElp, CElp, DlpVi;
@@ -283,6 +283,7 @@ CUDA_GLOBAL void k_atom_energy_part1_opt( reax_atom *my_atoms, global_parameters
         return;
     }
 
+    warp_id = threadIdx.x / warpSize;
     lane_id = thread_id % warpSize;
     p_lp3 = gp.l[5];
     p_ovun3 = gp.l[32];
@@ -356,7 +357,7 @@ CUDA_GLOBAL void k_atom_energy_part1_opt( reax_atom *my_atoms, global_parameters
         }
     }
 
-    e_lp = cub::WarpReduce<double>(temp_d[i % (blockDim.x / warpSize)]).Sum(e_lp);
+    e_lp = cub::WarpReduce<double>(temp_d[warp_id]).Sum(e_lp);
 
     if ( lane_id == 0 )
     {
@@ -399,8 +400,8 @@ CUDA_GLOBAL void k_atom_energy_part1_opt( reax_atom *my_atoms, global_parameters
         pj += warpSize;
     }
 
-    sum_ovun1 = cub::WarpReduce<double>(temp_d[i % (blockDim.x / warpSize)]).Sum(sum_ovun1);
-    sum_ovun2 = cub::WarpReduce<double>(temp_d[i % (blockDim.x / warpSize)]).Sum(sum_ovun2);
+    sum_ovun1 = cub::WarpReduce<double>(temp_d[warp_id]).Sum(sum_ovun1);
+    sum_ovun2 = cub::WarpReduce<double>(temp_d[warp_id]).Sum(sum_ovun2);
 
     exp_ovun1 = p_ovun3 * EXP( p_ovun4 * sum_ovun2 );
     inv_exp_ovun1 = 1.0 / (1.0 + exp_ovun1);
@@ -463,7 +464,7 @@ CUDA_GLOBAL void k_atom_energy_part1_opt( reax_atom *my_atoms, global_parameters
         CdDelta_i += CEover3 + CEunder3;   // OvCoor - 2nd term, UnCoor - 1st term
     }
 
-    CdDelta_i = cub::WarpReduce<double>(temp_d[i % (blockDim.x / warpSize)]).Sum(CdDelta_i);
+    CdDelta_i = cub::WarpReduce<double>(temp_d[warp_id]).Sum(CdDelta_i);
 
     if ( lane_id == 0 )
     {

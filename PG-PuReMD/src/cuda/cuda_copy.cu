@@ -121,12 +121,15 @@ extern "C" void Cuda_Copy_Simulation_Data_Device_to_Host( control_params *contro
 {
     sCudaMemcpyAsync( &host->my_en, &dev->my_en, sizeof(energy_data), 
             cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
-    sCudaMemcpyAsync( &host->kin_press, &dev->kin_press, sizeof(real), 
-            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
-    sCudaMemcpyAsync( host->int_press, dev->int_press, sizeof(rvec), 
-            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
-    sCudaMemcpyAsync( host->ext_press, dev->ext_press, sizeof(rvec), 
-            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    if ( control->virial == 1 )
+    {
+        sCudaMemcpyAsync( &host->kin_press, &dev->kin_press, sizeof(real), 
+                cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+        sCudaMemcpyAsync( host->int_press, dev->int_press, sizeof(rvec), 
+                cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+        sCudaMemcpyAsync( host->ext_press, dev->ext_press, sizeof(rvec), 
+                cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    }
 
     cudaStreamSynchronize( control->streams[0] );
 }

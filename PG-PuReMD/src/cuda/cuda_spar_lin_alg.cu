@@ -593,9 +593,8 @@ static void Dual_Sparse_MatVec_Comm_Part1( const reax_system * const system,
 #if !defined(CUDA_DEVICE_PACK)
     rvec2 *spad;
 
-    check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
-            sizeof(rvec2) * n, TRUE, SAFE_ZONE,
-            "Dual_Sparse_MatVec_Comm_Part1::workspace->host_scratch" );
+    smalloc_check( &workspace->host_scratch, &workspace->host_scratch_size,
+            sizeof(rvec2) * n, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
     spad = (rvec2 *) workspace->host_scratch;
 
     sCudaMemcpyAsync( spad, (void *) x, sizeof(rvec2) * n,
@@ -694,9 +693,8 @@ static void Dual_Sparse_MatVec_Comm_Part2( const reax_system * const system,
     if ( mat_format == SYM_HALF_MATRIX )
     {
 #if !defined(CUDA_DEVICE_PACK)
-        check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
-                sizeof(rvec2) * n1, TRUE, SAFE_ZONE,
-                "Dual_Sparse_MatVec_Comm_Part2::workspace->host_scratch" );
+        smalloc_check( &workspace->host_scratch, &workspace->host_scratch_size,
+                sizeof(rvec2) * n1, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
         spad = (rvec2 *) workspace->host_scratch;
 
         sCudaMemcpyAsync( spad, b, sizeof(rvec2) * n1,
@@ -778,9 +776,8 @@ static void Sparse_MatVec_Comm_Part1( const reax_system * const system,
 #if !defined(CUDA_DEVICE_PACK)
     real *spad;
 
-    check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
-            sizeof(real) * n, TRUE, SAFE_ZONE,
-            "Sparse_MatVec_Comm_Part1::workspace->host_scratch" );
+    smalloc_check( &workspace->host_scratch, &workspace->host_scratch_size,
+            sizeof(real) * n, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
     spad = (real *) workspace->host_scratch;
 
     sCudaMemcpyAsync( spad, (void *) x, sizeof(real) * n,
@@ -877,9 +874,8 @@ static void Sparse_MatVec_Comm_Part2( const reax_system * const system,
     if ( mat_format == SYM_HALF_MATRIX )
     {
 #if !defined(CUDA_DEVICE_PACK)
-        check_smalloc( &workspace->host_scratch, &workspace->host_scratch_size,
-                sizeof(real) * n1, TRUE, SAFE_ZONE,
-                "Sparse_MatVec_Comm_Part2::workspace->host_scratch" );
+        smalloc_check( &workspace->host_scratch, &workspace->host_scratch_size,
+                sizeof(real) * n1, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
         spad = (real *) workspace->host_scratch;
 
         sCudaMemcpyAsync( spad, b, sizeof(real) * n1,
