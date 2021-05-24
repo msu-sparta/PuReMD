@@ -28,6 +28,8 @@ class TestCase():
                     r'(?P<key>\bdt\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'gpus_per_node': lambda l, x: sub(
                     r'(?P<key>\bgpus_per_node\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'gpu_streams': lambda l, x: sub(
+                    r'(?P<key>\bgpu_streams\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'proc_by_dim': lambda l, x: sub(
                     r'(?P<key>\bproc_by_dim\b\s+)\S+\s+\S+\s+\S+(?P<comment>.*)',
                     r'\g<key>{0} {1} {2}\g<comment>'.format(*(x.split(':'))), l), \
@@ -901,6 +903,7 @@ if __name__ == '__main__':
                 'nsteps': ['20'],
                 'dt': ['0.25'],
                 'gpus_per_node': ['1'],
+                'gpu_streams': ['5'],
                 'proc_by_dim': ['1:1:1'],
                 'periodic_boundaries': ['1'],
                 'reposition_atoms': ['0'],
