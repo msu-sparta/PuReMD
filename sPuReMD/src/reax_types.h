@@ -878,6 +878,16 @@ struct reax_system
     int N_cm;
     /* max. dimension of the N x N sparse charge method matrix H across all simulations */
     int N_cm_max;
+    /* molecular charge constraints
+     * NOTE: these constraints are currently only supported in BGF files using EEM */
+    real *molec_charge_constraints;
+    /* molecular charge constraints encoded as pairs of 1-based atom numbers indicating a range of atoms
+     * NOTE: these constraints are currently only supported in BGF files using EEM */
+    int *molec_charge_constraint_ranges;
+    /* num. of charge constraints on groups of atoms (i.e., molecules) */
+    unsigned int num_molec_charge_constraints;
+    /* max. num. of charge constraints on groups of atoms (i.e., molecules) */
+    unsigned int max_num_molec_charge_constraints;
     /* atom info */
     reax_atom *atoms;
     /* atomic interaction parameters */

@@ -246,6 +246,12 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
     //Cluster_Atoms( system, workspace, control );
 #endif
 
+    for ( i = 0; i < far_nbrs->n; ++i )
+    {
+        Set_Start_Index( i, 0, far_nbrs );
+        Set_End_Index( i, 0, far_nbrs );
+    }
+
     /* for each cell in the grid along the 3
      * Cartesian directions: (i, j, k) => (x, y, z) */
     for ( i = 0; i < g->ncell[0]; i++ )

@@ -232,9 +232,8 @@ void * setup( const char * const geo_file, const char * const ffield_file,
     Allocate_Top_Level_Structs( &spmd_handle );
     Initialize_Top_Level_Structs( spmd_handle );
 
-    /* note: assign here to avoid compiler warning
-     * of uninitialized usage in PreAllocate_Space */
     spmd_handle->system->N_max = 0;
+    spmd_handle->system->max_num_molec_charge_constraints = 0;
 
     Read_Input_Files( geo_file, ffield_file, control_file,
             spmd_handle->system, spmd_handle->control,

@@ -625,6 +625,13 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
 }
 
 
+/* Parser for geometry files in BGF format
+ *
+ * system: struct containing atom-related information
+ * control: struct containing simulation parameters
+ * data: struct containing information on active simulations
+ * workspace: struct containing intermediate structures used for calculations
+ * */
 void Read_BGF( const char * const bgf_file, reax_system* system, control_params *control,
         simulation_data *data, static_storage *workspace )
 {
@@ -638,7 +645,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
     char element[6], charge[9];
     char chain_id;
     char s_a[12], s_b[12], s_c[12], s_alpha[12], s_beta[12], s_gamma[12];
-    int i, n, atom_cnt, token_cnt, bgf_serial, ratom, crystx_found;
+    int i, n, num_mcc, atom_cnt, token_cnt, bgf_serial, ratom, crystx_found;
     rvec x;
 
     ratom = 0;
@@ -651,6 +658,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
 
     /* count number of atoms in the BGF file */
     n = 0;
+    num_mcc = 0;
     line[0] = 0;
 
     while ( fgets( line, MAX_LINE, bgf ) )
@@ -663,6 +671,10 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
         {
             ++n;
         }
+        else if ( strncmp( tokens[0], "MOLCHARGE", 9 ) == 0 )
+        {
+            ++num_mcc;
+        }
 
         line[0] = 0;
     }
@@ -672,20 +684,50 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
         exit( INVALID_INPUT );
     }
 
-    sfclose( bgf, "Read_BGF::bgf" );
-
     if ( system->prealloc_allocated == FALSE || n > system->N_max )
     {
         PreAllocate_Space( system, control, workspace, (int) CEIL( SAFE_ZONE * n ) );
+
+        if ( system->prealloc_allocated == FALSE && num_mcc > 0 )
+        {
+            system->molec_charge_constraints = smalloc(
+                    sizeof(real) * num_mcc, "Read_BGF::molec_charge_constraints" );
+            system->molec_charge_constraint_ranges = smalloc(
+                    sizeof(int) * 2 * num_mcc, "Read_BGF::molec_charge_constraint_ranges" );
+
+            system->max_num_molec_charge_constraints = num_mcc;
+        }
+        else if ( num_mcc > system->max_num_molec_charge_constraints )
+        {
+            if ( system->max_num_molec_charge_constraints > 0 )
+            {
+                sfree( system->molec_charge_constraints, "Read_BGF::molec_charge_constraints" );
+                sfree( system->molec_charge_constraint_ranges, "Read_BGF::molec_charge_constraint_ranges" );
+            }
+
+            system->molec_charge_constraints = smalloc(
+                    sizeof(real) * num_mcc, "Read_BGF::molec_charge_constraints" );
+            system->molec_charge_constraint_ranges = smalloc(
+                    sizeof(int) * 2 * num_mcc, "Read_BGF::molec_charge_constraint_ranges" );
+
+            system->max_num_molec_charge_constraints = num_mcc;
+        }
     }
     system->N = n;
+    system->num_molec_charge_constraints = num_mcc;
+    num_mcc = 0;
+
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "[INFO] num_atoms = %d, num_mcc = %d\n", system->N,
+            system->num_molec_charge_constraints );
+#endif
 
     for ( i = 0; i < MAX_ATOM_ID; ++i )
     {
         workspace->map_serials[i] = -1;
     }
 
-    bgf = sfopen( bgf_file, "r" );
+    fseek( bgf, 0, SEEK_SET );
     atom_cnt = 0;
     token_cnt = 0;
 
@@ -837,6 +879,24 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
                     }
                 }
             }
+        }
+        else if ( strncmp( tokens[0], "MOLCHARGE", 9 ) == 0 )
+        {
+            assert( token_cnt == 4 );
+
+            system->molec_charge_constraint_ranges[2 * num_mcc] = sstrtol( tokens[1], __FILE__, __LINE__ );
+            system->molec_charge_constraint_ranges[2 * num_mcc + 1] = sstrtol( tokens[2], __FILE__, __LINE__ );
+            system->molec_charge_constraints[num_mcc] = sstrtod( tokens[3], __FILE__, __LINE__ );
+
+#if defined(DEBUG_FOCUS)
+            fprintf( stderr,
+                    "[INFO] num_mcc = %d, mcc = %f, mcc_range = (%d, %d)\n", num_mcc,
+                    system->molec_charge_constraints[num_mcc],
+                    system->molec_charge_constraint_ranges[2 * num_mcc],
+                    system->molec_charge_constraint_ranges[2 * num_mcc + 1] );
+#endif
+
+            ++num_mcc;
         }
 
         /* clear previous input line */
