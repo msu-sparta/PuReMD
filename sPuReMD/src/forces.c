@@ -493,49 +493,101 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
             break;
 
         case EE_CM:
-            H->start[system->N_cm - 1] = *Htop;
-            H_sp->start[system->N_cm - 1] = *H_sp_top;
-
-            for ( i = 0; i < system->N_cm - 1; ++i )
+            if ( system->num_molec_charge_constraints == 0 )
             {
-#if defined(QMMM)
-                // total charge constraint on QM atoms
-                if ( system->atoms[i].qmmm_mask == TRUE )
+                H->start[system->N_cm - 1] = *Htop;
+                H_sp->start[system->N_cm - 1] = *H_sp_top;
+
+                for ( i = 0; i < system->N_cm - 1; ++i )
                 {
+#if defined(QMMM)
+                    /* total charge constraint on QM atoms */
+                    if ( system->atoms[i].qmmm_mask == TRUE )
+                    {
+                        H->j[*Htop] = i;
+                        H->val[*Htop] = 1.0;
+
+                        H_sp->j[*H_sp_top] = i;
+                        H_sp->val[*H_sp_top] = 1.0;
+                    }
+                    else
+                    {
+                        H->j[*Htop] = i;
+                        H->val[*Htop] = 0.0; 
+
+                        H_sp->j[*H_sp_top] = i;
+                        H_sp->val[*H_sp_top] = 0.0;
+                    }
+#else
                     H->j[*Htop] = i;
                     H->val[*Htop] = 1.0;
 
                     H_sp->j[*H_sp_top] = i;
                     H_sp->val[*H_sp_top] = 1.0;
-                }
-                else
-                {
-                    H->j[*Htop] = i;
-                    H->val[*Htop] = 0.0; 
-
-                    H_sp->j[*H_sp_top] = i;
-                    H_sp->val[*H_sp_top] = 0.0;
-                }
-                *Htop = *Htop + 1;
-                *H_sp_top = *H_sp_top + 1;
-#else
-                H->j[*Htop] = i;
-                H->val[*Htop] = 1.0;
-                *Htop = *Htop + 1;
-
-                H_sp->j[*H_sp_top] = i;
-                H_sp->val[*H_sp_top] = 1.0;
-                *H_sp_top = *H_sp_top + 1;
 #endif
+
+                    *Htop = *Htop + 1;
+                    *H_sp_top = *H_sp_top + 1;
+                }
+
+                H->j[*Htop] = system->N_cm - 1;
+                H->val[*Htop] = 0.0;
+                *Htop = *Htop + 1;
+
+                H_sp->j[*H_sp_top] = system->N_cm - 1;
+                H_sp->val[*H_sp_top] = 0.0;
+                *H_sp_top = *H_sp_top + 1;
             }
+            else
+            {
+                for ( i = 0; i < system->num_molec_charge_constraints; ++i )
+                {
+                    H->start[system->N + i] = *Htop;
+                    H_sp->start[system->N + i] = *H_sp_top;
 
-            H->j[*Htop] = system->N_cm - 1;
-            H->val[*Htop] = 0.0;
-            *Htop = *Htop + 1;
+                    for ( j = system->molec_charge_constraint_ranges[2 * i];
+                            j <= system->molec_charge_constraint_ranges[2 * i + 1]; ++j )
+                    {
+#if defined(QMMM)
+                        /* molecule charge constraint on QM atoms */
+                        if ( system->atoms[i].qmmm_mask == TRUE )
+                        {
+                            H->j[*Htop] = j - 1;
+                            H->val[*Htop] = 1.0;
 
-            H_sp->j[*H_sp_top] = system->N_cm - 1;
-            H_sp->val[*H_sp_top] = 0.0;
-            *H_sp_top = *H_sp_top + 1;
+                            H_sp->j[*H_sp_top] = j - 1;
+                            H_sp->val[*H_sp_top] = 1.0;
+                        }
+                        else
+                        {
+                            H->j[*Htop] = j - 1;
+                            H->val[*Htop] = 0.0; 
+
+                            H_sp->j[*H_sp_top] = j - 1;
+                            H_sp->val[*H_sp_top] = 0.0;
+                        }
+#else
+                        H->j[*Htop] = j - 1;
+                        H->val[*Htop] = 1.0;
+
+                        H_sp->j[*H_sp_top] = j - 1;
+                        H_sp->val[*H_sp_top] = 1.0;
+#endif
+
+                        *Htop = *Htop + 1;
+                        *H_sp_top = *H_sp_top + 1;
+                    }
+
+                    /* explicit zeros on diagonals */
+                    H->j[*Htop] = system->N + i;
+                    H->val[*Htop] = 0.0; 
+                    *Htop = *Htop + 1;
+
+                    H_sp->j[*H_sp_top] = system->N + i;
+                    H_sp->val[*H_sp_top] = 0.0;
+                    *H_sp_top = *H_sp_top + 1;
+                }
+            }
             break;
 
         case ACKS2_CM:
@@ -793,6 +845,11 @@ static void Init_Forces( reax_system *system, control_params *control,
             flag = FALSE;
             flag_sp = FALSE;
 
+#if defined(QMMM)
+            if ( system->atoms[i].qmmm_mask == TRUE
+                    || system->atoms[j].qmmm_mask == TRUE )
+            {
+#endif	
             /* check if reneighboring step --
              * atomic distances just computed via
              * Verlet list, so use current distances */
@@ -1024,11 +1081,14 @@ static void Init_Forces( reax_system *system, control_params *control,
 
                         Set_End_Index( j, btop_j + 1, bonds );
                     }
+#if defined(QMMM)
                 }
-            }
+#endif
+                }
 #if defined(QMMM)
             }
 #endif
+            }
         }
 
         /* diagonal entry */

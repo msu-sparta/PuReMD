@@ -25,15 +25,16 @@
 #include "reax_types.h"
 
 
-void Setup_Grid( reax_system * );
+void Setup_Grid( reax_system * const );
 
-void Update_Grid( reax_system * );
+void Update_Grid( reax_system * const );
 
-void Bin_Atoms( reax_system *, static_storage * );
+void Bin_Atoms( reax_system * const, static_storage * const );
 
-void Finalize_Grid( reax_system * );
+void Finalize_Grid( reax_system * const );
 
-void Cluster_Atoms( reax_system *, static_storage *, control_params * );
+void Reorder_Atoms( reax_system * const, static_storage * const,
+        control_params const * const );
 
 
 #endif

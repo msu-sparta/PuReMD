@@ -48,7 +48,8 @@ typedef int (*find_far_neighbors_function)( rvec, rvec, int, int,
         simulation_box*, real, far_neighbor_data* );
 
 
-static void Choose_Neighbor_Counter( reax_system *system, control_params *control,
+static void Choose_Neighbor_Counter( reax_system const * const system,
+        control_params const * const control,
         count_far_neighbors_function *Count_Far_Neighbors )
 {
     if ( control->periodic_boundaries == TRUE )
@@ -75,7 +76,8 @@ static void Choose_Neighbor_Counter( reax_system *system, control_params *contro
 }
 
 
-static void Choose_Neighbor_Finder( reax_system *system, control_params *control,
+static void Choose_Neighbor_Finder( reax_system const * const system,
+        control_params const * const control,
         find_far_neighbors_function *Find_Far_Neighbors )
 {
     if ( control->periodic_boundaries == TRUE )
@@ -103,7 +105,7 @@ static void Choose_Neighbor_Finder( reax_system *system, control_params *control
 
 
 #if defined(DEBUG_FOCUS)
-static int compare_far_nbrs(const void *v1, const void *v2)
+static int compare_far_nbrs( const void *v1, const void *v2 )
 {
     return ((*(far_neighbor_data *)v1).nbr - (*(far_neighbor_data *)v2).nbr);
 }
@@ -129,8 +131,10 @@ static inline real DistSqr_to_CP( rvec cp, rvec x )
 }
 
 
-int Estimate_Num_Neighbors( reax_system *system, control_params *control,
-        static_storage *workspace, reax_list **lists )
+/* Estimate the storage requirements for the far neighbor list */
+int Estimate_Num_Neighbors( reax_system * const system,
+        control_params const * const control, static_storage * const workspace,
+        reax_list ** const lists )
 {
     int i, j, k, l, m, itr;
     int x, y, z;
@@ -189,6 +193,11 @@ int Estimate_Num_Neighbors( reax_system *system, control_params *control,
                             {
                                 atom2 = nbr_atoms[m];
 
+#if defined(QMMM)
+                                if ( system->atoms[atom1].qmmm_mask == TRUE
+                                        || system->atoms[atom2].qmmm_mask == TRUE )
+                                {
+#endif
                                 if ( atom1 >= atom2 )
                                 {
                                     count = Count_Far_Neighbors( system->atoms[atom1].x,
@@ -197,6 +206,9 @@ int Estimate_Num_Neighbors( reax_system *system, control_params *control,
 
                                     num_far += count;
                                 }
+#if defined(QMMM)
+                                }
+#endif
                             }
                         }
 
@@ -216,9 +228,10 @@ int Estimate_Num_Neighbors( reax_system *system, control_params *control,
 }
 
 
-void Generate_Neighbor_Lists( reax_system *system, control_params *control,
-        simulation_data *data, static_storage *workspace,
-        reax_list **lists, output_controls *out_control )
+/* Generate the far neighbor list */
+void Generate_Neighbor_Lists( reax_system * const system,
+        control_params const * const control, simulation_data * const data,
+        static_storage * const workspace, reax_list ** const lists )
 {
     int i, j, k, l, m, itr;
     int x, y, z;
@@ -243,8 +256,14 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
     Bin_Atoms( system, workspace );
 
 #if defined(REORDER_ATOMS)
-    //Cluster_Atoms( system, workspace, control );
+    Reorder_Atoms( system, workspace, control );
 #endif
+
+    for ( i = 0; i < far_nbrs->n; ++i )
+    {
+        Set_Start_Index( i, 0, far_nbrs );
+        Set_End_Index( i, 0, far_nbrs );
+    }
 
     /* for each cell in the grid along the 3
      * Cartesian directions: (i, j, k) => (x, y, z) */
@@ -287,6 +306,11 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
                             {
                                 atom2 = nbr_atoms[m];
 
+#if defined(QMMM)
+                                if ( system->atoms[atom1].qmmm_mask == TRUE
+                                        || system->atoms[atom2].qmmm_mask == TRUE )
+                                {
+#endif
                                 if ( atom1 >= atom2 )
                                 {
                                     nbr_data = &far_nbrs->far_nbr_list[num_far];
@@ -297,6 +321,9 @@ void Generate_Neighbor_Lists( reax_system *system, control_params *control,
 
                                     num_far += count;
                                 }
+#if defined(QMMM)
+                                }
+#endif
                             }
                         }
 

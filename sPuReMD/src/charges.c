@@ -1518,6 +1518,9 @@ static void EE( reax_system * const system, control_params * const control,
         workspace->mask_qmmm[i] = system->atoms[i].qmmm_mask;
     }
     workspace->mask_qmmm[system->N_cm - 1] = 1;
+
+    /* Mask the b vector as well */
+    Vector_Mask_qmmm( workspace->b_s, workspace->mask_qmmm, system->N_cm );
 #endif
 
     switch ( control->cm_solver_type )
@@ -1646,8 +1649,11 @@ static void ACKS2( reax_system * const system, control_params * const control,
     {
         workspace->mask_qmmm[i] = system->atoms[i - system->N].qmmm_mask;
     }
-    workspace->mask_qmmm[2 * system->N_cm] = 1;
-    workspace->mask_qmmm[2 * system->N_cm + 1] = 1;
+    workspace->mask_qmmm[2 * system->N] = 1;
+    workspace->mask_qmmm[2 * system->N + 1] = 1;
+
+    /* Mask the b vector as well */
+    Vector_Mask_qmmm( workspace->b_s, workspace->mask_qmmm, system->N_cm );
 #endif
 
     switch ( control->cm_solver_type )

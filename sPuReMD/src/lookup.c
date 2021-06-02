@@ -184,6 +184,7 @@ static void Complete_Cubic_Spline( const real *h, const real *f, real v0, real v
 }
 
 
+#if defined(DEBUG_FOCUS)
 static void LR_Lookup( LR_lookup_table *t, real r, LR_data *y )
 {
     int i;
@@ -212,6 +213,7 @@ static void LR_Lookup( LR_lookup_table *t, real r, LR_data *y )
     y->H = y->e_ele * EV_to_KCALpMOL / C_ELE;
     //y->H = ((t->H[i].d*dif + t->H[i].c)*dif + t->H[i].b)*dif + t->H[i].a;
 }
+#endif
 
 
 void Make_LR_Lookup_Table( reax_system *system, control_params *control,

@@ -67,8 +67,7 @@ void Velocity_Verlet_NVE( reax_system *system, control_params *control,
 
     if ( renbr == TRUE )
     {
-        Generate_Neighbor_Lists( system, control, data, workspace,
-                lists, out_control );
+        Generate_Neighbor_Lists( system, control, data, workspace, lists );
     }
 
     Compute_Forces( system, control, data, workspace, lists, out_control, FALSE );
@@ -119,7 +118,7 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* system,
 
     if ( renbr == TRUE )
     {
-        Generate_Neighbor_Lists( system, control, data, workspace, lists, out_control );
+        Generate_Neighbor_Lists( system, control, data, workspace, lists );
     }
 
     Compute_Forces( system, control, data, workspace,
@@ -208,8 +207,7 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system, control_params*
 
     if ( renbr == TRUE )
     {
-        Generate_Neighbor_Lists( system, control, data, workspace,
-                lists, out_control );
+        Generate_Neighbor_Lists( system, control, data, workspace, lists );
     }
 
     /* Calculate Forces at time (t + dt) */
@@ -298,8 +296,8 @@ void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system* system,
     if ( renbr == TRUE )
     {
         Update_Grid( system );
-        Generate_Neighbor_Lists( system, control, data, workspace,
-                lists, out_control );
+
+        Generate_Neighbor_Lists( system, control, data, workspace, lists );
     }
 
     Compute_Forces( system, control, data, workspace, lists, out_control, FALSE );
@@ -406,8 +404,8 @@ void Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system* system,
     if ( renbr == TRUE )
     {
         Update_Grid( system );
-        Generate_Neighbor_Lists( system, control, data, workspace,
-                lists, out_control );
+
+        Generate_Neighbor_Lists( system, control, data, workspace, lists );
     }
 
     Compute_Forces( system, control, data, workspace, lists, out_control, FALSE );
@@ -518,8 +516,8 @@ void Velocity_Verlet_Nose_Hoover_NVT( reax_system* system, control_params* contr
     fprintf(out_control->log, "reset-");
     fflush( out_control->log );
 
-    Generate_Neighbor_Lists( system, control, data, workspace,
-                             lists, out_control );
+    Generate_Neighbor_Lists( system, control, data, workspace, lists );
+
     fprintf(out_control->log, "nbrs-");
     fflush( out_control->log );
 
@@ -622,8 +620,8 @@ void Velocity_Verlet_Isotropic_NPT( reax_system* system, control_params* control
     fprintf(out_control->log, "reset-");
     fflush( out_control->log );
 
-    Generate_Neighbor_Lists( system, control, data, workspace,
-                             lists, out_control );
+    Generate_Neighbor_Lists( system, control, data, workspace, lists );
+
     fprintf( out_control->log, "nbrs-" );
     fflush( out_control->log );
 

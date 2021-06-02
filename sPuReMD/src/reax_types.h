@@ -48,8 +48,8 @@
 //#define USE_REF_FORTRAN_EREAXFF_CONSTANTS
 /* constants defined in LAMMPS ReaxFF code (useful for comparisons) */
 //#define USE_LAMMPS_REAXFF_CONSTANTS
-/* enables reordering atoms after neighbor list generation (optimization) */
-#define REORDER_ATOMS
+/* enables reordering atoms after neighbor list generation for improved cache performance */
+//#define REORDER_ATOMS
 /* enables support for small simulation boxes (i.e. a simulation box with any
  * dimension less than twice the Verlet list cutoff distance, vlist_cut),
  * which means multiple periodic images must be searched for interactions */
@@ -273,15 +273,14 @@ enum interaction_list_offets
 /* interaction type */
 enum interaction_type
 {
-    TYP_VOID = 0,
-    TYP_THREE_BODY = 1,
-    TYP_BOND = 2,
-    TYP_HBOND = 3,
-    TYP_DBO = 4,
-    TYP_DDELTA = 5,
-    TYP_FAR_NEIGHBOR = 6,
-    TYP_NEAR_NEIGHBOR = 7,
-    TYP_N = 8,
+    TYP_THREE_BODY = 0,
+    TYP_BOND = 1,
+    TYP_HBOND = 2,
+    TYP_DBO = 3,
+    TYP_DDELTA = 4,
+    TYP_FAR_NEIGHBOR = 5,
+    TYP_NEAR_NEIGHBOR = 6,
+    TYP_N = 7,
 };
 
 /* error codes for simulation termination */
@@ -878,6 +877,16 @@ struct reax_system
     int N_cm;
     /* max. dimension of the N x N sparse charge method matrix H across all simulations */
     int N_cm_max;
+    /* molecular charge constraints
+     * NOTE: these constraints are currently only supported in BGF files using EEM */
+    real *molec_charge_constraints;
+    /* molecular charge constraints encoded as pairs of 1-based atom numbers indicating a range of atoms
+     * NOTE: these constraints are currently only supported in BGF files using EEM */
+    int *molec_charge_constraint_ranges;
+    /* num. of charge constraints on groups of atoms (i.e., molecules) */
+    unsigned int num_molec_charge_constraints;
+    /* max. num. of charge constraints on groups of atoms (i.e., molecules) */
+    unsigned int max_num_molec_charge_constraints;
     /* atom info */
     reax_atom *atoms;
     /* atomic interaction parameters */

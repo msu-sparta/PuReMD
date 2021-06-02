@@ -1072,10 +1072,10 @@ void BO( reax_system *system, control_params *control,
 
             workspace->vlpex[j] = workspace->Delta_e[j]
                 - 2.0 * (int)(workspace->Delta_e[j] / 2.0);
-            explp1 = EXP(-p_lp1 * SQR(2.0 + workspace->vlpex[j]));
+            explp1 = EXP( -1.0 * p_lp1 * SQR(2.0 + workspace->vlpex[j]) );
             workspace->nlp[j] = explp1 - (int)(workspace->Delta_e[j] / 2.0);
             workspace->Delta_lp[j] = sbp_j->nlp_opt - workspace->nlp[j];
-            workspace->Clp[j] = 2.0 * p_lp1 * explp1 * (2.0 + workspace->vlpex[j]);
+            workspace->Clp[j] = 2.0 * p_lp1 * (2.0 + workspace->vlpex[j]) * explp1;
             /* Adri uses different dDelta_lp values than the ones in notes... */
             workspace->dDelta_lp[j] = workspace->Clp[j];
 //            workspace->dDelta_lp[j] = workspace->Clp[j] + (0.5 - workspace->Clp[j])

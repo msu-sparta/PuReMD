@@ -377,8 +377,16 @@ static void Init_Workspace( reax_system *system, control_params *control,
             system->N_cm_max = system->N_max;
             break;
         case EE_CM:
-            system->N_cm = system->N + 1;
-            system->N_cm_max = system->N_max + 1;
+            if ( system->num_molec_charge_constraints == 0 )
+            {
+                system->N_cm = system->N + 1;
+                system->N_cm_max = system->N_max + 1;
+            }
+            else
+            {
+                system->N_cm = system->N + system->num_molec_charge_constraints;
+                system->N_cm_max = system->N_max + system->num_molec_charge_constraints;
+            }
             break;
         case ACKS2_CM:
             system->N_cm = 2 * system->N + 2;
@@ -440,7 +448,17 @@ static void Init_Workspace( reax_system *system, control_params *control,
                 workspace->b_s[i] = -system->reax_param.sbp[ system->atoms[i].type ].chi;
             }
 
-            workspace->b_s[system->N] = control->cm_q_net;
+            if ( system->num_molec_charge_constraints == 0 )
+            {
+                workspace->b_s[system->N] = control->cm_q_net;
+            }
+            else
+            {
+                for ( i = 0; i < system->num_molec_charge_constraints; ++i )
+                {
+                    workspace->b_s[system->N + i] = system->molec_charge_constraints[i];
+                }
+            }
             break;
 
         case ACKS2_CM:
@@ -796,7 +814,7 @@ static void Init_Lists( reax_system *system, control_params *control,
         lists[FAR_NBRS]->n = system->N;
     }
 
-    Generate_Neighbor_Lists( system, control, data, workspace, lists, out_control );
+    Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
     Htop = 0;
     hb_top = scalloc( system->N, sizeof(int), "Init_Lists::hb_top" );
@@ -1338,6 +1356,15 @@ static void Finalize_System( reax_system *system, control_params *control,
 
     system->prealloc_allocated = FALSE;
     system->ffield_params_allocated = FALSE;
+
+    if ( system->max_num_molec_charge_constraints > 0 )
+    {
+        sfree( system->molec_charge_constraints, "Read_BGF::molec_charge_constraints" );
+        sfree( system->molec_charge_constraint_ranges, "Read_BGF::molec_charge_constraint_ranges" );
+    }
+
+    system->max_num_molec_charge_constraints = 0;
+    system->num_molec_charge_constraints = 0;
 
     reax = &system->reax_param;
 

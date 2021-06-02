@@ -337,6 +337,7 @@ static void Analyze_Molecules( reax_system *system, control_params *control,
 }
 
 
+#if defined(DEBUG_FOCUS)
 static void Report_Bond_Change( reax_system *system, control_params *control,
         static_storage *workspace,  reax_list *old_bonds,
         reax_list *new_bonds, int a1, int a2, int flag, FILE *fout )
@@ -436,9 +437,11 @@ static void Report_Bond_Change( reax_system *system, control_params *control,
         fprintf( fout, "\n" );
     }
 }
+#endif
 
 
 /* ASSUMPTION: Bond lists are sorted */
+#if defined(DEBUG_FOCUS)
 static void Compare_Bonding( int atom, reax_system *system, control_params *control,
         static_storage *workspace, reax_list *old_bonds,
         reax_list *new_bonds, FILE *fout )
@@ -563,6 +566,7 @@ static void Compare_Bonding( int atom, reax_system *system, control_params *cont
         }
     }
 }
+#endif
 
 
 static void Visit_Bonds( int atom, int *mark, int *type, reax_system *system,
@@ -642,7 +646,7 @@ static void Analyze_Fragments( reax_system *system, control_params *control,
             {
                 /* it is a new one, add to the fragments list */
                 strncpy( fragments[num_fragment_types], fragment_out,
-                        sizeof(fragments[num_fragment_types]) - 1 );
+                        sizeof(fragments[num_fragment_types]) );
                 fragments[num_fragment_types][sizeof(fragments[num_fragment_types]) - 1] = '\0';
                 fragment_count[num_fragment_types] = 1;
                 ++num_fragment_types;
@@ -671,6 +675,7 @@ static void Analyze_Fragments( reax_system *system, control_params *control,
 }
 
 
+#if defined(DEBUG_FOCUS)
 static void Analyze_Silica( reax_system *system, control_params *control,
                      simulation_data *data, static_storage *workspace,
                      reax_list **lists, FILE *fout )
@@ -798,6 +803,7 @@ static void Analyze_Silica( reax_system *system, control_params *control,
 
     fflush( fout );
 }
+#endif
 
 
 static int Get_Type_of_Molecule( molecule *m )
@@ -932,6 +938,7 @@ static void Calculate_Drift( reax_system *system, control_params *control,
 }
 
 
+#if defined(DEBUG_FOCUS)
 static void Calculate_Density_3DMesh( reax_system *system, simulation_data *data,
         FILE *fout )
 {
@@ -1009,8 +1016,10 @@ static void Calculate_Density_3DMesh( reax_system *system, simulation_data *data
     fprintf( stderr, "AMU_to_GRAM   : %g\n", AMU_to_GRAM );
     fprintf( stderr, "ANG_to_CM     : %g\n", ANG_to_CM );
 }
+#endif
 
 
+#if defined(DEBUG_FOCUS)
 static void Calculate_Density_Slice( reax_system *system, simulation_data *data, FILE *fout )
 {
     real slice_thickness = 0.5;
@@ -1049,11 +1058,12 @@ static void Calculate_Density_Slice( reax_system *system, simulation_data *data,
         }
     }
 }
+#endif
 
 
 void Analysis( reax_system *system, control_params *control,
-               simulation_data *data, static_storage *workspace,
-               reax_list **lists, output_controls *out_control )
+        simulation_data *data, static_storage *workspace,
+        reax_list **lists, output_controls *out_control )
 {
     int steps;
 
@@ -1061,6 +1071,12 @@ void Analysis( reax_system *system, control_params *control,
 
     if ( steps == 1 )
     {
+        if ( lists[OLD_BONDS]->allocated == FALSE )
+        {
+            Make_List( lists[BONDS]->n, lists[BONDS]->n_max, lists[BONDS]->total_intrs,
+                    TYP_BOND, lists[OLD_BONDS] );
+        }
+
         if ( control->molec_anal == REACTIONS )
         {
             Copy_Bond_List( system, control, lists );
@@ -1072,25 +1088,26 @@ void Analysis( reax_system *system, control_params *control,
     }
 
     /****** Molecular Analysis ******/
-    if ( control->molec_anal && steps % control->freq_molec_anal == 0 )
+    if ( control->molec_anal
+            && steps % control->freq_molec_anal == 0 )
     {
         if ( control->molec_anal == FRAGMENTS )
         {
             /* discover molecules */
             Analyze_Fragments( system, control, data, workspace, lists,
-                               out_control->mol, 0 );
+                    out_control->mol, 0 );
             /* discover fragments without the ignored atoms */
             if ( control->num_ignored )
             {
                 Analyze_Fragments( system, control, data, workspace, lists,
-                                   out_control->ign, 1 );
+                        out_control->ign, 1 );
             }
         }
         else if ( control->molec_anal == REACTIONS )
         {
             /* discover molecular changes - reactions */
-            Analyze_Molecules( system, control, data, workspace,
-                               lists, out_control->mol );
+            Analyze_Molecules( system, control, data, workspace, lists,
+                    out_control->mol );
         }
     }
 

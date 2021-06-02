@@ -232,9 +232,8 @@ void * setup( const char * const geo_file, const char * const ffield_file,
     Allocate_Top_Level_Structs( &spmd_handle );
     Initialize_Top_Level_Structs( spmd_handle );
 
-    /* note: assign here to avoid compiler warning
-     * of uninitialized usage in PreAllocate_Space */
     spmd_handle->system->N_max = 0;
+    spmd_handle->system->max_num_molec_charge_constraints = 0;
 
     Read_Input_Files( geo_file, ffield_file, control_file,
             spmd_handle->system, spmd_handle->control,
@@ -375,9 +374,6 @@ int simulate( const void * const handle )
         //if( control.restart == FALSE ) {
         Reset( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                 spmd_handle->workspace, spmd_handle->lists );
-
-        Generate_Neighbor_Lists( spmd_handle->system, spmd_handle->control, spmd_handle->data,
-                spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control );
 
         Compute_Forces( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                 spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control,
