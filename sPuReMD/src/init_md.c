@@ -814,7 +814,7 @@ static void Init_Lists( reax_system *system, control_params *control,
         lists[FAR_NBRS]->n = system->N;
     }
 
-    Generate_Neighbor_Lists( system, control, data, workspace, lists, out_control );
+    Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
     Htop = 0;
     hb_top = scalloc( system->N, sizeof(int), "Init_Lists::hb_top" );

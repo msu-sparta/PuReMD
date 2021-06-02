@@ -40,7 +40,7 @@ void Atom_Energy( reax_system *system, control_params *control,
     real exp_ovun2n, exp_ovun6, exp_ovun8;
     real inv_exp_ovun1, inv_exp_ovun2, inv_exp_ovun2n, inv_exp_ovun8;
     real e_un, CEunder1, CEunder2, CEunder3, CEunder4;
-    real p_lp1, p_lp2, p_lp3;
+    real p_lp2, p_lp3;
     real p_ovun2, p_ovun3, p_ovun4, p_ovun5, p_ovun6, p_ovun7, p_ovun8;
     single_body_parameters *sbp_i;
     two_body_parameters *twbp;
@@ -49,7 +49,6 @@ void Atom_Energy( reax_system *system, control_params *control,
     reax_list *bonds;
 
     bonds = lists[BONDS];
-    p_lp1 = system->reax_param.gp.l[15];
     p_lp3 = system->reax_param.gp.l[5];
     p_ovun3 = system->reax_param.gp.l[32];
     p_ovun4 = system->reax_param.gp.l[31];

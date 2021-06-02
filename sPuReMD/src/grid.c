@@ -26,7 +26,7 @@
 #include "vector.h"
 
 
-static int Estimate_GCell_Population( reax_system* system )
+static int Estimate_GCell_Population( reax_system * const system )
 {
     int i, j, k, l;
     int max_atoms;
@@ -69,7 +69,7 @@ static int Estimate_GCell_Population( reax_system* system )
 }
 
 
-static void Allocate_Space_for_Grid( reax_system *system, int alloc )
+static void Allocate_Space_for_Grid( reax_system * const system, int alloc )
 {
     int i, j, k, l, max_atoms;
     grid *g;
@@ -256,7 +256,7 @@ static void Allocate_Space_for_Grid( reax_system *system, int alloc )
 }
 
 
-static void Deallocate_Grid_Space( grid *g )
+static void Deallocate_Grid_Space( grid * const g )
 {
     int i, j, k;
 
@@ -305,7 +305,7 @@ static void Deallocate_Grid_Space( grid *g )
 }
 
 
-static inline int Shift( int p, int dp, int dim, grid *g )
+static inline int Shift( int p, int dp, int dim, grid const * const g )
 {
     int dim_len, newp;
 
@@ -339,7 +339,7 @@ static inline int Shift( int p, int dp, int dim, grid *g )
 
 /* finds the closest point between two grid cells denoted by c1 and c2.
  * periodic boundary conditions are taken into consideration as well. */
-static void Find_Closest_Point( grid *g, int c1x, int c1y, int c1z,
+static void Find_Closest_Point( grid const * const g, int c1x, int c1y, int c1z,
         int c2x, int c2y, int c2z, rvec closest_point )
 {
     int i, d;
@@ -385,7 +385,7 @@ static void Find_Closest_Point( grid *g, int c1x, int c1y, int c1z,
 }
 
 
-static void Find_Neighbor_Grid_Cells( grid *g )
+static void Find_Neighbor_Grid_Cells( grid * const g )
 {
     int i, j, k;
     int di, dj, dk;
@@ -460,7 +460,7 @@ static void Find_Neighbor_Grid_Cells( grid *g )
 }
 
 
-void Setup_Grid( reax_system* system )
+void Setup_Grid( reax_system * const system )
 {
     int d, alloc;
     grid *g;
@@ -530,7 +530,7 @@ void Setup_Grid( reax_system* system )
 }
 
 
-void Update_Grid( reax_system* system )
+void Update_Grid( reax_system * const system )
 {
     int d, i, j, k, x, y, z, itr;
     ivec ncell;
@@ -614,7 +614,7 @@ void Update_Grid( reax_system* system )
 }
 
 
-void Bin_Atoms( reax_system* system, static_storage *workspace )
+void Bin_Atoms( reax_system * const system, static_storage * const workspace )
 {
     int i, j, k, l;
     int max_atoms;
@@ -666,7 +666,7 @@ void Bin_Atoms( reax_system* system, static_storage *workspace )
 }
 
 
-void Finalize_Grid( reax_system* system )
+void Finalize_Grid( reax_system * const system )
 {
     if ( system->g.allocated == TRUE )
     {
@@ -675,7 +675,7 @@ void Finalize_Grid( reax_system* system )
 }
 
 
-static inline void reax_atom_Copy( reax_atom *dest, reax_atom *src )
+static void reax_atom_Copy( reax_atom * const dest, reax_atom * const src )
 {
     dest->type = src->type;
     strncpy( dest->name, src->name, sizeof(dest->name) - 1 );
@@ -691,9 +691,10 @@ static inline void reax_atom_Copy( reax_atom *dest, reax_atom *src )
 }
 
 
-static void Copy_Storage( reax_system *system, static_storage *workspace,
-        control_params *control, int top, int old_id, int old_type, int *num_H,
-        real **v, real **s, real **t, int *orig_id, rvec *f_old )
+static void Copy_Storage( reax_system const * const system,static_storage * const workspace,
+        control_params const * const control, int top, int old_id, int old_type,
+        int * const num_H, real ** const v, real ** const s, real ** const t,
+        int * const orig_id, rvec * const f_old )
 {
     int i;
 
@@ -726,7 +727,8 @@ static void Copy_Storage( reax_system *system, static_storage *workspace,
 }
 
 
-static void Free_Storage( static_storage *workspace, control_params * control )
+static void Free_Storage( static_storage * const workspace,
+        control_params const * const control )
 {
     int i;
 
@@ -759,8 +761,9 @@ static void Assign_New_Storage( static_storage *workspace,
 }
 
 
-void Cluster_Atoms( reax_system *system, static_storage *workspace,
-        control_params *control )
+/* Reorder atom list to improve cache performance */
+void Reorder_Atoms( reax_system * const system, static_storage * const workspace,
+        control_params const * const control )
 {
     int i, j, k, l, top, old_id, num_H;
     reax_atom *old_atom, *new_atoms;
@@ -774,23 +777,23 @@ void Cluster_Atoms( reax_system *system, static_storage *workspace,
     top = 0;
     g = &system->g;
 
-    new_atoms = scalloc( system->N, sizeof(reax_atom), "Cluster_Atoms::new_atoms" );
-    orig_id = scalloc( system->N, sizeof(int), "Cluster_Atoms::orig_id" );
-    f_old = scalloc( system->N, sizeof(rvec), "Cluster_Atoms::f_old" );
+    new_atoms = scalloc( system->N, sizeof(reax_atom), "Reorder_Atoms::new_atoms" );
+    orig_id = scalloc( system->N, sizeof(int), "Reorder_Atoms::orig_id" );
+    f_old = scalloc( system->N, sizeof(rvec), "Reorder_Atoms::f_old" );
 
-    s = scalloc( 5, sizeof(real *), "Cluster_Atoms::s" );
-    t = scalloc( 5, sizeof(real *), "Cluster_Atoms::t" );
+    s = scalloc( 5, sizeof(real *), "Reorder_Atoms::s" );
+    t = scalloc( 5, sizeof(real *), "Reorder_Atoms::t" );
     for ( i = 0; i < 5; ++i )
     {
-        s[i] = scalloc( system->N_cm, sizeof(real), "Cluster_Atoms::s[i]" );
-        t[i] = scalloc( system->N_cm, sizeof(real), "Cluster_Atoms::t[i]" );
+        s[i] = scalloc( system->N_cm, sizeof(real), "Reorder_Atoms::s[i]" );
+        t[i] = scalloc( system->N_cm, sizeof(real), "Reorder_Atoms::t[i]" );
     }
 
     v = scalloc( control->cm_solver_restart + 1, sizeof(real *),
-            "Cluster_Atoms::v" );
+            "Reorder_Atoms::v" );
     for ( i = 0; i < control->cm_solver_restart + 1; ++i )
     {
-        v[i] = scalloc( system->N_cm, sizeof(real), "Cluster_Atoms::v[i]" );
+        v[i] = scalloc( system->N_cm, sizeof(real), "Reorder_Atoms::v[i]" );
     }
 
     for ( i = 0; i < g->ncell[0]; i++ )
@@ -818,7 +821,7 @@ void Cluster_Atoms( reax_system *system, static_storage *workspace,
         }
     }
 
-    sfree( system->atoms, "Cluster_Atoms::system->atoms" );
+    sfree( system->atoms, "Reorder_Atoms::system->atoms" );
     Free_Storage( workspace, control );
 
     system->atoms = new_atoms;

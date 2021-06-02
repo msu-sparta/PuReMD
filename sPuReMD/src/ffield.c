@@ -257,7 +257,8 @@ void Read_Force_Field( const char * const ffield_file,
             fgets( s, MAX_LINE, fp );
             Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
-            strncpy( reax->sbp[i].name, tmp[0], sizeof(reax->sbp[i].name) );
+            strncpy( reax->sbp[i].name, tmp[0], sizeof(reax->sbp[i].name) - 1 );
+            reax->sbp[i].name[sizeof(reax->sbp[i].name) - 1] = '\0';
             for ( j = 0; j < strlen( reax->sbp[i].name ); ++j )
             {
                 reax->sbp[i].name[j] = toupper( reax->sbp[i].name[j] );

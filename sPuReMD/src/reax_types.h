@@ -48,8 +48,8 @@
 //#define USE_REF_FORTRAN_EREAXFF_CONSTANTS
 /* constants defined in LAMMPS ReaxFF code (useful for comparisons) */
 //#define USE_LAMMPS_REAXFF_CONSTANTS
-/* enables reordering atoms after neighbor list generation (optimization) */
-#define REORDER_ATOMS
+/* enables reordering atoms after neighbor list generation for improved cache performance */
+//#define REORDER_ATOMS
 /* enables support for small simulation boxes (i.e. a simulation box with any
  * dimension less than twice the Verlet list cutoff distance, vlist_cut),
  * which means multiple periodic images must be searched for interactions */
@@ -273,15 +273,14 @@ enum interaction_list_offets
 /* interaction type */
 enum interaction_type
 {
-    TYP_VOID = 0,
-    TYP_THREE_BODY = 1,
-    TYP_BOND = 2,
-    TYP_HBOND = 3,
-    TYP_DBO = 4,
-    TYP_DDELTA = 5,
-    TYP_FAR_NEIGHBOR = 6,
-    TYP_NEAR_NEIGHBOR = 7,
-    TYP_N = 8,
+    TYP_THREE_BODY = 0,
+    TYP_BOND = 1,
+    TYP_HBOND = 2,
+    TYP_DBO = 3,
+    TYP_DDELTA = 4,
+    TYP_FAR_NEIGHBOR = 5,
+    TYP_NEAR_NEIGHBOR = 6,
+    TYP_N = 7,
 };
 
 /* error codes for simulation termination */

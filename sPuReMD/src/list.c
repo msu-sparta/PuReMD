@@ -49,18 +49,6 @@ void Make_List( int n, int n_max, int total_intrs, int type, reax_list* l )
 
     switch ( type )
     {
-    case TYP_VOID:
-        if ( l->total_intrs > 0 )
-        {
-            l->v = smalloc( l->total_intrs * sizeof(void),
-                    "Make_List::l->v" );
-        }
-        else
-        {
-            l->v = NULL;
-        }
-        break;
-
     case TYP_THREE_BODY:
         if ( l->total_intrs > 0 )
         {
@@ -174,13 +162,6 @@ void Delete_List( int type, reax_list* l )
 
     switch ( type )
     {
-    case TYP_VOID:
-        if ( l->v != NULL )
-        {
-            sfree( l->v, "Delete_List::l->v" );
-        }
-        break;
-
     case TYP_THREE_BODY:
         if ( l->three_body_list != NULL )
         {
