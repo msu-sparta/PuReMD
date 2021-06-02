@@ -193,6 +193,11 @@ int Estimate_Num_Neighbors( reax_system * const system,
                             {
                                 atom2 = nbr_atoms[m];
 
+#if defined(QMMM)
+                                if ( system->atoms[atom1].qmmm_mask == TRUE
+                                        || system->atoms[atom2].qmmm_mask == TRUE )
+                                {
+#endif
                                 if ( atom1 >= atom2 )
                                 {
                                     count = Count_Far_Neighbors( system->atoms[atom1].x,
@@ -201,6 +206,9 @@ int Estimate_Num_Neighbors( reax_system * const system,
 
                                     num_far += count;
                                 }
+#if defined(QMMM)
+                                }
+#endif
                             }
                         }
 
@@ -298,6 +306,11 @@ void Generate_Neighbor_Lists( reax_system * const system,
                             {
                                 atom2 = nbr_atoms[m];
 
+#if defined(QMMM)
+                                if ( system->atoms[atom1].qmmm_mask == TRUE
+                                        || system->atoms[atom2].qmmm_mask == TRUE )
+                                {
+#endif
                                 if ( atom1 >= atom2 )
                                 {
                                     nbr_data = &far_nbrs->far_nbr_list[num_far];
@@ -308,6 +321,9 @@ void Generate_Neighbor_Lists( reax_system * const system,
 
                                     num_far += count;
                                 }
+#if defined(QMMM)
+                                }
+#endif
                             }
                         }
 

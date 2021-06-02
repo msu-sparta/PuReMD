@@ -375,9 +375,6 @@ int simulate( const void * const handle )
         Reset( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                 spmd_handle->workspace, spmd_handle->lists );
 
-        Generate_Neighbor_Lists( spmd_handle->system, spmd_handle->control, spmd_handle->data,
-                spmd_handle->workspace, spmd_handle->lists );
-
         Compute_Forces( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                 spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control,
                 spmd_handle->realloc );

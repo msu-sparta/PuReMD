@@ -845,6 +845,11 @@ static void Init_Forces( reax_system *system, control_params *control,
             flag = FALSE;
             flag_sp = FALSE;
 
+#if defined(QMMM)
+            if ( system->atoms[i].qmmm_mask == TRUE
+                    || system->atoms[j].qmmm_mask == TRUE )
+            {
+#endif	
             /* check if reneighboring step --
              * atomic distances just computed via
              * Verlet list, so use current distances */
@@ -1076,11 +1081,14 @@ static void Init_Forces( reax_system *system, control_params *control,
 
                         Set_End_Index( j, btop_j + 1, bonds );
                     }
+#if defined(QMMM)
                 }
-            }
+#endif
+                }
 #if defined(QMMM)
             }
 #endif
+            }
         }
 
         /* diagonal entry */
