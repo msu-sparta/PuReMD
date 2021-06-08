@@ -230,7 +230,7 @@ void Update_Box_Semi_Isotropic( simulation_box *box, rvec mu )
  * is within the simulation box
  *
  * Assumption: (0, 0, 0) is the minimum box coordinate,
- * the the maximum coordinate is strictly positive in each dimension
+ * the maximum coordinate is strictly positive in each dimension
  *
  * Inputs:
  *  x: current atom position 
@@ -253,30 +253,22 @@ void Update_Atom_Position_Periodic( rvec x, rvec dx, ivec rel_map, simulation_bo
         /* new atomic position after update along dimension i */
         tmp = x[i] + dx[i];
 
-        /* outside of simulation box boundary [0.0, d_i],
+        /* outside of simulation box boundary [0.0, d_i),
          * where d_i is the simulation box length along dimesion i */
-        if ( tmp < 0.0 || tmp > box->box_norms[i] )
+        if ( tmp < 0.0 || tmp >= box->box_norms[i] )
         {
             remapped = FALSE;
 
-            /* re-map the position to be in the range [-d_i, d_i] */
-            if ( tmp <= -box->box_norms[i] || tmp >= box->box_norms[i] )
+            /* re-map the position to be in the range (-d_i, d_i) */
+            if ( tmp <= -1.0 * box->box_norms[i] || tmp >= box->box_norms[i] )
             {
-                if ( tmp >= 0.0 )
-                {
-                    rel_map[i] += ((int) CEIL( tmp / box->box_norms[i] )) - 1;
-                }
-                else
-                {
-                    rel_map[i] += (int) FLOOR( tmp / box->box_norms[i] );
-                }
-
+                rel_map[i] += (int) (tmp / box->box_norms[i]);
                 tmp = FMOD( tmp, box->box_norms[i] );
                 remapped = TRUE;
             }
 
             /* if the new position after re-mapping is negative,
-             * translate back to the range [0, d_i] (i.e., inside the box) */
+             * translate back to the range [0, d_i) (i.e., inside the box) */
             if ( tmp < 0.0 )
             {
                 tmp += box->box_norms[i];
@@ -288,7 +280,7 @@ void Update_Atom_Position_Periodic( rvec x, rvec dx, ivec rel_map, simulation_bo
             }
         }
 
-        assert( tmp >= 0.0 && tmp <= box->box_norms[i] );
+        assert( tmp >= 0.0 && tmp < box->box_norms[i] );
 
         x[i] = tmp;
     }
@@ -327,7 +319,7 @@ void Update_Atom_Position_Non_Periodic( rvec x, rvec dx, ivec rel_map, simulatio
         }
         else if ( tmp > box->box_norms[i] )
         {
-            tmp = box->box_norms[i];
+            tmp = box->box_norms[i] - 1.0E-10;
         }
 
         x[i] = tmp;
@@ -665,17 +657,17 @@ int Find_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int atom, int nbr_a
     kmax = (int) CEIL( vlist_cut / box->box_norms[2] );
 
     /* assumption: orthogonal coordinates */
-    for ( i = -imax; i <= imax; ++i )
+    for ( i = -1 * imax; i <= imax; ++i )
     {
         d_i = (x2[0] + i * box->box_norms[0]) - x1[0];
         sqr_d_i = SQR( d_i );
 
-        for ( j = -jmax; j <= jmax; ++j )
+        for ( j = -1 * jmax; j <= jmax; ++j )
         {
             d_j = (x2[1] + j * box->box_norms[1]) - x1[1];
             sqr_d_j = SQR( d_j );
 
-            for ( k = -kmax; k <= kmax; ++k )
+            for ( k = -1 * kmax; k <= kmax; ++k )
             {
                 d_k = (x2[2] + k * box->box_norms[2]) - x1[2];
                 sqr_d_k = SQR( d_k );

@@ -32,8 +32,9 @@ char *Get_Atom_Name( reax_system*, int );
 void Print_Near_Neighbors( reax_system*, control_params*, static_storage*,
         reax_list** );
 
-void Print_Far_Neighbors( reax_system*, control_params*, simulation_data*,
-        static_storage*, reax_list** );
+void Print_Far_Neighbors( reax_system const * const, control_params const * const,
+        simulation_data const * const, static_storage const * const,
+        reax_list ** const );
 
 void Print_Total_Force( reax_system*, control_params*, simulation_data*,
         static_storage*, reax_list**, output_controls* );

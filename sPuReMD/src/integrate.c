@@ -32,7 +32,8 @@
 #include "vector.h"
 
 
-/* Velocity Verlet integrator for microcanonical ensemble. */
+/* Perform simulation using the microcanonical ensemble with
+ * the Velocity Verlet integrator. */
 void Velocity_Verlet_NVE( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
@@ -83,8 +84,8 @@ void Velocity_Verlet_NVE( reax_system *system, control_params *control,
 }
 
 
-/* Velocity Verlet integrator for constant volume and temperature
- *  with Berendsen thermostat. */
+/* Perform simulation using constant volume and temperature (NVT ensemble)
+ * with a Berendsen thermostat and the Velocity Verlet integrator. */
 void Velocity_Verlet_Berendsen_NVT( reax_system* system,
         control_params* control, simulation_data *data,
         static_storage *workspace, reax_list **lists,
@@ -162,8 +163,8 @@ void Velocity_Verlet_Berendsen_NVT( reax_system* system,
 }
 
 
-/* Velocity Verlet integrator for constant volume and constant temperature
- *  with Nose-Hoover thermostat.
+/* Perform simulation using constant volume and temperature (NVT ensemble)
+ * with a Nose-Hoover thermostat and the Velocity Verlet integrator.
  *
  * Reference: Understanding Molecular Simulation, Frenkel and Smit
  *  Academic Press Inc. San Diego, 1996 p. 388-391 */
@@ -258,7 +259,8 @@ void Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system, control_params*
 }
 
 
-/* Velocity Verlet integrator for constant pressure and constant temperature.
+/* Perform simulation using constant pressure and temperature (NPT ensemble)
+ * with a Berendsen thermostat and the Velocity Verlet integrator.
  *
  * NOTE: All box dimensions are scaled by the same amount, and
  * there is no change in the angles between axes. */
@@ -369,7 +371,8 @@ void Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system* system,
 }
 
 
-/* Velocity Verlet integrator for constant pressure and constant temperature. */
+/* Perform simulation using constant pressure and temperature (NPT ensemble)
+ * with a Berendsen thermostat and the Velocity Verlet integrator. */
 void Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system* system,
         control_params* control, simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
@@ -510,7 +513,7 @@ void Velocity_Verlet_Nose_Hoover_NVT( reax_system* system, control_params* contr
     /* Compute zeta(t + dt/2), E_Kininetic(t + dt/2)
      * IMPORTANT: What will be the initial value of zeta? and what is g? */
     data->therm.xi += 0.5 * dt * control->Tau_T
-        * (2.0 * data->E_Kin - data->N_f * K_B * control->T);
+        * (2.0 * data->E_Kin - data->N_f * K_B / F_CONV * control->T);
 
     Reset( system, control, data, workspace );
     fprintf(out_control->log, "reset-");
@@ -544,10 +547,10 @@ void Velocity_Verlet_Nose_Hoover_NVT( reax_system* system, control_params* contr
 
     /* Compute zeta(t + dt) */
     data->therm.xi += 0.5 * dt * control->Tau_T
-        * (2.0 * data->E_Kin - data->N_f * K_B * control->T);
+        * (2.0 * data->E_Kin - data->N_f * K_B / F_CONV * control->T);
 
     fprintf( out_control->log, "Xi: %8.3f %8.3f %8.3f\n",
-             data->therm.xi, data->E_Kin, data->N_f * K_B * control->T );
+             data->therm.xi, data->E_Kin, data->N_f * K_B / F_CONV * control->T );
     fflush( out_control->log );
 }
 

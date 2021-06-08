@@ -101,7 +101,10 @@ void Transform_to_UnitBox( rvec x1, simulation_box *box, int flag, rvec x2 )
 }
 
 
-/* determine whether point p is inside the box */
+/* Check and remap (if necessary) an atom position to fall
+ * within the boundaries of a periodic simulation box where
+ * the boundaries are [0, d_i) with d_i being the length
+ * of the simulation box in a particular dimension */
 void Fit_to_Periodic_Box( simulation_box *box, rvec p )
 {
     int i;
@@ -116,10 +119,10 @@ void Fit_to_Periodic_Box( simulation_box *box, rvec p )
                 p[i] += box->box_norms[i];
             }
         }
-        else if ( p[i] > box->max[i] )
+        else if ( p[i] >= box->max[i] )
         {
             /* handle higher coords */
-            while ( p[i] > box->max[i] )
+            while ( p[i] >= box->max[i] )
             {
                 p[i] -= box->box_norms[i];
             }

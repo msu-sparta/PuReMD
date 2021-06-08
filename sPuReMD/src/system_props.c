@@ -196,10 +196,10 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data )
         rvec_Scale( p, m, system->atoms[i].v );
         data->E_Kin += rvec_Dot( p, system->atoms[i].v );
     }
-    data->E_Kin *= 0.5;
+    data->E_Kin *= 0.5 * E_CONV;
 
     /* temperature scalar */
-    data->therm.T = (2.0 * data->E_Kin) / (data->N_f * K_B);
+    data->therm.T = (2.0 * data->E_Kin) / (data->N_f * K_B / F_CONV);
 
     /* avoid T being an absolute zero! */
     if ( FABS( data->therm.T ) < ALMOST_ZERO )
@@ -209,17 +209,18 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data )
 }
 
 
+/* Compute potential and total energies */
 void Compute_Total_Energy( simulation_data* data )
 {
     data->E_Pot = data->E_BE + data->E_Ov + data->E_Un  + data->E_Lp +
         data->E_Ang + data->E_Pen + data->E_Coa + data->E_HB +
         data->E_Tor + data->E_Con + data->E_vdW + data->E_Ele + data->E_Pol;
 
-
-    data->E_Tot = data->E_Pot + data->E_Kin * E_CONV;
+    data->E_Tot = data->E_Pot + data->E_Kin;
 }
 
 
+/* Check for numeric breakdowns in the energies */
 void Check_Energy( simulation_data* data )
 {
     if ( IS_NAN_REAL(data->E_Pol) )

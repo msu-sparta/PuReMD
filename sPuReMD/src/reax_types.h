@@ -73,8 +73,8 @@
   /* unit conversion from ??? to kcal / mol */
   #define C_ELE (332.0638)
   /* Boltzmann constant, AMU * A^2 / (ps^2 * K) */
-  #define K_B (0.831687)
-//  #define K_B (0.8314510)
+//  #define K_B (0.831687)
+  #define K_B (0.8314510)
   /* unit conversion for atomic force to AMU * A / ps^2 */
   #define F_CONV (4.184e2)
   /* energy conversion constant from electron volts to kilo-calories per mole */
@@ -122,7 +122,8 @@
 /* unit conversion for atomic energy */
 #if !defined(E_CONV)
   /* AMU * Angstroms^2 / ps^2 --> kcal / mol */
-  #define E_CONV (0.002391)
+//  #define E_CONV (0.002391)
+  #define E_CONV (1.0 / 418.40)
 #endif
 /* energy conversion constant from electron volts to kilo-calories per mole */
 #if !defined(EV_to_KCALpMOL)
