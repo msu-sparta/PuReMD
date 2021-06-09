@@ -371,7 +371,7 @@ int Append_Custom_Frame( reax_system *system, control_params *control,
     /* calculate total frame length*/
     snprintf( buffer, SIZE, FRAME_GLOBALS,
              data->step, data->time,
-             data->E_Tot, data->E_Pot, E_CONV * data->E_Kin, data->therm.T,
+             data->E_Tot, data->E_Pot, data->E_Kin, data->therm.T,
              P, system->box.volume,
              system->box.box_norms[0],
              system->box.box_norms[1],
@@ -620,7 +620,7 @@ int Append_xyz_Frame( reax_system *system, control_params *control,
 
     out_control->write( out_control->trj, "%d\t%8.3f\t%8.3f\t%8.3f\t%8.3f\n",
             data->step, data->E_Tot, data->E_Pot,
-            E_CONV * data->E_Kin, data->therm.T );
+            data->E_Kin, data->therm.T );
 
     for ( i = 0; i < system->N; ++i )
     {

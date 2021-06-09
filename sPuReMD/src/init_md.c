@@ -193,24 +193,24 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
     switch ( control->ensemble )
     {
     case NVE:
-        data->N_f = 3 * system->N;
+        data->N_f = 3.0 * system->N;
         *Evolve = &Velocity_Verlet_NVE;
         break;
 
     case bNVT:
-        data->N_f = 3 * system->N;
+        data->N_f = 3.0 * system->N;
         *Evolve = &Velocity_Verlet_Berendsen_NVT;
         break;
 
     case nhNVT:
-        data->N_f = 3 * system->N + 1;
+        data->N_f = 3.0 * system->N + 1.0;
         *Evolve = &Velocity_Verlet_Nose_Hoover_NVT_Klein;
 
         if ( control->restart == FALSE
                 || (control->restart == TRUE && control->random_vel == TRUE) )
         {
             data->therm.G_xi = control->Tau_T * (2.0 * data->E_Kin
-                    - data->N_f * K_B * control->T);
+                    - data->N_f * K_B / F_CONV * control->T);
             data->therm.v_xi = data->therm.G_xi * control->dt;
             data->therm.v_xi_old = 0.0;
             data->therm.xi = 0.0;
@@ -222,13 +222,13 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
         fprintf( stderr, "[ERROR] THIS OPTION IS NOT YET IMPLEMENTED! TERMINATING...\n" );
         exit( UNKNOWN_OPTION );
 
-        data->N_f = 3 * system->N + 9;
+        data->N_f = 3.0 * system->N + 9.0;
         *Evolve = &Velocity_Verlet_Berendsen_Isotropic_NPT;
 
         if ( control->restart == FALSE )
         {
             data->therm.G_xi = control->Tau_T * (2.0 * data->E_Kin -
-                    data->N_f * K_B * control->T);
+                    data->N_f * K_B / F_CONV * control->T);
             data->therm.v_xi = data->therm.G_xi * control->dt;
             data->iso_bar.eps = 1.0 / 3.0 * LOG( system->box.volume );
 //            data->inv_W = 1.0 / (data->N_f * K_B * control->T * SQR(control->Tau_P));
@@ -238,13 +238,13 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
 
     /* semi-isotropic NPT */
     case sNPT:
-        data->N_f = 3 * system->N + 4;
+        data->N_f = 3.0 * system->N + 4.0;
         *Evolve = &Velocity_Verlet_Berendsen_Semi_Isotropic_NPT;
         break;
 
     /* isotropic NPT */
     case iNPT:
-        data->N_f = 3 * system->N + 2;
+        data->N_f = 3.0 * system->N + 2.0;
         *Evolve = &Velocity_Verlet_Berendsen_Isotropic_NPT;
         break;
 

@@ -460,8 +460,10 @@ void Print_Near_Neighbors2( reax_system *system, control_params *control,
 
 
 /* far nbrs contain only i-j nbrhood info, no j-i. */
-void Print_Far_Neighbors( reax_system *system, control_params *control,
-        simulation_data *data, static_storage *workspace, reax_list **lists )
+void Print_Far_Neighbors( reax_system const * const system,
+        control_params const * const control,
+        simulation_data const * const data,
+        static_storage const * const workspace, reax_list ** const lists )
 {
     int i, pj, id_i, id_j;
     char fname[MAX_STR];
@@ -482,7 +484,7 @@ void Print_Far_Neighbors( reax_system *system, control_params *control,
             id_j = workspace->orig_id[far_nbrs->far_nbr_list[pj].nbr];
 
             fprintf( fout, "%6d%6d%3d%3d%3d %12.7f\n",
-                     id_i, id_j,
+                     id_j, id_i,
                      far_nbrs->far_nbr_list[pj].rel_box[0],
                      far_nbrs->far_nbr_list[pj].rel_box[1],
                      far_nbrs->far_nbr_list[pj].rel_box[2],
@@ -595,7 +597,7 @@ void Output_Results( reax_system *system, control_params *control,
 #if defined(TEST_ENERGY) || defined(DEBUG) || defined(DEBUG_FOCUS)
         fprintf( out_control->out,
                  "%-6d%24.15f%24.15f%24.15f%13.5f%13.5f%16.5f%13.5f%13.5f\n",
-                 data->step, data->E_Tot, data->E_Pot, E_CONV * data->E_Kin,
+                 data->step, data->E_Tot, data->E_Pot, data->E_Kin,
                  data->therm.T, control->T, system->box.volume, data->iso_bar.P,
                  (control->P[0] + control->P[1] + control->P[2]) / 3.0 );
 
@@ -610,7 +612,7 @@ void Output_Results( reax_system *system, control_params *control,
 #else
         fprintf( out_control->out,
                  "%-6d%16.2f%16.2f%16.2f%11.2f%11.2f%13.2f%13.5f%13.5f\n",
-                 data->step, data->E_Tot, data->E_Pot, E_CONV * data->E_Kin,
+                 data->step, data->E_Tot, data->E_Pot, data->E_Kin,
                  data->therm.T, control->T, system->box.volume, data->iso_bar.P,
                  (control->P[0] + control->P[1] + control->P[2]) / 3.0 );
 

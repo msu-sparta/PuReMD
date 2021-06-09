@@ -26,6 +26,11 @@
 #include "vector.h"
 
 
+/* Counts the number of atoms binned to each cell within the grid
+ *
+ * NOTE: this assumes the atom positions are within the 
+ * simulation box boundaries [0, d_i) where d_i is the simulation
+ * box length along a particular dimension */
 static int Estimate_GCell_Population( reax_system * const system )
 {
     int i, j, k, l;
@@ -38,8 +43,10 @@ static int Estimate_GCell_Population( reax_system * const system )
 
     for ( l = 0; l < system->N; l++ )
     {
-        /* NOTE: this assumes the atom positions
-         * are within the simulation box boundaries */
+        assert( system->atoms[l].x[0] >= 0.0 && system->atoms[l].x[0] < system->box.box_norms[0] );
+        assert( system->atoms[l].x[1] >= 0.0 && system->atoms[l].x[1] < system->box.box_norms[1] );
+        assert( system->atoms[l].x[2] >= 0.0 && system->atoms[l].x[2] < system->box.box_norms[2] );
+
         i = (int) (system->atoms[l].x[0] * g->inv_len[0]);
         j = (int) (system->atoms[l].x[1] * g->inv_len[1]);
         k = (int) (system->atoms[l].x[2] * g->inv_len[2]);
@@ -406,15 +413,15 @@ static void Find_Neighbor_Grid_Cells( grid * const g )
                 stack_top = 0;
 
                 /* choose an unmarked neighbor cell */
-                for ( di = -g->spread[0]; di <= g->spread[0]; di++ )
+                for ( di = -1 * g->spread[0]; di <= g->spread[0]; di++ )
                 {
                     x = Shift( i, di, 0, g );
 
-                    for ( dj = -g->spread[1]; dj <= g->spread[1]; dj++ )
+                    for ( dj = -1 * g->spread[1]; dj <= g->spread[1]; dj++ )
                     {
                         y = Shift( j, dj, 1, g );
 
-                        for ( dk = -g->spread[2]; dk <= g->spread[2]; dk++ )
+                        for ( dk = -1 * g->spread[2]; dk <= g->spread[2]; dk++ )
                         {
                             z = Shift( k, dk, 2, g );
 
@@ -614,6 +621,11 @@ void Update_Grid( reax_system * const system )
 }
 
 
+/* Utilize a cell method approach to bin atoms to each cell within the grid
+ *
+ * NOTE: this assumes the atom positions are within the 
+ * simulation box boundaries [0, d_i) where d_i is the simulation
+ * box length along a particular dimension */
 void Bin_Atoms( reax_system * const system, static_storage * const workspace )
 {
     int i, j, k, l;
@@ -626,9 +638,13 @@ void Bin_Atoms( reax_system * const system, static_storage * const workspace )
 
     for ( l = 0; l < system->N; l++ )
     {
-        i = (int)(system->atoms[l].x[0] * g->inv_len[0]);
-        j = (int)(system->atoms[l].x[1] * g->inv_len[1]);
-        k = (int)(system->atoms[l].x[2] * g->inv_len[2]);
+        assert( system->atoms[l].x[0] >= 0.0 && system->atoms[l].x[0] < system->box.box_norms[0] );
+        assert( system->atoms[l].x[1] >= 0.0 && system->atoms[l].x[1] < system->box.box_norms[1] );
+        assert( system->atoms[l].x[2] >= 0.0 && system->atoms[l].x[2] < system->box.box_norms[2] );
+
+        i = (int) (system->atoms[l].x[0] * g->inv_len[0]);
+        j = (int) (system->atoms[l].x[1] * g->inv_len[1]);
+        k = (int) (system->atoms[l].x[2] * g->inv_len[2]);
         /* atom index in grid cell => atom number */
         g->atoms[i][j][k][g->top[i][j][k]] = l;
         /* count of current atoms in this grid cell */
