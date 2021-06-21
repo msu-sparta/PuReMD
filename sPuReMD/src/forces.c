@@ -500,30 +500,18 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
 
                 for ( i = 0; i < system->N_cm - 1; ++i )
                 {
-#if defined(QMMM)
                     /* total charge constraint on QM atoms */
+#if defined(QMMM)
                     if ( system->atoms[i].qmmm_mask == TRUE )
                     {
-                        H->j[*Htop] = i;
-                        H->val[*Htop] = 1.0;
-
-                        H_sp->j[*H_sp_top] = i;
-                        H_sp->val[*H_sp_top] = 1.0;
-                    }
-                    else
-                    {
-                        H->j[*Htop] = i;
-                        H->val[*Htop] = 0.0; 
-
-                        H_sp->j[*H_sp_top] = i;
-                        H_sp->val[*H_sp_top] = 0.0;
-                    }
-#else
+#endif
                     H->j[*Htop] = i;
                     H->val[*Htop] = 1.0;
 
                     H_sp->j[*H_sp_top] = i;
                     H_sp->val[*H_sp_top] = 1.0;
+#if defined(QMMM)
+                    }
 #endif
 
                     *Htop = *Htop + 1;
@@ -548,30 +536,18 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
                     for ( j = system->molec_charge_constraint_ranges[2 * i];
                             j <= system->molec_charge_constraint_ranges[2 * i + 1]; ++j )
                     {
-#if defined(QMMM)
                         /* molecule charge constraint on QM atoms */
+#if defined(QMMM)
                         if ( system->atoms[j - 1].qmmm_mask == TRUE )
                         {
-                            H->j[*Htop] = j - 1;
-                            H->val[*Htop] = 1.0;
-
-                            H_sp->j[*H_sp_top] = j - 1;
-                            H_sp->val[*H_sp_top] = 1.0;
-                        }
-                        else
-                        {
-                            H->j[*Htop] = j - 1;
-                            H->val[*Htop] = 0.0; 
-
-                            H_sp->j[*H_sp_top] = j - 1;
-                            H_sp->val[*H_sp_top] = 0.0;
-                        }
-#else
+#endif
                         H->j[*Htop] = j - 1;
                         H->val[*Htop] = 1.0;
 
                         H_sp->j[*H_sp_top] = j - 1;
                         H_sp->val[*H_sp_top] = 1.0;
+#if defined(QMMM)
+                        }
 #endif
 
                         *Htop = *Htop + 1;
