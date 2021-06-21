@@ -550,7 +550,7 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
                     {
 #if defined(QMMM)
                         /* molecule charge constraint on QM atoms */
-                        if ( system->atoms[i].qmmm_mask == TRUE )
+                        if ( system->atoms[j - 1].qmmm_mask == TRUE )
                         {
                             H->j[*Htop] = j - 1;
                             H->val[*Htop] = 1.0;

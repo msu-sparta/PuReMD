@@ -960,12 +960,18 @@ int set_control_parameter( const void * const handle, const char * const keyword
  * sim_box_info: simulation box information, where the entries are
  *  - box length per dimension (3 entries)
  *  - angles per dimension (3 entries)
+ * num_charge_constraints: num. of charge constraints for charge model
+ * charge_constraint_start: starting atom num. (1-based) of atom group for a charge constraint
+ * charge_constraint_end: ending atom num. (1-based) of atom group for a charge constraint
+ * charge_constraint_value: charge constraint value for atom group
  * ffield_file: file containing force field parameters
  * control_file: file containing simulation parameters
  */
 void * setup_qmmm( int qm_num_atoms, const char * const qm_symbols,
         const double * const qm_pos, int mm_num_atoms, const char * const mm_symbols,
         const double * const mm_pos_q, const double * const sim_box_info,
+        int num_charge_constraints, const int * const charge_constraint_start,
+        const int * const charge_constraint_end, const double * const charge_constraint_value,
         const char * const ffield_file, const char * const control_file )
 {
     int i;
@@ -983,6 +989,26 @@ void * setup_qmmm( int qm_num_atoms, const char * const qm_symbols,
             spmd_handle->system, spmd_handle->control,
             spmd_handle->data, spmd_handle->workspace,
             spmd_handle->out_control, FALSE );
+
+    spmd_handle->system->max_num_molec_charge_constraints = num_charge_constraints;
+    spmd_handle->system->num_molec_charge_constraints = num_charge_constraints;
+
+    if ( spmd_handle->system->num_molec_charge_constraints > 0 )
+    {
+        spmd_handle->system->molec_charge_constraints = smalloc(
+                sizeof(real) * spmd_handle->system->num_molec_charge_constraints,
+                "setup_qmmm::molec_charge_constraints" );
+        spmd_handle->system->molec_charge_constraint_ranges = smalloc(
+                sizeof(int) * 2 * spmd_handle->system->num_molec_charge_constraints,
+                "setup_qmmm::molec_charge_constraint_ranges" );
+
+        for ( i = 0; i < spmd_handle->system->num_molec_charge_constraints; ++i )
+        {
+            spmd_handle->system->molec_charge_constraint_ranges[2 * i] = charge_constraint_start[i];
+            spmd_handle->system->molec_charge_constraint_ranges[2 * i + 1] = charge_constraint_end[i];
+            spmd_handle->system->molec_charge_constraints[i] = charge_constraint_value[i];
+        }
+    }
 
     spmd_handle->system->N_qm = qm_num_atoms;
     spmd_handle->system->N_mm = mm_num_atoms;
@@ -1071,6 +1097,10 @@ void * setup_qmmm( int qm_num_atoms, const char * const qm_symbols,
  * sim_box_info: simulation box information, where the entries are
  *  - box length per dimension (3 entries)
  *  - angles per dimension (3 entries)
+ * num_charge_constraints: num. of charge constraints for charge model
+ * charge_constraint_start: starting atom num. (1-based) of atom group for a charge constraint
+ * charge_constraint_end: ending atom num. (1-based) of atom group for a charge constraint
+ * charge_constraint_value: charge constraint value for atom group
  * ffield_file: file containing force field parameters
  * control_file: file containing simulation parameters
  *
@@ -1080,6 +1110,8 @@ int reset_qmmm( const void * const handle, int qm_num_atoms,
         const char * const qm_symbols, const double * const qm_pos,
         int mm_num_atoms, const char * const mm_symbols,
         const double * const mm_pos_q, const double * const sim_box_info,
+        int num_charge_constraints, const int * const charge_constraint_start,
+        const int * const charge_constraint_end, const double * const charge_constraint_value,
         const char * const ffield_file, const char * const control_file )
 {
     int i, ret;
@@ -1107,6 +1139,40 @@ int reset_qmmm( const void * const handle, int qm_num_atoms,
                 spmd_handle->system, spmd_handle->control,
                 spmd_handle->data, spmd_handle->workspace,
                 spmd_handle->out_control, TRUE );
+
+        spmd_handle->system->num_molec_charge_constraints = num_charge_constraints;
+
+        if ( spmd_handle->system->num_molec_charge_constraints
+                > spmd_handle->system->max_num_molec_charge_constraints )
+        {
+            if ( spmd_handle->system->max_num_molec_charge_constraints > 0 )
+            {
+                sfree( spmd_handle->system->molec_charge_constraints,
+                        "reset_qmmm::molec_charge_constraints" );
+                sfree( spmd_handle->system->molec_charge_constraint_ranges,
+                        "reset_qmmm::molec_charge_constraint_ranges" );
+            }
+
+            spmd_handle->system->molec_charge_constraints = smalloc(
+                    sizeof(real) * spmd_handle->system->num_molec_charge_constraints,
+                    "reset_qmmm::molec_charge_constraints" );
+            spmd_handle->system->molec_charge_constraint_ranges = smalloc(
+                    sizeof(int) * 2 * spmd_handle->system->num_molec_charge_constraints,
+                    "reset_qmmm::molec_charge_constraint_ranges" );
+
+            spmd_handle->system->max_num_molec_charge_constraints
+                = spmd_handle->system->num_molec_charge_constraints;
+        }
+
+        if ( spmd_handle->system->num_molec_charge_constraints > 0 )
+        {
+            for ( i = 0; i < spmd_handle->system->num_molec_charge_constraints; ++i )
+            {
+                spmd_handle->system->molec_charge_constraint_ranges[2 * i] = charge_constraint_start[i];
+                spmd_handle->system->molec_charge_constraint_ranges[2 * i + 1] = charge_constraint_end[i];
+                spmd_handle->system->molec_charge_constraints[i] = charge_constraint_value[i];
+            }
+        }
 
         spmd_handle->system->N_qm = qm_num_atoms;
         spmd_handle->system->N_mm = mm_num_atoms;
