@@ -546,12 +546,12 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
 
                         H_sp->j[*H_sp_top] = j - 1;
                         H_sp->val[*H_sp_top] = 1.0;
-#if defined(QMMM)
-                        }
-#endif
 
                         *Htop = *Htop + 1;
                         *H_sp_top = *H_sp_top + 1;
+#if defined(QMMM)
+                        }
+#endif
                     }
 
                     /* explicit zeros on diagonals */
