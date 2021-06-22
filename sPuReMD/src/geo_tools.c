@@ -850,6 +850,10 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             if ( strncmp( element, "X\0", 2) == 0 )
             {
                 system->atoms[atom_cnt].dummy = TRUE;
+            }
+            else
+            {
+                system->atoms[atom_cnt].dummy = FALSE;            
             }		
 #if defined(DEBUG_FOCUS)
             fprintf( stderr,
