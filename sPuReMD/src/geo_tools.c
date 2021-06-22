@@ -845,7 +845,12 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             }
             system->atoms[atom_cnt].type =
                 Get_Atom_Type( &system->reax_param, element, sizeof(element) );
-
+            
+            // TODO: finalize dummy atom name (Amber uses "Du")
+            if ( strncmp( element, "X\0", 2) == 0 )
+            {
+                system->atoms[atom_cnt].dummy = TRUE;
+            }		
 #if defined(DEBUG_FOCUS)
             fprintf( stderr,
                     "[INFO] atom_cnt = %5d, atom_type = %3d, x = (%10.5f,%10.5f,%10.5f), q = %10.5f, occ = %s, temp = %s, res_name = %4s, element = %s\n",

@@ -759,6 +759,8 @@ struct reax_atom
 {
     /* integer representation of element type of this atom */
     int type;
+    /* TRUE if the atom is a dummy atom, FALSE otherwise */
+    int dummy;
     /* relative coordinates in terms of periodic images of the
      * simulation box which are used to track if this atom moves
      * between images between simulation steps which regenerate
