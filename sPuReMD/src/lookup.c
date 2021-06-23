@@ -58,11 +58,11 @@ static void Natural_Cubic_Spline( const real *h, const real *f,
     real *a, *b, *c, *d, *v;
 
     /* allocate space for linear system */
-    a = smalloc( sizeof(real) * n, "Natural_Cubic_Spline::a" );
-    b = smalloc( sizeof(real) * n, "Natural_Cubic_Spline::b" );
-    c = smalloc( sizeof(real) * n, "Natural_Cubic_Spline::c" );
-    d = smalloc( sizeof(real) * n, "Natural_Cubic_Spline::d" );
-    v = smalloc( sizeof(real) * n, "Natural_Cubic_Spline::v" );
+    a = smalloc( sizeof(real) * n, __FILE__, __LINE__ );
+    b = smalloc( sizeof(real) * n, __FILE__, __LINE__ );
+    c = smalloc( sizeof(real) * n, __FILE__, __LINE__ );
+    d = smalloc( sizeof(real) * n, __FILE__, __LINE__ );
+    v = smalloc( sizeof(real) * n, __FILE__, __LINE__ );
 
     /* build linear system */
     a[0] = 0.0;
@@ -113,11 +113,11 @@ static void Natural_Cubic_Spline( const real *h, const real *f,
         coef[i - 1].a = f[i];
     }
 
-    sfree( a, "Natural_Cubic_Spline::a" );
-    sfree( b, "Natural_Cubic_Spline::b" );
-    sfree( c, "Natural_Cubic_Spline::c" );
-    sfree( d, "Natural_Cubic_Spline::d" );
-    sfree( v, "Natural_Cubic_Spline::v" );
+    sfree( a, __FILE__, __LINE__ );
+    sfree( b, __FILE__, __LINE__ );
+    sfree( c, __FILE__, __LINE__ );
+    sfree( d, __FILE__, __LINE__ );
+    sfree( v, __FILE__, __LINE__ );
 }
 
 
@@ -128,11 +128,11 @@ static void Complete_Cubic_Spline( const real *h, const real *f, real v0, real v
     real *a, *b, *c, *d, *v;
 
     /* allocate space for the linear system */
-    a = smalloc( sizeof(real) * n, "Complete_Cubic_Spline::a" );
-    b = smalloc( sizeof(real) * n, "Complete_Cubic_Spline::b" );
-    c = smalloc( sizeof(real) * n, "Complete_Cubic_Spline::c" );
-    d = smalloc( sizeof(real) * n, "Complete_Cubic_Spline::d" );
-    v = smalloc( sizeof(real) * n, "Complete_Cubic_Spline::v" );
+    a = smalloc( sizeof(real) * n, __FILE__, __LINE__ );
+    b = smalloc( sizeof(real) * n, __FILE__, __LINE__ );
+    c = smalloc( sizeof(real) * n, __FILE__, __LINE__ );
+    d = smalloc( sizeof(real) * n, __FILE__, __LINE__ );
+    v = smalloc( sizeof(real) * n, __FILE__, __LINE__ );
 
     /* build the linear system */
     a[0] = 0.0;
@@ -176,11 +176,11 @@ static void Complete_Cubic_Spline( const real *h, const real *f, real v0, real v
         coef[i - 1].a = f[i];
     }
 
-    sfree( a, "Complete_Cubic_Spline::a" );
-    sfree( b, "Complete_Cubic_Spline::b" );
-    sfree( c, "Complete_Cubic_Spline::c" );
-    sfree( d, "Complete_Cubic_Spline::d" );
-    sfree( v, "Complete_Cubic_Spline::v" );
+    sfree( a, __FILE__, __LINE__ );
+    sfree( b, __FILE__, __LINE__ );
+    sfree( c, __FILE__, __LINE__ );
+    sfree( d, __FILE__, __LINE__ );
+    sfree( v, __FILE__, __LINE__ );
 }
 
 
@@ -239,27 +239,21 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control,
 
     num_atom_types = system->reax_param.num_atom_types;
     dr = control->nonb_cut / control->tabulate;
-    h = scalloc( control->tabulate + 2, sizeof(real),
-            "Make_LR_Lookup_Table::h" );
-    fh = scalloc( control->tabulate + 2, sizeof(real),
-            "Make_LR_Lookup_Table::fh" );
-    fvdw = scalloc( control->tabulate + 2, sizeof(real),
-            "Make_LR_Lookup_Table::fvdw" );
-    fCEvd = scalloc( control->tabulate + 2, sizeof(real),
-            "Make_LR_Lookup_Table::fCEvd" );
-    fele = scalloc( control->tabulate + 2, sizeof(real),
-            "Make_LR_Lookup_Table::fele" );
-    fCEclmb = scalloc( control->tabulate + 2, sizeof(real),
-            "Make_LR_Lookup_Table::fCEclmb" );
+    h = scalloc( control->tabulate + 2, sizeof(real), __FILE__, __LINE__ );
+    fh = scalloc( control->tabulate + 2, sizeof(real), __FILE__, __LINE__ );
+    fvdw = scalloc( control->tabulate + 2, sizeof(real), __FILE__, __LINE__ );
+    fCEvd = scalloc( control->tabulate + 2, sizeof(real), __FILE__, __LINE__ );
+    fele = scalloc( control->tabulate + 2, sizeof(real), __FILE__, __LINE__ );
+    fCEclmb = scalloc( control->tabulate + 2, sizeof(real), __FILE__, __LINE__ );
 
     /* allocate Long-Range LookUp Table space based on
        number of atom types in the ffield file */
-    workspace->LR = (LR_lookup_table**) smalloc( num_atom_types * sizeof(LR_lookup_table*),
-           "Make_LR_Lookup_Table::LR" );
+    workspace->LR = smalloc( num_atom_types * sizeof(LR_lookup_table*),
+           __FILE__, __LINE__ );
     for ( i = 0; i < num_atom_types; ++i )
     {
-        workspace->LR[i] = (LR_lookup_table*) smalloc( num_atom_types * sizeof(LR_lookup_table),
-                "Make_LR_Lookup_Table::LR[i]");
+        workspace->LR[i] = smalloc( num_atom_types * sizeof(LR_lookup_table),
+                __FILE__, __LINE__ );
     }
 
     /* most atom types in ffield file will not exist in the current
@@ -291,22 +285,22 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control,
                     workspace->LR[i][j].inv_dx = control->tabulate / control->nonb_cut;
                     workspace->LR[i][j].y = 
                         smalloc( workspace->LR[i][j].n * sizeof(LR_data),
-                              "Make_LR_Lookup_Table::LR[i][j].y" );
+                              __FILE__, __LINE__ );
                     workspace->LR[i][j].H = 
                         smalloc( workspace->LR[i][j].n * sizeof(cubic_spline_coef),
-                              "Make_LR_Lookup_Table::LR[i][j].H" );
+                              __FILE__, __LINE__ );
                     workspace->LR[i][j].vdW = 
                         smalloc( workspace->LR[i][j].n * sizeof(cubic_spline_coef),
-                              "Make_LR_Lookup_Table::LR[i][j].vdW" );
+                              __FILE__, __LINE__ );
                     workspace->LR[i][j].CEvd = 
                         smalloc( workspace->LR[i][j].n * sizeof(cubic_spline_coef),
-                              "Make_LR_Lookup_Table::LR[i][j].CEvd" );
+                              __FILE__, __LINE__ );
                     workspace->LR[i][j].ele = 
                         smalloc( workspace->LR[i][j].n * sizeof(cubic_spline_coef),
-                              "Make_LR_Lookup_Table::LR[i][j].ele" );
+                              __FILE__, __LINE__ );
                     workspace->LR[i][j].CEclmb = 
                         smalloc( workspace->LR[i][j].n * sizeof(cubic_spline_coef),
-                              "Make_LR_Lookup_Table::LR[i][j].CEclmb" );
+                              __FILE__, __LINE__ );
 
                     for ( r = 1; r <= control->tabulate; ++r )
                     {
@@ -417,12 +411,12 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control,
              fprintf( stderr, "eele_maxerr: %24.15e\n", eele_maxerr );
     *******/
 
-    sfree( h, "Make_LR_Lookup_Table::h" );
-    sfree( fh, "Make_LR_Lookup_Table::fh" );
-    sfree( fvdw, "Make_LR_Lookup_Table::fvdw" );
-    sfree( fCEvd, "Make_LR_Lookup_Table::fCEvd" );
-    sfree( fele, "Make_LR_Lookup_Table::fele" );
-    sfree( fCEclmb, "Make_LR_Lookup_Table::fCEclmb" );
+    sfree( h, __FILE__, __LINE__ );
+    sfree( fh, __FILE__, __LINE__ );
+    sfree( fvdw, __FILE__, __LINE__ );
+    sfree( fCEvd, __FILE__, __LINE__ );
+    sfree( fele, __FILE__, __LINE__ );
+    sfree( fCEclmb, __FILE__, __LINE__ );
 }
 
 
@@ -452,18 +446,18 @@ void Finalize_LR_Lookup_Table( reax_system *system, control_params *control,
             {
                 if ( existing_types[j] )
                 {
-                    sfree( workspace->LR[i][j].y, "Finalize_LR_Lookup_Table::LR[i][j].y" );
-                    sfree( workspace->LR[i][j].H, "Finalize_LR_Lookup_Table::LR[i][j].H" );
-                    sfree( workspace->LR[i][j].vdW, "Finalize_LR_Lookup_Table::LR[i][j].vdW" );
-                    sfree( workspace->LR[i][j].CEvd, "Finalize_LR_Lookup_Table::LR[i][j].CEvd" );
-                    sfree( workspace->LR[i][j].ele, "Finalize_LR_Lookup_Table::LR[i][j].ele" );
-                    sfree( workspace->LR[i][j].CEclmb, "Finalize_LR_Lookup_Table::LR[i][j].CEclmb" );
+                    sfree( workspace->LR[i][j].y, __FILE__, __LINE__ );
+                    sfree( workspace->LR[i][j].H, __FILE__, __LINE__ );
+                    sfree( workspace->LR[i][j].vdW, __FILE__, __LINE__ );
+                    sfree( workspace->LR[i][j].CEvd, __FILE__, __LINE__ );
+                    sfree( workspace->LR[i][j].ele, __FILE__, __LINE__ );
+                    sfree( workspace->LR[i][j].CEclmb, __FILE__, __LINE__ );
                 }
             }
         }
 
-        sfree( workspace->LR[i], "Finalize_LR_Lookup_Table::LR[i]" );
+        sfree( workspace->LR[i], __FILE__, __LINE__ );
     }
 
-    sfree( workspace->LR, "Finalize_LR_Lookup_Table::LR" );
+    sfree( workspace->LR, __FILE__, __LINE__ );
 }

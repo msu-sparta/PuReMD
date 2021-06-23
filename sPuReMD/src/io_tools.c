@@ -400,7 +400,7 @@ void Print_Near_Neighbors( reax_system *system, control_params *control,
     reax_list *near_nbrs = lists[NEAR_NBRS];
 
     snprintf( fname, MAX_STR, "%.*s.near_nbrs", MAX_STR - 11, control->sim_name );
-    fout = sfopen( fname, "w" );
+    fout = sfopen( fname, "w", __FILE__, __LINE__ );
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -420,7 +420,7 @@ void Print_Near_Neighbors( reax_system *system, control_params *control,
         }
     }
 
-    sfclose( fout, "Print_Near_Neighbors::fout" );
+    sfclose( fout, __FILE__, __LINE__ );
 }
 
 
@@ -434,7 +434,7 @@ void Print_Near_Neighbors2( reax_system *system, control_params *control,
     reax_list *near_nbrs = lists[NEAR_NBRS];
 
     snprintf( fname, MAX_STR, "%.*s.near_nbrs_lgj", MAX_STR - 15, control->sim_name );
-    fout = sfopen( fname, "w" );
+    fout = sfopen( fname, "w", __FILE__, __LINE__ );
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -455,7 +455,7 @@ void Print_Near_Neighbors2( reax_system *system, control_params *control,
         fprintf( fout, "\n");
     }
 
-    sfclose( fout, "Print_Near_Neighbors2::fout" );
+    sfclose( fout, __FILE__, __LINE__ );
 }
 
 
@@ -473,7 +473,7 @@ void Print_Far_Neighbors( reax_system const * const system,
     far_nbrs = lists[FAR_NBRS];
 
     snprintf( fname, MAX_STR, "%.*s.%010d.far_nbrs", MAX_STR - 21, control->sim_name, data->step );
-    fout = sfopen( fname, "w" );
+    fout = sfopen( fname, "w", __FILE__, __LINE__ );
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -506,7 +506,7 @@ void Print_Far_Neighbors( reax_system const * const system,
         }
     }
 
-    sfclose( fout, "Print_Far_Neighbors::fout" );
+    sfclose( fout, __FILE__, __LINE__ );
 }
 
 
@@ -525,7 +525,7 @@ void Print_Far_Neighbors2( reax_system *system, control_params *control,
     reax_list *far_nbrs = lists[FAR_NBRS];
 
     snprintf( fname, MAX_STR, "%.*s.far_nbrs_lgj", MAX_STR - 14, control->sim_name );
-    fout = sfopen( fname, "w" );
+    fout = sfopen( fname, "w", __FILE__, __LINE__ );
     int num = 0;
     int temp[500];
 
@@ -546,7 +546,7 @@ void Print_Far_Neighbors2( reax_system *system, control_params *control,
         fprintf( fout, "\n");
     }
 
-    sfclose( fout, "Print_Far_Neighbors2::fout" );
+    sfclose( fout, __FILE__, __LINE__ );
 }
 
 
@@ -559,7 +559,7 @@ void Print_Total_Force( reax_system *system, control_params *control,
     FILE *fout;
 
     snprintf( fname, MAX_STR, "%.*s.%d.forces", MAX_STR - 10, control->sim_name, data->step );
-    fout = sfopen( fname, "w" );
+    fout = sfopen( fname, "w", __FILE__, __LINE__ );
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -577,7 +577,7 @@ void Print_Total_Force( reax_system *system, control_params *control,
 //    fflush( out_control->ftot );
     fflush( fout );
 
-    sfclose( fout, "Print_Total_Force::fout" );
+    sfclose( fout, __FILE__, __LINE__ );
 }
 
 
@@ -711,7 +711,7 @@ void Print_Linear_System( reax_system *system, control_params *control,
     FILE *out;
 
     snprintf( fname, 100, "%.*s.state%10d.out", 79, control->sim_name, step );
-    out = sfopen( fname, "w" );
+    out = sfopen( fname, "w", __FILE__, __LINE__ );
 
     for ( i = 0; i < system->N_cm; i++ )
         fprintf( out, "%6d%2d%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e\n",
@@ -720,16 +720,16 @@ void Print_Linear_System( reax_system *system, control_params *control,
                  system->atoms[i].x[2],
                  workspace->s[0][i], workspace->b_s[i],
                  workspace->t[0][i], workspace->b_t[i]  );
-    sfclose( out, "Print_Linear_System::out" );
+    sfclose( out, __FILE__, __LINE__ );
 
     // snprintf( fname, 100, "x2_%d", step );
-    // out = sfopen( fname, "w" );
+    // out = sfopen( fname, "w", __FILE__, __LINE__ );
     // for( i = 0; i < system->N; i++ )
     // fprintf( out, "%g\n", workspace->s_t[i+system->N] );
-    // sfclose( out, "Print_Linear_System::out" );
+    // sfclose( out, __FILE__, __LINE__ );
 
     snprintf( fname, 100, "%.*s.H%10d.out", 83, control->sim_name, step );
-    out = sfopen( fname, "w" );
+    out = sfopen( fname, "w", __FILE__, __LINE__ );
     H = &workspace->H;
 
     for ( i = 0; i < system->N_cm; ++i )
@@ -749,10 +749,10 @@ void Print_Linear_System( reax_system *system, control_params *control,
                  workspace->orig_id[i], workspace->orig_id[i], H->val[j] );
     }
 
-    sfclose( out, "Print_Linear_System::out" );
+    sfclose( out, __FILE__, __LINE__ );
 
     snprintf( fname, 100, "%.*s.H_sp%10d.out", 80, control->sim_name, step );
-    out = sfopen( fname, "w" );
+    out = sfopen( fname, "w", __FILE__, __LINE__ );
     H = &workspace->H_sp;
 
     for ( i = 0; i < system->N_cm; ++i )
@@ -772,19 +772,19 @@ void Print_Linear_System( reax_system *system, control_params *control,
                  workspace->orig_id[i], workspace->orig_id[i], H->val[j] );
     }
 
-    sfclose( out, "Print_Linear_System::out" );
+    sfclose( out, __FILE__, __LINE__ );
 
     /*snprintf( fname, 100, "%.*s.b_s%10d", 84, control->sim_name, step );
-      out = sfopen( fname, "w" );
+      out = sfopen( fname, "w", __FILE__, __LINE__ );
       for( i = 0; i < system->N; i++ )
       fprintf( out, "%12.7f\n", workspace->b_s[i] );
-      sfclose( out, "Print_Linear_System::out" );
+      sfclose( out, __FILE__, __LINE__ );
 
       snprintf( fname, 100, "%.*s.b_t%10d", 84, control->sim_name, step );
-      out = sfopen( fname, "w" );
+      out = sfopen( fname, "w", __FILE__, __LINE__ );
       for( i = 0; i < system->N; i++ )
       fprintf( out, "%12.7f\n", workspace->b_t[i] );
-      sfclose( out, "Print_Linear_System::out" );*/
+      sfclose( out, __FILE__, __LINE__ );*/
 }
 
 
@@ -796,7 +796,7 @@ void Print_Charges( reax_system *system, control_params *control,
     FILE *fout;
 
     snprintf( fname, 100, "%.*s.q%010d", 87, control->sim_name, step );
-    fout = sfopen( fname, "w" );
+    fout = sfopen( fname, "w", __FILE__, __LINE__ );
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -805,7 +805,7 @@ void Print_Charges( reax_system *system, control_params *control,
                  workspace->s[0][i], workspace->t[0][i], system->atoms[i].q );
     }
 
-    sfclose( fout, "Print_Charges::fout" );
+    sfclose( fout, __FILE__, __LINE__ );
 }
 
 
@@ -849,11 +849,11 @@ void Print_Sparse_Matrix2( sparse_matrix *A, char *fname, char *mode )
    
     if ( mode == NULL )
     {
-        f = sfopen( fname, "w" );
+        f = sfopen( fname, "w", __FILE__, __LINE__ );
     }
     else
     {
-        f = sfopen( fname, mode );
+        f = sfopen( fname, mode, __FILE__, __LINE__ );
     }
 
     for ( i = 0; i < A->n; ++i )
@@ -871,7 +871,7 @@ void Print_Sparse_Matrix2( sparse_matrix *A, char *fname, char *mode )
         fprintf( f, "%6d %6d %24.15f\n", i + 1, A->j[A->start[i + 1] - 1] + 1, A->val[A->start[i + 1] - 1] );
     }
 
-    sfclose( f, "Print_Sparse_Matrix2::f" );
+    sfclose( f, __FILE__, __LINE__ );
 }
 
 
@@ -886,7 +886,7 @@ void Read_Sparse_Matrix2( sparse_matrix *A, char *fname )
     real val;
     FILE *f;
    
-    f = sfopen( fname, "r" );
+    f = sfopen( fname, "r", __FILE__, __LINE__ );
     top = 0;
     cur_row = 0;
 
@@ -908,7 +908,7 @@ void Read_Sparse_Matrix2( sparse_matrix *A, char *fname )
 
     A->start[A->n] = top;
 
-    sfclose( f, "Read_Sparse_Matrix2::f" );
+    sfclose( f, __FILE__, __LINE__ );
 }
 
 
@@ -923,14 +923,14 @@ void Read_Permutation_Matrix( unsigned int *v, char *fname )
     double val;
     FILE *f;
    
-    f = sfopen( fname, "r" );
+    f = sfopen( fname, "r", __FILE__, __LINE__ );
 
     while ( fscanf( f, "%6u %6u %24lf", &row, &col, &val ) == 3 )
     {
         v[row - 1] = col - 1;
     }
 
-    sfclose( f, "Read_Permuation_Matrix::f" );
+    sfclose( f, __FILE__, __LINE__ );
 }
 
 
@@ -941,7 +941,7 @@ void Print_Sparse_Matrix_Binary( sparse_matrix *A, char *fname )
     int i, j, temp;
     FILE *f;
    
-    f = sfopen( fname, "wb" );
+    f = sfopen( fname, "wb", __FILE__, __LINE__ );
 
     /* header: # rows, # nonzeros */
     fwrite( &A->n, sizeof(unsigned int), 1, f );
@@ -967,7 +967,7 @@ void Print_Sparse_Matrix_Binary( sparse_matrix *A, char *fname )
         }
     }
 
-    sfclose( f, "Print_Sparse_Matrix_Binary::f" );
+    sfclose( f, __FILE__, __LINE__ );
 }
 
 
@@ -976,7 +976,7 @@ void Print_Bonds( reax_system *system, reax_list *bonds, char *fname )
     int i, pj;
     bond_data *pbond;
     bond_order_data *bo_ij;
-    FILE *f = sfopen( fname, "w" );
+    FILE *f = sfopen( fname, "w", __FILE__, __LINE__ );
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -992,14 +992,14 @@ void Print_Bonds( reax_system *system, reax_list *bonds, char *fname )
         }
     }
 
-    sfclose( f, "Print_Bonds::f" );
+    sfclose( f, __FILE__, __LINE__ );
 }
 
 
 void Print_Bond_List2( reax_system *system, reax_list *bonds, char *fname )
 {
     int i, j, id_i, id_j, nbr, pj;
-    FILE *f = sfopen( fname, "w" );
+    FILE *f = sfopen( fname, "w", __FILE__, __LINE__ );
     int temp[500];
     int num = 0;
 

@@ -158,30 +158,19 @@ static void Allocate_Top_Level_Structs( spuremd_handle ** handle )
     int i;
 
     /* top-level allocation */
-    *handle = smalloc( sizeof(spuremd_handle), "Allocate_Top_Level_Structs::handle" );
+    *handle = smalloc( sizeof(spuremd_handle), __FILE__, __LINE__ );
 
     /* second-level allocations */
-    (*handle)->system = smalloc( sizeof(reax_system),
-           "Allocate_Top_Level_Structs::handle->system" );
-
-    (*handle)->control = smalloc( sizeof(control_params),
-           "Allocate_Top_Level_Structs::handle->control" );
-
-    (*handle)->data = smalloc( sizeof(simulation_data),
-           "Allocate_Top_Level_Structs::handle->data" );
-
-    (*handle)->workspace = smalloc( sizeof(static_storage),
-           "Allocate_Top_Level_Structs::handle->workspace" );
-
-    (*handle)->lists = smalloc( sizeof(reax_list *) * LIST_N,
-           "Allocate_Top_Level_Structs::handle->lists" );
+    (*handle)->system = smalloc( sizeof(reax_system), __FILE__, __LINE__ );
+    (*handle)->control = smalloc( sizeof(control_params), __FILE__, __LINE__ );
+    (*handle)->data = smalloc( sizeof(simulation_data), __FILE__, __LINE__ );
+    (*handle)->workspace = smalloc( sizeof(static_storage), __FILE__, __LINE__ );
+    (*handle)->lists = smalloc( sizeof(reax_list *) * LIST_N, __FILE__, __LINE__ );
     for ( i = 0; i < LIST_N; ++i )
     {
-        (*handle)->lists[i] = smalloc( sizeof(reax_list),
-                "Allocate_Top_Level_Structs::handle->lists[i]" );
+        (*handle)->lists[i] = smalloc( sizeof(reax_list), __FILE__, __LINE__ );
     }
-    (*handle)->out_control = smalloc( sizeof(output_controls),
-           "Allocate_Top_Level_Structs::handle->out_control" );
+    (*handle)->out_control = smalloc( sizeof(output_controls), __FILE__, __LINE__ );
 }
 
 
@@ -503,18 +492,18 @@ int cleanup( const void * const handle )
                 spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control,
                 spmd_handle->output_enabled, FALSE );
 
-        sfree( spmd_handle->out_control, "cleanup::spmd_handle->out_control" );
+        sfree( spmd_handle->out_control, __FILE__, __LINE__ );
         for ( i = 0; i < LIST_N; ++i )
         {
-            sfree( spmd_handle->lists[i], "cleanup::spmd_handle->lists[i]" );
+            sfree( spmd_handle->lists[i], __FILE__, __LINE__ );
         }
-        sfree( spmd_handle->lists, "cleanup::spmd_handle->lists" );
-        sfree( spmd_handle->workspace, "cleanup::spmd_handle->workspace" );
-        sfree( spmd_handle->data, "cleanup::spmd_handle->data" );
-        sfree( spmd_handle->control, "cleanup::spmd_handle->control" );
-        sfree( spmd_handle->system, "cleanup::spmd_handle->system" );
+        sfree( spmd_handle->lists, __FILE__, __LINE__ );
+        sfree( spmd_handle->workspace, __FILE__, __LINE__ );
+        sfree( spmd_handle->data, __FILE__, __LINE__ );
+        sfree( spmd_handle->control, __FILE__, __LINE__ );
+        sfree( spmd_handle->system, __FILE__, __LINE__ );
 
-        sfree( spmd_handle, "cleanup::spmd_handle" );
+        sfree( spmd_handle, __FILE__, __LINE__ );
 
         ret = SPUREMD_SUCCESS;
     }
@@ -997,10 +986,10 @@ void * setup_qmmm( int qm_num_atoms, const char * const qm_symbols,
     {
         spmd_handle->system->molec_charge_constraints = smalloc(
                 sizeof(real) * spmd_handle->system->num_molec_charge_constraints,
-                "setup_qmmm::molec_charge_constraints" );
+                __FILE__, __LINE__ );
         spmd_handle->system->molec_charge_constraint_ranges = smalloc(
                 sizeof(int) * 2 * spmd_handle->system->num_molec_charge_constraints,
-                "setup_qmmm::molec_charge_constraint_ranges" );
+                __FILE__, __LINE__ );
 
         for ( i = 0; i < spmd_handle->system->num_molec_charge_constraints; ++i )
         {
@@ -1148,17 +1137,17 @@ int reset_qmmm( const void * const handle, int qm_num_atoms,
             if ( spmd_handle->system->max_num_molec_charge_constraints > 0 )
             {
                 sfree( spmd_handle->system->molec_charge_constraints,
-                        "reset_qmmm::molec_charge_constraints" );
+                        __FILE__, __LINE__ );
                 sfree( spmd_handle->system->molec_charge_constraint_ranges,
-                        "reset_qmmm::molec_charge_constraint_ranges" );
+                        __FILE__, __LINE__ );
             }
 
             spmd_handle->system->molec_charge_constraints = smalloc(
                     sizeof(real) * spmd_handle->system->num_molec_charge_constraints,
-                    "reset_qmmm::molec_charge_constraints" );
+                    __FILE__, __LINE__ );
             spmd_handle->system->molec_charge_constraint_ranges = smalloc(
                     sizeof(int) * 2 * spmd_handle->system->num_molec_charge_constraints,
-                    "reset_qmmm::molec_charge_constraint_ranges" );
+                    __FILE__, __LINE__ );
 
             spmd_handle->system->max_num_molec_charge_constraints
                 = spmd_handle->system->num_molec_charge_constraints;

@@ -1069,28 +1069,28 @@ void Analysis( reax_system *system, control_params *control,
 
     steps = data->step - data->prev_steps;
 
-    if ( steps == 1 )
-    {
-        if ( lists[OLD_BONDS]->allocated == FALSE )
-        {
-            Make_List( lists[BONDS]->n, lists[BONDS]->n_max, lists[BONDS]->total_intrs,
-                    TYP_BOND, lists[OLD_BONDS] );
-        }
-
-        if ( control->molec_anal == REACTIONS )
-        {
-            Copy_Bond_List( system, control, lists );
-        }
-        if ( control->diffusion_coef )
-        {
-            Copy_Positions( system, workspace );
-        }
-    }
-
     /****** Molecular Analysis ******/
     if ( control->molec_anal
             && steps % control->freq_molec_anal == 0 )
     {
+        if ( steps == 1 )
+        {
+            if ( lists[OLD_BONDS]->allocated == FALSE )
+            {
+                Make_List( lists[BONDS]->n, lists[BONDS]->n_max, lists[BONDS]->total_intrs,
+                        TYP_BOND, lists[OLD_BONDS] );
+            }
+
+            if ( control->molec_anal == REACTIONS )
+            {
+                Copy_Bond_List( system, control, lists );
+            }
+            if ( control->diffusion_coef )
+            {
+                Copy_Positions( system, workspace );
+            }
+        }
+
         if ( control->molec_anal == FRAGMENTS )
         {
             /* discover molecules */

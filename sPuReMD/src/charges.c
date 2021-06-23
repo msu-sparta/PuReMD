@@ -107,13 +107,13 @@ int is_refactoring_step( control_params * const control,
 #if defined(HAVE_TENSORFLOW)
 static void TF_Tensor_Deallocator( void* data, size_t length, void* arg )
 {
-//    sfree( data, "TF_Tensor_Deallocator::data" );
+//    sfree( data, __FILE__, __LINE__ );
 }
 
 
 static void TF_free( void* data, size_t length )
 {
-        sfree( data, "TF_free::data" );
+        sfree( data, __FILE__, __LINE__ );
 }
 
 
@@ -226,8 +226,8 @@ static void Predict_Charges_TF_LSTM( const reax_system * const system,
 //    batch_size = 3;
     win_size = control->cm_init_guess_win_size;
     batch_size = system->N_cm;
-    obs_flat = smalloc( sizeof(float) * batch_size * win_size, "Predict_Charges_TF_LSTM:obs_flat" );
-    obs_norm = smalloc( sizeof(float) * batch_size, "Predict_Charges_TF_LSTM:obs_norm" );
+    obs_flat = smalloc( sizeof(float) * batch_size * win_size, __FILE__, __LINE__ );
+    obs_norm = smalloc( sizeof(float) * batch_size, __FILE__, __LINE__ );
 
     /* load the frozen model from file in GraphDef format
      *
@@ -327,8 +327,8 @@ static void Predict_Charges_TF_LSTM( const reax_system * const system,
         workspace->s[0][i] = predictions[i] + obs_norm[i];
     }
 
-    sfree( obs_norm, "Predict_Charges_TF_LSTM:obs_norm" );
-    sfree( obs_flat, "Predict_Charges_TF_LSTM:obs_flat" );
+    sfree( obs_norm, __FILE__, __LINE__ );
+    sfree( obs_flat, __FILE__, __LINE__ );
     TF_DeleteTensor( input_tensor[0] );
     TF_DeleteTensor( output_tensor[0] );
     TF_DeleteSession( s.session, status );
@@ -930,13 +930,12 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
             if ( workspace->Hdia_inv == NULL )
             {
                 workspace->Hdia_inv = scalloc( Hptr->n_max, sizeof( real ),
-                        "Setup_Preconditioner_QEq::workspace->Hdia_inv" );
+                        __FILE__, __LINE__ );
             }
             else if ( realloc == TRUE )
             {
                 workspace->Hdia_inv = srealloc( workspace->Hdia_inv,
-                        sizeof( real ) * Hptr->n_max,
-                        "Setup_Preconditioner_QEq::workspace->Hdia_inv" );
+                        sizeof( real ) * Hptr->n_max, __FILE__, __LINE__ );
             }
             break;
 
@@ -1056,13 +1055,12 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
             if ( workspace->Hdia_inv == NULL )
             {
                 workspace->Hdia_inv = scalloc( Hptr->n_max, sizeof( real ),
-                        "Setup_Preconditioner_EE::workspace->Hdiv_inv" );
+                        __FILE__, __LINE__ );
             }
             else if ( realloc == TRUE )
             {
                 workspace->Hdia_inv = srealloc( workspace->Hdia_inv,
-                        sizeof( real ) * Hptr->n_max,
-                        "Setup_Preconditioner_EE::workspace->Hdiv_inv" );
+                        sizeof( real ) * Hptr->n_max, __FILE__, __LINE__ );
             }
             break;
 
@@ -1179,13 +1177,12 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
             if ( workspace->Hdia_inv == NULL )
             {
                 workspace->Hdia_inv = scalloc( Hptr->n_max, sizeof( real ),
-                        "Setup_Preconditioner_ACKS2::workspace->Hdiv_inv" );
+                        __FILE__, __LINE__ );
             }
             else if ( realloc == TRUE )
             {
                 workspace->Hdia_inv = srealloc( workspace->Hdia_inv,
-                        sizeof( real ) * Hptr->n_max,
-                        "Setup_Preconditioner_ACKS2::workspace->Hdiv_inv" );
+                        sizeof( real ) * Hptr->n_max, __FILE__, __LINE__ );
             }
             break;
 
@@ -1627,9 +1624,9 @@ static void ACKS2( reax_system * const system, control_params * const control,
     if ( data->step % 10 == 0 )
     {
         snprintf( fname, SIZE, "s_%d_%s.out", data->step, control->sim_name );
-        fp = sfopen( fname, "w" );
+        fp = sfopen( fname, "w", __FILE__, __LINE__ );
         Vector_Print( fp, NULL, workspace->s[0], system->N_cm );
-        sfclose( fp, "ACKS2::fp" );
+        sfclose( fp, __FILE__, __LINE__ );
     }
 #undef SIZE
 #endif
@@ -1712,14 +1709,14 @@ void Compute_Charges( reax_system * const system, control_params * const control
 //        Print_Sparse_Matrix_Binary( workspace->H, fname );
 
         snprintf( fname, SIZE, "b_s_%d_%s.out", data->step, control->sim_name );
-        fp = sfopen( fname, "w" );
+        fp = sfopen( fname, "w", __FILE__, __LINE__ );
         Vector_Print( fp, NULL, workspace->b_s, system->N_cm );
-        sfclose( fp, "Compute_Charges::fp" );
+        sfclose( fp, __FILE__, __LINE__ );
 
 //        snprintf( fname, SIZE, "b_t_%d_%s.out", data->step, control->sim_name );
-//        fp = sfopen( fname, "w" );
+//        fp = sfopen( fname, "w", __FILE__, __LINE__ );
 //        Vector_Print( fp, NULL, workspace->b_t, system->N_cm );
-//        sfclose( fp, "Compute_Charges::fp" );
+//        sfclose( fp, __FILE__, __LINE__ );
     }
 #undef SIZE
 #endif

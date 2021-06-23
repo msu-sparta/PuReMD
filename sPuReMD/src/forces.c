@@ -567,8 +567,7 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
             break;
 
         case ACKS2_CM:
-            X_diag = smalloc( sizeof(real) * system->N,
-                    "Init_Charge_Matrix_Remaining_Entries::X_diag" );
+            X_diag = smalloc( sizeof(real) * system->N, __FILE__, __LINE__ );
 
             for ( i = 0; i < system->N; ++i )
             {
@@ -736,7 +735,7 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
             H_sp->val[*H_sp_top] = 0.0;
             *H_sp_top = *H_sp_top + 1;
 
-            sfree( X_diag, "Init_Charge_Matrix_Remaining_Entries::X_diag" );
+            sfree( X_diag, __FILE__, __LINE__ );
             break;
 
         default:
@@ -1272,8 +1271,10 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
                         ++H_sp_top;
                     }
                 }
+
                 /* Only non-dummy atoms can form bonds */
-                if (system->atoms[i].dummy == FALSE && system->atoms[j].dummy == FALSE)
+                if ( system->atoms[i].is_dummy == FALSE
+                        && system->atoms[j].is_dummy == FALSE )
                 {
                     /* hydrogen bond lists */
                     if ( control->hbond_cut > 0.0

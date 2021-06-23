@@ -170,12 +170,24 @@ int is_Valid_Serial( int serial )
 }
 
 
-int Check_Input_Range( int val, int lo, int hi, char *message )
+/* Validate atom serial numbers in BGF geometry file
+ *
+ * val: atom serial to validate
+ * lo: lower limit of valid serial range
+ * hi: upper limit of valid serial range
+ * filename: source filename of caller
+ * line: source line of caller
+ */
+int Check_Input_Range( int val, int lo, int hi, const char * const filename,
+        int line )
 {
     if ( val < lo || val > hi )
     {
-        fprintf( stderr, "[ERROR] %s\nInput %d - Out of range %d-%d. Terminating...\n",
-                 message, val, lo, hi );
+        fprintf( stderr, "[ERROR] Invalid BGF serial\n" );
+        fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
+                line, (int) strlen(filename), filename );
+        fprintf( stderr, "    [INFO] Input %d - Out of range %d-%d. Terminating...\n",
+                 val, lo, hi );
         exit( INVALID_INPUT );
     }
 
@@ -290,14 +302,14 @@ void Allocate_Tokenizer_Space( char **line, size_t line_size,
 {
     int i;
 
-    *line = smalloc( sizeof(char) * line_size, "Allocate_Tokenizer_Space::*line" );
-    *backup = smalloc( sizeof(char) * backup_size, "Allocate_Tokenizer_Space::*backup" );
-    *tokens = smalloc( sizeof(char*) * num_tokens, "Allocate_Tokenizer_Space::*tokens" );
+    *line = smalloc( sizeof(char) * line_size, __FILE__, __LINE__ );
+    *backup = smalloc( sizeof(char) * backup_size, __FILE__, __LINE__ );
+    *tokens = smalloc( sizeof(char*) * num_tokens, __FILE__, __LINE__ );
 
     for ( i = 0; i < num_tokens; i++ )
     {
         (*tokens)[i] = smalloc( sizeof(char) * token_size,
-                "Allocate_Tokenizer_Space::(*tokens)[i]" );
+                __FILE__, __LINE__ );
     }
 }
 
@@ -309,12 +321,12 @@ void Deallocate_Tokenizer_Space( char **line, char **backup,
 
     for ( i = 0; i < num_tokens; i++ )
     {
-        sfree( (*tokens)[i], "Deallocate_Tokenizer_Space::tokens[i]" );
+        sfree( (*tokens)[i], __FILE__, __LINE__ );
     }
 
-    sfree( *line, "Deallocate_Tokenizer_Space::line" );
-    sfree( *backup, "Deallocate_Tokenizer_Space::backup" );
-    sfree( *tokens, "Deallocate_Tokenizer_Space::tokens" );
+    sfree( *line, __FILE__, __LINE__ );
+    sfree( *backup, __FILE__, __LINE__ );
+    sfree( *tokens, __FILE__, __LINE__ );
 }
 
 
@@ -343,27 +355,30 @@ int Tokenize( char* s, char*** tok, size_t token_len )
 }
 
 
-/***************** taken from lammps ************************/
 /* Safe wrapper around libc malloc
  *
  * n: num. of bytes to allocated
- * name: message with details about pointer, used for warnings/errors
+ * filename: source filename of caller
+ * line: source line of caller
  *
  * returns: ptr to allocated memory
  * */
-void * smalloc( size_t n, const char *name )
+void * smalloc( size_t n, const char * const filename, int line )
 {
     void *ptr;
 
     if ( n == 0 )
     {
-        fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array %s.\n",
-                n, name );
+        fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array\n",
+                n );
+        fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
+                line, (int) strlen(filename), filename );
         exit( INSUFFICIENT_MEMORY );
     }
 
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "[INFO] requesting memory for %s\n", name );
+    fprintf( stderr, "[INFO] requesting allocation of %zu bytes of memory at line %d in file %.*s\n",
+            n, line, (int) strlen(filename), filename );
     fflush( stderr );
 #endif
 
@@ -371,8 +386,10 @@ void * smalloc( size_t n, const char *name )
 
     if ( ptr == NULL )
     {
-        fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array %s.\n",
-                n, name );
+        fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array\n",
+                n );
+        fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
+                line, (int) strlen(filename), filename );
         exit( INSUFFICIENT_MEMORY );
     }
 
@@ -388,29 +405,27 @@ void * smalloc( size_t n, const char *name )
 /* Safe wrapper around libc realloc
  *
  * n: num. of bytes to reallocated
- * name: message with details about pointer, used for warnings/errors
+ * filename: source filename of caller
+ * line: source line of caller
  *
  * returns: ptr to reallocated memory
  * */
-void * srealloc( void *ptr, size_t n, const char *name )
+void * srealloc( void *ptr, size_t n, const char * const filename, int line )
 {
     void *new_ptr;
 
     if ( n == 0 )
     {
-        fprintf( stderr, "[ERROR] failed to reallocate %zu bytes for array %s.\n",
-                n, name );
+        fprintf( stderr, "[ERROR] failed to reallocate %zu bytes for array\n",
+                n );
+        fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
+                line, (int) strlen(filename), filename );
         exit( INSUFFICIENT_MEMORY );
     }
 
-    if ( ptr == NULL )
-    {
-        fprintf( stderr, "[INFO] trying to allocate %zu NEW bytes for array %s.\n",
-                n, name );
-    }
-
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "[INFO] requesting memory for %s\n", name );
+    fprintf( stderr, "[INFO] requesting reallocation of %zu bytes of memory at line %d in file %.*s\n",
+            n, line, (int) strlen(filename), filename );
     fflush( stderr );
 #endif
 
@@ -420,8 +435,10 @@ void * srealloc( void *ptr, size_t n, const char *name )
      * but we needed more memory, so abort */
     if ( new_ptr == NULL )
     {
-        fprintf( stderr, "[ERROR] failed to reallocate %zu bytes for array %s.\n",
-                n, name );
+        fprintf( stderr, "[ERROR] failed to reallocate %zu bytes for array\n",
+                n );
+        fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
+                line, (int) strlen(filename), filename );
         exit( INSUFFICIENT_MEMORY );
     }
 
@@ -438,23 +455,27 @@ void * srealloc( void *ptr, size_t n, const char *name )
  *
  * n: num. of elements to allocated (each of size bytes)
  * size: num. of bytes per element
- * name: message with details about pointer, used for warnings/errors
+ * filename: source filename of caller
+ * line: source line of caller
  *
  * returns: ptr to allocated memory, all bits initialized to zeros
  * */
-void * scalloc( size_t n, size_t size, const char *name )
+void * scalloc( size_t n, size_t size, const char * const filename, int line )
 {
     void *ptr;
 
     if ( n == 0 )
     {
-        fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array %s.\n",
-                n * size, name );
+        fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array\n",
+                n * size );
+        fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
+                line, (int) strlen(filename), filename );
         exit( INSUFFICIENT_MEMORY );
     }
 
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "[INFO] requesting memory for %s\n", name );
+    fprintf( stderr, "[INFO] requesting allocation of %zu bytes of zeroed memory at line %d in file %.*s\n",
+            n * size, line, (int) strlen(filename), filename );
     fflush( stderr );
 #endif
 
@@ -462,8 +483,10 @@ void * scalloc( size_t n, size_t size, const char *name )
 
     if ( ptr == NULL )
     {
-        fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array %s.\n",
-                n * size, name );
+        fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array\n",
+                n * size );
+        fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
+                line, (int) strlen(filename), filename );
         exit( INSUFFICIENT_MEMORY );
     }
 
@@ -479,19 +502,22 @@ void * scalloc( size_t n, size_t size, const char *name )
 /* Safe wrapper around libc free
  *
  * ptr: pointer to dynamically allocated memory which will be deallocated
- * name: message with details about pointer, used for warnings/errors
+ * filename: source filename of caller
+ * line: source line of caller
  * */
-void sfree( void *ptr, const char *name )
+void sfree( void *ptr, const char * const filename, int line )
 {
     if ( ptr == NULL )
     {
-        fprintf( stderr, "[WARNING] trying to free the already NULL pointer %s!\n",
-                name );
+        fprintf( stderr, "[WARNING] trying to free the already NULL pointer\n" );
+        fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
+                line, (int) strlen(filename), filename );
         return;
     }
 
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "[INFO] trying to free pointer %s\n", name );
+    fprintf( stderr, "[INFO] trying to free pointer at line %d in file %.*s\n",
+            line, (int) strlen(filename), filename );
     fflush( stderr );
     fprintf( stderr, "[INFO] address: %p [SFREE]\n", (void *) ptr );
     fflush( stderr );
@@ -505,20 +531,27 @@ void sfree( void *ptr, const char *name )
  *
  * fname: name of file to be opened
  * mode: mode in which to open file
+ * filename: source filename of caller
+ * line: source line of caller
  * */
-FILE * sfopen( const char * fname, const char * mode )
+FILE * sfopen( const char * fname, const char * mode,
+        const char * const filename, int line )
 {
     FILE * ptr;
 
     if ( fname == NULL )
     {
         fprintf( stderr, "[ERROR] trying to open file\n" );
+        fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
+                line, (int) strlen(filename), filename );
         fprintf( stderr, "  [INFO] NULL file name\n" );
         exit( INVALID_INPUT );
     }
     if ( mode == NULL )
     {
         fprintf( stderr, "[ERROR] trying to open file\n" );
+        fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
+                line, (int) strlen(filename), filename );
         fprintf( stderr, "  [INFO] NULL mode\n" );
         exit( INVALID_INPUT );
     }
@@ -529,6 +562,8 @@ FILE * sfopen( const char * fname, const char * mode )
     {
         fprintf( stderr, "[ERROR] failed to open file %s with mode %s\n",
               fname, mode );
+        fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
+                line, (int) strlen(filename), filename );
         exit( INVALID_INPUT );
     }
 
@@ -538,18 +573,19 @@ FILE * sfopen( const char * fname, const char * mode )
 
 /* Safe wrapper around libc fclose
  *
- * fname: name of file to be opened
- * mode: mode in which to open file
- * msg: message to be printed in case of error
+ * fp: pointer to file to close
+ * filename: source filename of caller
+ * line: source line of caller
  * */
-void sfclose( FILE * fp, const char * msg )
+void sfclose( FILE * fp, const char * const filename, int line )
 {
     int ret;
 
     if ( fp == NULL )
     {
         fprintf( stderr, "[WARNING] trying to close NULL file pointer. Returning...\n" );
-        fprintf( stderr, "  [INFO] %s\n", msg );
+        fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
+                line, (int) strlen(filename), filename );
         return;
     }
 
@@ -558,7 +594,8 @@ void sfclose( FILE * fp, const char * msg )
     if ( ret != 0 )
     {
         fprintf( stderr, "[ERROR] error detected when closing file\n" );
-        fprintf( stderr, "  [INFO] %s\n", msg );
+        fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
+                line, (int) strlen(filename), filename );
         exit( INVALID_INPUT );
     }
 }

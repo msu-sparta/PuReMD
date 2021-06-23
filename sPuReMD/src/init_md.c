@@ -167,7 +167,7 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
             || control->ensemble == aNPT || control->compute_pressure == TRUE) )
     {
         data->press_local = smalloc( sizeof( rtensor ) * control->num_threads,
-               "Init_Simulation_Data::data->press_local" );
+               __FILE__, __LINE__ );
     }
 #endif
 
@@ -331,42 +331,42 @@ static void Init_Workspace( reax_system *system, control_params *control,
     {
         /* hydrogen bond list */
         workspace->hbond_index = smalloc( system->N_max * sizeof( int ),
-               "Init_Workspace::workspace->hbond_index" );
+               __FILE__, __LINE__ );
 
         /* bond order related storage  */
         workspace->total_bond_order = smalloc( system->N_max * sizeof( real ),
-               "Init_Workspace::workspace->bond_order" );
+               __FILE__, __LINE__ );
         workspace->Deltap = smalloc( system->N_max * sizeof( real ),
-               "Init_Workspace::workspace->Deltap" );
+               __FILE__, __LINE__ );
         workspace->Deltap_boc = smalloc( system->N_max * sizeof( real ),
-               "Init_Workspace::workspace->Deltap_boc" );
+               __FILE__, __LINE__ );
         workspace->dDeltap_self = smalloc( system->N_max * sizeof( rvec ),
-               "Init_Workspace::workspace->dDeltap_self" );
+               __FILE__, __LINE__ );
 
         workspace->Delta = smalloc( system->N_max * sizeof( real ),
-               "Init_Workspace::workspace->Delta" );
+               __FILE__, __LINE__ );
         workspace->Delta_lp = smalloc( system->N_max * sizeof( real ),
-               "Init_Workspace::workspace->Delta_lp" );
+               __FILE__, __LINE__ );
         workspace->Delta_lp_temp = smalloc( system->N_max * sizeof( real ),
-               "Init_Workspace::workspace->Delta_lp_temp" );
+               __FILE__, __LINE__ );
         workspace->dDelta_lp = smalloc( system->N_max * sizeof( real ),
-               "Init_Workspace::workspace->dDelta_lp" );
+               __FILE__, __LINE__ );
         workspace->dDelta_lp_temp = smalloc( system->N_max * sizeof( real ),
-               "Init_Workspace::workspace->dDelta_lp_temp" );
+               __FILE__, __LINE__ );
         workspace->Delta_e = smalloc( system->N_max * sizeof( real ),
-               "Init_Workspace::workspace->Delta_e" );
+               __FILE__, __LINE__ );
         workspace->Delta_boc = smalloc( system->N_max * sizeof( real ),
-               "Init_Workspace::workspace->Delta_boc" );
+               __FILE__, __LINE__ );
         workspace->nlp = smalloc( system->N_max * sizeof( real ),
-               "Init_Workspace::workspace->nlp" );
+               __FILE__, __LINE__ );
         workspace->nlp_temp = smalloc( system->N_max * sizeof( real ),
-               "Init_Workspace::workspace->nlp_temp" );
+               __FILE__, __LINE__ );
         workspace->Clp = smalloc( system->N_max * sizeof( real ),
-               "Init_Workspace::workspace->Clp" );
+               __FILE__, __LINE__ );
         workspace->CdDelta = smalloc( system->N_max * sizeof( real ),
-               "Init_Workspace::workspace->CdDelta" );
+               __FILE__, __LINE__ );
         workspace->vlpex = smalloc( system->N_max * sizeof( real ),
-               "Init_Workspace::workspace->vlpex" );
+               __FILE__, __LINE__ );
     }
 
     /* charge method storage */
@@ -408,27 +408,27 @@ static void Init_Workspace( reax_system *system, control_params *control,
                 || control->cm_solver_pre_comp_type == FG_ILUT_PC )
         {
             workspace->droptol = scalloc( system->N_cm_max, sizeof( real ),
-                    "Init_Workspace::workspace->droptol" );
+                    __FILE__, __LINE__ );
         }
 
         workspace->b_s = scalloc( system->N_cm_max, sizeof( real ),
-                "Init_Workspace::workspace->b_s" );
+                __FILE__, __LINE__ );
         workspace->b_t = scalloc( system->N_cm_max, sizeof( real ),
-                "Init_Workspace::workspace->b_t" );
+                __FILE__, __LINE__ );
         workspace->b_prc = scalloc( system->N_cm_max * 2, sizeof( real ),
-                "Init_Workspace::workspace->b_prc" );
+                __FILE__, __LINE__ );
         workspace->b_prm = scalloc( system->N_cm_max * 2, sizeof( real ),
-                "Init_Workspace::workspace->b_prm" );
+                __FILE__, __LINE__ );
         workspace->s = scalloc( 5, sizeof( real* ),
-                "Init_Workspace::workspace->s" );
+                __FILE__, __LINE__ );
         workspace->t = scalloc( 5, sizeof( real* ),
-                "Init_Workspace::workspace->t" );
+                __FILE__, __LINE__ );
         for ( i = 0; i < 5; ++i )
         {
             workspace->s[i] = scalloc( system->N_cm_max, sizeof( real ),
-                    "Init_Workspace::workspace->s[i]" );
+                    __FILE__, __LINE__ );
             workspace->t[i] = scalloc( system->N_cm_max, sizeof( real ),
-                    "Init_Workspace::workspace->t[i]" );
+                    __FILE__, __LINE__ );
         }
     }
 
@@ -494,81 +494,81 @@ static void Init_Workspace( reax_system *system, control_params *control,
             case GMRES_S:
             case GMRES_H_S:
                 workspace->y = scalloc( control->cm_solver_restart + 1, sizeof( real ),
-                        "Init_Workspace::workspace->y" );
+                        __FILE__, __LINE__ );
                 workspace->z = scalloc( control->cm_solver_restart + 1, sizeof( real ),
-                        "Init_Workspace::workspace->z" );
+                        __FILE__, __LINE__ );
                 workspace->g = scalloc( control->cm_solver_restart + 1, sizeof( real ),
-                        "Init_Workspace::workspace->g" );
+                        __FILE__, __LINE__ );
                 workspace->h = scalloc( control->cm_solver_restart + 1, sizeof( real*),
-                        "Init_Workspace::workspace->h" );
+                        __FILE__, __LINE__ );
                 workspace->hs = scalloc( control->cm_solver_restart + 1, sizeof( real ),
-                        "Init_Workspace::workspace->hs" );
+                        __FILE__, __LINE__ );
                 workspace->hc = scalloc( control->cm_solver_restart + 1, sizeof( real ),
-                        "Init_Workspace::workspace->hc" );
+                        __FILE__, __LINE__ );
                 workspace->rn = scalloc( control->cm_solver_restart + 1, sizeof( real*),
-                        "Init_Workspace::workspace->rn" );
+                        __FILE__, __LINE__ );
                 workspace->v = scalloc( control->cm_solver_restart + 1, sizeof( real*),
-                        "Init_Workspace::workspace->v" );
+                        __FILE__, __LINE__ );
 
                 for ( i = 0; i < control->cm_solver_restart + 1; ++i )
                 {
                     workspace->h[i] = scalloc( control->cm_solver_restart + 1, sizeof( real ),
-                            "Init_Workspace::workspace->h[i]" );
+                            __FILE__, __LINE__ );
                     workspace->rn[i] = scalloc( system->N_cm_max * 2, sizeof( real ),
-                            "Init_Workspace::workspace->rn[i]" );
+                            __FILE__, __LINE__ );
                     workspace->v[i] = scalloc( system->N_cm_max, sizeof( real ),
-                            "Init_Workspace::workspace->v[i]" );
+                            __FILE__, __LINE__ );
                 }
 
                 workspace->r = scalloc( system->N_cm_max, sizeof( real ),
-                        "Init_Workspace::workspace->r" );
+                        __FILE__, __LINE__ );
                 workspace->d = scalloc( system->N_cm_max, sizeof( real ),
-                        "Init_Workspace::workspace->d" );
+                        __FILE__, __LINE__ );
                 workspace->q = scalloc( system->N_cm_max, sizeof( real ),
-                        "Init_Workspace::workspace->q" );
+                        __FILE__, __LINE__ );
                 workspace->p = scalloc( system->N_cm_max, sizeof( real ),
-                        "Init_Workspace::workspace->p" );
+                        __FILE__, __LINE__ );
                 break;
 
             case CG_S:
                 workspace->r = scalloc( system->N_cm_max, sizeof( real ),
-                        "Init_Workspace::workspace->r" );
+                        __FILE__, __LINE__ );
                 workspace->d = scalloc( system->N_cm_max, sizeof( real ),
-                        "Init_Workspace::workspace->d" );
+                        __FILE__, __LINE__ );
                 workspace->q = scalloc( system->N_cm_max, sizeof( real ),
-                        "Init_Workspace::workspace->q" );
+                        __FILE__, __LINE__ );
                 workspace->p = scalloc( system->N_cm_max, sizeof( real ),
-                        "Init_Workspace::workspace->p" );
+                        __FILE__, __LINE__ );
                 break;
 
             case SDM_S:
                 workspace->r = scalloc( system->N_cm_max, sizeof( real ),
-                        "Init_Workspace::workspace->r" );
+                        __FILE__, __LINE__ );
                 workspace->d = scalloc( system->N_cm_max, sizeof( real ),
-                        "Init_Workspace::workspace->d" );
+                        __FILE__, __LINE__ );
                 workspace->q = scalloc( system->N_cm_max, sizeof( real ),
-                        "Init_Workspace::workspace->q" );
+                        __FILE__, __LINE__ );
                 break;
 
             case BiCGStab_S:
                 workspace->r = scalloc( system->N_cm_max, sizeof( real ),
-                        "Init_Workspace::workspace->r" );
+                        __FILE__, __LINE__ );
                 workspace->r_hat = scalloc( system->N_cm_max, sizeof( real ),
-                        "Init_Workspace::workspace->r_hat" );
+                        __FILE__, __LINE__ );
                 workspace->d = scalloc( system->N_cm_max, sizeof( real ),
-                        "Init_Workspace::workspace->d" );
+                        __FILE__, __LINE__ );
                 workspace->q = scalloc( system->N_cm_max, sizeof( real ),
-                        "Init_Workspace::workspace->q" );
+                        __FILE__, __LINE__ );
                 workspace->q_hat = scalloc( system->N_cm_max, sizeof( real ),
-                        "Init_Workspace::workspace->q_hat" );
+                        __FILE__, __LINE__ );
                 workspace->p = scalloc( system->N_cm_max, sizeof( real ),
-                        "Init_Workspace::workspace->p" );
+                        __FILE__, __LINE__ );
                 workspace->y = scalloc( system->N_cm_max, sizeof( real ),
-                        "Init_Workspace::workspace->y" );
+                        __FILE__, __LINE__ );
                 workspace->z = scalloc( system->N_cm_max, sizeof( real ),
-                        "Init_Workspace::workspace->z" );
+                        __FILE__, __LINE__ );
                 workspace->g = scalloc( system->N_cm_max, sizeof( real ),
-                        "Init_Workspace::workspace->g" );
+                        __FILE__, __LINE__ );
                 break;
 
             default:
@@ -580,7 +580,7 @@ static void Init_Workspace( reax_system *system, control_params *control,
 #if defined(_OPENMP)
         /* SpMV related */
         workspace->b_local = smalloc( control->num_threads * system->N_cm_max * sizeof(real),
-                "Init_Workspace::b_local" );
+                __FILE__, __LINE__ );
 #endif
     }
 
@@ -593,19 +593,19 @@ static void Init_Workspace( reax_system *system, control_params *control,
                 control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
         {
             workspace->row_levels_L = smalloc( system->N_cm_max * sizeof(unsigned int),
-                    "Init_Workspace::row_levels_L" );
+                    __FILE__, __LINE__ );
             workspace->level_rows_L = smalloc( system->N_cm_max * sizeof(unsigned int),
-                    "Init_Workspace::level_rows_L" );
+                    __FILE__, __LINE__ );
             workspace->level_rows_cnt_L = smalloc( (system->N_cm_max + 1) * sizeof(unsigned int),
-                    "Init_Workspace::level_rows_cnt_L" );
+                    __FILE__, __LINE__ );
             workspace->row_levels_U = smalloc( system->N_cm_max * sizeof(unsigned int),
-                    "Init_Workspace::row_levels_U" );
+                    __FILE__, __LINE__ );
             workspace->level_rows_U = smalloc( system->N_cm_max * sizeof(unsigned int),
-                    "Init_Workspace::level_rows_U" );
+                    __FILE__, __LINE__ );
             workspace->level_rows_cnt_U = smalloc( (system->N_cm_max + 1) * sizeof(unsigned int),
-                    "Init_Workspace::level_rows_cnt_U" );
+                    __FILE__, __LINE__ );
             workspace->top = smalloc( (system->N_cm_max + 1) * sizeof(unsigned int),
-                    "Init_Workspace::top" );
+                    __FILE__, __LINE__ );
         }
         else
         {
@@ -626,21 +626,21 @@ static void Init_Workspace( reax_system *system, control_params *control,
         if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
         {
             workspace->color = smalloc( sizeof(unsigned int) * system->N_cm_max,
-                    "Init_Workspace::color" );
+                    __FILE__, __LINE__ );
             workspace->to_color = smalloc( sizeof(unsigned int) * system->N_cm_max,
-                    "Init_Workspace::to_color" );
+                    __FILE__, __LINE__ );
             workspace->conflict = smalloc( sizeof(unsigned int) * system->N_cm_max,
-                    "setup_graph_coloring::conflict" );
+                    __FILE__, __LINE__ );
             workspace->conflict_cnt = smalloc( sizeof(unsigned int) * (control->num_threads + 1),
-                    "Init_Workspace::conflict_cnt" );
+                    __FILE__, __LINE__ );
             workspace->recolor = smalloc( sizeof(unsigned int) * system->N_cm_max,
-                    "Init_Workspace::recolor" );
+                    __FILE__, __LINE__ );
             workspace->color_top = smalloc( sizeof(unsigned int) * (system->N_cm_max + 1),
-                    "Init_Workspace::color_top" );
+                    __FILE__, __LINE__ );
             workspace->permuted_row_col = smalloc( sizeof(unsigned int) * system->N_cm_max,
-                    "Init_Workspace::premuted_row_col" );
+                    __FILE__, __LINE__ );
             workspace->permuted_row_col_inv = smalloc( sizeof(unsigned int) * system->N_cm_max,
-                    "Init_Workspace::premuted_row_col_inv" );
+                    __FILE__, __LINE__ );
         }
         else
         {
@@ -658,8 +658,8 @@ static void Init_Workspace( reax_system *system, control_params *control,
         if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA 
                 || control->cm_solver_pre_comp_type == ILUTP_PC )
         {
-            workspace->y_p = smalloc( sizeof(real) * system->N_cm_max, "Init_Workspace::y_p" );
-            workspace->x_p = smalloc( sizeof(real) * system->N_cm_max, "Init_Workspace::x_p" );
+            workspace->y_p = smalloc( sizeof(real) * system->N_cm_max, __FILE__, __LINE__ );
+            workspace->x_p = smalloc( sizeof(real) * system->N_cm_max, __FILE__, __LINE__ );
         }
         else
         {
@@ -671,15 +671,15 @@ static void Init_Workspace( reax_system *system, control_params *control,
         if ( control->cm_solver_pre_app_type == JACOBI_ITER_PA )
         {
             workspace->Dinv_L = smalloc( sizeof(real) * system->N_cm_max,
-                    "Init_Workspace::Dinv_L" );
+                    __FILE__, __LINE__ );
             workspace->Dinv_U = smalloc( sizeof(real) * system->N_cm_max,
-                    "Init_Workspace::Dinv_U" );
+                    __FILE__, __LINE__ );
             workspace->Dinv_b = smalloc( sizeof(real) * system->N_cm_max,
-                    "Init_Workspace::Dinv_b" );
+                    __FILE__, __LINE__ );
             workspace->rp = smalloc( sizeof(real) * system->N_cm_max,
-                    "Init_Workspace::rp" );
+                    __FILE__, __LINE__ );
             workspace->rp2 = smalloc( sizeof(real) * system->N_cm_max,
-                    "Init_Workspace::rp2" );
+                    __FILE__, __LINE__ );
         }
         else
         {
@@ -694,7 +694,7 @@ static void Init_Workspace( reax_system *system, control_params *control,
         if ( control->cm_solver_pre_comp_type == ILUTP_PC )
         {
             workspace->perm_ilutp = smalloc( sizeof( int ) * system->N_cm_max,
-                   "Init_Workspace::workspace->perm_ilutp" );
+                   __FILE__, __LINE__ );
         }
         else
         {
@@ -703,29 +703,29 @@ static void Init_Workspace( reax_system *system, control_params *control,
 
 #if defined(QMMM)
         workspace->mask_qmmm = smalloc( system->N_cm_max * sizeof( int ),
-               "Init_Workspace::workspace->mask_qmmm" );
+               __FILE__, __LINE__ );
 #endif
 
         /* integrator storage */
         workspace->a = smalloc( system->N_max * sizeof( rvec ),
-               "Init_Workspace::workspace->a" );
+               __FILE__, __LINE__ );
         workspace->f_old = smalloc( system->N_max * sizeof( rvec ),
-               "Init_Workspace::workspace->f_old" );
+               __FILE__, __LINE__ );
         workspace->v_const = smalloc( system->N_max * sizeof( rvec ),
-               "Init_Workspace::workspace->v_const" );
+               __FILE__, __LINE__ );
 
 #if defined(_OPENMP)
         workspace->f_local = smalloc( control->num_threads * system->N_max * sizeof( rvec ),
-               "Init_Workspace::workspace->f_local" );
+               __FILE__, __LINE__ );
 #endif
 
         /* storage for analysis */
         if ( control->molec_anal || control->diffusion_coef )
         {
             workspace->mark = scalloc( system->N_max, sizeof(int),
-                    "Init_Workspace::workspace->mark" );
+                    __FILE__, __LINE__ );
             workspace->old_mark = scalloc( system->N_max, sizeof(int),
-                    "Init_Workspace::workspace->old_mark" );
+                    __FILE__, __LINE__ );
         }
         else
         {
@@ -735,7 +735,7 @@ static void Init_Workspace( reax_system *system, control_params *control,
         if ( control->diffusion_coef )
         {
             workspace->x_old = scalloc( system->N_max, sizeof( rvec ),
-                    "Init_Workspace::workspace->x_old" );
+                    __FILE__, __LINE__ );
         }
         else
         {
@@ -745,31 +745,31 @@ static void Init_Workspace( reax_system *system, control_params *control,
 
 #if defined(TEST_FORCES)
     workspace->dDelta = smalloc( system->N_max * sizeof( rvec ),
-           "Init_Workspace::workspace->dDelta" );
+           __FILE__, __LINE__ );
     workspace->f_ele = smalloc( system->N_max * sizeof( rvec ),
-           "Init_Workspace::workspace->f_ele" );
+           __FILE__, __LINE__ );
     workspace->f_vdw = smalloc( system->N_max * sizeof( rvec ),
-           "Init_Workspace::workspace->f_vdw" );
+           __FILE__, __LINE__ );
     workspace->f_be = smalloc( system->N_max * sizeof( rvec ),
-           "Init_Workspace::workspace->f_be" );
+           __FILE__, __LINE__ );
     workspace->f_lp = smalloc( system->N_max * sizeof( rvec ),
-           "Init_Workspace::workspace->f_lp" );
+           __FILE__, __LINE__ );
     workspace->f_ov = smalloc( system->N_max * sizeof( rvec ),
-           "Init_Workspace::workspace->f_ov" );
+           __FILE__, __LINE__ );
     workspace->f_un = smalloc( system->N_max * sizeof( rvec ),
-           "Init_Workspace::workspace->f_un" );
+           __FILE__, __LINE__ );
     workspace->f_ang = smalloc( system->N_max * sizeof( rvec ),
-           "Init_Workspace::workspace->f_ang" );
+           __FILE__, __LINE__ );
     workspace->f_coa = smalloc( system->N_max * sizeof( rvec ),
-           "Init_Workspace::workspace->f_coa" );
+           __FILE__, __LINE__ );
     workspace->f_pen = smalloc( system->N_max * sizeof( rvec ),
-           "Init_Workspace::workspace->f_pen" );
+           __FILE__, __LINE__ );
     workspace->f_hb = smalloc( system->N_max * sizeof( rvec ),
-           "Init_Workspace::workspace->f_hb" );
+           __FILE__, __LINE__ );
     workspace->f_tor = smalloc( system->N_max * sizeof( rvec ),
-           "Init_Workspace::workspace->f_tor" );
+           __FILE__, __LINE__ );
     workspace->f_con = smalloc( system->N_max * sizeof( rvec ),
-           "Init_Workspace::workspace->f_con" );
+           __FILE__, __LINE__ );
 #endif
 
     workspace->realloc.num_far = -1;
@@ -817,8 +817,8 @@ static void Init_Lists( reax_system *system, control_params *control,
     Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
     Htop = 0;
-    hb_top = scalloc( system->N, sizeof(int), "Init_Lists::hb_top" );
-    bond_top = scalloc( system->N, sizeof(int), "Init_Lists::bond_top" );
+    hb_top = scalloc( system->N, sizeof(int), __FILE__, __LINE__ );
+    bond_top = scalloc( system->N, sizeof(int), __FILE__, __LINE__ );
     num_3body = 0;
 
     Estimate_Storage_Sizes( system, control, lists, &Htop,
@@ -1032,8 +1032,8 @@ static void Init_Lists( reax_system *system, control_params *control,
     }
 #endif
 
-    sfree( hb_top, "Init_Lists::hb_top" );
-    sfree( bond_top, "Init_Lists::bond_top" );
+    sfree( hb_top, __FILE__, __LINE__ );
+    sfree( bond_top, __FILE__, __LINE__ );
 }
 
 
@@ -1048,7 +1048,7 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
         strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
         temp[TEMP_SIZE - 5] = '\0';
         strcat( temp, ".trj" );
-        out_control->trj = sfopen( temp, "w" );
+        out_control->trj = sfopen( temp, "w", __FILE__, __LINE__ );
         out_control->write_header( system, control, workspace, out_control );
     }
     else
@@ -1061,7 +1061,7 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
         strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
         temp[TEMP_SIZE - 5] = '\0';
         strcat( temp, ".out" );
-        out_control->out = sfopen( temp, "w" );
+        out_control->out = sfopen( temp, "w", __FILE__, __LINE__ );
         fprintf( out_control->out, "%-6s%16s%16s%16s%11s%11s%13s%13s%13s\n",
                  "step", "total_energy", "poten_energy", "kin_energy",
                  "temp", "target", "volume", "press", "target" );
@@ -1070,7 +1070,7 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
         strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
         temp[TEMP_SIZE - 5] = '\0';
         strcat( temp, ".pot" );
-        out_control->pot = sfopen( temp, "w" );
+        out_control->pot = sfopen( temp, "w", __FILE__, __LINE__ );
         fprintf( out_control->pot,
                  "%-6s%13s%13s%13s%13s%13s%13s%13s%13s%13s%13s%13s\n",
                  "step", "ebond", "eatom", "elp", "eang", "ecoa", "ehb",
@@ -1080,7 +1080,7 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
         strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
         temp[TEMP_SIZE - 5] = '\0';
         strcat( temp, ".log" );
-        out_control->log = sfopen( temp, "w" );
+        out_control->log = sfopen( temp, "w", __FILE__, __LINE__ );
         fprintf( out_control->log, "%-6s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s\n",
                  "step", "total", "neighbors", "init", "bonded",
                  "nonbonded", "cm", "cm_sort", "s_iters", "pre_comp", "pre_app",
@@ -1099,7 +1099,7 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
         strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
         temp[TEMP_SIZE - 5] = '\0';
         strcat( temp, ".prs" );
-        out_control->prs = sfopen( temp, "w" );
+        out_control->prs = sfopen( temp, "w", __FILE__, __LINE__ );
 #if defined(DEBUG) || defined(DEBUG_FOCUS)
         fprintf( out_control->prs, "%-8s %13s %13s %13s %13s %13s %13s\n",
                 "step", "KExx", "KEyy", "KEzz",
@@ -1120,11 +1120,11 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
     if ( output_enabled == TRUE && control->molec_anal )
     {
         snprintf( temp, TEMP_SIZE, "%.*s.mol", TEMP_SIZE - 5, control->sim_name );
-        out_control->mol = sfopen( temp, "w" );
+        out_control->mol = sfopen( temp, "w", __FILE__, __LINE__ );
         if ( control->num_ignored )
         {
             snprintf( temp, TEMP_SIZE, "%.*s.ign", TEMP_SIZE - 5, control->sim_name );
-            out_control->ign = sfopen( temp, "w" );
+            out_control->ign = sfopen( temp, "w", __FILE__, __LINE__ );
         }
     }
     else
@@ -1138,7 +1138,7 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
         strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
         temp[TEMP_SIZE - 5] = '\0';
         strcat( temp, ".dpl" );
-        out_control->dpl = sfopen( temp, "w" );
+        out_control->dpl = sfopen( temp, "w", __FILE__, __LINE__ );
         fprintf( out_control->dpl,
                  "Step      Molecule Count  Avg. Dipole Moment Norm\n" );
         fflush( out_control->dpl );
@@ -1153,7 +1153,7 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
         strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
         temp[TEMP_SIZE - 6] = '\0';
         strcat( temp, ".drft" );
-        out_control->drft = sfopen( temp, "w" );
+        out_control->drft = sfopen( temp, "w", __FILE__, __LINE__ );
         fprintf( out_control->drft, "Step     Type Count   Avg Squared Disp\n" );
         fflush( out_control->drft );
     }
@@ -1167,62 +1167,62 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
     strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
     temp[TEMP_SIZE - 6] = '\0';
     strcat( temp, ".ebond" );
-    out_control->ebond = sfopen( temp, "w" );
+    out_control->ebond = sfopen( temp, "w", __FILE__, __LINE__ );
 
     strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
     temp[TEMP_SIZE - 5] = '\0';
     strcat( temp, ".elp" );
-    out_control->elp = sfopen( temp, "w" );
+    out_control->elp = sfopen( temp, "w", __FILE__, __LINE__ );
 
     strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
     temp[TEMP_SIZE - 5] = '\0';
     strcat( temp, ".eov" );
-    out_control->eov = sfopen( temp, "w" );
+    out_control->eov = sfopen( temp, "w", __FILE__, __LINE__ );
 
     strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
     temp[TEMP_SIZE - 5] = '\0';
     strcat( temp, ".eun" );
-    out_control->eun = sfopen( temp, "w" );
+    out_control->eun = sfopen( temp, "w", __FILE__, __LINE__ );
 
     strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
     temp[TEMP_SIZE - 6] = '\0';
     strcat( temp, ".eval" );
-    out_control->eval = sfopen( temp, "w" );
+    out_control->eval = sfopen( temp, "w", __FILE__, __LINE__ );
 
     strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
     temp[TEMP_SIZE - 6] = '\0';
     strcat( temp, ".epen" );
-    out_control->epen = sfopen( temp, "w" );
+    out_control->epen = sfopen( temp, "w", __FILE__, __LINE__ );
 
     strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
     temp[TEMP_SIZE - 6] = '\0';
     strcat( temp, ".ecoa" );
-    out_control->ecoa = sfopen( temp, "w" );
+    out_control->ecoa = sfopen( temp, "w", __FILE__, __LINE__ );
 
     strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
     temp[TEMP_SIZE - 5] = '\0';
     strcat( temp, ".ehb" );
-    out_control->ehb = sfopen( temp, "w" );
+    out_control->ehb = sfopen( temp, "w", __FILE__, __LINE__ );
 
     strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
     temp[TEMP_SIZE - 6] = '\0';
     strcat( temp, ".etor" );
-    out_control->etor = sfopen( temp, "w" );
+    out_control->etor = sfopen( temp, "w", __FILE__, __LINE__ );
 
     strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
     temp[TEMP_SIZE - 6] = '\0';
     strcat( temp, ".econ" );
-    out_control->econ = sfopen( temp, "w" );
+    out_control->econ = sfopen( temp, "w", __FILE__, __LINE__ );
 
     strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
     temp[TEMP_SIZE - 6] = '\0';
     strcat( temp, ".evdw" );
-    out_control->evdw = sfopen( temp, "w" );
+    out_control->evdw = sfopen( temp, "w", __FILE__, __LINE__ );
 
     strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
     temp[TEMP_SIZE - 6] = '\0';
     strcat( temp, ".ecou" );
-    out_control->ecou = sfopen( temp, "w" );
+    out_control->ecou = sfopen( temp, "w", __FILE__, __LINE__ );
 #endif
 
 
@@ -1231,67 +1231,67 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
     strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
     temp[TEMP_SIZE - 5] = '\0';
     strcat( temp, ".fbo" );
-    out_control->fbo = sfopen( temp, "w" );
+    out_control->fbo = sfopen( temp, "w", __FILE__, __LINE__ );
 
     /* open bond orders derivatives file */
     strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
     temp[TEMP_SIZE - 6] = '\0';
     strcat( temp, ".fdbo" );
-    out_control->fdbo = sfopen( temp, "w" );
+    out_control->fdbo = sfopen( temp, "w", __FILE__, __LINE__ );
 
     /* open bond forces file */
     strncpy( temp, control->sim_name, TEMP_SIZE - 7 );
     temp[TEMP_SIZE - 7] = '\0';
     strcat( temp, ".fbond" );
-    out_control->fbond = sfopen( temp, "w" );
+    out_control->fbond = sfopen( temp, "w", __FILE__, __LINE__ );
 
     /* open lone-pair forces file */
     strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
     temp[TEMP_SIZE - 6] = '\0';
     strcat( temp, ".flp" );
-    out_control->flp = sfopen( temp, "w" );
+    out_control->flp = sfopen( temp, "w", __FILE__, __LINE__ );
 
     /* open overcoordination forces file */
     strncpy( temp, control->sim_name, TEMP_SIZE - 7 );
     temp[TEMP_SIZE - 7] = '\0';
     strcat( temp, ".fatom" );
-    out_control->fatom = sfopen( temp, "w" );
+    out_control->fatom = sfopen( temp, "w", __FILE__, __LINE__ );
 
     /* open angle forces file */
     strncpy( temp, control->sim_name, TEMP_SIZE - 8 );
     temp[TEMP_SIZE - 8] = '\0';
     strcat( temp, ".f3body" );
-    out_control->f3body = sfopen( temp, "w" );
+    out_control->f3body = sfopen( temp, "w", __FILE__, __LINE__ );
 
     /* open hydrogen bond forces file */
     strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
     temp[TEMP_SIZE - 5] = '\0';
     strcat( temp, ".fhb" );
-    out_control->fhb = sfopen( temp, "w" );
+    out_control->fhb = sfopen( temp, "w", __FILE__, __LINE__ );
 
     /* open torsion forces file */
     strncpy( temp, control->sim_name, TEMP_SIZE - 8 );
     temp[TEMP_SIZE - 8] = '\0';
     strcat( temp, ".f4body" );
-    out_control->f4body = sfopen( temp, "w" );
+    out_control->f4body = sfopen( temp, "w", __FILE__, __LINE__ );
 
     /* open nonbonded forces file */
     strncpy( temp, control->sim_name, TEMP_SIZE - 7 );
     temp[TEMP_SIZE - 7] = '\0';
     strcat( temp, ".fnonb" );
-    out_control->fnonb = sfopen( temp, "w" );
+    out_control->fnonb = sfopen( temp, "w", __FILE__, __LINE__ );
 
     /* open total force file */
     strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
     temp[TEMP_SIZE - 6] = '\0';
     strcat( temp, ".ftot" );
-    out_control->ftot = sfopen( temp, "w" );
+    out_control->ftot = sfopen( temp, "w", __FILE__, __LINE__ );
 
     /* open coulomb forces file */
     strncpy( temp, control->sim_name, TEMP_SIZE - 7 );
     temp[TEMP_SIZE - 7] = '\0';
     strcat( temp, ".ftot2" );
-    out_control->ftot2 = sfopen( temp, "w" );
+    out_control->ftot2 = sfopen( temp, "w", __FILE__, __LINE__ );
 #endif
 
 #undef TEMP_SIZE
@@ -1359,8 +1359,8 @@ static void Finalize_System( reax_system *system, control_params *control,
 
     if ( system->max_num_molec_charge_constraints > 0 )
     {
-        sfree( system->molec_charge_constraints, "Read_BGF::molec_charge_constraints" );
-        sfree( system->molec_charge_constraint_ranges, "Read_BGF::molec_charge_constraint_ranges" );
+        sfree( system->molec_charge_constraints, __FILE__, __LINE__ );
+        sfree( system->molec_charge_constraint_ranges, __FILE__, __LINE__ );
     }
 
     system->max_num_molec_charge_constraints = 0;
@@ -1372,7 +1372,7 @@ static void Finalize_System( reax_system *system, control_params *control,
 
     if ( reset == FALSE )
     {
-        sfree( reax->gp.l, "Finalize_System::reax->gp.l" );
+        sfree( reax->gp.l, __FILE__, __LINE__ );
 
         for ( i = 0; i < reax->max_num_atom_types; i++ )
         {
@@ -1380,27 +1380,27 @@ static void Finalize_System( reax_system *system, control_params *control,
             {
                 for ( k = 0; k < reax->max_num_atom_types; k++ )
                 {
-                    sfree( reax->fbp[i][j][k], "Finalize_System::reax->fbp[i][j][k]" );
+                    sfree( reax->fbp[i][j][k], __FILE__, __LINE__ );
                 }
 
-                sfree( reax->thbp[i][j], "Finalize_System::reax->thbp[i][j]" );
-                sfree( reax->hbp[i][j], "Finalize_System::reax->hbp[i][j]" );
-                sfree( reax->fbp[i][j], "Finalize_System::reax->fbp[i][j]" );
+                sfree( reax->thbp[i][j], __FILE__, __LINE__ );
+                sfree( reax->hbp[i][j], __FILE__, __LINE__ );
+                sfree( reax->fbp[i][j], __FILE__, __LINE__ );
             }
 
-            sfree( reax->tbp[i], "Finalize_System::reax->tbp[i]" );
-            sfree( reax->thbp[i], "Finalize_System::reax->thbp[i]" );
-            sfree( reax->hbp[i], "Finalize_System::reax->hbp[i]" );
-            sfree( reax->fbp[i], "Finalize_System::reax->fbp[i]" );
+            sfree( reax->tbp[i], __FILE__, __LINE__ );
+            sfree( reax->thbp[i], __FILE__, __LINE__ );
+            sfree( reax->hbp[i], __FILE__, __LINE__ );
+            sfree( reax->fbp[i], __FILE__, __LINE__ );
         }
 
-        sfree( reax->sbp, "Finalize_System::reax->sbp" );
-        sfree( reax->tbp, "Finalize_System::reax->tbp" );
-        sfree( reax->thbp, "Finalize_System::reax->thbp" );
-        sfree( reax->hbp, "Finalize_System::reax->hbp" );
-        sfree( reax->fbp, "Finalize_System::reax->fbp" );
+        sfree( reax->sbp, __FILE__, __LINE__ );
+        sfree( reax->tbp, __FILE__, __LINE__ );
+        sfree( reax->thbp, __FILE__, __LINE__ );
+        sfree( reax->hbp, __FILE__, __LINE__ );
+        sfree( reax->fbp, __FILE__, __LINE__ );
 
-        sfree( system->atoms, "Finalize_System::system->atoms" );
+        sfree( system->atoms, __FILE__, __LINE__ );
     }
 }
 
@@ -1412,7 +1412,7 @@ static void Finalize_Simulation_Data( reax_system *system, control_params *contr
     if ( control->ensemble == sNPT || control->ensemble == iNPT
             || control->ensemble == aNPT || control->compute_pressure == TRUE )
     {
-        sfree( data->press_local, "Finalize_Simulation_Data::data->press_local" );
+        sfree( data->press_local, __FILE__, __LINE__ );
     }
 #endif
 }
@@ -1423,29 +1423,29 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
 {
     int i;
 
-    sfree( workspace->hbond_index, "Finalize_Workspace::workspace->hbond_index" );
-    sfree( workspace->total_bond_order, "Finalize_Workspace::workspace->total_bond_order" );
-    sfree( workspace->Deltap, "Finalize_Workspace::workspace->Deltap" );
-    sfree( workspace->Deltap_boc, "Finalize_Workspace::workspace->Deltap_boc" );
-    sfree( workspace->dDeltap_self, "Finalize_Workspace::workspace->dDeltap_self" );
-    sfree( workspace->Delta, "Finalize_Workspace::workspace->Delta" );
-    sfree( workspace->Delta_lp, "Finalize_Workspace::workspace->Delta_lp" );
-    sfree( workspace->Delta_lp_temp, "Finalize_Workspace::workspace->Delta_lp_temp" );
-    sfree( workspace->dDelta_lp, "Finalize_Workspace::workspace->dDelta_lp" );
-    sfree( workspace->dDelta_lp_temp, "Finalize_Workspace::workspace->dDelta_lp_temp" );
-    sfree( workspace->Delta_e, "Finalize_Workspace::workspace->Delta_e" );
-    sfree( workspace->Delta_boc, "Finalize_Workspace::workspace->Delta_boc" );
-    sfree( workspace->nlp, "Finalize_Workspace::workspace->nlp" );
-    sfree( workspace->nlp_temp, "Finalize_Workspace::workspace->nlp_temp" );
-    sfree( workspace->Clp, "Finalize_Workspace::workspace->Clp" );
-    sfree( workspace->CdDelta, "Finalize_Workspace::workspace->CdDelta" );
-    sfree( workspace->vlpex, "Finalize_Workspace::workspace->vlpex" );
+    sfree( workspace->hbond_index, __FILE__, __LINE__ );
+    sfree( workspace->total_bond_order, __FILE__, __LINE__ );
+    sfree( workspace->Deltap, __FILE__, __LINE__ );
+    sfree( workspace->Deltap_boc, __FILE__, __LINE__ );
+    sfree( workspace->dDeltap_self, __FILE__, __LINE__ );
+    sfree( workspace->Delta, __FILE__, __LINE__ );
+    sfree( workspace->Delta_lp, __FILE__, __LINE__ );
+    sfree( workspace->Delta_lp_temp, __FILE__, __LINE__ );
+    sfree( workspace->dDelta_lp, __FILE__, __LINE__ );
+    sfree( workspace->dDelta_lp_temp, __FILE__, __LINE__ );
+    sfree( workspace->Delta_e, __FILE__, __LINE__ );
+    sfree( workspace->Delta_boc, __FILE__, __LINE__ );
+    sfree( workspace->nlp, __FILE__, __LINE__ );
+    sfree( workspace->nlp_temp, __FILE__, __LINE__ );
+    sfree( workspace->Clp, __FILE__, __LINE__ );
+    sfree( workspace->CdDelta, __FILE__, __LINE__ );
+    sfree( workspace->vlpex, __FILE__, __LINE__ );
 
     if ( reset == FALSE && (control->geo_format == BGF
             || control->geo_format == ASCII_RESTART
             || control->geo_format == BINARY_RESTART) )
     {
-        sfree( workspace->map_serials, "Finalize_Workspace::workspace->map_serials" );
+        sfree( workspace->map_serials, __FILE__, __LINE__ );
     }
 
     if ( workspace->H.allocated == TRUE )
@@ -1487,27 +1487,27 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
 
     for ( i = 0; i < 5; ++i )
     {
-        sfree( workspace->s[i], "Finalize_Workspace::workspace->s[i]" );
-        sfree( workspace->t[i], "Finalize_Workspace::workspace->t[i]" );
+        sfree( workspace->s[i], __FILE__, __LINE__ );
+        sfree( workspace->t[i], __FILE__, __LINE__ );
     }
 
     if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
-        sfree( workspace->Hdia_inv, "Finalize_Workspace::workspace->Hdia_inv" );
+        sfree( workspace->Hdia_inv, __FILE__, __LINE__ );
     }
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || (control->cm_solver_pre_comp_type == ILUT_PC && control->cm_solver_pre_comp_droptol > 0.0 )
             || control->cm_solver_pre_comp_type == ILUTP_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
-        sfree( workspace->droptol, "Finalize_Workspace::workspace->droptol" );
+        sfree( workspace->droptol, __FILE__, __LINE__ );
     }
-    sfree( workspace->b_s, "Finalize_Workspace::workspace->b_s" );
-    sfree( workspace->b_t, "Finalize_Workspace::workspace->b_t" );
-    sfree( workspace->b_prc, "Finalize_Workspace::workspace->b_prc" );
-    sfree( workspace->b_prm, "Finalize_Workspace::workspace->b_prm" );
-    sfree( workspace->s, "Finalize_Workspace::workspace->s" );
-    sfree( workspace->t, "Finalize_Workspace::workspace->t" );
+    sfree( workspace->b_s, __FILE__, __LINE__ );
+    sfree( workspace->b_t, __FILE__, __LINE__ );
+    sfree( workspace->b_prc, __FILE__, __LINE__ );
+    sfree( workspace->b_prm, __FILE__, __LINE__ );
+    sfree( workspace->s, __FILE__, __LINE__ );
+    sfree( workspace->t, __FILE__, __LINE__ );
 
     switch ( control->cm_solver_type )
     {
@@ -1515,49 +1515,49 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
         case GMRES_H_S:
             for ( i = 0; i < control->cm_solver_restart + 1; ++i )
             {
-                sfree( workspace->h[i], "Finalize_Workspace::workspace->h[i]" );
-                sfree( workspace->rn[i], "Finalize_Workspace::workspace->rn[i]" );
-                sfree( workspace->v[i], "Finalize_Workspace::workspace->v[i]" );
+                sfree( workspace->h[i], __FILE__, __LINE__ );
+                sfree( workspace->rn[i], __FILE__, __LINE__ );
+                sfree( workspace->v[i], __FILE__, __LINE__ );
             }
 
-            sfree( workspace->y, "Finalize_Workspace::workspace->y" );
-            sfree( workspace->z, "Finalize_Workspace::workspace->z" );
-            sfree( workspace->g, "Finalize_Workspace::workspace->g" );
-            sfree( workspace->h, "Finalize_Workspace::workspace->h" );
-            sfree( workspace->hs, "Finalize_Workspace::workspace->hs" );
-            sfree( workspace->hc, "Finalize_Workspace::workspace->hc" );
-            sfree( workspace->rn, "Finalize_Workspace::workspace->rn" );
-            sfree( workspace->v, "Finalize_Workspace::workspace->v" );
+            sfree( workspace->y, __FILE__, __LINE__ );
+            sfree( workspace->z, __FILE__, __LINE__ );
+            sfree( workspace->g, __FILE__, __LINE__ );
+            sfree( workspace->h, __FILE__, __LINE__ );
+            sfree( workspace->hs, __FILE__, __LINE__ );
+            sfree( workspace->hc, __FILE__, __LINE__ );
+            sfree( workspace->rn, __FILE__, __LINE__ );
+            sfree( workspace->v, __FILE__, __LINE__ );
 
-            sfree( workspace->r, "Finalize_Workspace::workspace->r" );
-            sfree( workspace->d, "Finalize_Workspace::workspace->d" );
-            sfree( workspace->q, "Finalize_Workspace::workspace->q" );
-            sfree( workspace->p, "Finalize_Workspace::workspace->p" );
+            sfree( workspace->r, __FILE__, __LINE__ );
+            sfree( workspace->d, __FILE__, __LINE__ );
+            sfree( workspace->q, __FILE__, __LINE__ );
+            sfree( workspace->p, __FILE__, __LINE__ );
             break;
 
         case CG_S:
-            sfree( workspace->r, "Finalize_Workspace::workspace->r" );
-            sfree( workspace->d, "Finalize_Workspace::workspace->d" );
-            sfree( workspace->q, "Finalize_Workspace::workspace->q" );
-            sfree( workspace->p, "Finalize_Workspace::workspace->p" );
+            sfree( workspace->r, __FILE__, __LINE__ );
+            sfree( workspace->d, __FILE__, __LINE__ );
+            sfree( workspace->q, __FILE__, __LINE__ );
+            sfree( workspace->p, __FILE__, __LINE__ );
             break;
 
         case SDM_S:
-            sfree( workspace->r, "Finalize_Workspace::workspace->r" );
-            sfree( workspace->d, "Finalize_Workspace::workspace->d" );
-            sfree( workspace->q, "Finalize_Workspace::workspace->q" );
+            sfree( workspace->r, __FILE__, __LINE__ );
+            sfree( workspace->d, __FILE__, __LINE__ );
+            sfree( workspace->q, __FILE__, __LINE__ );
             break;
 
         case BiCGStab_S:
-            sfree( workspace->r, "Finalize_Workspace::workspace->r" );
-            sfree( workspace->r_hat, "Finalize_Workspace::workspace->r_hat" );
-            sfree( workspace->d, "Finalize_Workspace::workspace->d" );
-            sfree( workspace->q, "Finalize_Workspace::workspace->q" );
-            sfree( workspace->q_hat, "Finalize_Workspace::workspace->q_hat" );
-            sfree( workspace->p, "Finalize_Workspace::workspace->p" );
-            sfree( workspace->y, "Finalize_Workspace::workspace->y" );
-            sfree( workspace->z, "Finalize_Workspace::workspace->z" );
-            sfree( workspace->g, "Finalize_Workspace::workspace->g" );
+            sfree( workspace->r, __FILE__, __LINE__ );
+            sfree( workspace->r_hat, __FILE__, __LINE__ );
+            sfree( workspace->d, __FILE__, __LINE__ );
+            sfree( workspace->q, __FILE__, __LINE__ );
+            sfree( workspace->q_hat, __FILE__, __LINE__ );
+            sfree( workspace->p, __FILE__, __LINE__ );
+            sfree( workspace->y, __FILE__, __LINE__ );
+            sfree( workspace->z, __FILE__, __LINE__ );
+            sfree( workspace->g, __FILE__, __LINE__ );
             break;
 
         default:
@@ -1568,87 +1568,87 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
 
     /* SpMV related */
 #if defined(_OPENMP)
-    sfree( workspace->b_local, "Finalize_Workspace::b_local" );
+    sfree( workspace->b_local, __FILE__, __LINE__ );
 #endif
 
     /* level scheduling related */
     if ( control->cm_solver_pre_app_type == TRI_SOLVE_LEVEL_SCHED_PA ||
             control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
     {
-        sfree( workspace->row_levels_L, "Finalize_Workspace::row_levels_L" );
-        sfree( workspace->level_rows_L, "Finalize_Workspace::level_rows_L" );
-        sfree( workspace->level_rows_cnt_L, "Finalize_Workspace::level_rows_cnt_L" );
-        sfree( workspace->row_levels_U, "Finalize_Workspace::row_levels_U" );
-        sfree( workspace->level_rows_U, "Finalize_Workspace::level_rows_U" );
-        sfree( workspace->level_rows_cnt_U, "Finalize_Workspace::level_rows_cnt_U" );
-        sfree( workspace->top, "Finalize_Workspace::top" );
+        sfree( workspace->row_levels_L, __FILE__, __LINE__ );
+        sfree( workspace->level_rows_L, __FILE__, __LINE__ );
+        sfree( workspace->level_rows_cnt_L, __FILE__, __LINE__ );
+        sfree( workspace->row_levels_U, __FILE__, __LINE__ );
+        sfree( workspace->level_rows_U, __FILE__, __LINE__ );
+        sfree( workspace->level_rows_cnt_U, __FILE__, __LINE__ );
+        sfree( workspace->top, __FILE__, __LINE__ );
     }
 
     /* graph coloring related */
     if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
     {
-        sfree( workspace->color, "Finalize_Workspace::workspace->color" );
-        sfree( workspace->to_color, "Finalize_Workspace::workspace->to_color" );
-        sfree( workspace->conflict, "Finalize_Workspace::workspace->conflict" );
-        sfree( workspace->conflict_cnt, "Finalize_Workspace::workspace->conflict_cnt" );
-        sfree( workspace->recolor, "Finalize_Workspace::workspace->recolor" );
-        sfree( workspace->color_top, "Finalize_Workspace::workspace->color_top" );
-        sfree( workspace->permuted_row_col, "Finalize_Workspace::workspace->permuted_row_col" );
-        sfree( workspace->permuted_row_col_inv, "Finalize_Workspace::workspace->permuted_row_col_inv" );
+        sfree( workspace->color, __FILE__, __LINE__ );
+        sfree( workspace->to_color, __FILE__, __LINE__ );
+        sfree( workspace->conflict, __FILE__, __LINE__ );
+        sfree( workspace->conflict_cnt, __FILE__, __LINE__ );
+        sfree( workspace->recolor, __FILE__, __LINE__ );
+        sfree( workspace->color_top, __FILE__, __LINE__ );
+        sfree( workspace->permuted_row_col, __FILE__, __LINE__ );
+        sfree( workspace->permuted_row_col_inv, __FILE__, __LINE__ );
     }
 
     /* graph coloring related OR ILUTP preconditioner */
     if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA 
             || control->cm_solver_pre_comp_type == ILUTP_PC )
     {
-        sfree( workspace->y_p, "Finalize_Workspace::workspace->y_p" );
-        sfree( workspace->x_p, "Finalize_Workspace::workspace->x_p" );
+        sfree( workspace->y_p, __FILE__, __LINE__ );
+        sfree( workspace->x_p, __FILE__, __LINE__ );
     }
 
     /* Jacobi iteration related */
     if ( control->cm_solver_pre_app_type == JACOBI_ITER_PA )
     {
-        sfree( workspace->Dinv_L, "Finalize_Workspace::Dinv_L" );
-        sfree( workspace->Dinv_U, "Finalize_Workspace::Dinv_U" );
-        sfree( workspace->Dinv_b, "Finalize_Workspace::Dinv_b" );
-        sfree( workspace->rp, "Finalize_Workspace::rp" );
-        sfree( workspace->rp2, "Finalize_Workspace::rp2" );
+        sfree( workspace->Dinv_L, __FILE__, __LINE__ );
+        sfree( workspace->Dinv_U, __FILE__, __LINE__ );
+        sfree( workspace->Dinv_b, __FILE__, __LINE__ );
+        sfree( workspace->rp, __FILE__, __LINE__ );
+        sfree( workspace->rp2, __FILE__, __LINE__ );
     }
 
     /* ILUTP preconditioner related */
     if ( control->cm_solver_pre_comp_type == ILUTP_PC )
     {
-        sfree( workspace->perm_ilutp, "Finalize_Workspace::workspace->perm_ilutp" );
+        sfree( workspace->perm_ilutp, __FILE__, __LINE__ );
     }
 
 #if defined(QMMM)
-    sfree( workspace->mask_qmmm, "Init_Workspace::workspace->mask_qmmm" );
+    sfree( workspace->mask_qmmm, __FILE__, __LINE__ );
 #endif
 
     /* integrator storage */
-    sfree( workspace->a, "Finalize_Workspace::workspace->a" );
-    sfree( workspace->f_old, "Finalize_Workspace::workspace->f_old" );
-    sfree( workspace->v_const, "Finalize_Workspace::workspace->v_const" );
+    sfree( workspace->a, __FILE__, __LINE__ );
+    sfree( workspace->f_old, __FILE__, __LINE__ );
+    sfree( workspace->v_const, __FILE__, __LINE__ );
 
 #if defined(_OPENMP)
-    sfree( workspace->f_local, "Finalize_Workspace::workspace->f_local" );
+    sfree( workspace->f_local, __FILE__, __LINE__ );
 #endif
 
     /* storage for analysis */
     if ( control->molec_anal || control->diffusion_coef )
     {
-        sfree( workspace->mark, "Finalize_Workspace::workspace->mark" );
-        sfree( workspace->old_mark, "Finalize_Workspace::workspace->old_mark" );
+        sfree( workspace->mark, __FILE__, __LINE__ );
+        sfree( workspace->old_mark, __FILE__, __LINE__ );
     }
 
     if ( control->diffusion_coef )
     {
-        sfree( workspace->x_old, "Finalize_Workspace::workspace->x_old" );
+        sfree( workspace->x_old, __FILE__, __LINE__ );
     }
 
     if ( reset == FALSE )
     {
-        sfree( workspace->orig_id, "Finalize_Workspace::workspace->orig_id" );
+        sfree( workspace->orig_id, __FILE__, __LINE__ );
 
         /* space for keeping restriction info, if any */
         if ( control->restrict_bonds )
@@ -1656,28 +1656,28 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
             for ( i = 0; i < system->N; ++i )
             {
                 sfree( workspace->restricted_list[i],
-                        "Finalize_Workspace::workspace->restricted_list[i]" );
+                        __FILE__, __LINE__ );
             }
 
-            sfree( workspace->restricted, "Finalize_Workspace::workspace->restricted" );
-            sfree( workspace->restricted_list, "Finalize_Workspace::workspace->restricted_list" );
+            sfree( workspace->restricted, __FILE__, __LINE__ );
+            sfree( workspace->restricted_list, __FILE__, __LINE__ );
         }
     }
 
 #if defined(TEST_FORCES)
-    sfree( workspace->dDelta, "Finalize_Workspace::workspace->dDelta" );
-    sfree( workspace->f_ele, "Finalize_Workspace::workspace->f_ele" );
-    sfree( workspace->f_vdw, "Finalize_Workspace::workspace->f_vdw" );
-    sfree( workspace->f_be, "Finalize_Workspace::workspace->f_be" );
-    sfree( workspace->f_lp, "Finalize_Workspace::workspace->f_lp" );
-    sfree( workspace->f_ov, "Finalize_Workspace::workspace->f_ov" );
-    sfree( workspace->f_un, "Finalize_Workspace::workspace->f_un" );
-    sfree( workspace->f_ang, "Finalize_Workspace::workspace->f_ang" );
-    sfree( workspace->f_coa, "Finalize_Workspace::workspace->f_coa" );
-    sfree( workspace->f_pen, "Finalize_Workspace::workspace->f_pen" );
-    sfree( workspace->f_hb, "Finalize_Workspace::workspace->f_hb" );
-    sfree( workspace->f_tor, "Finalize_Workspace::workspace->f_tor" );
-    sfree( workspace->f_con, "Finalize_Workspace::workspace->f_con" );
+    sfree( workspace->dDelta, __FILE__, __LINE__ );
+    sfree( workspace->f_ele, __FILE__, __LINE__ );
+    sfree( workspace->f_vdw, __FILE__, __LINE__ );
+    sfree( workspace->f_be, __FILE__, __LINE__ );
+    sfree( workspace->f_lp, __FILE__, __LINE__ );
+    sfree( workspace->f_ov, __FILE__, __LINE__ );
+    sfree( workspace->f_un, __FILE__, __LINE__ );
+    sfree( workspace->f_ang, __FILE__, __LINE__ );
+    sfree( workspace->f_coa, __FILE__, __LINE__ );
+    sfree( workspace->f_pen, __FILE__, __LINE__ );
+    sfree( workspace->f_hb, __FILE__, __LINE__ );
+    sfree( workspace->f_tor, __FILE__, __LINE__ );
+    sfree( workspace->f_con, __FILE__, __LINE__ );
 #endif
 }
 
@@ -1695,6 +1695,10 @@ static void Finalize_Lists( reax_list **lists )
     if ( lists[BONDS]->allocated == TRUE )
     {
         Delete_List( TYP_BOND, lists[BONDS] );
+    }
+    if ( lists[OLD_BONDS]->allocated == TRUE )
+    {
+        Delete_List( TYP_BOND, lists[OLD_BONDS] );
     }
     if ( lists[THREE_BODIES]->allocated == TRUE )
     {
@@ -1719,70 +1723,70 @@ void Finalize_Out_Controls( reax_system *system, control_params *control,
 {
     if ( out_control->write_steps > 0 )
     {
-        sfclose( out_control->trj, "Finalize_Out_Controls::out_control->trj" );
+        sfclose( out_control->trj, __FILE__, __LINE__ );
     }
 
     if ( out_control->log_update_freq > 0 )
     {
-        sfclose( out_control->out, "Finalize_Out_Controls::out_control->out" );
-        sfclose( out_control->pot, "Finalize_Out_Controls::out_control->pot" );
-        sfclose( out_control->log, "Finalize_Out_Controls::out_control->log" );
+        sfclose( out_control->out, __FILE__, __LINE__ );
+        sfclose( out_control->pot, __FILE__, __LINE__ );
+        sfclose( out_control->log, __FILE__, __LINE__ );
     }
 
     if ( control->ensemble == sNPT || control->ensemble == iNPT
             || control->ensemble == aNPT || control->compute_pressure == TRUE )
     {
-        sfclose( out_control->prs, "Finalize_Out_Controls::out_control->prs" );
+        sfclose( out_control->prs, __FILE__, __LINE__ );
     }
 
     if ( control->molec_anal )
     {
-        sfclose( out_control->mol, "Finalize_Out_Controls::out_control->mol" );
+        sfclose( out_control->mol, __FILE__, __LINE__ );
 
         if ( control->num_ignored )
         {
-            sfclose( out_control->ign, "Finalize_Out_Controls::out_control->ign" );
+            sfclose( out_control->ign, __FILE__, __LINE__ );
         }
     }
 
     if ( control->dipole_anal )
     {
-        sfclose( out_control->dpl, "Finalize_Out_Controls::out_control->dpl" );
+        sfclose( out_control->dpl, __FILE__, __LINE__ );
     }
 
     if ( control->diffusion_coef )
     {
-        sfclose( out_control->drft, "Finalize_Out_Controls::out_control->drft" );
+        sfclose( out_control->drft, __FILE__, __LINE__ );
     }
 
 
 #if defined(TEST_ENERGY)
-    sfclose( out_control->ebond, "Finalize_Out_Controls::out_control->ebond" );
-    sfclose( out_control->elp, "Finalize_Out_Controls::out_control->elp" );
-    sfclose( out_control->eov, "Finalize_Out_Controls::out_control->eov" );
-    sfclose( out_control->eun, "Finalize_Out_Controls::out_control->eun" );
-    sfclose( out_control->eval, "Finalize_Out_Controls::out_control->eval" );
-    sfclose( out_control->epen, "Finalize_Out_Controls::out_control->epen" );
-    sfclose( out_control->ecoa, "Finalize_Out_Controls::out_control->ecoa" );
-    sfclose( out_control->ehb, "Finalize_Out_Controls::out_control->ehb" );
-    sfclose( out_control->etor, "Finalize_Out_Controls::out_control->etor" );
-    sfclose( out_control->econ, "Finalize_Out_Controls::out_control->econ" );
-    sfclose( out_control->evdw, "Finalize_Out_Controls::out_control->evdw" );
-    sfclose( out_control->ecou, "Finalize_Out_Controls::out_control->ecou" );
+    sfclose( out_control->ebond, __FILE__, __LINE__ );
+    sfclose( out_control->elp, __FILE__, __LINE__ );
+    sfclose( out_control->eov, __FILE__, __LINE__ );
+    sfclose( out_control->eun, __FILE__, __LINE__ );
+    sfclose( out_control->eval, __FILE__, __LINE__ );
+    sfclose( out_control->epen, __FILE__, __LINE__ );
+    sfclose( out_control->ecoa, __FILE__, __LINE__ );
+    sfclose( out_control->ehb, __FILE__, __LINE__ );
+    sfclose( out_control->etor, __FILE__, __LINE__ );
+    sfclose( out_control->econ, __FILE__, __LINE__ );
+    sfclose( out_control->evdw, __FILE__, __LINE__ );
+    sfclose( out_control->ecou, __FILE__, __LINE__ );
 #endif
 
 #if defined(TEST_FORCES)
-    sfclose( out_control->fbo, "Finalize_Out_Controls::out_control->fbo" );
-    sfclose( out_control->fdbo, "Finalize_Out_Controls::out_control->fdbo" );
-    sfclose( out_control->fbond, "Finalize_Out_Controls::out_control->fbond" );
-    sfclose( out_control->flp, "Finalize_Out_Controls::out_control->flp" );
-    sfclose( out_control->fatom, "Finalize_Out_Controls::out_control->fatom" );
-    sfclose( out_control->f3body, "Finalize_Out_Controls::out_control->f3body" );
-    sfclose( out_control->fhb, "Finalize_Out_Controls::out_control->fhb" );
-    sfclose( out_control->f4body, "Finalize_Out_Controls::out_control->f4body" );
-    sfclose( out_control->fnonb, "Finalize_Out_Controls::out_control->fnonb" );
-    sfclose( out_control->ftot, "Finalize_Out_Controls::out_control->ftot" );
-    sfclose( out_control->ftot2, "Finalize_Out_Controls::out_control->ftot2" );
+    sfclose( out_control->fbo, __FILE__, __LINE__ );
+    sfclose( out_control->fdbo, __FILE__, __LINE__ );
+    sfclose( out_control->fbond, __FILE__, __LINE__ );
+    sfclose( out_control->flp, __FILE__, __LINE__ );
+    sfclose( out_control->fatom, __FILE__, __LINE__ );
+    sfclose( out_control->f3body, __FILE__, __LINE__ );
+    sfclose( out_control->fhb, __FILE__, __LINE__ );
+    sfclose( out_control->f4body, __FILE__, __LINE__ );
+    sfclose( out_control->fnonb, __FILE__, __LINE__ );
+    sfclose( out_control->ftot, __FILE__, __LINE__ );
+    sfclose( out_control->ftot2, __FILE__, __LINE__ );
 #endif
 }
 
