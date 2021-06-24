@@ -282,6 +282,9 @@ void * setup2( int num_atoms, const int * const atom_type,
 
     for ( i = 0; i < spmd_handle->system->N; ++i )
     {
+        assert( atom_type[i] >= 0
+                && atom_type[i] < spmd_handle->system->reax_param->num_atom_types );
+
         x[0] = pos[3 * i];
         x[1] = pos[3 * i + 1];
         x[2] = pos[3 * i + 2];
@@ -289,16 +292,25 @@ void * setup2( int num_atoms, const int * const atom_type,
         Fit_to_Periodic_Box( &spmd_handle->system->box, x );
 
         spmd_handle->workspace->orig_id[i] = i + 1;
-//        spmd_handle->system->atoms[i].type = Get_Atom_Type( &system->reax_param,
-//                element, sizeof(element) );
         spmd_handle->system->atoms[i].type = atom_type[i];
-//        strncpy( spmd_handle->system->atoms[i].name, atom_name,
-//                sizeof(spmd_handle->system->atoms[i].name) - 1 );
-//        spmd_handle->system->atoms[i].name[sizeof(spmd_handle->system->atoms[i].name) - 1] = '\0';
+        strncpy( spmd_handle->system->atoms[i].name,
+                spmd_handle->system->reax_param.sbp[atom_type[i]].name,
+                sizeof(spmd_handle->system->atoms[i].name) - 1 );
+        spmd_handle->system->atoms[i].name[sizeof(spmd_handle->system->atoms[i].name) - 1] = '\0';
         rvec_Copy( spmd_handle->system->atoms[i].x, x );
         rvec_MakeZero( spmd_handle->system->atoms[i].v );
         rvec_MakeZero( spmd_handle->system->atoms[i].f );
         spmd_handle->system->atoms[i].q = 0.0;
+            
+        /* check for dummy atom */
+        if ( strncmp( spmd_handle->system->atoms[i].name, "X\0", 2 ) == 0 )
+        {
+           spmd_handle->system->atoms[i].is_dummy = TRUE;
+        }
+        else
+        {
+            spmd_handle->system->atoms[i].is_dummy = FALSE;            
+        }		
     }
 
     spmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * spmd_handle->system->N );
@@ -628,6 +640,9 @@ int reset2( const void * const handle, int num_atoms,
 
         for ( i = 0; i < spmd_handle->system->N; ++i )
         {
+            assert( atom_type[i] >= 0
+                    && atom_type[i] < spmd_handle->system->reax_param->num_atom_types );
+
             x[0] = pos[3 * i];
             x[1] = pos[3 * i + 1];
             x[2] = pos[3 * i + 2];
@@ -635,16 +650,25 @@ int reset2( const void * const handle, int num_atoms,
             Fit_to_Periodic_Box( &spmd_handle->system->box, x );
 
             spmd_handle->workspace->orig_id[i] = i + 1;
-//            spmd_handle->system->atoms[i].type = Get_Atom_Type( &system->reax_param,
-//                    element, sizeof(element) );
             spmd_handle->system->atoms[i].type = atom_type[i];
-//            strncpy( spmd_handle->system->atoms[i].name, atom_name,
-//                    sizeof(spmd_handle->system->atoms[i].name) - 1 );
-//            spmd_handle->system->atoms[i].name[sizeof(spmd_handle->system->atoms[i].name) - 1] = '\0';
+            strncpy( spmd_handle->system->atoms[i].name,
+                    spmd_handle->system->reax_param.sbp[atom_type[i]].name,
+                    sizeof(spmd_handle->system->atoms[i].name) - 1 );
+            spmd_handle->system->atoms[i].name[sizeof(spmd_handle->system->atoms[i].name) - 1] = '\0';
             rvec_Copy( spmd_handle->system->atoms[i].x, x );
             rvec_MakeZero( spmd_handle->system->atoms[i].v );
             rvec_MakeZero( spmd_handle->system->atoms[i].f );
             spmd_handle->system->atoms[i].q = 0.0;
+                
+            /* check for dummy atom */
+            if ( strncmp( spmd_handle->system->atoms[i].name, "X\0", 2 ) == 0 )
+            {
+               spmd_handle->system->atoms[i].is_dummy = TRUE;
+            }
+            else
+            {
+                spmd_handle->system->atoms[i].is_dummy = FALSE;            
+            }		
         }
 
         if ( spmd_handle->system->N > spmd_handle->system->N_max )
@@ -1037,8 +1061,17 @@ void * setup_qmmm( int qm_num_atoms, const char * const qm_symbols,
         rvec_MakeZero( spmd_handle->system->atoms[i].f );
         spmd_handle->system->atoms[i].q = 0.0;
         spmd_handle->system->atoms[i].q_init = 0.0;
-
         spmd_handle->system->atoms[i].qmmm_mask = TRUE;
+            
+        /* check for dummy atom */
+        if ( strncmp( element, "X\0", 2 ) == 0 )
+        {
+           spmd_handle->system->atoms[i].is_dummy = TRUE;
+        }
+        else
+        {
+            spmd_handle->system->atoms[i].is_dummy = FALSE;            
+        }		
     }
 
     for ( i = spmd_handle->system->N_qm; i < spmd_handle->system->N; ++i )
@@ -1063,8 +1096,17 @@ void * setup_qmmm( int qm_num_atoms, const char * const qm_symbols,
         rvec_MakeZero( spmd_handle->system->atoms[i].f );
         spmd_handle->system->atoms[i].q = mm_pos_q[4 * (i - spmd_handle->system->N_qm) + 3];
         spmd_handle->system->atoms[i].q_init = mm_pos_q[4 * (i - spmd_handle->system->N_qm) + 3];
-
         spmd_handle->system->atoms[i].qmmm_mask = FALSE;
+            
+        /* check for dummy atom */
+        if ( strncmp( element, "X\0", 2 ) == 0 )
+        {
+           spmd_handle->system->atoms[i].is_dummy = TRUE;
+        }
+        else
+        {
+            spmd_handle->system->atoms[i].is_dummy = FALSE;            
+        }		
     }
 
     spmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * spmd_handle->system->N );
@@ -1201,8 +1243,18 @@ int reset_qmmm( const void * const handle, int qm_num_atoms,
             rvec_MakeZero( spmd_handle->system->atoms[i].v );
             rvec_MakeZero( spmd_handle->system->atoms[i].f );
             spmd_handle->system->atoms[i].q = 0.0;
-
+            spmd_handle->system->atoms[i].q_init = 0.0;
             spmd_handle->system->atoms[i].qmmm_mask = TRUE;
+            
+            /* check for dummy atom */
+            if ( strncmp( element, "X\0", 2 ) == 0 )
+            {
+               spmd_handle->system->atoms[i].is_dummy = TRUE;
+            }
+            else
+            {
+                spmd_handle->system->atoms[i].is_dummy = FALSE;            
+            }		
         }
 
         for ( i = spmd_handle->system->N_qm; i < spmd_handle->system->N; ++i )
@@ -1228,6 +1280,16 @@ int reset_qmmm( const void * const handle, int qm_num_atoms,
             spmd_handle->system->atoms[i].q = mm_pos_q[4 * (i - spmd_handle->system->N_qm) + 3];
             spmd_handle->system->atoms[i].q_init = mm_pos_q[4 * (i - spmd_handle->system->N_qm) + 3];
             spmd_handle->system->atoms[i].qmmm_mask = FALSE;
+            
+            /* check for dummy atom */
+            if ( strncmp( element, "X\0", 2 ) == 0 )
+            {
+               spmd_handle->system->atoms[i].is_dummy = TRUE;
+            }
+            else
+            {
+                spmd_handle->system->atoms[i].is_dummy = FALSE;            
+            }		
         }
 
         if ( spmd_handle->system->N > spmd_handle->system->N_max )
