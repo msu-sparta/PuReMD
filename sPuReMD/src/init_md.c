@@ -374,23 +374,35 @@ static void Init_Workspace( reax_system *system, control_params *control,
     {
         case QEQ_CM:
             system->N_cm = system->N;
-            system->N_cm_max = system->N_max;
+            if ( realloc == TRUE || system->N_cm > system->N_cm_max )
+            {
+                system->N_cm_max = system->N_max;
+            }
             break;
         case EE_CM:
             if ( system->num_molec_charge_constraints == 0 )
             {
                 system->N_cm = system->N + 1;
-                system->N_cm_max = system->N_max + 1;
+                if ( realloc == TRUE || system->N_cm > system->N_cm_max )
+                {
+                    system->N_cm_max = system->N_max + 1;
+                }
             }
             else
             {
                 system->N_cm = system->N + system->num_molec_charge_constraints;
-                system->N_cm_max = system->N_max + system->num_molec_charge_constraints;
+                if ( realloc == TRUE || system->N_cm > system->N_cm_max )
+                {
+                    system->N_cm_max = system->N_max + system->num_molec_charge_constraints;
+                }
             }
             break;
         case ACKS2_CM:
             system->N_cm = 2 * system->N + 2;
-            system->N_cm_max = 2 * system->N_max + 2;
+            if ( realloc == TRUE || system->N_cm > system->N_cm_max )
+            {
+                system->N_cm_max = 2 * system->N_max + 2;
+            }
             break;
         default:
             fprintf( stderr, "[ERROR] Unknown charge method type. Terminating...\n" );
@@ -845,7 +857,8 @@ static void Init_Lists( reax_system *system, control_params *control,
     {
         Allocate_Matrix( &workspace->H, system->N_cm, system->N_cm_max, max_nnz );
     }
-    else if ( realloc == TRUE || workspace->H.m < max_nnz )
+    else if ( realloc == TRUE || workspace->H.m < max_nnz
+            || workspace->H.n_max < system->N_cm_max )
     {
         if ( workspace->H.allocated == TRUE )
         {
@@ -866,7 +879,8 @@ static void Init_Lists( reax_system *system, control_params *control,
          *   (non-bonded, hydrogen, 3body, etc.) */
         Allocate_Matrix( &workspace->H_sp, system->N_cm, system->N_cm_max, max_nnz );
     }
-    else if ( realloc == TRUE || workspace->H_sp.m < max_nnz )
+    else if ( realloc == TRUE || workspace->H_sp.m < max_nnz
+            || workspace->H.n_max < system->N_cm_max )
     {
         if ( workspace->H_sp.allocated == TRUE )
         {

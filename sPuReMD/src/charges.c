@@ -949,7 +949,8 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, fillin );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, fillin );
             }
-            else if ( workspace->L.m < fillin || realloc == TRUE )
+            else if ( workspace->L.m < fillin || workspace->L.n_max < system->N_cm_max
+                    || realloc == TRUE )
             {
                 Deallocate_Matrix( &workspace->L );
                 Deallocate_Matrix( &workspace->U );
@@ -970,7 +971,8 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
-            else if ( workspace->L.m < Hptr->m || realloc == TRUE )
+            else if ( workspace->L.m < Hptr->m || workspace->L.n_max < system->N_cm_max
+                    || realloc == TRUE )
             {
                 Deallocate_Matrix( &workspace->L );
                 Deallocate_Matrix( &workspace->U );
@@ -991,7 +993,8 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
-            else if ( workspace->L.m < Hptr->m || realloc == TRUE )
+            else if ( workspace->L.m < Hptr->m || workspace->L.n_max < system->N_cm_max
+                    || realloc == TRUE )
             {
                 Deallocate_Matrix( &workspace->L );
                 Deallocate_Matrix( &workspace->U );
@@ -1086,7 +1089,8 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
-            else if ( workspace->L.m < Hptr->m || realloc == TRUE )
+            else if ( workspace->L.m < Hptr->m || workspace->L.n_max < system->N_cm_max
+                    || realloc == TRUE )
             {
                 Deallocate_Matrix( &workspace->L );
                 Deallocate_Matrix( &workspace->U );
@@ -1113,7 +1117,8 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
-            else if ( workspace->L.m < Hptr->m || realloc == TRUE )
+            else if ( workspace->L.m < Hptr->m || workspace->L.n_max < system->N_cm_max
+                    || realloc == TRUE )
             {
                 Deallocate_Matrix( &workspace->L );
                 Deallocate_Matrix( &workspace->U );
@@ -1210,7 +1215,8 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
-            else if ( workspace->L.m < Hptr->m || realloc == TRUE )
+            else if ( workspace->L.m < Hptr->m || workspace->L.n_max < system->N_cm_max
+                    || realloc == TRUE )
             {
                 Deallocate_Matrix( &workspace->L );
                 Deallocate_Matrix( &workspace->U );
@@ -1239,7 +1245,8 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
             }
-            else if ( workspace->L.m < Hptr->m || realloc == TRUE )
+            else if ( workspace->L.m < Hptr->m || workspace->L.n_max < system->N_cm_max
+                    || realloc == TRUE )
             {
                 Deallocate_Matrix( &workspace->L );
                 Deallocate_Matrix( &workspace->U );

@@ -171,9 +171,13 @@ static void compute_full_sparse_matrix( const sparse_matrix * const A,
     {
         Allocate_Matrix( A_full, A->n, A->n_max, 2 * A->m - A->n );
     }
-    else if ( A_full->m < 2 * A->m - A->n || realloc == TRUE )
+    else if ( A_full->m < 2 * A->m - A->n || A_full->n_max < A->n_max
+            || realloc == TRUE )
     {
-        Deallocate_Matrix( A_full );
+        if ( A_full->allocated == TRUE )
+        {
+            Deallocate_Matrix( A_full );
+        }
         Allocate_Matrix( A_full, A->n, A->n_max, 2 * A->m - A->n );
     }
 
@@ -236,9 +240,13 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A,
     {
         Allocate_Matrix( A_spar_patt, A->n, A->n_max, A->m );
     }
-    else if ( A_spar_patt->m < A->m || realloc == TRUE )
+    else if ( A_spar_patt->m < A->m || A_spar_patt->n_max < A->n_max
+            || realloc == TRUE )
     {
-        Deallocate_Matrix( A_spar_patt );
+        if ( A_spar_patt->allocated == TRUE )
+        {
+            Deallocate_Matrix( A_spar_patt );
+        }
         Allocate_Matrix( A_spar_patt, A->n, A->n_max, A->m );
     }
 
@@ -355,9 +363,13 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A,
         Allocate_Matrix( A_app_inv, A_spar_patt_full->n,
                 A_spar_patt_full->n_max, A_spar_patt_full->m );
     }
-    else if ( A_app_inv->m < A->m || realloc == TRUE )
+    else if ( A_app_inv->m < A->m || A_app_inv->n_max < A->n_max
+            || realloc == TRUE )
     {
-        Deallocate_Matrix( A_app_inv );
+        if ( A_app_inv->allocated == TRUE )
+        {
+            Deallocate_Matrix( A_app_inv );
+        }
 
         /* A_app_inv has the same sparsity pattern
          * as A_spar_patt_full (omit non-zero values) */
@@ -2634,9 +2646,12 @@ void setup_graph_coloring( const control_params * const control,
     {
         Allocate_Matrix( H_p, H->n, H->n_max, H->m );
     }
-    else if ( H_p->m < H->m || realloc == TRUE )
+    else if ( H_p->m < H->m || H_p->n_max < H->n_max || realloc == TRUE )
     {
-        Deallocate_Matrix( H_p );
+        if ( H_p->allocated == TRUE )
+        {
+            Deallocate_Matrix( H_p );
+        }
         Allocate_Matrix( H_p, H->n, H->n_max, H->m );
     }
 
