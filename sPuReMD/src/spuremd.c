@@ -369,8 +369,6 @@ int simulate( const void * const handle )
                 spmd_handle->output_enabled,
                 spmd_handle->realloc );
 
-        spmd_handle->realloc = FALSE;
-
         /* compute f_0 */
         //if( control.restart == FALSE ) {
         Reset( spmd_handle->system, spmd_handle->control, spmd_handle->data,
@@ -476,6 +474,7 @@ int simulate( const void * const handle )
             fprintf( spmd_handle->out_control->log, "total: %.2f secs\n", spmd_handle->data->timing.elapsed );
         }
 
+        spmd_handle->realloc = FALSE;
         ret = SPUREMD_SUCCESS;
     }
 

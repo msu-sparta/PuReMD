@@ -1803,7 +1803,8 @@ struct spuremd_handle
     output_controls *out_control;
     /* TRUE if file I/O for simulation output enabled, FALSE otherwise */
     int output_enabled;
-    /* TRUE if reallocation is required due to num. atoms increasing, FALSE otherwise */
+    /* TRUE if reallocation is required due to num. atoms increasing
+     * (this includes first simulation run), FALSE otherwise */
     int realloc;
     /* Callback for getting simulation state at the end of each time step */
     callback_function callback;
