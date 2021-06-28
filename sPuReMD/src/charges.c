@@ -1521,7 +1521,17 @@ static void EE( reax_system * const system, control_params * const control,
         workspace->s[0][i] = system->atoms[i].q_init;
         workspace->mask_qmmm[i] = system->atoms[i].qmmm_mask;
     }
-    workspace->mask_qmmm[system->N_cm - 1] = 1;
+    if ( system->num_molec_charge_constraints == 0 )
+    {
+        workspace->mask_qmmm[system->N_cm - 1] = 1.0;
+    }
+    else
+    {
+        for ( int i = 0; i < system->num_molec_charge_constraints; ++i )
+        {
+            workspace->mask_qmmm[system->N + i] = 1.0;
+        }
+    }
 
     /* Mask the b vector as well */
     Vector_Mask_qmmm( workspace->b_s, workspace->mask_qmmm, system->N_cm );
