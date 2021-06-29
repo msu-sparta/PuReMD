@@ -915,155 +915,161 @@ static void Init_Forces( reax_system *system, control_params *control,
                         && system->atoms[j].qmmm_mask == TRUE )
                 {
 #endif
-                /* hydrogen bond lists */
-                if ( control->hbond_cut > 0.0
-                        && (ihb == H_ATOM || ihb == H_BONDING_ATOM)
-                        && nbr_pj->d <= control->hbond_cut )
+                /* Only non-dummy atoms can form bonds */
+                if ( system->atoms[i].is_dummy == FALSE
+                        && system->atoms[j].is_dummy == FALSE )
                 {
-                    jhb = sbp_j->p_hbond;
 
-                    if ( ihb == H_ATOM && jhb == H_BONDING_ATOM )
+                    /* hydrogen bond lists */
+                    if ( control->hbond_cut > 0.0
+                            && (ihb == H_ATOM || ihb == H_BONDING_ATOM)
+                            && nbr_pj->d <= control->hbond_cut )
                     {
-                        hbonds->hbond_list[ihb_top].nbr = j;
-                        hbonds->hbond_list[ihb_top].scl = 1;
-                        hbonds->hbond_list[ihb_top].ptr = nbr_pj;
-                        ++ihb_top;
-                        ++num_hbonds;
+                        jhb = sbp_j->p_hbond;
+
+                        if ( ihb == H_ATOM && jhb == H_BONDING_ATOM )
+                        {
+                            hbonds->hbond_list[ihb_top].nbr = j;
+                            hbonds->hbond_list[ihb_top].scl = 1;
+                            hbonds->hbond_list[ihb_top].ptr = nbr_pj;
+                            ++ihb_top;
+                            ++num_hbonds;
+                        }
+                        else if ( ihb == H_BONDING_ATOM && jhb == H_ATOM )
+                        {
+                            jhb_top = End_Index( workspace->hbond_index[j], hbonds );
+                            hbonds->hbond_list[jhb_top].nbr = i;
+                            hbonds->hbond_list[jhb_top].scl = -1;
+                            hbonds->hbond_list[jhb_top].ptr = nbr_pj;
+                            Set_End_Index( workspace->hbond_index[j], jhb_top + 1, hbonds );
+                            ++num_hbonds;
+                        }
                     }
-                    else if ( ihb == H_BONDING_ATOM && jhb == H_ATOM )
+
+                    /* uncorrected bond orders */
+                    if ( nbr_pj->d <= control->bond_cut )
                     {
-                        jhb_top = End_Index( workspace->hbond_index[j], hbonds );
-                        hbonds->hbond_list[jhb_top].nbr = i;
-                        hbonds->hbond_list[jhb_top].scl = -1;
-                        hbonds->hbond_list[jhb_top].ptr = nbr_pj;
-                        Set_End_Index( workspace->hbond_index[j], jhb_top + 1, hbonds );
-                        ++num_hbonds;
+                        r2 = SQR( r_ij );
+
+                        if ( sbp_i->r_s > 0.0 && sbp_j->r_s > 0.0 )
+                        {
+                            C12 = twbp->p_bo1 * POW( r_ij / twbp->r_s, twbp->p_bo2 );
+                            BO_s = (1.0 + control->bo_cut) * EXP( C12 );
+                        }
+                        else
+                        {
+                            C12 = 0.0;
+                            BO_s = 0.0;
+                        }
+
+                        if ( sbp_i->r_pi > 0.0 && sbp_j->r_pi > 0.0 )
+                        {
+                            C34 = twbp->p_bo3 * POW( r_ij / twbp->r_p, twbp->p_bo4 );
+                            BO_pi = EXP( C34 );
+                        }
+                        else
+                        {
+                            C34 = 0.0;
+                            BO_pi = 0.0;
+                        }
+
+                        if ( sbp_i->r_pi_pi > 0.0 && sbp_j->r_pi_pi > 0.0 )
+                        {
+                            C56 = twbp->p_bo5 * POW( r_ij / twbp->r_pp, twbp->p_bo6 );
+                            BO_pi2 = EXP( C56 );
+                        }
+                        else
+                        {
+                            C56 = 0.0;
+                            BO_pi2 = 0.0;
+                        }
+
+                        /* Initially BO values are the uncorrected ones, page 1 */
+                        BO = BO_s + BO_pi + BO_pi2;
+
+                        if ( BO >= control->bo_cut )
+                        {
+                            num_bonds += 2;
+                            /****** bonds i-j and j-i ******/
+                            ibond = &bonds->bond_list[btop_i];
+                            btop_j = End_Index( j, bonds );
+                            jbond = &bonds->bond_list[btop_j];
+
+                            ibond->nbr = j;
+                            jbond->nbr = i;
+                            ibond->d = r_ij;
+                            jbond->d = r_ij;
+                            rvec_Copy( ibond->dvec, nbr_pj->dvec );
+                            rvec_Scale( jbond->dvec, -1, nbr_pj->dvec );
+                            ivec_Copy( ibond->rel_box, nbr_pj->rel_box );
+                            ivec_Scale( jbond->rel_box, -1, nbr_pj->rel_box );
+                            ibond->dbond_index = btop_i;
+                            jbond->dbond_index = btop_i;
+                            ibond->sym_index = btop_j;
+                            jbond->sym_index = btop_i;
+                            ++btop_i;
+                            Set_End_Index( j, btop_j + 1, bonds );
+
+                            bo_ij = &ibond->bo_data;
+                            bo_ij->BO = BO;
+                            bo_ij->BO_s = BO_s;
+                            bo_ij->BO_pi = BO_pi;
+                            bo_ij->BO_pi2 = BO_pi2;
+                            bo_ji = &jbond->bo_data;
+                            bo_ji->BO = BO;
+                            bo_ji->BO_s = BO_s;
+                            bo_ji->BO_pi = BO_pi;
+                            bo_ji->BO_pi2 = BO_pi2;
+
+                            /* Bond Order page2-3, derivative of total bond order prime */
+                            Cln_BOp_s = twbp->p_bo2 * C12 / r2;
+                            Cln_BOp_pi = twbp->p_bo4 * C34 / r2;
+                            Cln_BOp_pi2 = twbp->p_bo6 * C56 / r2;
+
+                            /* Only dln_BOp_xx wrt. dr_i is stored here, note that
+                               dln_BOp_xx/dr_i = -dln_BOp_xx/dr_j and all others are 0 */
+                            rvec_Scale( bo_ij->dln_BOp_s, -bo_ij->BO_s * Cln_BOp_s, ibond->dvec );
+                            rvec_Scale( bo_ij->dln_BOp_pi, -bo_ij->BO_pi * Cln_BOp_pi, ibond->dvec );
+                            rvec_Scale( bo_ij->dln_BOp_pi2,
+                                    -bo_ij->BO_pi2 * Cln_BOp_pi2, ibond->dvec );
+                            rvec_Scale( bo_ji->dln_BOp_s, -1., bo_ij->dln_BOp_s );
+                            rvec_Scale( bo_ji->dln_BOp_pi, -1., bo_ij->dln_BOp_pi );
+                            rvec_Scale( bo_ji->dln_BOp_pi2, -1., bo_ij->dln_BOp_pi2 );
+
+                            /* Only dBOp wrt. dr_i is stored here, note that
+                               dBOp/dr_i = -dBOp/dr_j and all others are 0 */
+                            rvec_Scale( bo_ij->dBOp, -(bo_ij->BO_s * Cln_BOp_s
+                                        + bo_ij->BO_pi * Cln_BOp_pi
+                                        + bo_ij->BO_pi2 * Cln_BOp_pi2), ibond->dvec );
+                            rvec_Scale( bo_ji->dBOp, -1., bo_ij->dBOp );
+
+                            rvec_Add( workspace->dDeltap_self[i], bo_ij->dBOp );
+                            rvec_Add( workspace->dDeltap_self[j], bo_ji->dBOp );
+
+                            bo_ij->BO_s -= control->bo_cut;
+                            bo_ij->BO -= control->bo_cut;
+                            bo_ji->BO_s -= control->bo_cut;
+                            bo_ji->BO -= control->bo_cut;
+                            workspace->total_bond_order[i] += bo_ij->BO;
+                            workspace->total_bond_order[j] += bo_ji->BO;
+                            bo_ij->Cdbo = 0.0;
+                            bo_ij->Cdbopi = 0.0;
+                            bo_ij->Cdbopi2 = 0.0;
+                            bo_ji->Cdbo = 0.0;
+                            bo_ji->Cdbopi = 0.0;
+                            bo_ji->Cdbopi2 = 0.0;
+
+                            Set_End_Index( j, btop_j + 1, bonds );
+                        }
                     }
                 }
-
-                /* uncorrected bond orders */
-                if ( nbr_pj->d <= control->bond_cut )
-                {
-                    r2 = SQR( r_ij );
-
-                    if ( sbp_i->r_s > 0.0 && sbp_j->r_s > 0.0 )
-                    {
-                        C12 = twbp->p_bo1 * POW( r_ij / twbp->r_s, twbp->p_bo2 );
-                        BO_s = (1.0 + control->bo_cut) * EXP( C12 );
-                    }
-                    else
-                    {
-                        C12 = 0.0;
-                        BO_s = 0.0;
-                    }
-
-                    if ( sbp_i->r_pi > 0.0 && sbp_j->r_pi > 0.0 )
-                    {
-                        C34 = twbp->p_bo3 * POW( r_ij / twbp->r_p, twbp->p_bo4 );
-                        BO_pi = EXP( C34 );
-                    }
-                    else
-                    {
-                        C34 = 0.0;
-                        BO_pi = 0.0;
-                    }
-
-                    if ( sbp_i->r_pi_pi > 0.0 && sbp_j->r_pi_pi > 0.0 )
-                    {
-                        C56 = twbp->p_bo5 * POW( r_ij / twbp->r_pp, twbp->p_bo6 );
-                        BO_pi2 = EXP( C56 );
-                    }
-                    else
-                    {
-                        C56 = 0.0;
-                        BO_pi2 = 0.0;
-                    }
-
-                    /* Initially BO values are the uncorrected ones, page 1 */
-                    BO = BO_s + BO_pi + BO_pi2;
-
-                    if ( BO >= control->bo_cut )
-                    {
-                        num_bonds += 2;
-                        /****** bonds i-j and j-i ******/
-                        ibond = &bonds->bond_list[btop_i];
-                        btop_j = End_Index( j, bonds );
-                        jbond = &bonds->bond_list[btop_j];
-
-                        ibond->nbr = j;
-                        jbond->nbr = i;
-                        ibond->d = r_ij;
-                        jbond->d = r_ij;
-                        rvec_Copy( ibond->dvec, nbr_pj->dvec );
-                        rvec_Scale( jbond->dvec, -1, nbr_pj->dvec );
-                        ivec_Copy( ibond->rel_box, nbr_pj->rel_box );
-                        ivec_Scale( jbond->rel_box, -1, nbr_pj->rel_box );
-                        ibond->dbond_index = btop_i;
-                        jbond->dbond_index = btop_i;
-                        ibond->sym_index = btop_j;
-                        jbond->sym_index = btop_i;
-                        ++btop_i;
-                        Set_End_Index( j, btop_j + 1, bonds );
-
-                        bo_ij = &ibond->bo_data;
-                        bo_ij->BO = BO;
-                        bo_ij->BO_s = BO_s;
-                        bo_ij->BO_pi = BO_pi;
-                        bo_ij->BO_pi2 = BO_pi2;
-                        bo_ji = &jbond->bo_data;
-                        bo_ji->BO = BO;
-                        bo_ji->BO_s = BO_s;
-                        bo_ji->BO_pi = BO_pi;
-                        bo_ji->BO_pi2 = BO_pi2;
-
-                        /* Bond Order page2-3, derivative of total bond order prime */
-                        Cln_BOp_s = twbp->p_bo2 * C12 / r2;
-                        Cln_BOp_pi = twbp->p_bo4 * C34 / r2;
-                        Cln_BOp_pi2 = twbp->p_bo6 * C56 / r2;
-
-                        /* Only dln_BOp_xx wrt. dr_i is stored here, note that
-                           dln_BOp_xx/dr_i = -dln_BOp_xx/dr_j and all others are 0 */
-                        rvec_Scale( bo_ij->dln_BOp_s, -bo_ij->BO_s * Cln_BOp_s, ibond->dvec );
-                        rvec_Scale( bo_ij->dln_BOp_pi, -bo_ij->BO_pi * Cln_BOp_pi, ibond->dvec );
-                        rvec_Scale( bo_ij->dln_BOp_pi2,
-                                -bo_ij->BO_pi2 * Cln_BOp_pi2, ibond->dvec );
-                        rvec_Scale( bo_ji->dln_BOp_s, -1., bo_ij->dln_BOp_s );
-                        rvec_Scale( bo_ji->dln_BOp_pi, -1., bo_ij->dln_BOp_pi );
-                        rvec_Scale( bo_ji->dln_BOp_pi2, -1., bo_ij->dln_BOp_pi2 );
-
-                        /* Only dBOp wrt. dr_i is stored here, note that
-                           dBOp/dr_i = -dBOp/dr_j and all others are 0 */
-                        rvec_Scale( bo_ij->dBOp, -(bo_ij->BO_s * Cln_BOp_s
-                                    + bo_ij->BO_pi * Cln_BOp_pi
-                                    + bo_ij->BO_pi2 * Cln_BOp_pi2), ibond->dvec );
-                        rvec_Scale( bo_ji->dBOp, -1., bo_ij->dBOp );
-
-                        rvec_Add( workspace->dDeltap_self[i], bo_ij->dBOp );
-                        rvec_Add( workspace->dDeltap_self[j], bo_ji->dBOp );
-
-                        bo_ij->BO_s -= control->bo_cut;
-                        bo_ij->BO -= control->bo_cut;
-                        bo_ji->BO_s -= control->bo_cut;
-                        bo_ji->BO -= control->bo_cut;
-                        workspace->total_bond_order[i] += bo_ij->BO;
-                        workspace->total_bond_order[j] += bo_ji->BO;
-                        bo_ij->Cdbo = 0.0;
-                        bo_ij->Cdbopi = 0.0;
-                        bo_ij->Cdbopi2 = 0.0;
-                        bo_ji->Cdbo = 0.0;
-                        bo_ji->Cdbopi = 0.0;
-                        bo_ji->Cdbopi2 = 0.0;
-
-                        Set_End_Index( j, btop_j + 1, bonds );
-                    }
 #if defined(QMMM)
                 }
 #endif
-                }
+            }
 #if defined(QMMM)
             }
 #endif
-            }
         }
 
         /* diagonal entry */
@@ -1186,6 +1192,11 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
             flag = FALSE;
             flag_sp = FALSE;
 
+#if defined(QMMM)
+            if ( system->atoms[i].qmmm_mask == TRUE
+                    || system->atoms[j].qmmm_mask == TRUE )
+            {
+#endif	
             /* check if reneighboring step --
              * atomic distances just computed via
              * Verlet list, so use current distances */
@@ -1272,6 +1283,11 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
                     }
                 }
 
+#if defined(QMMM)
+                if ( system->atoms[i].qmmm_mask == TRUE
+                        && system->atoms[j].qmmm_mask == TRUE )
+                {
+#endif
                 /* Only non-dummy atoms can form bonds */
                 if ( system->atoms[i].is_dummy == FALSE
                         && system->atoms[j].is_dummy == FALSE )
@@ -1419,7 +1435,13 @@ static void Init_Forces_Tab( reax_system *system, control_params *control,
                         }
                     }
                 }
+#if defined(QMMM)
+                }
+#endif
             }
+#if defined(QMMM)
+            }
+#endif
         }
 
         /* diagonal entry */
