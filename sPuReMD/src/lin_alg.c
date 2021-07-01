@@ -523,7 +523,11 @@ int Estimate_LU_Fill( const sparse_matrix * const A, const real * const droptol 
 }
 
 
-/* Jacobi preconditioner computation */
+/* Compute diagonal inverese (Jacobi) preconditioner
+ *
+ * H: matrix used to compute preconditioner, in CSR format
+ * Hdia_inv: computed diagonal inverse preconditioner
+ */
 real jacobi( const sparse_matrix * const H, real * const Hdia_inv )
 {
     unsigned int i;
@@ -2755,7 +2759,7 @@ void jacobi_iter( const static_storage * const workspace,
 }
 
 
-/* Apply left-sided preconditioning while solver M^{-1}Ax = M^{-1}b
+/* Apply left-sided preconditioning while solving M^{-1}Ax = M^{-1}b
  *
  * workspace: data struct containing matrices, stored in CSR
  * control: data struct containing parameters
@@ -2771,7 +2775,7 @@ void jacobi_iter( const static_storage * const workspace,
  *   Each row of a matrix has at least one non-zero (i.e., no rows with all zeros) */
 static void apply_preconditioner( const static_storage * const workspace,
         const control_params * const control, const real * const y, real * const x,
-        const int fresh_pre, const int side )
+        int fresh_pre, int side )
 {
     int i, si;
 

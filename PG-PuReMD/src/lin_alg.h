@@ -32,6 +32,8 @@ extern "C" {
 
 void Sort_Matrix_Rows( sparse_matrix * const );
 
+void jacobi( sparse_matrix const * const, real * const );
+
 void setup_sparse_approx_inverse( reax_system const * const,
         simulation_data * const,
         storage * const, mpi_datatypes * const, 
@@ -45,37 +47,37 @@ real sparse_approx_inverse( reax_system const * const,
 int SDM( reax_system const * const, control_params const * const,
         simulation_data * const,
         storage * const, sparse_matrix * const, real * const,
-        real, real * const, mpi_datatypes * const );
+        real, real * const, mpi_datatypes * const, int );
 
 int dual_CG( reax_system const * const, control_params const * const,
         simulation_data * const,
         storage * const, sparse_matrix * const,
-        rvec2 * const, real, rvec2 * const, mpi_datatypes * const );
+        rvec2 * const, real, rvec2 * const, mpi_datatypes * const, int );
 
 int CG( reax_system const * const, control_params const * const,
         simulation_data * const,
         storage * const, sparse_matrix * const, real * const,
-        real, real * const, mpi_datatypes * const );
+        real, real * const, mpi_datatypes * const, int );
 
 int BiCGStab( reax_system const * const, control_params const * const,
         simulation_data * const,
         storage * const, sparse_matrix * const, real * const,
-        real, real * const, mpi_datatypes * const );
+        real, real * const, mpi_datatypes * const, int );
 
 int dual_PIPECG( reax_system const * const, control_params const * const,
         simulation_data * const,
         storage * const, sparse_matrix * const,
-        rvec2 * const, real, rvec2 * const, mpi_datatypes * const );
+        rvec2 * const, real, rvec2 * const, mpi_datatypes * const, int );
 
 int PIPECG( reax_system const * const, control_params const * const,
         simulation_data * const,
         storage * const, sparse_matrix * const, real * const,
-        real, real * const, mpi_datatypes * const );
+        real, real * const, mpi_datatypes * const, int );
 
 int PIPECR( reax_system const * const, control_params const * const,
         simulation_data * const,
         storage * const, sparse_matrix * const, real * const,
-        real, real * const, mpi_datatypes * const );
+        real, real * const, mpi_datatypes * const, int );
 
 
 #ifdef __cplusplus

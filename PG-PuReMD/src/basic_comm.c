@@ -740,26 +740,6 @@ void Coll_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
 }
 
 
-real Parallel_Norm( real const * const v, const int n, MPI_Comm comm )
-{
-    int i, ret;
-    real sum_l, norm_sqr;
-
-    sum_l = 0.0;
-
-    /* compute local part of vector 2-norm */
-    for ( i = 0; i < n; ++i )
-    {
-        sum_l += SQR( v[i] );
-    }
-
-    ret = MPI_Allreduce( &sum_l, &norm_sqr, 1, MPI_DOUBLE, MPI_SUM, comm );
-    Check_MPI_Error( ret, __FILE__, __LINE__ );
-
-    return SQRT( norm_sqr );
-}
-
-
 real Parallel_Dot( real const * const v1, real const * const v2,
         const int n, MPI_Comm comm )
 {
@@ -778,26 +758,6 @@ real Parallel_Dot( real const * const v1, real const * const v2,
     Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     return dot;
-}
-
-
-real Parallel_Vector_Acc( real const * const v, const int n,
-        MPI_Comm comm )
-{
-    int i, ret;
-    real my_acc, res;
-
-    /* compute local part of vector element-wise sum */
-    my_acc = 0.0;
-    for ( i = 0; i < n; ++i )
-    {
-        my_acc += v[i];
-    }
-
-    ret = MPI_Allreduce( &my_acc, &res, 1, MPI_DOUBLE, MPI_SUM, comm );
-    Check_MPI_Error( ret, __FILE__, __LINE__ );
-
-    return res;
 }
 
 
