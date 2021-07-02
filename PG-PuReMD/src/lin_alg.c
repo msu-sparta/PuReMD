@@ -2491,6 +2491,154 @@ static void apply_preconditioner( reax_system const * const system,
 }
 
 
+/* Steepest Descent 
+ * This function performs dual iteration for QEq (2 simultaneous solves)
+ * */
+int dual_SDM( reax_system const * const system, control_params const * const control,
+        simulation_data * const data, storage * const workspace,
+        sparse_matrix * const H, rvec2 * const b, real tol,
+        rvec2 * const x, mpi_datatypes * const  mpi_data, int fresh_pre )
+{
+    int i, j, ret;
+    rvec2 tmp, alpha, bnorm, sig;
+    real redux[4];
+#if defined(LOG_PERFORMANCE)
+    real time;
+#endif
+
+#if defined(NEUTRAL_TERRITORY)
+    Dual_Sparse_MatVec( system, control, data, mpi_data, H, x, 
+            H->NT, workspace->q2 );
+#else
+    Dual_Sparse_MatVec( system, control, data, mpi_data, H, x, 
+            system->N, workspace->q2 );
+#endif
+
+#if defined(LOG_PERFORMANCE)
+    time = Get_Time( );
+#endif
+
+    Vector_Sum_rvec2( workspace->r2, 1.0, 1.0, b,
+            -1.0, -1.0, workspace->q2, system->n );
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
+    dual_apply_preconditioner( system, workspace, control, data, mpi_data, workspace->r2,
+            workspace->q2, fresh_pre, LEFT );
+    dual_apply_preconditioner( system, workspace, control, data, mpi_data, workspace->q2,
+            workspace->d2, fresh_pre, RIGHT );
+
+#if defined(LOG_PERFORMANCE)
+    time = Get_Time( );
+#endif
+
+    Dot_local_rvec2( b, b, system->n, &redux[0], &redux[1] );
+    Dot_local_rvec2( workspace->r2, workspace->d2, system->n, &redux[2], &redux[3] );
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
+    ret = MPI_Allreduce( MPI_IN_PLACE, redux, 4, MPI_DOUBLE,
+            MPI_SUM, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    bnorm[0] = SQRT( redux[0] );
+    bnorm[1] = SQRT( redux[1] );
+    sig[0] = redux[2];
+    sig[1] = redux[3];
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
+
+    for ( i = 0; i < control->cm_solver_max_iters; ++i )
+    {
+        if ( SQRT(sig[0]) / bnorm[0] <= tol || SQRT(sig[1]) / bnorm[1] <= tol )
+        {
+            break;
+        }
+
+#if defined(NEUTRAL_TERRITORY)
+        Dual_Sparse_MatVec( system, control, data, mpi_data, H, workspace->d2,
+                H->NT, workspace->q2 );
+#else
+        Dual_Sparse_MatVec( system, control, data, mpi_data, H, workspace->d2,
+                system->N, workspace->q2 );
+#endif
+
+#if defined(LOG_PERFORMANCE)
+        time = Get_Time( );
+#endif
+
+        Dot_local_rvec2( workspace->r2, workspace->d2, system->n, &redux[0], &redux[1] );
+        Dot_local_rvec2( workspace->d2, workspace->q2, system->n, &redux[2], &redux[3] );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
+        ret = MPI_Allreduce( MPI_IN_PLACE, redux, 4, MPI_DOUBLE,
+                MPI_SUM, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
+
+        sig[0] = redux[0];
+        sig[1] = redux[1];
+        tmp[0] = redux[2];
+        tmp[1] = redux[3];
+        alpha[0] = sig[0] / tmp[0];
+        alpha[1] = sig[1] / tmp[1];
+        Vector_Add_rvec2( x, alpha[0], alpha[1], workspace->d2, system->n );
+        Vector_Add_rvec2( workspace->r2,
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->q2, system->n );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
+        dual_apply_preconditioner( system, workspace, control, data, mpi_data, workspace->r2,
+                workspace->q2, FALSE, LEFT );
+        dual_apply_preconditioner( system, workspace, control, data, mpi_data, workspace->q2,
+                workspace->d2, FALSE, RIGHT );
+    }
+
+    /* continue to solve the system that has not converged yet */
+    if ( sig[0] / bnorm[0] > tol )
+    {
+        Vector_Copy_From_rvec2( workspace->s, workspace->x, 0, system->n );
+
+        i += SDM( system, control, data, workspace,
+                H, workspace->b_s, tol, workspace->s, mpi_data, FALSE );
+
+        Vector_Copy_To_rvec2( workspace->x, workspace->s, 0, system->n );
+    }
+    else if ( sig[1] / bnorm[1] > tol )
+    {
+        Vector_Copy_From_rvec2( workspace->t, workspace->x, 1, system->n );
+
+        i += SDM( system, control, data, workspace,
+                H, workspace->b_t, tol, workspace->t, mpi_data, FALSE );
+
+        Vector_Copy_To_rvec2( workspace->x, workspace->t, 1, system->n );
+    }
+
+    if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )
+    {
+        fprintf( stderr, "[WARNING] SDM convergence failed (%d iters)\n", i );
+        fprintf( stderr, "  [INFO] Rel. residual error (s solve): %f\n", SQRT(sig[0]) / bnorm[0] );
+        fprintf( stderr, "  [INFO] Rel. residual error (t solve): %f\n", SQRT(sig[1]) / bnorm[1] );
+        return i;
+    }
+
+    return i;
+}
+
+
 /* Steepest Descent */
 int SDM( reax_system const * const system, control_params const * const control,
         simulation_data * const data, storage * const workspace,
@@ -2605,7 +2753,7 @@ int SDM( reax_system const * const system, control_params const * const control,
 
 
 /* Dual iteration of the Preconditioned Conjugate Gradient Method
- * for QEq (2 simaltaneous solves) */
+ * for QEq (2 simultaneous solves) */
 int dual_CG( reax_system const * const system, control_params const * const control,
         simulation_data * const data,
         storage * const workspace, sparse_matrix * const H, rvec2 * const b,
@@ -2922,6 +3070,309 @@ int CG( reax_system const * const system, control_params const * const control,
         fprintf( stderr, "[WARNING] CG convergence failed (%d iters)\n", i );
         fprintf( stderr, "  [INFO] Rel. residual error: %e\n", r_norm / b_norm );
         return i;
+    }
+
+    return i;
+}
+
+
+/* Bi-conjugate gradient stabalized method with left preconditioning for
+ * solving nonsymmetric linear systems.
+ * This function performs dual iteration for QEq (2 simultaneous solves)
+ *
+ * system: 
+ * workspace: struct containing storage for workspace for the linear solver
+ * control: struct containing parameters governing the simulation and numeric methods
+ * data: struct containing simulation data (e.g., atom info)
+ * H: sparse, symmetric matrix, lower half stored in CSR format
+ * b: right-hand side of the linear system
+ * tol: tolerence compared against the relative residual for determining convergence
+ * x: inital guess
+ * mpi_data: 
+ *
+ * Reference: Netlib (in MATLAB)
+ *  http://www.netlib.org/templates/matlab/bicgstab.m
+ * */
+int dual_BiCGStab( reax_system const * const system, control_params const * const control,
+        simulation_data * const data,
+        storage * const workspace, sparse_matrix * const H, rvec2 * const b,
+        real tol, rvec2 * const x, mpi_datatypes * const  mpi_data, int fresh_pre )
+{
+    int i, j, ret;
+    rvec2 tmp, alpha, beta, omega, sigma, rho, rho_old, r_norm, b_norm;
+    real time, redux[4];
+
+#if defined(NEUTRAL_TERRITORY)
+    Dual_Sparse_MatVec( system, control, data, mpi_data, H, x, 
+            H->NT, workspace->d2 );
+#else
+    Dual_Sparse_MatVec( system, control, data, mpi_data, H, x, 
+            system->N, workspace->d2 );
+#endif
+
+#if defined(LOG_PERFORMANCE)
+    time = Get_Time( );
+#endif
+
+    Vector_Sum_rvec2( workspace->r2, 1.0, 1.0, b, -1.0, -1.0, workspace->d2, system->n );
+    Dot_local_rvec2( b, b, system->n, &redux[0], &redux[1] );
+    Dot_local_rvec2( workspace->r2, workspace->r2, system->n, &redux[2], &redux[3] );
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
+    ret = MPI_Allreduce( MPI_IN_PLACE, redux, 4, MPI_DOUBLE,
+            MPI_SUM, MPI_COMM_WORLD );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
+
+    b_norm[0] = SQRT( redux[0] );
+    b_norm[1] = SQRT( redux[1] );
+    r_norm[0] = SQRT( redux[2] );
+    r_norm[1] = SQRT( redux[3] );
+    if ( b_norm[0] == 0.0 )
+    {
+        b_norm[0] = 1.0;
+    }
+    if ( b_norm[1] == 0.0 )
+    {
+        b_norm[1] = 1.0;
+    }
+    Vector_Copy_rvec2( workspace->r_hat2, workspace->r2, system->n );
+    omega[0] = 1.0;
+    omega[1] = 1.0;
+    rho[0] = 1.0;
+    rho[1] = 1.0;
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
+    for ( i = 0; i < control->cm_solver_max_iters; ++i )
+    {
+        if ( r_norm[0] / b_norm[0] <= tol || r_norm[1] / b_norm[1] <= tol )
+        {
+            break;
+        }
+
+        Dot_local_rvec2( workspace->r_hat2, workspace->r2, system->n,
+                &redux[0], &redux[1] );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
+        ret = MPI_Allreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE,
+                MPI_SUM, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
+
+        rho[0] = redux[0];
+        rho[1] = redux[1];
+        if ( rho[0] == 0.0 || rho[1] == 0.0 )
+        {
+            break;
+        }
+        if ( i > 0 )
+        {
+            beta[0] = (rho[0] / rho_old[0]) * (alpha[0] / omega[0]);
+            beta[1] = (rho[1] / rho_old[1]) * (alpha[1] / omega[1]);
+            Vector_Sum_rvec2( workspace->q2, 1.0, 1.0, workspace->p2,
+                    -1.0 * omega[0], -1.0 * omega[1], workspace->z2, system->n );
+            Vector_Sum_rvec2( workspace->p2, 1.0, 1.0, workspace->r2,
+                    beta[0], beta[1], workspace->q2, system->n );
+        }
+        else
+        {
+            Vector_Copy_rvec2( workspace->p2, workspace->r2, system->n );
+        }
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
+        dual_apply_preconditioner( system, workspace, control, data, mpi_data, workspace->p2,
+                workspace->y2, i == 0 ? fresh_pre : FALSE, LEFT );
+        dual_apply_preconditioner( system, workspace, control, data, mpi_data, workspace->y2,
+                workspace->d2, i == 0 ? fresh_pre : FALSE, RIGHT );
+
+#if defined(NEUTRAL_TERRITORY)
+        Dual_Sparse_MatVec( system, control, data, mpi_data, H, workspace->d2,
+                H->NT, workspace->z2 );
+#else
+        Dual_Sparse_MatVec( system, control, data, mpi_data, H, workspace->d2,
+                system->N, workspace->z2 );
+#endif
+
+#if defined(LOG_PERFORMANCE)
+        time = Get_Time( );
+#endif
+
+        Dot_local_rvec2( workspace->r_hat2, workspace->z2, system->n,
+                &redux[0], &redux[1] );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
+        ret = MPI_Allreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE,
+                MPI_SUM, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
+
+        tmp[0] = redux[0];
+        tmp[1] = redux[1];
+        alpha[0] = rho[0] / tmp[0];
+        alpha[1] = rho[1] / tmp[1];
+        Vector_Sum_rvec2( workspace->q2, 1.0, 1.0, workspace->r2,
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->z2, system->n );
+        Dot_local_rvec2( workspace->q2, workspace->q2, system->n,
+                &redux[0], &redux[1] );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
+        ret = MPI_Allreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE,
+                MPI_SUM, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
+
+        tmp[0] = redux[0];
+        tmp[1] = redux[1];
+        /* early convergence check */
+        if ( tmp[0] < tol || tmp[1] < tol )
+        {
+            Vector_Add_rvec2( x, alpha[0], alpha[1], workspace->d2, system->n );
+            break;
+        }
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
+        dual_apply_preconditioner( system, workspace, control, data, mpi_data, workspace->q2,
+                workspace->y2, FALSE, LEFT );
+        dual_apply_preconditioner( system, workspace, control, data, mpi_data, workspace->y2,
+                workspace->q_hat2, FALSE, RIGHT );
+
+#if defined(NEUTRAL_TERRITORY)
+        Dual_Sparse_MatVec( system, control, data, mpi_data, H, workspace->q_hat2,
+                H->NT, workspace->y2 );
+#else
+        Dual_Sparse_MatVec( system, control, data, mpi_data, H, workspace->q_hat2,
+                system->N, workspace->y2 );
+#endif
+
+#if defined(LOG_PERFORMANCE)
+        time = Get_Time( );
+#endif
+
+        Dot_local_rvec2( workspace->y2, workspace->q2, system->n, &redux[0], &redux[1] );
+        Dot_local_rvec2( workspace->y2, workspace->y2, system->n, &redux[2], &redux[3] );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
+        ret = MPI_Allreduce( MPI_IN_PLACE, redux, 4, MPI_DOUBLE,
+                MPI_SUM, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
+
+        sigma[0] = redux[0];
+        sigma[1] = redux[1];
+        tmp[0] = redux[2];
+        tmp[1] = redux[3];
+        omega[0] = sigma[0] / tmp[0];
+        omega[1] = sigma[1] / tmp[1];
+        Vector_Sum_rvec2( workspace->g2, alpha[0], alpha[1], workspace->d2,
+                omega[0], omega[1], workspace->q_hat2, system->n );
+        Vector_Add_rvec2( x, 1.0, 1.0, workspace->g2, system->n );
+        Vector_Sum_rvec2( workspace->r2, 1.0, 1.0, workspace->q2,
+                -1.0 * omega[0], -1.0 * omega[1], workspace->y2, system->n );
+        Dot_local_rvec2( workspace->r2, workspace->r2, system->n, &redux[0], &redux[1] );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
+        ret = MPI_Allreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE,
+                MPI_SUM, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
+
+        r_norm[0] = SQRT( redux[0] );
+        r_norm[1] = SQRT( redux[1] );
+        if ( omega[0] == 0.0 || omega[1] == 0.0 )
+        {
+            break;
+        }
+        rho_old[0] = rho[0];
+        rho_old[1] = rho[1];
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+    }
+
+    if ( (omega[0] == 0.0 || omega[1] == 0.0) && system->my_rank == MASTER_NODE )
+    {
+        fprintf( stderr, "[WARNING] BiCGStab numeric breakdown (%d iters)\n", i );
+        fprintf( stderr, "  [INFO] omega = %e\n", omega );
+    }
+    else if ( (rho[0] == 0.0 || rho[1] == 0.0) && system->my_rank == MASTER_NODE )
+    {
+        fprintf( stderr, "[WARNING] BiCGStab numeric breakdown (%d iters)\n", i );
+        fprintf( stderr, "  [INFO] rho = %e\n", rho );
+    }
+
+    /* continue to solve the system that has not converged yet */
+    if ( r_norm[0] / b_norm[0] > tol )
+    {
+        Vector_Copy_From_rvec2( workspace->s, workspace->x, 0, system->n );
+
+        i += BiCGStab( system, control, data, workspace,
+                H, workspace->b_s, tol, workspace->s, mpi_data, FALSE );
+
+        Vector_Copy_To_rvec2( workspace->x, workspace->s, 0, system->n );
+    }
+    else if ( r_norm[1] / b_norm[1] > tol )
+    {
+        Vector_Copy_From_rvec2( workspace->t, workspace->x, 1, system->n );
+
+        i += BiCGStab( system, control, data, workspace,
+                H, workspace->b_t, tol, workspace->t, mpi_data, FALSE );
+
+        Vector_Copy_To_rvec2( workspace->x, workspace->t, 1, system->n );
+    }
+
+
+    if ( i >= control->cm_solver_max_iters
+            && system->my_rank == MASTER_NODE )
+    {
+        fprintf( stderr, "[WARNING] BiCGStab convergence failed (%d iters)\n", i );
+        fprintf( stderr, "  [INFO] Rel. residual error (s solve): %e\n", r_norm[0] / b_norm[0] );
+        fprintf( stderr, "  [INFO] Rel. residual error (t solve): %e\n", r_norm[1] / b_norm[1] );
     }
 
     return i;
@@ -3565,6 +4016,209 @@ int PIPECG( reax_system const * const system, control_params const * const contr
     if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )
     {
         fprintf( stderr, "[WARNING] PIPECG convergence failed!\n" );
+        return i;
+    }
+
+    return i;
+}
+
+
+/* Pipelined Preconditioned Conjugate Residual Method.
+ * This function performs dual iteration for QEq (2 simultaneous solves)
+ *
+ * References:
+ * 1) Hiding global synchronization latency in the preconditioned Conjugate Gradient algorithm,
+ *  P. Ghysels and W. Vanroose, Parallel Computing, 2014.
+ *  */
+int dual_PIPECR( reax_system const * const system, control_params const * const control,
+        simulation_data * const data,
+        storage * const workspace, sparse_matrix * const H, rvec2 * const b,
+        real tol, rvec2 * const x, mpi_datatypes * const  mpi_data, int fresh_pre )
+{
+    int i, j, ret;
+    rvec2 alpha, beta, delta, gamma_old, gamma_new, r_norm, b_norm;
+    real redux[6];
+    MPI_Request req;
+#if defined(LOG_PERFORMANCE)
+    real time;
+#endif
+
+#if defined(NEUTRAL_TERRITORY)
+    Dual_Sparse_MatVec( system, control, data, mpi_data, H, x, 
+            H->NT, workspace->u2 );
+#else
+    Dual_Sparse_MatVec( system, control, data, mpi_data, H, x, 
+            system->N, workspace->u2 );
+#endif
+
+#if defined(LOG_PERFORMANCE)
+    time = Get_Time( );
+#endif
+
+    Vector_Sum_rvec2( workspace->r2, 1.0, 1.0, b, -1.0, -1.0, workspace->u2, system->n );
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
+    dual_apply_preconditioner( system, workspace, control, data, mpi_data, workspace->r2,
+            workspace->n2, fresh_pre, LEFT );
+    dual_apply_preconditioner( system, workspace, control, data, mpi_data, workspace->n2,
+            workspace->u2, fresh_pre, RIGHT );
+
+#if defined(LOG_PERFORMANCE)
+    time = Get_Time( );
+#endif
+
+    Dot_local_rvec2( b, b, system->n, &redux[0], &redux[1] );
+    Dot_local_rvec2( workspace->u2, workspace->u2, system->n, &redux[2], &redux[3] );
+
+    ret = MPI_Iallreduce( MPI_IN_PLACE, redux, 4, MPI_DOUBLE, MPI_SUM,
+            MPI_COMM_WORLD, &req );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
+#if defined(NEUTRAL_TERRITORY)
+    Dual_Sparse_MatVec( system, control, data, mpi_data, H, workspace->u2,
+            H->NT, workspace->w2 );
+#else
+    Dual_Sparse_MatVec( system, control, data, mpi_data, H, workspace->u2,
+            system->N, workspace->w2 );
+#endif
+
+#if defined(LOG_PERFORMANCE)
+    time = Get_Time( );
+#endif
+
+    ret = MPI_Wait( &req, MPI_STATUS_IGNORE );
+    Check_MPI_Error( ret, __FILE__, __LINE__ );
+    b_norm[0] = SQRT( redux[0] );
+    b_norm[1] = SQRT( redux[1] );
+    r_norm[0] = SQRT( redux[2] );
+    r_norm[1] = SQRT( redux[3] );
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
+
+    for ( i = 0; i < control->cm_solver_max_iters; ++i )
+    {
+        if ( r_norm[0] / b_norm[0] <= tol || r_norm[1] / b_norm[1] <= tol )
+        {
+            break;
+        }
+
+        dual_apply_preconditioner( system, workspace, control, data, mpi_data, workspace->w2,
+                workspace->n2, fresh_pre, LEFT );
+        dual_apply_preconditioner( system, workspace, control, data, mpi_data, workspace->n2,
+                workspace->m2, fresh_pre, RIGHT );
+
+#if defined(LOG_PERFORMANCE)
+        time = Get_Time( );
+#endif
+
+        Dot_local_rvec2( workspace->w2, workspace->u2, system->n, &redux[0], &redux[1] );
+        Dot_local_rvec2( workspace->m2, workspace->w2, system->n, &redux[2], &redux[3] );
+        Dot_local_rvec2( workspace->u2, workspace->u2, system->n, &redux[4], &redux[5] );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+
+        ret = MPI_Iallreduce( MPI_IN_PLACE, redux, 6, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD, &req );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(NEUTRAL_TERRITORY)
+        Dual_Sparse_MatVec( system, control, data, mpi_data, H, workspace->m2,
+                H->NT, workspace->n2 );
+#else
+        Dual_Sparse_MatVec( system, control, data, mpi_data, H, workspace->m2,
+                system->N, workspace->n2 );
+#endif
+
+#if defined(LOG_PERFORMANCE)
+        time = Get_Time( );
+#endif
+
+        ret = MPI_Wait( &req, MPI_STATUS_IGNORE );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+        gamma_new[0] = redux[0];
+        gamma_new[1] = redux[1];
+        delta[0] = redux[2];
+        delta[1] = redux[3];
+        r_norm[0] = SQRT( redux[4] );
+        r_norm[1] = SQRT( redux[5] );
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
+#endif
+
+        if ( i > 0 )
+        {
+            beta[0] = gamma_new[0] / gamma_old[0];
+            beta[1] = gamma_new[1] / gamma_old[1];
+            alpha[0] = gamma_new[0] / (delta[0] - beta[0] / alpha[0] * gamma_new[0]);
+            alpha[1] = gamma_new[1] / (delta[1] - beta[1] / alpha[1] * gamma_new[1]);
+        }
+        else
+        {
+            beta[0] = 0.0;
+            beta[1] = 0.0;
+            alpha[0] = gamma_new[0] / delta[0];
+            alpha[1] = gamma_new[1] / delta[1];
+        }
+
+        Vector_Sum_rvec2( workspace->z2, 1.0, 1.0, workspace->n2,
+                beta[0], beta[1], workspace->z2, system->n );
+        Vector_Sum_rvec2( workspace->q2, 1.0, 1.0, workspace->m2,
+                beta[0], beta[1], workspace->q2, system->n );
+        Vector_Sum_rvec2( workspace->p2, 1.0, 1.0, workspace->u2,
+                beta[0], beta[1], workspace->p2, system->n );
+        Vector_Sum_rvec2( workspace->d2, 1.0, 1.0, workspace->w2,
+                beta[0], beta[1], workspace->d2, system->n );
+        Vector_Sum_rvec2( x, 1.0, 1.0, x, alpha[0], alpha[1], workspace->p2, system->n );
+        Vector_Sum_rvec2( workspace->u2, 1.0, 1.0, workspace->u2,
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->q2, system->n );
+        Vector_Sum_rvec2( workspace->w2, 1.0, 1.0, workspace->w2,
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->z2, system->n );
+        Vector_Sum_rvec2( workspace->r2, 1.0, 1.0, workspace->r2,
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d2, system->n );
+
+        gamma_old[0] = gamma_new[0];
+        gamma_old[1] = gamma_new[1];
+
+#if defined(LOG_PERFORMANCE)
+        Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
+#endif
+    }
+
+    /* continue to solve the system that has not converged yet */
+    if ( r_norm[0] / b_norm[0] > tol )
+    {
+        Vector_Copy_From_rvec2( workspace->s, workspace->x, 0, system->n );
+
+        i += PIPECR( system, control, data, workspace,
+                H, workspace->b_s, tol, workspace->s, mpi_data, FALSE );
+
+        Vector_Copy_To_rvec2( workspace->x, workspace->s, 0, system->n );
+    }
+    else if ( r_norm[1] / b_norm[1] > tol )
+    {
+        Vector_Copy_From_rvec2( workspace->t, workspace->x, 1, system->n );
+
+        i += PIPECR( system, control, data, workspace,
+                H, workspace->b_t, tol, workspace->t, mpi_data, FALSE );
+
+        Vector_Copy_To_rvec2( workspace->x, workspace->t, 1, system->n );
+    }
+
+    if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )
+    {
+        fprintf( stderr, "[WARNING] PIPECR convergence failed!\n" );
         return i;
     }
 

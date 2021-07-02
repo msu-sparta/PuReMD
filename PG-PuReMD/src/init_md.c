@@ -881,10 +881,12 @@ static void Finalize_Workspace( reax_system * const system, control_params * con
             sfree( workspace->d, "Finalize_Workspace::workspace->d" );
             sfree( workspace->q, "Finalize_Workspace::workspace->q" );
             sfree( workspace->p, "Finalize_Workspace::workspace->p" );
+#if defined(DUAL_SOLVER)
             sfree( workspace->r2, "Finalize_Workspace::workspace->r2" );
             sfree( workspace->d2, "Finalize_Workspace::workspace->d2" );
             sfree( workspace->q2, "Finalize_Workspace::workspace->q2" );
             sfree( workspace->p2, "Finalize_Workspace::workspace->p2" );
+#endif
             break;
 
         case SDM_S:
@@ -892,10 +894,12 @@ static void Finalize_Workspace( reax_system * const system, control_params * con
             sfree( workspace->d, "Finalize_Workspace::workspace->d" );
             sfree( workspace->q, "Finalize_Workspace::workspace->q" );
             sfree( workspace->p, "Finalize_Workspace::workspace->p" );
+#if defined(DUAL_SOLVER)
             sfree( workspace->r2, "Finalize_Workspace::workspace->r2" );
             sfree( workspace->d2, "Finalize_Workspace::workspace->d2" );
             sfree( workspace->q2, "Finalize_Workspace::workspace->q2" );
             sfree( workspace->p2, "Finalize_Workspace::workspace->p2" );
+#endif
             break;
 
         case BiCGStab_S:
@@ -908,6 +912,17 @@ static void Finalize_Workspace( reax_system * const system, control_params * con
             sfree( workspace->p, "Finalize_Workspace::workspace->p" );
             sfree( workspace->r_hat, "Finalize_Workspace::workspace->r_hat" );
             sfree( workspace->q_hat, "Finalize_Workspace::workspace->q_hat" );
+#if defined(DUAL_SOLVER)
+            sfree( workspace->y2, "Finalize_Workspace::workspace->y2" );
+            sfree( workspace->g2, "Finalize_Workspace::workspace->g2" );
+            sfree( workspace->z2, "Finalize_Workspace::workspace->z2" );
+            sfree( workspace->r2, "Finalize_Workspace::workspace->r2" );
+            sfree( workspace->d2, "Finalize_Workspace::workspace->d2" );
+            sfree( workspace->q2, "Finalize_Workspace::workspace->q2" );
+            sfree( workspace->p2, "Finalize_Workspace::workspace->p2" );
+            sfree( workspace->r_hat2, "Finalize_Workspace::workspace->r_hat2" );
+            sfree( workspace->q_hat2, "Finalize_Workspace::workspace->q_hat2" );
+#endif
             break;
 
         case PIPECG_S:
@@ -920,6 +935,7 @@ static void Finalize_Workspace( reax_system * const system, control_params * con
             sfree( workspace->n, "Finalize_Workspace::workspace->n" );
             sfree( workspace->u, "Finalize_Workspace::workspace->u" );
             sfree( workspace->w, "Finalize_Workspace::workspace->w" );
+#if defined(DUAL_SOLVER)
             sfree( workspace->z2, "Finalize_Workspace::workspace->z2" );
             sfree( workspace->r2, "Finalize_Workspace::workspace->r2" );
             sfree( workspace->d2, "Finalize_Workspace::workspace->d2" );
@@ -929,6 +945,7 @@ static void Finalize_Workspace( reax_system * const system, control_params * con
             sfree( workspace->n2, "Finalize_Workspace::workspace->n2" );
             sfree( workspace->u2, "Finalize_Workspace::workspace->u2" );
             sfree( workspace->w2, "Finalize_Workspace::workspace->w2" );
+#endif
             break;
 
         case PIPECR_S:
@@ -941,6 +958,17 @@ static void Finalize_Workspace( reax_system * const system, control_params * con
             sfree( workspace->n, "Finalize_Workspace::workspace->n" );
             sfree( workspace->u, "Finalize_Workspace::workspace->u" );
             sfree( workspace->w, "Finalize_Workspace::workspace->w" );
+#if defined(DUAL_SOLVER)
+            sfree( workspace->z2, "Finalize_Workspace::workspace->z2" );
+            sfree( workspace->r2, "Finalize_Workspace::workspace->r2" );
+            sfree( workspace->d2, "Finalize_Workspace::workspace->d2" );
+            sfree( workspace->q2, "Finalize_Workspace::workspace->q2" );
+            sfree( workspace->p2, "Finalize_Workspace::workspace->p2" );
+            sfree( workspace->m2, "Finalize_Workspace::workspace->m2" );
+            sfree( workspace->n2, "Finalize_Workspace::workspace->n2" );
+            sfree( workspace->u2, "Finalize_Workspace::workspace->u2" );
+            sfree( workspace->w2, "Finalize_Workspace::workspace->w2" );
+#endif
             break;
 
         default:

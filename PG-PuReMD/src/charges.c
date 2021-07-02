@@ -468,10 +468,8 @@ static void QEq( reax_system const * const system, control_params const * const 
 
     case SDM_S:
 #if defined(DUAL_SOLVER)
-        fprintf( stderr, "[ERROR] Dual SDM solver for QEq not yet implemented. Terminating...\n" );
-        exit( INVALID_INPUT );
-//        iters = dual_SDM( system, control, data, workspace, &workspace->H, workspace->b,
-//                control->cm_solver_q_err, workspace->x, mpi_data, refactor );
+        iters = dual_SDM( system, control, data, workspace, &workspace->H, workspace->b,
+                control->cm_solver_q_err, workspace->x, mpi_data, refactor );
 #else
         iters = SDM( system, control, data, workspace, &workspace->H, workspace->b_s,
                 control->cm_solver_q_err, workspace->s, mpi_data, refactor );
@@ -483,10 +481,8 @@ static void QEq( reax_system const * const system, control_params const * const 
 
     case BiCGStab_S:
 #if defined(DUAL_SOLVER)
-        fprintf( stderr, "[ERROR] Dual BiCGStab solver for QEq not yet implemented. Terminating...\n" );
-        exit( INVALID_INPUT );
-//        iters = dual_BiCGStab( system, control, data, workspace, &workspace->H, workspace->b,
-//                control->cm_solver_q_err, workspace->x, mpi_data, refactor );
+        iters = dual_BiCGStab( system, control, data, workspace, &workspace->H, workspace->b,
+                control->cm_solver_q_err, workspace->x, mpi_data, refactor );
 #else
         iters = BiCGStab( system, control, data, workspace, &workspace->H, workspace->b_s,
                 control->cm_solver_q_err, workspace->s, mpi_data, refactor );
@@ -511,10 +507,8 @@ static void QEq( reax_system const * const system, control_params const * const 
 
     case PIPECR_S:
 #if defined(DUAL_SOLVER)
-        fprintf( stderr, "[ERROR] Dual PIPECR solver for QEq not yet implemented. Terminating...\n" );
-        exit( INVALID_INPUT );
-//        iters = dual_PIPECR( system, control, data, workspace, &workspace->H, workspace->b,
-//                control->cm_solver_q_err, workspace->x, mpi_data, refactor );
+        iters = dual_PIPECR( system, control, data, workspace, &workspace->H, workspace->b,
+                control->cm_solver_q_err, workspace->x, mpi_data, refactor );
 #else
         iters = PIPECR( system, control, data, workspace, &workspace->H, workspace->b_s,
                 control->cm_solver_q_err, workspace->s, mpi_data, refactor );

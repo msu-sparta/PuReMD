@@ -44,6 +44,11 @@ real sparse_approx_inverse( reax_system const * const,
         storage * const, mpi_datatypes * const, 
         sparse_matrix * const, sparse_matrix * const, sparse_matrix * const, int );
 
+int dual_SDM( reax_system const * const, control_params const * const,
+        simulation_data * const,
+        storage * const, sparse_matrix * const, rvec2 * const,
+        real, rvec2 * const, mpi_datatypes * const, int );
+
 int SDM( reax_system const * const, control_params const * const,
         simulation_data * const,
         storage * const, sparse_matrix * const, real * const,
@@ -59,6 +64,11 @@ int CG( reax_system const * const, control_params const * const,
         storage * const, sparse_matrix * const, real * const,
         real, real * const, mpi_datatypes * const, int );
 
+int dual_BiCGStab( reax_system const * const, control_params const * const,
+        simulation_data * const,
+        storage * const, sparse_matrix * const, rvec2 * const,
+        real, rvec2 * const, mpi_datatypes * const, int );
+
 int BiCGStab( reax_system const * const, control_params const * const,
         simulation_data * const,
         storage * const, sparse_matrix * const, real * const,
@@ -73,6 +83,11 @@ int PIPECG( reax_system const * const, control_params const * const,
         simulation_data * const,
         storage * const, sparse_matrix * const, real * const,
         real, real * const, mpi_datatypes * const, int );
+
+int dual_PIPECR( reax_system const * const, control_params const * const,
+        simulation_data * const,
+        storage * const, sparse_matrix * const, rvec2 * const,
+        real, rvec2 * const, mpi_datatypes * const, int );
 
 int PIPECR( reax_system const * const, control_params const * const,
         simulation_data * const,

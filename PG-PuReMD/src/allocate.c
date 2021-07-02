@@ -206,10 +206,12 @@ static void Deallocate_Workspace_Part2( control_params * const control,
             sfree( workspace->d, "Deallocate_Workspace_Part2::workspace->d" );
             sfree( workspace->q, "Deallocate_Workspace_Part2::workspace->q" );
             sfree( workspace->p, "Deallocate_Workspace_Part2::workspace->p" );
+#if defined(DUAL_SOLVER)
             sfree( workspace->r2, "Deallocate_Workspace_Part2::workspace->r2" );
             sfree( workspace->d2, "Deallocate_Workspace_Part2::workspace->d2" );
             sfree( workspace->q2, "Deallocate_Workspace_Part2::workspace->q2" );
             sfree( workspace->p2, "Deallocate_Workspace_Part2::workspace->p2" );
+#endif
             break;
 
         case SDM_S:
@@ -217,10 +219,12 @@ static void Deallocate_Workspace_Part2( control_params * const control,
             sfree( workspace->d, "Deallocate_Workspace_Part2::workspace->d" );
             sfree( workspace->q, "Deallocate_Workspace_Part2::workspace->q" );
             sfree( workspace->p, "Deallocate_Workspace_Part2::workspace->p" );
+#if defined(DUAL_SOLVER)
             sfree( workspace->r2, "Deallocate_Workspace_Part2::workspace->r2" );
             sfree( workspace->d2, "Deallocate_Workspace_Part2::workspace->d2" );
             sfree( workspace->q2, "Deallocate_Workspace_Part2::workspace->q2" );
             sfree( workspace->p2, "Deallocate_Workspace_Part2::workspace->p2" );
+#endif
             break;
 
         case BiCGStab_S:
@@ -233,6 +237,17 @@ static void Deallocate_Workspace_Part2( control_params * const control,
             sfree( workspace->p, "Deallocate_Workspace_Part2::workspace->p" );
             sfree( workspace->r_hat, "Deallocate_Workspace_Part2::workspace->r_hat" );
             sfree( workspace->q_hat, "Deallocate_Workspace_Part2::workspace->q_hat" );
+#if defined(DUAL_SOLVER)
+            sfree( workspace->y2, "Deallocate_Workspace_Part2::workspace->y2" );
+            sfree( workspace->g2, "Deallocate_Workspace_Part2::workspace->g2" );
+            sfree( workspace->z2, "Deallocate_Workspace_Part2::workspace->z2" );
+            sfree( workspace->r2, "Deallocate_Workspace_Part2::workspace->r2" );
+            sfree( workspace->d2, "Deallocate_Workspace_Part2::workspace->d2" );
+            sfree( workspace->q2, "Deallocate_Workspace_Part2::workspace->q2" );
+            sfree( workspace->p2, "Deallocate_Workspace_Part2::workspace->p2" );
+            sfree( workspace->r_hat2, "Deallocate_Workspace_Part2::workspace->r_hat2" );
+            sfree( workspace->q_hat2, "Deallocate_Workspace_Part2::workspace->q_hat2" );
+#endif
             break;
 
         case PIPECG_S:
@@ -245,6 +260,7 @@ static void Deallocate_Workspace_Part2( control_params * const control,
             sfree( workspace->n, "Deallocate_Workspace_Part2::workspace->n" );
             sfree( workspace->u, "Deallocate_Workspace_Part2::workspace->u" );
             sfree( workspace->w, "Deallocate_Workspace_Part2::workspace->w" );
+#if defined(DUAL_SOLVER)
             sfree( workspace->z2, "Deallocate_Workspace_Part2::workspace->z2" );
             sfree( workspace->r2, "Deallocate_Workspace_Part2::workspace->r2" );
             sfree( workspace->d2, "Deallocate_Workspace_Part2::workspace->d2" );
@@ -254,6 +270,7 @@ static void Deallocate_Workspace_Part2( control_params * const control,
             sfree( workspace->n2, "Deallocate_Workspace_Part2::workspace->n2" );
             sfree( workspace->u2, "Deallocate_Workspace_Part2::workspace->u2" );
             sfree( workspace->w2, "Deallocate_Workspace_Part2::workspace->w2" );
+#endif
             break;
 
         case PIPECR_S:
@@ -266,6 +283,17 @@ static void Deallocate_Workspace_Part2( control_params * const control,
             sfree( workspace->n, "Deallocate_Workspace_Part2::workspace->n" );
             sfree( workspace->u, "Deallocate_Workspace_Part2::workspace->u" );
             sfree( workspace->w, "Deallocate_Workspace_Part2::workspace->w" );
+#if defined(DUAL_SOLVER)
+            sfree( workspace->z2, "Deallocate_Workspace_Part2::workspace->z2" );
+            sfree( workspace->r2, "Deallocate_Workspace_Part2::workspace->r2" );
+            sfree( workspace->d2, "Deallocate_Workspace_Part2::workspace->d2" );
+            sfree( workspace->q2, "Deallocate_Workspace_Part2::workspace->q2" );
+            sfree( workspace->p2, "Deallocate_Workspace_Part2::workspace->p2" );
+            sfree( workspace->m2, "Deallocate_Workspace_Part2::workspace->m2" );
+            sfree( workspace->n2, "Deallocate_Workspace_Part2::workspace->n2" );
+            sfree( workspace->u2, "Deallocate_Workspace_Part2::workspace->u2" );
+            sfree( workspace->w2, "Deallocate_Workspace_Part2::workspace->w2" );
+#endif
             break;
 
         default:
@@ -433,10 +461,12 @@ void Allocate_Workspace_Part2( reax_system * const system, control_params * cons
             workspace->d = scalloc( total_cap, sizeof(real), "Allocate_Workspace_Part2::d" );
             workspace->q = scalloc( total_cap, sizeof(real), "Allocate_Workspace_Part2::q" );
             workspace->p = scalloc( total_cap, sizeof(real), "Allocate_Workspace_Part2::p" );
+#if defined(DUAL_SOLVER)
             workspace->r2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::r2" );
             workspace->d2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::d2" );
             workspace->q2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::q2" );
             workspace->p2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::p2" );
+#endif
             break;
 
         case SDM_S:
@@ -444,10 +474,12 @@ void Allocate_Workspace_Part2( reax_system * const system, control_params * cons
             workspace->d = scalloc( total_cap, sizeof(real), "Allocate_Workspace_Part2::d" );
             workspace->q = scalloc( total_cap, sizeof(real), "Allocate_Workspace_Part2::q" );
             workspace->p = scalloc( total_cap, sizeof(real), "Allocate_Workspace_Part2::p" );
+#if defined(DUAL_SOLVER)
             workspace->r2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::r2" );
             workspace->d2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::d2" );
             workspace->q2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::q2" );
             workspace->p2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::p2" );
+#endif
             break;
 
         case BiCGStab_S:
@@ -460,6 +492,17 @@ void Allocate_Workspace_Part2( reax_system * const system, control_params * cons
             workspace->p = scalloc( total_cap, sizeof(real), "Allocate_Workspace_Part2::p" );
             workspace->r_hat = scalloc( total_cap, sizeof(real), "Allocate_Workspace_Part2::r_hat" );
             workspace->q_hat = scalloc( total_cap, sizeof(real), "Allocate_Workspace_Part2::q_hat" );
+#if defined(DUAL_SOLVER)
+            workspace->y2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::y2" );
+            workspace->g2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::g2" );
+            workspace->z2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::z2" );
+            workspace->r2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::r2" );
+            workspace->d2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::d2" );
+            workspace->q2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::q2" );
+            workspace->p2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::p2" );
+            workspace->r_hat2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::r_hat2" );
+            workspace->q_hat2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::q_hat2" );
+#endif
             break;
 
         case PIPECG_S:
@@ -472,6 +515,7 @@ void Allocate_Workspace_Part2( reax_system * const system, control_params * cons
             workspace->n = scalloc( total_cap, sizeof(real), "Allocate_Workspace_Part2::n" );
             workspace->u = scalloc( total_cap, sizeof(real), "Allocate_Workspace_Part2::u" );
             workspace->w = scalloc( total_cap, sizeof(real), "Allocate_Workspace_Part2::w" );
+#if defined(DUAL_SOLVER)
             workspace->z2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::z2" );
             workspace->r2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::r2" );
             workspace->d2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::d2" );
@@ -481,6 +525,7 @@ void Allocate_Workspace_Part2( reax_system * const system, control_params * cons
             workspace->n2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::n2" );
             workspace->u2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::u2" );
             workspace->w2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::w2" );
+#endif
             break;
 
         case PIPECR_S:
@@ -493,6 +538,17 @@ void Allocate_Workspace_Part2( reax_system * const system, control_params * cons
             workspace->n = scalloc( total_cap, sizeof(real), "Allocate_Workspace_Part2::n" );
             workspace->u = scalloc( total_cap, sizeof(real), "Allocate_Workspace_Part2::u" );
             workspace->w = scalloc( total_cap, sizeof(real), "Allocate_Workspace_Part2::w" );
+#if defined(DUAL_SOLVER)
+            workspace->z2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::z2" );
+            workspace->r2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::r2" );
+            workspace->d2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::d2" );
+            workspace->q2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::q2" );
+            workspace->p2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::p2" );
+            workspace->m2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::m2" );
+            workspace->n2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::n2" );
+            workspace->u2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::u2" );
+            workspace->w2 = scalloc( total_cap, sizeof(rvec2), "Allocate_Workspace_Part2::w2" );
+#endif
             break;
 
         default:
