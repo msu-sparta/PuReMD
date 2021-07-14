@@ -1613,10 +1613,6 @@ struct static_storage
     /* for hydrogen bonds */
     int *hbond_index;
 
-#if defined(QMMM)
-    /* TRUE if the atom is in the QM region, FALSE otherwise (atom in MM region) */
-    int *mask_qmmm;
-#endif
     rvec *a; // used in integrators
     rvec *f_old;
     rvec *v_const;

@@ -380,21 +380,12 @@ static void Init_Workspace( reax_system *system, control_params *control,
             }
             break;
         case EE_CM:
-            if ( system->num_molec_charge_constraints == 0 )
+            system->N_cm = system->N
+                + (system->num_molec_charge_constraints == 0 ? 1 : system->num_molec_charge_constraints);
+            if ( realloc == TRUE || system->N_cm > system->N_cm_max )
             {
-                system->N_cm = system->N + 1;
-                if ( realloc == TRUE || system->N_cm > system->N_cm_max )
-                {
-                    system->N_cm_max = system->N_max + 1;
-                }
-            }
-            else
-            {
-                system->N_cm = system->N + system->num_molec_charge_constraints;
-                if ( realloc == TRUE || system->N_cm > system->N_cm_max )
-                {
-                    system->N_cm_max = system->N_max + system->num_molec_charge_constraints;
-                }
+                system->N_cm_max = system->N_max
+                    + (system->num_molec_charge_constraints == 0 ? 1 : system->num_molec_charge_constraints);
             }
             break;
         case ACKS2_CM:
@@ -713,11 +704,6 @@ static void Init_Workspace( reax_system *system, control_params *control,
             workspace->perm_ilutp = NULL;
         }
 
-#if defined(QMMM)
-        workspace->mask_qmmm = smalloc( system->N_cm_max * sizeof( int ),
-               __FILE__, __LINE__ );
-#endif
-
         /* integrator storage */
         workspace->a = smalloc( system->N_max * sizeof( rvec ),
                __FILE__, __LINE__ );
@@ -802,7 +788,7 @@ static void Init_Lists( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control, int realloc )
 {
-    int i, num_nbrs, num_bonds, num_hbonds, num_3body, Htop, max_nnz;
+    int i, num_nbrs, num_bonds, num_hbonds, num_3body, Htop;
     int *hb_top, *bond_top;
 
     num_nbrs = Estimate_Num_Neighbors( system, control, workspace, lists );
@@ -837,34 +823,18 @@ static void Init_Lists( reax_system *system, control_params *control,
             hb_top, bond_top, &num_3body );
     num_3body = MAX( num_3body, MIN_BONDS );
 
-    switch ( control->charge_method )
-    {
-        case QEQ_CM:
-            max_nnz = Htop;
-            break;
-        case EE_CM:
-            max_nnz = Htop + system->N_cm;
-            break;
-        case ACKS2_CM:
-            max_nnz = 2 * Htop + 3 * system->N + 2;
-            break;
-        default:
-            max_nnz = Htop;
-            break;
-    }
-
     if ( workspace->H.allocated == FALSE )
     {
-        Allocate_Matrix( &workspace->H, system->N_cm, system->N_cm_max, max_nnz );
+        Allocate_Matrix( &workspace->H, system->N_cm, system->N_cm_max, Htop );
     }
-    else if ( realloc == TRUE || workspace->H.m < max_nnz
+    else if ( realloc == TRUE || workspace->H.m < Htop
             || workspace->H.n_max < system->N_cm_max )
     {
         if ( workspace->H.allocated == TRUE )
         {
             Deallocate_Matrix( &workspace->H );
         }
-        Allocate_Matrix( &workspace->H, system->N_cm, system->N_cm_max, max_nnz );
+        Allocate_Matrix( &workspace->H, system->N_cm, system->N_cm_max, Htop );
     }
     else
     {
@@ -877,9 +847,9 @@ static void Init_Lists( reax_system *system, control_params *control,
          *   If so, need to refactor Estimate_Storage_Sizes
          *   to use various cut-off distances as parameters
          *   (non-bonded, hydrogen, 3body, etc.) */
-        Allocate_Matrix( &workspace->H_sp, system->N_cm, system->N_cm_max, max_nnz );
+        Allocate_Matrix( &workspace->H_sp, system->N_cm, system->N_cm_max, Htop );
     }
-    else if ( realloc == TRUE || workspace->H_sp.m < max_nnz
+    else if ( realloc == TRUE || workspace->H_sp.m < Htop
             || workspace->H.n_max < system->N_cm_max )
     {
         if ( workspace->H_sp.allocated == TRUE )
@@ -890,7 +860,7 @@ static void Init_Lists( reax_system *system, control_params *control,
          *   If so, need to refactor Estimate_Storage_Sizes
          *   to use various cut-off distances as parameters
          *   (non-bonded, hydrogen, 3body, etc.) */
-        Allocate_Matrix( &workspace->H_sp, system->N_cm, system->N_cm_max, max_nnz );
+        Allocate_Matrix( &workspace->H_sp, system->N_cm, system->N_cm_max, Htop );
     }
     else
     {
@@ -1634,10 +1604,6 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
     {
         sfree( workspace->perm_ilutp, __FILE__, __LINE__ );
     }
-
-#if defined(QMMM)
-    sfree( workspace->mask_qmmm, __FILE__, __LINE__ );
-#endif
 
     /* integrator storage */
     sfree( workspace->a, __FILE__, __LINE__ );

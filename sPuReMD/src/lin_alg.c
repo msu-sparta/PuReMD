@@ -3549,9 +3549,6 @@ int CG( const static_storage * const workspace, const control_params * const con
 
         t_start = Get_Time( );
         Vector_Sum( r, 1.0,  b, -1.0, d, N );
-#if defined(QMMM)
-        Vector_Mask_qmmm( r, workspace->mask_qmmm, N );
-#endif
         rnorm = Norm( r, N );
         t_vops += Get_Timing_Info( t_start );
 
@@ -3562,9 +3559,6 @@ int CG( const static_storage * const workspace, const control_params * const con
 
         t_start = Get_Time( );
         Vector_Copy( p, z, N );
-#if defined(QMMM)
-        Vector_Mask_qmmm( p, workspace->mask_qmmm, N );
-#endif
         sig_new = Dot( r, p, N );
         t_vops += Get_Timing_Info( t_start );
 
@@ -3579,9 +3573,6 @@ int CG( const static_storage * const workspace, const control_params * const con
             alpha = sig_new / tmp;
             Vector_Add( x, alpha, p, N );
             Vector_Add( r, -1.0 * alpha, d, N );
-#if defined(QMMM)
-            Vector_Mask_qmmm( r, workspace->mask_qmmm, N );
-#endif
             rnorm = Norm( r, N );
             t_vops += Get_Timing_Info( t_start );
 
@@ -3595,9 +3586,6 @@ int CG( const static_storage * const workspace, const control_params * const con
             sig_new = Dot( r, z, N );
             beta = sig_new / sig_old;
             Vector_Sum( p, 1.0, z, beta, p, N );
-#if defined(QMMM)
-            Vector_Mask_qmmm( p, workspace->mask_qmmm, N );
-#endif
             t_vops += Get_Timing_Info( t_start );
         }
 

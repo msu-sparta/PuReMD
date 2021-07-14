@@ -283,7 +283,7 @@ void * setup2( int num_atoms, const int * const atom_type,
     for ( i = 0; i < spmd_handle->system->N; ++i )
     {
         assert( atom_type[i] >= 0
-                && atom_type[i] < spmd_handle->system->reax_param->num_atom_types );
+                && atom_type[i] < spmd_handle->system->reax_param.num_atom_types );
 
         x[0] = pos[3 * i];
         x[1] = pos[3 * i + 1];
@@ -640,7 +640,7 @@ int reset2( const void * const handle, int num_atoms,
         for ( i = 0; i < spmd_handle->system->N; ++i )
         {
             assert( atom_type[i] >= 0
-                    && atom_type[i] < spmd_handle->system->reax_param->num_atom_types );
+                    && atom_type[i] < spmd_handle->system->reax_param.num_atom_types );
 
             x[0] = pos[3 * i];
             x[1] = pos[3 * i + 1];

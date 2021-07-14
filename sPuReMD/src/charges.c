@@ -1512,29 +1512,10 @@ static void EE( reax_system * const system, control_params * const control,
     }
 
 #if defined(QMMM)
-    for ( int i = 0; i < system->N_qm; ++i )
-    {
-        workspace->mask_qmmm[i] = system->atoms[i].qmmm_mask;
-    }
     for ( int i = system->N_qm; i < system->N; ++i )
     {
         workspace->s[0][i] = system->atoms[i].q_init;
-        workspace->mask_qmmm[i] = system->atoms[i].qmmm_mask;
     }
-    if ( system->num_molec_charge_constraints == 0 )
-    {
-        workspace->mask_qmmm[system->N_cm - 1] = 1.0;
-    }
-    else
-    {
-        for ( int i = 0; i < system->num_molec_charge_constraints; ++i )
-        {
-            workspace->mask_qmmm[system->N + i] = 1.0;
-        }
-    }
-
-    /* Mask the b vector as well */
-    Vector_Mask_qmmm( workspace->b_s, workspace->mask_qmmm, system->N_cm );
 #endif
 
     switch ( control->cm_solver_type )
@@ -1650,24 +1631,10 @@ static void ACKS2( reax_system * const system, control_params * const control,
 
 #if defined(QMMM)
     /* TODO: further testing needed for QM/MM mode with ACKS2 */
-    for ( int i = 0; i < system->N_qm; ++i )
-    {
-        workspace->mask_qmmm[i] = system->atoms[i].qmmm_mask;
-    }
     for ( int i = system->N_qm; i < system->N; ++i )
     {
         workspace->s[0][i] = system->atoms[i].q_init;
-        workspace->mask_qmmm[i] = system->atoms[i].qmmm_mask;
     }
-    for ( int i = system->N; i < 2 * system->N; ++i )
-    {
-        workspace->mask_qmmm[i] = system->atoms[i - system->N].qmmm_mask;
-    }
-    workspace->mask_qmmm[2 * system->N] = 1;
-    workspace->mask_qmmm[2 * system->N + 1] = 1;
-
-    /* Mask the b vector as well */
-    Vector_Mask_qmmm( workspace->b_s, workspace->mask_qmmm, system->N_cm );
 #endif
 
     switch ( control->cm_solver_type )
