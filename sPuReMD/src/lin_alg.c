@@ -113,13 +113,15 @@ static int compare_matrix_entry(const void *v1, const void *v2)
 void Sort_Matrix_Rows( sparse_matrix * const A )
 {
     unsigned int i, j, si, ei;
+    size_t temp_size;
     sparse_matrix_entry *temp;
 
 #if defined(_OPENMP)
 //    #pragma omp parallel default(none) private(i, j, si, ei, temp) shared(stderr)
 #endif
     {
-        temp = smalloc( sizeof(sparse_matrix_entry) * (A->n + 1), __FILE__, __LINE__ );
+        temp = NULL;
+        temp_size = 0;
 
         /* sort each row of A using column indices */
 #if defined(_OPENMP)
@@ -129,6 +131,16 @@ void Sort_Matrix_Rows( sparse_matrix * const A )
         {
             si = A->start[i];
             ei = A->start[i + 1];
+
+            if ( temp_size < ei - si )
+            {
+                if ( temp != NULL )
+                {
+                    sfree( temp, __FILE__, __LINE__ );
+                }
+                temp = smalloc( sizeof(sparse_matrix_entry) * (ei - si), __FILE__, __LINE__ );
+                temp_size = ei - si;
+            }
 
             for ( j = 0; j < (ei - si); ++j )
             {
