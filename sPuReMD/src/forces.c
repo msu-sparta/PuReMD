@@ -1706,8 +1706,8 @@ void Estimate_Storage_Sizes( reax_system *system, control_params *control,
             {
                 for ( i = 0; i < system->num_molec_charge_constraints; ++i )
                 {
-                    *Htop += system->molec_charge_constraints[2 * i + 1]
-                        - system->molec_charge_constraints[2 * i] + 1;
+                    *Htop += system->molec_charge_constraint_ranges[2 * i + 1]
+                        - system->molec_charge_constraint_ranges[2 * i] + 1;
                 }
             }
             break;
