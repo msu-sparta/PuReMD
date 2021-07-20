@@ -30,7 +30,7 @@ void Make_List( int, int, int, int, reax_list* );
 void Delete_List( int, reax_list* );
 
 
-static inline int Num_Entries( int i, reax_list* l )
+static inline int Num_Entries( int i, reax_list const * const l )
 {
     assert( l != NULL );
     assert( i >= 0 && i <= l->n );
@@ -39,7 +39,7 @@ static inline int Num_Entries( int i, reax_list* l )
 }
 
 
-static inline int Start_Index( int i, reax_list *l )
+static inline int Start_Index( int i, reax_list const * const l )
 {
     assert( l != NULL );
     assert( i >= 0 && i <= l->n );
@@ -48,7 +48,7 @@ static inline int Start_Index( int i, reax_list *l )
 }
 
 
-static inline int End_Index( int i, reax_list *l )
+static inline int End_Index( int i, reax_list const * const l )
 {
     assert( l != NULL );
     assert( i >= 0 && i <= l->n );
@@ -57,7 +57,7 @@ static inline int End_Index( int i, reax_list *l )
 }
 
 
-static inline void Set_Start_Index( int i, int val, reax_list *l )
+static inline void Set_Start_Index( int i, int val, reax_list * const l )
 {
     assert( l != NULL );
     assert( i >= 0 && i <= l->n );
@@ -67,7 +67,7 @@ static inline void Set_Start_Index( int i, int val, reax_list *l )
 }
 
 
-static inline void Set_End_Index( int i, int val, reax_list *l )
+static inline void Set_End_Index( int i, int val, reax_list * const l )
 {
     assert( l != NULL );
     assert( i >= 0 && i <= l->n );

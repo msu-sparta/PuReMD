@@ -33,6 +33,14 @@ extern "C"  {
 #endif
 
 #if defined(LAMMPS_REAX) || defined(PURE_REAX)
+
+/* check if all entries of a dense vector are sufficiently close to zero
+ *
+ * inputs:
+ *  v: dense vector
+ *  k: number of entries in v
+ * output: TRUE if all entries are sufficiently close to zero, FALSE otherwise
+ */
 CUDA_HOST_DEVICE static inline int Vector_isZero( real const * const v, int k )
 {
     int i, ret;
@@ -54,6 +62,13 @@ CUDA_HOST_DEVICE static inline int Vector_isZero( real const * const v, int k )
 }
 
 
+/* sets all entries of a dense vector to zero
+ *
+ * inputs:
+ *  v: dense vector
+ *  k: number of entries in v
+ * output: v with entries set to zero
+ */
 CUDA_HOST_DEVICE static inline void Vector_MakeZero( real * const v, int k )
 {
     int i;
@@ -67,6 +82,14 @@ CUDA_HOST_DEVICE static inline void Vector_MakeZero( real * const v, int k )
 }
 
 
+/* copy the entries from one vector to another
+ *
+ * inputs:
+ *  v: dense vector to copy
+ *  k: number of entries in v
+ * output:
+ *  dest: vector copied into
+ */
 CUDA_HOST_DEVICE static inline void Vector_Copy( real * const dest, real const * const v, int k )
 {
     int i;
@@ -80,6 +103,67 @@ CUDA_HOST_DEVICE static inline void Vector_Copy( real * const dest, real const *
 }
 
 
+/* copy the entries from one vector to another
+ *
+ * inputs:
+ *  v: dense vector to copy
+ *  k: number of entries in v
+ * output:
+ *  dest: vector copied into
+ */
+CUDA_HOST_DEVICE static inline void Vector_Copy_rvec2( rvec2 * const dest, rvec2 const * const v, int k )
+{
+    int i;
+
+    assert( k >= 0 );
+
+    for ( i = 0; i < k; ++i )
+    {
+        dest[i][0] = v[i][0];
+        dest[i][1] = v[i][1];
+    }
+}
+
+
+CUDA_HOST_DEVICE static inline void Vector_Copy_From_rvec2( real * const dst, rvec2 const * const src,
+        int index, int k )
+{
+    int i;
+
+    assert( k >= 0 );
+    assert( index >= 0 && index <= 1 );
+
+    for ( i = 0; i < k; ++i )
+    {
+        dst[i] = src[i][index];
+    }
+}
+
+
+CUDA_HOST_DEVICE static inline void Vector_Copy_To_rvec2( rvec2 * const dst, real const * const src,
+        int index, int k )
+{
+    int i;
+
+    assert( k >= 0 );
+    assert( index >= 0 && index <= 1 );
+
+    for ( i = 0; i < k; ++i )
+    {
+        dst[i][index] = src[i];
+    }
+}
+
+
+/* scales the entries of a dense vector by a constant
+ *
+ * inputs:
+ *  c: scaling constant
+ *  v: dense vector whose entries to scale
+ *  k: number of entries in v
+ * output:
+ *  dest: with entries scaled
+ */
 CUDA_HOST_DEVICE static inline void Vector_Scale( real * const dest, real c,
         real const * const v, int k )
 {
@@ -94,6 +178,16 @@ CUDA_HOST_DEVICE static inline void Vector_Scale( real * const dest, real c,
 }
 
 
+/* computed the scaled sum of two dense vector and store
+ * the result in a third vector (SAXPY operation in BLAS)
+ *
+ * inputs:
+ *  c, d: scaling constants
+ *  v, y: dense vector whose entries to scale
+ *  k: number of entries in the vectors
+ * output:
+ *  dest: vector containing the scaled sum
+ */
 CUDA_HOST_DEVICE static inline void Vector_Sum( real * const dest, real c,
         real const * const v, real d, real const * const y, int k )
 {
@@ -108,6 +202,41 @@ CUDA_HOST_DEVICE static inline void Vector_Sum( real * const dest, real c,
 }
 
 
+/* computed the scaled sum of two dense vector and store
+ * the result in a third vector (SAXPY operation in BLAS)
+ *
+ * inputs:
+ *  c, d: scaling constants
+ *  v, y: dense vector whose entries to scale
+ *  k: number of entries in the vectors
+ * output:
+ *  dest: vector containing the scaled sum
+ */
+CUDA_HOST_DEVICE static inline void Vector_Sum_rvec2( rvec2 * const dest, real c0, real c1,
+        rvec2 const * const v, real d0, real d1, rvec2 const * const y, int k )
+{
+    int i;
+
+    assert( k >= 0 );
+
+    for ( i = 0; i < k; ++i )
+    {
+        dest[i][0] = c0 * v[i][0] + d0 * y[i][0];
+        dest[i][1] = c1 * v[i][1] + d1 * y[i][1];
+    }
+}
+
+
+/* add the scaled sum of a dense vector to another vector
+ * and store in-place
+ *
+ * inputs:
+ *  c: scaling constant
+ *  v: dense vector whose entries to scale
+ *  k: number of entries in the vectors
+ * output:
+ *  dest: vector to accumulate with the scaled sum
+ */
 CUDA_HOST_DEVICE static inline void Vector_Add( real * const dest, real c,
         real const * const v, int k )
 {
@@ -122,30 +251,47 @@ CUDA_HOST_DEVICE static inline void Vector_Add( real * const dest, real c,
 }
 
 
-CUDA_HOST_DEVICE static inline real Dot( real const * const v1,
-        real const * const v2, int k )
+/* add the scaled sum of a dense vector to another vector
+ * and store in-place
+ *
+ * inputs:
+ *  c: scaling constant
+ *  v: dense vector whose entries to scale
+ *  k: number of entries in the vectors
+ * output:
+ *  dest: vector to accumulate with the scaled sum
+ */
+CUDA_HOST_DEVICE static inline void Vector_Add_rvec2( rvec2 * const dest, real c0, real c1,
+        rvec2 const * const v, int k )
 {
     int i;
-    real ret;
 
     assert( k >= 0 );
 
-    ret = 0.0;
-
     for ( i = 0; i < k; ++i )
     {
-        ret += v1[i] * v2[i];
+        dest[i][0] += c0 * v[i][0];
+        dest[i][1] += c1 * v[i][1];
     }
-
-    return ret;
 }
 
 
+/* compute the local portions of the inner product of two dense vectors
+ *
+ * inputs:
+ *  workspace: storage container for workspace structures
+ *  v1, v2: dense vectors
+ *  k: number of entries in the vectors
+ * output:
+ *  dot: inner product of the two vector
+ */
 CUDA_HOST_DEVICE static inline real Dot_local( real const * const v1,
         real const * const v2, int k )
 {
     int i;
     real sum;
+
+    assert( k >= 0 );
 
     sum = 0.0;
 
@@ -158,21 +304,30 @@ CUDA_HOST_DEVICE static inline real Dot_local( real const * const v1,
 }
 
 
-CUDA_HOST_DEVICE static inline real Norm( real const * const v, int k )
+/* compute the local portions of the inner product of two dense vectors
+ *
+ * inputs:
+ *  workspace: storage container for workspace structures
+ *  v1, v2: dense vectors
+ *  k: number of entries in the vectors
+ * output:
+ *  dot: inner product of the two vectors
+ */
+CUDA_HOST_DEVICE static inline void Dot_local_rvec2( rvec2 const * const v1,
+        rvec2 const * const v2, int k, real * const sum1, real * const sum2 )
 {
     int i;
-    real ret;
 
     assert( k >= 0 );
 
-    ret = 0.0;
+    *sum1 = 0.0;
+    *sum2 = 0.0;
 
     for ( i = 0; i < k; ++i )
     {
-        ret +=  SQR( v[i] );
+        *sum1 += v1[i][0] * v2[i][0];
+        *sum2 += v1[i][1] * v2[i][1];
     }
-
-    return SQRT( ret );
 }
 
 

@@ -39,7 +39,7 @@ void Make_Point( real, real, real, rvec * );
 
 int is_Valid_Serial( int );
 
-int Check_Input_Range( int, int, int, char * );
+int Check_Input_Range( int, int, int, const char * const, int );
 
 void Trim_Spaces( char * const, const size_t );
 
@@ -63,23 +63,20 @@ void Deallocate_Tokenizer_Space( char **, char **, char ***,
 
 int Tokenize( char *, char ***, size_t );
 
-/* from lammps */
-void * smalloc( size_t, const char * );
+void * smalloc( size_t, const char * const, int );
 
-void * srealloc( void *, size_t, const char * );
+void * srealloc( void *, size_t, const char * const, int );
 
-void * scalloc( size_t, size_t, const char * );
+void * scalloc( size_t, size_t, const char * const, int );
 
-void sfree( void *, const char * );
+void sfree( void *, const char * const, int );
 
-FILE * sfopen( const char *, const char * );
+FILE * sfopen( const char *, const char *, const char * const, int );
 
-void sfclose( FILE *, const char * );
+void sfclose( FILE *, const char * const, int );
 
-int sstrtol( const char * const,
-        const char * const, int );
+int sstrtol( const char * const, const char * const, int );
 
-double sstrtod( const char * const,
-        const char * const, int );
+double sstrtod( const char * const, const char * const, int );
 
 #endif

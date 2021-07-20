@@ -284,6 +284,14 @@ static int Count_Atoms( reax_system *system, FILE *fp, int geo_format )
 }
 
 
+/* Parser for geometry file in free-form custom PuReMD format
+ *
+ * geo_file: filename for custom geometry file to parse
+ * system: struct containing atom-related information
+ * control: struct containing simulation parameters
+ * data: struct containing information on active simulations
+ * workspace: struct containing intermediate structures used for calculations
+ */
 void Read_Geo( const char * const geo_file, reax_system* system, control_params *control,
         simulation_data *data, static_storage *workspace )
 {
@@ -293,7 +301,7 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
     char element[3], name[9];
     reax_atom *atom;
 
-    geo = sfopen( geo_file, "r" );
+    geo = sfopen( geo_file, "r", __FILE__, __LINE__ );
 
     if ( Read_Box_Info( system, geo, CUSTOM ) == FAILURE )
     {
@@ -339,14 +347,32 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
         rvec_MakeZero( atom->v );
         rvec_MakeZero( atom->f );
         atom->q = 0.0;
+            
+        /* check for dummy atom */
+        if ( strncmp( element, "X\0", 2 ) == 0 )
+        {
+           atom->is_dummy = TRUE;
+        }
+        else
+        {
+            atom->is_dummy = FALSE;            
+        }		
 
         top++;
     }
 
-    sfclose( geo, "Read_Geo::geo" );
+    sfclose( geo, __FILE__, __LINE__ );
 }
 
 
+/* Parser for geometry file in fixed-form PDB format
+ *
+ * pdb_file: filename for PDB geometry file to parse
+ * system: struct containing atom-related information
+ * control: struct containing simulation parameters
+ * data: struct containing information on active simulations
+ * workspace: struct containing intermediate structures used for calculations
+ */
 void Read_PDB( const char * const pdb_file, reax_system* system, control_params *control,
         simulation_data *data, static_storage *workspace )
 {
@@ -363,7 +389,7 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
     rvec x;
     reax_atom *atom;
 
-    pdb = sfopen( pdb_file, "r" );
+    pdb = sfopen( pdb_file, "r", __FILE__, __LINE__ );
 
     Allocate_Tokenizer_Space( &s, MAX_LINE, &s1, MAX_LINE,
             &tmp, MAX_TOKENS, MAX_TOKEN_LEN );
@@ -478,21 +504,29 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
                 pdb_serial = (int) sstrtod( serial, __FILE__, __LINE__ );
                 workspace->orig_id[top] = pdb_serial;
 
+                strncpy( atom->name, atom_name, sizeof(atom->name) - 1 );
+                atom->name[sizeof(atom->name) - 1] = '\0';
                 Trim_Spaces( element, sizeof(element) );
                 for ( i = 0; i < sizeof(element) - 1; ++i )
                 {
                     element[i] = toupper( element[i] );
                 }
                 atom->type = Get_Atom_Type( &system->reax_param, element, sizeof(element) );
-                strncpy( atom->name, atom_name, sizeof(atom->name) - 1 );
-                atom->name[sizeof(atom->name) - 1] = '\0';
+            
+                /* check for dummy atom */
+                if ( strncmp( element, "X\0", 2 ) == 0 )
+                {
+                    system->atoms[top].is_dummy = TRUE;
+                }
+                else
+                {
+                    system->atoms[top].is_dummy = FALSE;            
+                }		
 
                 rvec_Copy( atom->x, x );
                 rvec_MakeZero( atom->v );
                 rvec_MakeZero( atom->f );
                 atom->q = 0;
-
-                top++;
 
 #if defined(DEBUG_FOCUS)
                 fprintf( stderr, "[INFO] atom: id = %d, name = %s, serial = %d, type = %d, ",
@@ -500,6 +534,8 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
                 fprintf( stderr, "x = (%7.3f, %7.3f, %7.3f)\n",
                         atom->x[0], atom->x[1], atom->x[2] );
 #endif
+
+                top++;
             }
 
             c++;
@@ -515,8 +551,7 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
             if ( control->restrict_bonds )
             {
                 /* error check */
-//                Check_Input_Range( c1 - 2, 0, MAX_RESTRICT,
-//                        "CONECT line exceeds max num restrictions allowed.\n" );
+//                Check_Input_Range( c1 - 2, 0, MAX_RESTRICT, __FILE__, __LINE__ );
 
                 /* read bond restrictions */
                 // pdb_serial = sstrtol( tmp[1], __FILE__, __LINE__ );
@@ -553,7 +588,7 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
         exit( INVALID_INPUT );
     }
 
-    sfclose( pdb, "Read_PDB::pdb" );
+    sfclose( pdb, __FILE__, __LINE__ );
 
     Deallocate_Tokenizer_Space( &s, &s1, &tmp, MAX_TOKENS );
 } 
@@ -595,7 +630,7 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
                 sizeof(control->sim_name) ),
             control->sim_name, snprintf(NULL, 0, "%d", data->step), data->step );
     fname[sizeof(fname) - 1] = '\0';
-    pdb = sfopen( fname, "w" );
+    pdb = sfopen( fname, "w", __FILE__, __LINE__ );
     fprintf( pdb, PDB_CRYST1_FORMAT_O,
              "CRYST1",
              system->box.box_norms[0], system->box.box_norms[1],
@@ -626,12 +661,13 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
         exit( INVALID_INPUT );
     }
 
-    sfclose( pdb, "Write_PDB::pdb" );
+    sfclose( pdb, __FILE__, __LINE__ );
 }
 
 
 /* Parser for geometry files in BGF format
  *
+ * bgf_file: filename for BGF file to parse
  * system: struct containing atom-related information
  * control: struct containing simulation parameters
  * data: struct containing information on active simulations
@@ -656,7 +692,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
     ratom = 0;
     crystx_found = FALSE;
 
-    bgf = sfopen( bgf_file, "r" );
+    bgf = sfopen( bgf_file, "r", __FILE__, __LINE__ );
 
     Allocate_Tokenizer_Space( &line, MAX_LINE, &backup, MAX_LINE,
             &tokens, MAX_TOKENS, MAX_TOKEN_LEN );
@@ -696,9 +732,9 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
         if ( system->prealloc_allocated == FALSE && num_mcc > 0 )
         {
             system->molec_charge_constraints = smalloc(
-                    sizeof(real) * num_mcc, "Read_BGF::molec_charge_constraints" );
+                    sizeof(real) * num_mcc, __FILE__, __LINE__ );
             system->molec_charge_constraint_ranges = smalloc(
-                    sizeof(int) * 2 * num_mcc, "Read_BGF::molec_charge_constraint_ranges" );
+                    sizeof(int) * 2 * num_mcc, __FILE__, __LINE__ );
 
             system->max_num_molec_charge_constraints = num_mcc;
         }
@@ -706,14 +742,14 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
         {
             if ( system->max_num_molec_charge_constraints > 0 )
             {
-                sfree( system->molec_charge_constraints, "Read_BGF::molec_charge_constraints" );
-                sfree( system->molec_charge_constraint_ranges, "Read_BGF::molec_charge_constraint_ranges" );
+                sfree( system->molec_charge_constraints, __FILE__, __LINE__ );
+                sfree( system->molec_charge_constraint_ranges, __FILE__, __LINE__ );
             }
 
             system->molec_charge_constraints = smalloc(
-                    sizeof(real) * num_mcc, "Read_BGF::molec_charge_constraints" );
+                    sizeof(real) * num_mcc, __FILE__, __LINE__ );
             system->molec_charge_constraint_ranges = smalloc(
-                    sizeof(int) * 2 * num_mcc, "Read_BGF::molec_charge_constraint_ranges" );
+                    sizeof(int) * 2 * num_mcc, __FILE__, __LINE__ );
 
             system->max_num_molec_charge_constraints = num_mcc;
         }
@@ -819,7 +855,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
 
             /* add to mapping */
             bgf_serial = sstrtod( serial, __FILE__, __LINE__ );
-            Check_Input_Range( bgf_serial, 0, MAX_ATOM_ID, "Invalid bgf serial" );
+            Check_Input_Range( bgf_serial, 0, MAX_ATOM_ID, __FILE__, __LINE__ );
             workspace->map_serials[ bgf_serial ] = atom_cnt;
             workspace->orig_id[ atom_cnt ] = bgf_serial;
 
@@ -845,6 +881,16 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             }
             system->atoms[atom_cnt].type =
                 Get_Atom_Type( &system->reax_param, element, sizeof(element) );
+            
+            /* check for dummy atom */
+            if ( strncmp( element, "X\0", 2 ) == 0 )
+            {
+                system->atoms[atom_cnt].is_dummy = TRUE;
+            }
+            else
+            {
+                system->atoms[atom_cnt].is_dummy = FALSE;            
+            }		
 
 #if defined(DEBUG_FOCUS)
             fprintf( stderr,
@@ -863,8 +909,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             if ( control->restrict_bonds )
             {
                 /* check number of restrictions */
-                Check_Input_Range( token_cnt - 2, 0, MAX_RESTRICT,
-                        "CONECT line exceeds max restrictions allowed.\n" );
+                Check_Input_Range( token_cnt - 2, 0, MAX_RESTRICT, __FILE__, __LINE__ );
 
                 /* read bond restrictions */
                 bgf_serial = sstrtol( tokens[1], __FILE__, __LINE__ );
@@ -920,5 +965,5 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
 
     Deallocate_Tokenizer_Space( &line, &backup, &tokens, MAX_TOKENS );
 
-    sfclose( bgf, "Read_BGF::bgf" );
+    sfclose( bgf, __FILE__, __LINE__ );
 }

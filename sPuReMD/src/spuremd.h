@@ -76,12 +76,14 @@ int set_control_parameter( const void * const, const char * const,
 void * setup_qmmm( int, const char * const,
         const double * const, int, const char * const,
         const double * const, const double * const,
+        int, const int * const, const int * const, const double * const,
         const char * const, const char * const );
 
 int reset_qmmm( const void * const, int, const char * const,
         const double * const, int, const char * const,
         const double * const, const double * const,
-        const char * const, const char * const );
+        int, const int * const, const int * const, const double * const,
+        const char * const, const char * const);
 
 int get_atom_positions_qmmm( const void * const, double * const,
         double * const );

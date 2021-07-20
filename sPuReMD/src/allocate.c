@@ -36,24 +36,19 @@ void PreAllocate_Space( reax_system * const system,
     {
         system->prealloc_allocated = TRUE;
 
-        system->atoms = scalloc( n, sizeof(reax_atom),
-                "PreAllocate_Space::system->atoms" );
-        workspace->orig_id = scalloc( n, sizeof(int),
-                "PreAllocate_Space::workspace->orid_id" );
+        system->atoms = scalloc( n, sizeof(reax_atom), __FILE__, __LINE__ );
+        workspace->orig_id = scalloc( n, sizeof(int), __FILE__, __LINE__ );
 
         /* bond restriction info */
         if ( control->restrict_bonds )
         {
-            workspace->restricted = scalloc( n, sizeof(int),
-                    "PreAllocate_Space::workspace->restricted_atoms" );
-
-            workspace->restricted_list = scalloc( n, sizeof(int*),
-                    "PreAllocate_Space::workspace->restricted_list" );
+            workspace->restricted = scalloc( n, sizeof(int), __FILE__, __LINE__ );
+            workspace->restricted_list = scalloc( n, sizeof(int*), __FILE__, __LINE__ );
 
             for ( i = 0; i < n; ++i )
             {
                 workspace->restricted_list[i] = scalloc( MAX_RESTRICT, sizeof(int),
-                        "PreAllocate_Space::workspace->restricted_list[i]" );
+                        __FILE__, __LINE__ );
             }
         }
 
@@ -62,48 +57,40 @@ void PreAllocate_Space( reax_system * const system,
                 || control->geo_format == BINARY_RESTART )
         {
             workspace->map_serials = scalloc( MAX_ATOM_ID, sizeof(int),
-                    "Read_BGF::workspace->map_serials" );
+                    __FILE__, __LINE__ );
         }
     }
     else
     {
-        sfree( system->atoms, "PreAllocate_Space::system->atoms" );
-        sfree( workspace->orig_id, "PreAllocate_Space::workspace->orid_id" );
+        sfree( system->atoms, __FILE__, __LINE__ );
+        sfree( workspace->orig_id, __FILE__, __LINE__ );
 
         /* bond restriction info */
         if ( control->restrict_bonds )
         {
-            sfree( workspace->restricted,
-                    "PreAllocate_Space::workspace->restricted_atoms" );
+            sfree( workspace->restricted, __FILE__, __LINE__ );
 
             for ( i = 0; i < n; ++i )
             {
-                sfree( workspace->restricted_list[i],
-                        "PreAllocate_Space::workspace->restricted_list[i]" );
+                sfree( workspace->restricted_list[i], __FILE__, __LINE__ );
             }
 
-            sfree( workspace->restricted_list,
-                    "PreAllocate_Space::workspace->restricted_list" );
+            sfree( workspace->restricted_list, __FILE__, __LINE__ );
         }
 
-        system->atoms = scalloc( n, sizeof(reax_atom),
-                "PreAllocate_Space::system->atoms" );
-        workspace->orig_id = scalloc( n, sizeof(int),
-                "PreAllocate_Space::workspace->orid_id" );
+        system->atoms = scalloc( n, sizeof(reax_atom), __FILE__, __LINE__ );
+        workspace->orig_id = scalloc( n, sizeof(int), __FILE__, __LINE__ );
 
         /* bond restriction info */
         if ( control->restrict_bonds )
         {
-            workspace->restricted = scalloc( n, sizeof(int),
-                    "PreAllocate_Space::workspace->restricted_atoms" );
-
-            workspace->restricted_list = scalloc( n, sizeof(int*),
-                    "PreAllocate_Space::workspace->restricted_list" );
+            workspace->restricted = scalloc( n, sizeof(int), __FILE__, __LINE__ );
+            workspace->restricted_list = scalloc( n, sizeof(int*), __FILE__, __LINE__ );
 
             for ( i = 0; i < n; ++i )
             {
                 workspace->restricted_list[i] = scalloc( MAX_RESTRICT, sizeof(int),
-                        "PreAllocate_Space::workspace->restricted_list[i]" );
+                        __FILE__, __LINE__ );
             }
         }
     }
@@ -136,9 +123,9 @@ void Allocate_Matrix( sparse_matrix * const H, int n, int n_max, int m )
     H->n_max = n_max;
     H->m = m;
 
-    H->start = smalloc( sizeof(unsigned int) * (n_max + 1), "Allocate_Matrix::H->start" );
-    H->j = smalloc( sizeof(unsigned int) * m, "Allocate_Matrix::H->j" );
-    H->val = smalloc( sizeof(real) * m, "Allocate_Matrix::H->val" );
+    H->start = smalloc( sizeof(unsigned int) * (n_max + 1), __FILE__, __LINE__ );
+    H->j = smalloc( sizeof(unsigned int) * m, __FILE__, __LINE__ );
+    H->val = smalloc( sizeof(real) * m, __FILE__, __LINE__ );
 }
 
 
@@ -150,9 +137,9 @@ void Deallocate_Matrix( sparse_matrix * const H )
 {
     H->allocated = FALSE;
 
-    sfree( H->start, "Deallocate_Matrix::H->start" );
-    sfree( H->j, "Deallocate_Matrix::H->j" );
-    sfree( H->val, "Deallocate_Matrix::H->val" );
+    sfree( H->start, __FILE__, __LINE__ );
+    sfree( H->j, __FILE__, __LINE__ );
+    sfree( H->val, __FILE__, __LINE__ );
 }
 
 
@@ -196,8 +183,7 @@ static void Reallocate_Initialize_HBond_List( int n, int num_h, int num_h_max,
 {
     int i, num_hbonds, *hb_top;
 
-    hb_top = scalloc( n, sizeof(int),
-            "Reallocate_Initialize_HBond_List::hb_top" );
+    hb_top = scalloc( n, sizeof(int), __FILE__, __LINE__ );
     num_hbonds = 0;
 
     for ( i = 0; i < n; ++i )
@@ -218,7 +204,7 @@ static void Reallocate_Initialize_HBond_List( int n, int num_h, int num_h_max,
 
     Initialize_HBond_List( n, h_index, hb_top, hbond_list );
 
-    sfree( hb_top, "Reallocate_Initialize_HBond_List::hb_top" );
+    sfree( hb_top, __FILE__, __LINE__ );
 }
 
 
@@ -249,8 +235,7 @@ static void Reallocate_Initialize_Bond_List( int n, int n_max,
     int i;
     int *bond_top;
 
-    bond_top = (int *) scalloc( n, sizeof(int),
-            "Reallocate_Initialize_Bond_List::hb_top" );
+    bond_top = scalloc( n, sizeof(int), __FILE__, __LINE__ );
     *num_bonds = 0;
     *est_3body = 0;
 
@@ -270,7 +255,7 @@ static void Reallocate_Initialize_Bond_List( int n, int n_max,
 
     Initialize_Bond_List( bond_top, bond_list );
 
-    sfree( bond_top, "Reallocate_Initialize_Bond_List::bond_top" );
+    sfree( bond_top, __FILE__, __LINE__ );
 }
 
 
@@ -357,9 +342,9 @@ void Reallocate( reax_system * const system, control_params const * const contro
             {
                 for ( k = 0; k < g->ncell_max[2]; k++ )
                 {
-                    sfree( g->atoms[i][j][k], "Reallocate::g->atoms[i][j][k]" );
+                    sfree( g->atoms[i][j][k], __FILE__, __LINE__ );
                     g->atoms[i][j][k] = scalloc( workspace->realloc.gcell_atoms, sizeof(int),
-                                "Reallocate::g->atoms[i][j][k]" );
+                                __FILE__, __LINE__ );
                 }
             }
         }

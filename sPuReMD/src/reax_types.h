@@ -759,6 +759,10 @@ struct reax_atom
 {
     /* integer representation of element type of this atom */
     int type;
+    /* TRUE if the atom is a dummy atom, FALSE otherwise
+     * Note: dummy atoms do not form bonds but participate
+     * in other (non-bonded) interactions */
+    int is_dummy;
     /* relative coordinates in terms of periodic images of the
      * simulation box which are used to track if this atom moves
      * between images between simulation steps which regenerate
@@ -1609,10 +1613,6 @@ struct static_storage
     /* for hydrogen bonds */
     int *hbond_index;
 
-#if defined(QMMM)
-    /* TRUE if the atom is in the QM region, FALSE otherwise (atom in MM region) */
-    int *mask_qmmm;
-#endif
     rvec *a; // used in integrators
     rvec *f_old;
     rvec *v_const;
@@ -1799,7 +1799,8 @@ struct spuremd_handle
     output_controls *out_control;
     /* TRUE if file I/O for simulation output enabled, FALSE otherwise */
     int output_enabled;
-    /* TRUE if reallocation is required due to num. atoms increasing, FALSE otherwise */
+    /* TRUE if reallocation is required due to num. atoms increasing
+     * (this includes first simulation run), FALSE otherwise */
     int realloc;
     /* Callback for getting simulation state at the end of each time step */
     callback_function callback;

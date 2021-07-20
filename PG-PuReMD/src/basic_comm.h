@@ -50,11 +50,7 @@ void Coll( reax_system const * const, mpi_datatypes * const,
 void Coll_FS( reax_system const * const, mpi_datatypes * const,
         void * const , int, MPI_Datatype );
 
-real Parallel_Norm( const real * const, const int, MPI_Comm );
-
 real Parallel_Dot( const real * const, const real * const, const int, MPI_Comm );
-
-real Parallel_Vector_Acc( const real * const, const int, MPI_Comm );
 
 #if defined(TEST_FORCES)
 void Coll_ids_at_Master( reax_system*, storage*, mpi_datatypes* );

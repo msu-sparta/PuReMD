@@ -38,7 +38,7 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
     restart_atom res_data;
 
     snprintf( fname, MAX_STR, "%.*s.res%d", MAX_STR - 12, control->sim_name, data->step );
-    fres = sfopen( fname, "wb" );
+    fres = sfopen( fname, "wb", __FILE__, __LINE__ );
 
     res_header.step = data->step;
     res_header.N = system->N;
@@ -63,7 +63,7 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
         fwrite( &res_data, sizeof(restart_atom), 1, fres );
     }
 
-    sfclose( fres, "Write_Binary_Restart::fres" );
+    sfclose( fres, __FILE__, __LINE__ );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "write restart - " );
@@ -81,7 +81,7 @@ void Read_Binary_Restart( const char * const fname, reax_system *system,
     restart_header res_header;
     restart_atom res_data;
 
-    fres = sfopen( fname, "rb" );
+    fres = sfopen( fname, "rb", __FILE__, __LINE__ );
 
     /* parse header of restart file */
     fread( &res_header, sizeof(restart_header), 1, fres );
@@ -139,7 +139,7 @@ void Read_Binary_Restart( const char * const fname, reax_system *system,
     fprintf( stderr, "system->N: %d, i: %d\n", system->N, i );
 #endif
 
-    sfclose( fres, "Read_Binary_Restart::fres" );
+    sfclose( fres, __FILE__, __LINE__ );
 
     data->step = data->prev_steps;
     /* target num. of MD sim. steps (nsteps)
@@ -157,7 +157,7 @@ void Write_ASCII_Restart( reax_system *system, control_params *control,
     reax_atom *p_atom;
 
     snprintf( fname, MAX_STR + 8, "%s.res%d", control->sim_name, data->step );
-    fres = sfopen( fname, "w" );
+    fres = sfopen( fname, "w", __FILE__, __LINE__ );
 
     fprintf( fres, RESTART_HEADER,
              data->step, system->N, data->therm.T, data->therm.xi,
@@ -176,7 +176,7 @@ void Write_ASCII_Restart( reax_system *system, control_params *control,
                  p_atom->v[0], p_atom->v[1], p_atom->v[2] );
     }
 
-    sfclose( fres, "Write_ASCII_Restart::fres" );
+    sfclose( fres, __FILE__, __LINE__ );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "write restart - " );
@@ -192,7 +192,7 @@ void Read_ASCII_Restart( const char * const fname, reax_system *system,
     FILE *fres;
     reax_atom *p_atom;
 
-    fres = sfopen( fname, "r" );
+    fres = sfopen( fname, "r", __FILE__, __LINE__ );
 
     /* parse header of restart file */
     fscanf( fres, READ_RESTART_HEADER,
@@ -238,7 +238,7 @@ void Read_ASCII_Restart( const char * const fname, reax_system *system,
         workspace->map_serials[workspace->orig_id[i]] = i;
     }
 
-    sfclose( fres, "Read_ASCII_Restart::fres" );
+    sfclose( fres, __FILE__, __LINE__ );
 
     data->step = data->prev_steps;
     /* target num. of MD sim. steps (nsteps)

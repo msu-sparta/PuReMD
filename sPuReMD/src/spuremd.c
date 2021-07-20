@@ -158,30 +158,19 @@ static void Allocate_Top_Level_Structs( spuremd_handle ** handle )
     int i;
 
     /* top-level allocation */
-    *handle = smalloc( sizeof(spuremd_handle), "Allocate_Top_Level_Structs::handle" );
+    *handle = smalloc( sizeof(spuremd_handle), __FILE__, __LINE__ );
 
     /* second-level allocations */
-    (*handle)->system = smalloc( sizeof(reax_system),
-           "Allocate_Top_Level_Structs::handle->system" );
-
-    (*handle)->control = smalloc( sizeof(control_params),
-           "Allocate_Top_Level_Structs::handle->control" );
-
-    (*handle)->data = smalloc( sizeof(simulation_data),
-           "Allocate_Top_Level_Structs::handle->data" );
-
-    (*handle)->workspace = smalloc( sizeof(static_storage),
-           "Allocate_Top_Level_Structs::handle->workspace" );
-
-    (*handle)->lists = smalloc( sizeof(reax_list *) * LIST_N,
-           "Allocate_Top_Level_Structs::handle->lists" );
+    (*handle)->system = smalloc( sizeof(reax_system), __FILE__, __LINE__ );
+    (*handle)->control = smalloc( sizeof(control_params), __FILE__, __LINE__ );
+    (*handle)->data = smalloc( sizeof(simulation_data), __FILE__, __LINE__ );
+    (*handle)->workspace = smalloc( sizeof(static_storage), __FILE__, __LINE__ );
+    (*handle)->lists = smalloc( sizeof(reax_list *) * LIST_N, __FILE__, __LINE__ );
     for ( i = 0; i < LIST_N; ++i )
     {
-        (*handle)->lists[i] = smalloc( sizeof(reax_list),
-                "Allocate_Top_Level_Structs::handle->lists[i]" );
+        (*handle)->lists[i] = smalloc( sizeof(reax_list), __FILE__, __LINE__ );
     }
-    (*handle)->out_control = smalloc( sizeof(output_controls),
-           "Allocate_Top_Level_Structs::handle->out_control" );
+    (*handle)->out_control = smalloc( sizeof(output_controls), __FILE__, __LINE__ );
 }
 
 
@@ -293,6 +282,9 @@ void * setup2( int num_atoms, const int * const atom_type,
 
     for ( i = 0; i < spmd_handle->system->N; ++i )
     {
+        assert( atom_type[i] >= 0
+                && atom_type[i] < spmd_handle->system->reax_param.num_atom_types );
+
         x[0] = pos[3 * i];
         x[1] = pos[3 * i + 1];
         x[2] = pos[3 * i + 2];
@@ -300,16 +292,25 @@ void * setup2( int num_atoms, const int * const atom_type,
         Fit_to_Periodic_Box( &spmd_handle->system->box, x );
 
         spmd_handle->workspace->orig_id[i] = i + 1;
-//        spmd_handle->system->atoms[i].type = Get_Atom_Type( &system->reax_param,
-//                element, sizeof(element) );
         spmd_handle->system->atoms[i].type = atom_type[i];
-//        strncpy( spmd_handle->system->atoms[i].name, atom_name,
-//                sizeof(spmd_handle->system->atoms[i].name) - 1 );
-//        spmd_handle->system->atoms[i].name[sizeof(spmd_handle->system->atoms[i].name) - 1] = '\0';
+        strncpy( spmd_handle->system->atoms[i].name,
+                spmd_handle->system->reax_param.sbp[atom_type[i]].name,
+                sizeof(spmd_handle->system->atoms[i].name) - 1 );
+        spmd_handle->system->atoms[i].name[sizeof(spmd_handle->system->atoms[i].name) - 1] = '\0';
         rvec_Copy( spmd_handle->system->atoms[i].x, x );
         rvec_MakeZero( spmd_handle->system->atoms[i].v );
         rvec_MakeZero( spmd_handle->system->atoms[i].f );
         spmd_handle->system->atoms[i].q = 0.0;
+            
+        /* check for dummy atom */
+        if ( strncmp( spmd_handle->system->atoms[i].name, "X\0", 2 ) == 0 )
+        {
+           spmd_handle->system->atoms[i].is_dummy = TRUE;
+        }
+        else
+        {
+            spmd_handle->system->atoms[i].is_dummy = FALSE;            
+        }		
     }
 
     spmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * spmd_handle->system->N );
@@ -367,8 +368,6 @@ int simulate( const void * const handle )
                 spmd_handle->out_control, &Evolve,
                 spmd_handle->output_enabled,
                 spmd_handle->realloc );
-
-        spmd_handle->realloc = FALSE;
 
         /* compute f_0 */
         //if( control.restart == FALSE ) {
@@ -475,6 +474,7 @@ int simulate( const void * const handle )
             fprintf( spmd_handle->out_control->log, "total: %.2f secs\n", spmd_handle->data->timing.elapsed );
         }
 
+        spmd_handle->realloc = FALSE;
         ret = SPUREMD_SUCCESS;
     }
 
@@ -503,18 +503,18 @@ int cleanup( const void * const handle )
                 spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control,
                 spmd_handle->output_enabled, FALSE );
 
-        sfree( spmd_handle->out_control, "cleanup::spmd_handle->out_control" );
+        sfree( spmd_handle->out_control, __FILE__, __LINE__ );
         for ( i = 0; i < LIST_N; ++i )
         {
-            sfree( spmd_handle->lists[i], "cleanup::spmd_handle->lists[i]" );
+            sfree( spmd_handle->lists[i], __FILE__, __LINE__ );
         }
-        sfree( spmd_handle->lists, "cleanup::spmd_handle->lists" );
-        sfree( spmd_handle->workspace, "cleanup::spmd_handle->workspace" );
-        sfree( spmd_handle->data, "cleanup::spmd_handle->data" );
-        sfree( spmd_handle->control, "cleanup::spmd_handle->control" );
-        sfree( spmd_handle->system, "cleanup::spmd_handle->system" );
+        sfree( spmd_handle->lists, __FILE__, __LINE__ );
+        sfree( spmd_handle->workspace, __FILE__, __LINE__ );
+        sfree( spmd_handle->data, __FILE__, __LINE__ );
+        sfree( spmd_handle->control, __FILE__, __LINE__ );
+        sfree( spmd_handle->system, __FILE__, __LINE__ );
 
-        sfree( spmd_handle, "cleanup::spmd_handle" );
+        sfree( spmd_handle, __FILE__, __LINE__ );
 
         ret = SPUREMD_SUCCESS;
     }
@@ -639,6 +639,9 @@ int reset2( const void * const handle, int num_atoms,
 
         for ( i = 0; i < spmd_handle->system->N; ++i )
         {
+            assert( atom_type[i] >= 0
+                    && atom_type[i] < spmd_handle->system->reax_param.num_atom_types );
+
             x[0] = pos[3 * i];
             x[1] = pos[3 * i + 1];
             x[2] = pos[3 * i + 2];
@@ -646,16 +649,25 @@ int reset2( const void * const handle, int num_atoms,
             Fit_to_Periodic_Box( &spmd_handle->system->box, x );
 
             spmd_handle->workspace->orig_id[i] = i + 1;
-//            spmd_handle->system->atoms[i].type = Get_Atom_Type( &system->reax_param,
-//                    element, sizeof(element) );
             spmd_handle->system->atoms[i].type = atom_type[i];
-//            strncpy( spmd_handle->system->atoms[i].name, atom_name,
-//                    sizeof(spmd_handle->system->atoms[i].name) - 1 );
-//            spmd_handle->system->atoms[i].name[sizeof(spmd_handle->system->atoms[i].name) - 1] = '\0';
+            strncpy( spmd_handle->system->atoms[i].name,
+                    spmd_handle->system->reax_param.sbp[atom_type[i]].name,
+                    sizeof(spmd_handle->system->atoms[i].name) - 1 );
+            spmd_handle->system->atoms[i].name[sizeof(spmd_handle->system->atoms[i].name) - 1] = '\0';
             rvec_Copy( spmd_handle->system->atoms[i].x, x );
             rvec_MakeZero( spmd_handle->system->atoms[i].v );
             rvec_MakeZero( spmd_handle->system->atoms[i].f );
             spmd_handle->system->atoms[i].q = 0.0;
+                
+            /* check for dummy atom */
+            if ( strncmp( spmd_handle->system->atoms[i].name, "X\0", 2 ) == 0 )
+            {
+               spmd_handle->system->atoms[i].is_dummy = TRUE;
+            }
+            else
+            {
+                spmd_handle->system->atoms[i].is_dummy = FALSE;            
+            }		
         }
 
         if ( spmd_handle->system->N > spmd_handle->system->N_max )
@@ -960,12 +972,18 @@ int set_control_parameter( const void * const handle, const char * const keyword
  * sim_box_info: simulation box information, where the entries are
  *  - box length per dimension (3 entries)
  *  - angles per dimension (3 entries)
+ * num_charge_constraints: num. of charge constraints for charge model
+ * charge_constraint_start: starting atom num. (1-based) of atom group for a charge constraint
+ * charge_constraint_end: ending atom num. (1-based) of atom group for a charge constraint
+ * charge_constraint_value: charge constraint value for atom group
  * ffield_file: file containing force field parameters
  * control_file: file containing simulation parameters
  */
 void * setup_qmmm( int qm_num_atoms, const char * const qm_symbols,
         const double * const qm_pos, int mm_num_atoms, const char * const mm_symbols,
         const double * const mm_pos_q, const double * const sim_box_info,
+        int num_charge_constraints, const int * const charge_constraint_start,
+        const int * const charge_constraint_end, const double * const charge_constraint_value,
         const char * const ffield_file, const char * const control_file )
 {
     int i;
@@ -983,6 +1001,26 @@ void * setup_qmmm( int qm_num_atoms, const char * const qm_symbols,
             spmd_handle->system, spmd_handle->control,
             spmd_handle->data, spmd_handle->workspace,
             spmd_handle->out_control, FALSE );
+
+    spmd_handle->system->max_num_molec_charge_constraints = num_charge_constraints;
+    spmd_handle->system->num_molec_charge_constraints = num_charge_constraints;
+
+    if ( spmd_handle->system->num_molec_charge_constraints > 0 )
+    {
+        spmd_handle->system->molec_charge_constraints = smalloc(
+                sizeof(real) * spmd_handle->system->num_molec_charge_constraints,
+                __FILE__, __LINE__ );
+        spmd_handle->system->molec_charge_constraint_ranges = smalloc(
+                sizeof(int) * 2 * spmd_handle->system->num_molec_charge_constraints,
+                __FILE__, __LINE__ );
+
+        for ( i = 0; i < spmd_handle->system->num_molec_charge_constraints; ++i )
+        {
+            spmd_handle->system->molec_charge_constraint_ranges[2 * i] = charge_constraint_start[i];
+            spmd_handle->system->molec_charge_constraint_ranges[2 * i + 1] = charge_constraint_end[i];
+            spmd_handle->system->molec_charge_constraints[i] = charge_constraint_value[i];
+        }
+    }
 
     spmd_handle->system->N_qm = qm_num_atoms;
     spmd_handle->system->N_mm = mm_num_atoms;
@@ -1022,8 +1060,17 @@ void * setup_qmmm( int qm_num_atoms, const char * const qm_symbols,
         rvec_MakeZero( spmd_handle->system->atoms[i].f );
         spmd_handle->system->atoms[i].q = 0.0;
         spmd_handle->system->atoms[i].q_init = 0.0;
-
         spmd_handle->system->atoms[i].qmmm_mask = TRUE;
+            
+        /* check for dummy atom */
+        if ( strncmp( element, "X\0", 2 ) == 0 )
+        {
+           spmd_handle->system->atoms[i].is_dummy = TRUE;
+        }
+        else
+        {
+            spmd_handle->system->atoms[i].is_dummy = FALSE;            
+        }		
     }
 
     for ( i = spmd_handle->system->N_qm; i < spmd_handle->system->N; ++i )
@@ -1048,8 +1095,17 @@ void * setup_qmmm( int qm_num_atoms, const char * const qm_symbols,
         rvec_MakeZero( spmd_handle->system->atoms[i].f );
         spmd_handle->system->atoms[i].q = mm_pos_q[4 * (i - spmd_handle->system->N_qm) + 3];
         spmd_handle->system->atoms[i].q_init = mm_pos_q[4 * (i - spmd_handle->system->N_qm) + 3];
-
         spmd_handle->system->atoms[i].qmmm_mask = FALSE;
+            
+        /* check for dummy atom */
+        if ( strncmp( element, "X\0", 2 ) == 0 )
+        {
+           spmd_handle->system->atoms[i].is_dummy = TRUE;
+        }
+        else
+        {
+            spmd_handle->system->atoms[i].is_dummy = FALSE;            
+        }		
     }
 
     spmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * spmd_handle->system->N );
@@ -1071,6 +1127,10 @@ void * setup_qmmm( int qm_num_atoms, const char * const qm_symbols,
  * sim_box_info: simulation box information, where the entries are
  *  - box length per dimension (3 entries)
  *  - angles per dimension (3 entries)
+ * num_charge_constraints: num. of charge constraints for charge model
+ * charge_constraint_start: starting atom num. (1-based) of atom group for a charge constraint
+ * charge_constraint_end: ending atom num. (1-based) of atom group for a charge constraint
+ * charge_constraint_value: charge constraint value for atom group
  * ffield_file: file containing force field parameters
  * control_file: file containing simulation parameters
  *
@@ -1080,6 +1140,8 @@ int reset_qmmm( const void * const handle, int qm_num_atoms,
         const char * const qm_symbols, const double * const qm_pos,
         int mm_num_atoms, const char * const mm_symbols,
         const double * const mm_pos_q, const double * const sim_box_info,
+        int num_charge_constraints, const int * const charge_constraint_start,
+        const int * const charge_constraint_end, const double * const charge_constraint_value,
         const char * const ffield_file, const char * const control_file )
 {
     int i, ret;
@@ -1107,6 +1169,40 @@ int reset_qmmm( const void * const handle, int qm_num_atoms,
                 spmd_handle->system, spmd_handle->control,
                 spmd_handle->data, spmd_handle->workspace,
                 spmd_handle->out_control, TRUE );
+
+        spmd_handle->system->num_molec_charge_constraints = num_charge_constraints;
+
+        if ( spmd_handle->system->num_molec_charge_constraints
+                > spmd_handle->system->max_num_molec_charge_constraints )
+        {
+            if ( spmd_handle->system->max_num_molec_charge_constraints > 0 )
+            {
+                sfree( spmd_handle->system->molec_charge_constraints,
+                        __FILE__, __LINE__ );
+                sfree( spmd_handle->system->molec_charge_constraint_ranges,
+                        __FILE__, __LINE__ );
+            }
+
+            spmd_handle->system->molec_charge_constraints = smalloc(
+                    sizeof(real) * spmd_handle->system->num_molec_charge_constraints,
+                    __FILE__, __LINE__ );
+            spmd_handle->system->molec_charge_constraint_ranges = smalloc(
+                    sizeof(int) * 2 * spmd_handle->system->num_molec_charge_constraints,
+                    __FILE__, __LINE__ );
+
+            spmd_handle->system->max_num_molec_charge_constraints
+                = spmd_handle->system->num_molec_charge_constraints;
+        }
+
+        if ( spmd_handle->system->num_molec_charge_constraints > 0 )
+        {
+            for ( i = 0; i < spmd_handle->system->num_molec_charge_constraints; ++i )
+            {
+                spmd_handle->system->molec_charge_constraint_ranges[2 * i] = charge_constraint_start[i];
+                spmd_handle->system->molec_charge_constraint_ranges[2 * i + 1] = charge_constraint_end[i];
+                spmd_handle->system->molec_charge_constraints[i] = charge_constraint_value[i];
+            }
+        }
 
         spmd_handle->system->N_qm = qm_num_atoms;
         spmd_handle->system->N_mm = mm_num_atoms;
@@ -1146,8 +1242,18 @@ int reset_qmmm( const void * const handle, int qm_num_atoms,
             rvec_MakeZero( spmd_handle->system->atoms[i].v );
             rvec_MakeZero( spmd_handle->system->atoms[i].f );
             spmd_handle->system->atoms[i].q = 0.0;
-
+            spmd_handle->system->atoms[i].q_init = 0.0;
             spmd_handle->system->atoms[i].qmmm_mask = TRUE;
+            
+            /* check for dummy atom */
+            if ( strncmp( element, "X\0", 2 ) == 0 )
+            {
+               spmd_handle->system->atoms[i].is_dummy = TRUE;
+            }
+            else
+            {
+                spmd_handle->system->atoms[i].is_dummy = FALSE;            
+            }		
         }
 
         for ( i = spmd_handle->system->N_qm; i < spmd_handle->system->N; ++i )
@@ -1173,6 +1279,16 @@ int reset_qmmm( const void * const handle, int qm_num_atoms,
             spmd_handle->system->atoms[i].q = mm_pos_q[4 * (i - spmd_handle->system->N_qm) + 3];
             spmd_handle->system->atoms[i].q_init = mm_pos_q[4 * (i - spmd_handle->system->N_qm) + 3];
             spmd_handle->system->atoms[i].qmmm_mask = FALSE;
+            
+            /* check for dummy atom */
+            if ( strncmp( element, "X\0", 2 ) == 0 )
+            {
+               spmd_handle->system->atoms[i].is_dummy = TRUE;
+            }
+            else
+            {
+                spmd_handle->system->atoms[i].is_dummy = FALSE;            
+            }		
         }
 
         if ( spmd_handle->system->N > spmd_handle->system->N_max )

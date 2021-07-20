@@ -562,17 +562,17 @@ void Read_Control_File( const char * const control_file, reax_system * const sys
     int c, i, ret;
     FILE *fp;
 
-    fp = sfopen( control_file, "r" );
+    fp = sfopen( control_file, "r", __FILE__, __LINE__ );
 
     assert( fp != NULL );
 
     if ( fp != NULL )
     {
-        s = smalloc( sizeof(char) * MAX_LINE, "Read_Control_File::s" );
-        tmp = smalloc( sizeof(char*) * MAX_TOKENS, "Read_Control_File::tmp" );
+        s = smalloc( sizeof(char) * MAX_LINE, __FILE__, __LINE__ );
+        tmp = smalloc( sizeof(char*) * MAX_TOKENS, __FILE__, __LINE__ );
         for ( i = 0; i < MAX_TOKENS; i++ )
         {
-            tmp[i] = smalloc( sizeof(char) * MAX_LINE, "Read_Control_File::tmp[i]" );
+            tmp[i] = smalloc( sizeof(char) * MAX_LINE, __FILE__, __LINE__ );
         }
 
         /* read control parameters file */
@@ -601,13 +601,13 @@ void Read_Control_File( const char * const control_file, reax_system * const sys
 
         for ( i = 0; i < MAX_TOKENS; i++ )
         {
-            sfree( tmp[i], "Read_Control_File::tmp[i]" );
+            sfree( tmp[i], __FILE__, __LINE__ );
         }
-        sfree( tmp, "Read_Control_File::tmp" );
-        sfree( s, "Read_Control_File::s" );
+        sfree( tmp, __FILE__, __LINE__ );
+        sfree( s, __FILE__, __LINE__ );
     }
 
-    sfclose( fp, "Read_Control_File::fp" );
+    sfclose( fp, __FILE__, __LINE__ );
 }
 
 

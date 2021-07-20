@@ -89,101 +89,101 @@ static void Allocate_Space_for_Grid( reax_system * const system, int alloc )
     if ( alloc == TRUE )
     {
         /* allocate space for the new grid */
-        g->atoms = (int****) scalloc( g->ncell_max[0], sizeof( int*** ),
-                "Allocate_Space_for_Grid::g->atoms" );
+        g->atoms = scalloc( g->ncell_max[0], sizeof( int*** ),
+                __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
-            g->atoms[i] = (int***) scalloc( g->ncell_max[1], sizeof( int** ),
-                    "Allocate_Space_for_Grid::g->atoms[i]" );
-
-        for ( i = 0; i < g->ncell_max[0]; i++ )
-            for ( j = 0; j < g->ncell_max[1]; j++ )
-                g->atoms[i][j] = (int**) scalloc( g->ncell_max[2], sizeof( int* ),
-                        "Allocate_Space_for_Grid::g->atoms[i][j]" );
-
-        g->top = (int***) scalloc( g->ncell_max[0], sizeof( int** ),
-                "Allocate_Space_for_Grid::g->top" );
-
-        for ( i = 0; i < g->ncell_max[0]; i++ )
-            g->top[i] = (int**) scalloc( g->ncell_max[1], sizeof( int* ),
-                    "Allocate_Space_for_Grid::g->top[i]" );
+            g->atoms[i] = scalloc( g->ncell_max[1], sizeof( int** ),
+                    __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
-                g->top[i][j] = (int*) scalloc( g->ncell_max[2], sizeof( int ),
-                        "Allocate_Space_for_Grid::g->top[i][j]" );
+                g->atoms[i][j] = scalloc( g->ncell_max[2], sizeof( int* ),
+                        __FILE__, __LINE__ );
 
-        g->mark = (int***) scalloc( g->ncell_max[0], sizeof( int** ),
-                "Allocate_Space_for_Grid::g->mark" );
-
-        for ( i = 0; i < g->ncell_max[0]; i++ )
-            g->mark[i] = (int**) scalloc( g->ncell_max[1], sizeof( int* ),
-                    "Allocate_Space_for_Grid::g->mark[i]" );
+        g->top = scalloc( g->ncell_max[0], sizeof( int** ),
+                __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
-            for ( j = 0; j < g->ncell_max[1]; j++ )
-                g->mark[i][j] = (int*) scalloc( g->ncell_max[2], sizeof( int ),
-                        "Allocate_Space_for_Grid::g->mark[i][j]" );
-
-        g->start = (int***) scalloc( g->ncell_max[0], sizeof( int** ),
-                "Allocate_Space_for_Grid::g->start" );
-
-        for ( i = 0; i < g->ncell_max[0]; i++ )
-            g->start[i] = (int**) scalloc( g->ncell_max[1], sizeof( int* ),
-                    "Allocate_Space_for_Grid::g->start[i]" );
+            g->top[i] = scalloc( g->ncell_max[1], sizeof( int* ),
+                    __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
-                g->start[i][j] = (int*) scalloc( g->ncell_max[2], sizeof( int ),
-                        "Allocate_Space_for_Grid::g->start[i][j]" );
+                g->top[i][j] = scalloc( g->ncell_max[2], sizeof( int ),
+                        __FILE__, __LINE__ );
 
-        g->end = (int***) scalloc( g->ncell_max[0], sizeof( int** ),
-                "Allocate_Space_for_Grid::g->end" );
-
-        for ( i = 0; i < g->ncell_max[0]; i++ )
-            g->end[i] = (int**) scalloc( g->ncell_max[1], sizeof( int* ),
-                    "Allocate_Space_for_Grid::g->end[i]" );
+        g->mark = scalloc( g->ncell_max[0], sizeof( int** ),
+                __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
-            for ( j = 0; j < g->ncell_max[1]; j++ )
-                g->end[i][j] = (int*) scalloc( g->ncell_max[2], sizeof( int ),
-                        "Allocate_Space_for_Grid::g->end[i][j]" );
-
-        g->nbrs = (ivec****) scalloc( g->ncell_max[0], sizeof( ivec*** ),
-                "Allocate_Space_for_Grid::g->nbrs" );
-
-        for ( i = 0; i < g->ncell_max[0]; i++ )
-            g->nbrs[i] = (ivec***) scalloc( g->ncell_max[1], sizeof( ivec** ),
-                    "Allocate_Space_for_Grid::g->nbrs[i]" );
+            g->mark[i] = scalloc( g->ncell_max[1], sizeof( int* ),
+                    __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
-                g->nbrs[i][j] = (ivec**) scalloc( g->ncell_max[2], sizeof( ivec* ),
-                        "Allocate_Space_for_Grid::g->nbrs[i][j]" );
+                g->mark[i][j] = scalloc( g->ncell_max[2], sizeof( int ),
+                        __FILE__, __LINE__ );
+
+        g->start = scalloc( g->ncell_max[0], sizeof( int** ),
+                __FILE__, __LINE__ );
+
+        for ( i = 0; i < g->ncell_max[0]; i++ )
+            g->start[i] = scalloc( g->ncell_max[1], sizeof( int* ),
+                    __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
-                for ( k = 0; k < g->ncell_max[2]; k++ )
-                    g->nbrs[i][j][k] = (ivec*) smalloc( g->max_nbrs * sizeof( ivec ),
-                           "Allocate_Space_for_Grid::g->nbrs[i][j][k]" );
+                g->start[i][j] = scalloc( g->ncell_max[2], sizeof( int ),
+                        __FILE__, __LINE__ );
 
-        g->nbrs_cp = (rvec****) scalloc( g->ncell_max[0], sizeof( rvec*** ),
-                "Allocate_Space_for_Grid::g->nbrs_cp" );
+        g->end = scalloc( g->ncell_max[0], sizeof( int** ),
+                __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
-            g->nbrs_cp[i] = (rvec***) scalloc( g->ncell_max[1], sizeof( rvec** ),
-                    "Allocate_Space_for_Grid::g->nbrs_cp[i]" );
+            g->end[i] = scalloc( g->ncell_max[1], sizeof( int* ),
+                    __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
-                g->nbrs_cp[i][j] = (rvec**) scalloc( g->ncell_max[2], sizeof( rvec* ),
-                        "Allocate_Space_for_Grid::g->nbrs_cp[i][j]" );
+                g->end[i][j] = scalloc( g->ncell_max[2], sizeof( int ),
+                        __FILE__, __LINE__ );
+
+        g->nbrs = scalloc( g->ncell_max[0], sizeof( ivec*** ),
+                __FILE__, __LINE__ );
+
+        for ( i = 0; i < g->ncell_max[0]; i++ )
+            g->nbrs[i] = scalloc( g->ncell_max[1], sizeof( ivec** ),
+                    __FILE__, __LINE__ );
+
+        for ( i = 0; i < g->ncell_max[0]; i++ )
+            for ( j = 0; j < g->ncell_max[1]; j++ )
+                g->nbrs[i][j] = scalloc( g->ncell_max[2], sizeof( ivec* ),
+                        __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
                 for ( k = 0; k < g->ncell_max[2]; k++ )
-                    g->nbrs_cp[i][j][k] = (rvec*) smalloc( g->max_nbrs * sizeof( rvec ),
-                           "Allocate_Space_for_Grid::g->nbrs_cp[i][j][k]" );
+                    g->nbrs[i][j][k] = smalloc( g->max_nbrs * sizeof( ivec ),
+                           __FILE__, __LINE__ );
+
+        g->nbrs_cp = scalloc( g->ncell_max[0], sizeof( rvec*** ),
+                __FILE__, __LINE__ );
+
+        for ( i = 0; i < g->ncell_max[0]; i++ )
+            g->nbrs_cp[i] = scalloc( g->ncell_max[1], sizeof( rvec** ),
+                    __FILE__, __LINE__ );
+
+        for ( i = 0; i < g->ncell_max[0]; i++ )
+            for ( j = 0; j < g->ncell_max[1]; j++ )
+                g->nbrs_cp[i][j] = scalloc( g->ncell_max[2], sizeof( rvec* ),
+                        __FILE__, __LINE__ );
+
+        for ( i = 0; i < g->ncell_max[0]; i++ )
+            for ( j = 0; j < g->ncell_max[1]; j++ )
+                for ( k = 0; k < g->ncell_max[2]; k++ )
+                    g->nbrs_cp[i][j][k] = smalloc( g->max_nbrs * sizeof( rvec ),
+                           __FILE__, __LINE__ );
     }
 
     for ( i = 0; i < g->ncell[0]; i++ )
@@ -235,8 +235,8 @@ static void Allocate_Space_for_Grid( reax_system * const system, int alloc )
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
                 for ( k = 0; k < g->ncell_max[2]; k++ )
-                    g->atoms[i][j][k] = (int*) smalloc( g->max_atoms * sizeof( int ),
-                           "Allocate_Space_for_Grid::g->atoms[i][j][k]" );
+                    g->atoms[i][j][k] = smalloc( g->max_atoms * sizeof( int ),
+                           __FILE__, __LINE__ );
     }
     /* case: grid large enough but max. atoms per grid cells insufficient */
     else if ( g->max_atoms > 0 && g->max_atoms < max_atoms )
@@ -246,13 +246,13 @@ static void Allocate_Space_for_Grid( reax_system * const system, int alloc )
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
                 for ( k = 0; k < g->ncell_max[2]; k++ )
-                    sfree( g->atoms[i][j][k], "Allocate_Space_for_Grid::g->atoms[i][j][k]" );
+                    sfree( g->atoms[i][j][k], __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
                 for ( k = 0; k < g->ncell_max[2]; k++ )
-                    g->atoms[i][j][k] = (int*) smalloc( g->max_atoms * sizeof( int ),
-                           "Allocate_Space_for_Grid::g->atoms[i][j][k]" );
+                    g->atoms[i][j][k] = smalloc( g->max_atoms * sizeof( int ),
+                           __FILE__, __LINE__ );
     }
 
     for ( i = 0; i < g->ncell[0]; i++ )
@@ -274,41 +274,41 @@ static void Deallocate_Grid_Space( grid * const g )
         for ( j = 0; j < g->ncell_max[1]; j++ )
             for ( k = 0; k < g->ncell_max[2]; k++ )
             {
-                sfree( g->atoms[i][j][k], "Deallocate_Grid_Space::g->atoms[i][j][k]" );
-                sfree( g->nbrs[i][j][k], "Deallocate_Grid_Space::g->nbrs[i][j][k]" );
-                sfree( g->nbrs_cp[i][j][k], "Deallocate_Grid_Space::g->nbrs_cp[i][j][k]" );
+                sfree( g->atoms[i][j][k], __FILE__, __LINE__ );
+                sfree( g->nbrs[i][j][k], __FILE__, __LINE__ );
+                sfree( g->nbrs_cp[i][j][k], __FILE__, __LINE__ );
             }
 
     for ( i = 0; i < g->ncell_max[0]; i++ )
         for ( j = 0; j < g->ncell_max[1]; j++ )
         {
-            sfree( g->atoms[i][j], "Deallocate_Grid_Space::g->atoms[i][j]" );
-            sfree( g->top[i][j], "Deallocate_Grid_Space::g->top[i][j]" );
-            sfree( g->mark[i][j], "Deallocate_Grid_Space::g->mark[i][j]" );
-            sfree( g->start[i][j], "Deallocate_Grid_Space::g->start[i][j]" );
-            sfree( g->end[i][j], "Deallocate_Grid_Space::g->end[i][j]" );
-            sfree( g->nbrs[i][j], "Deallocate_Grid_Space::g->nbrs[i][j]" );
-            sfree( g->nbrs_cp[i][j], "Deallocate_Grid_Space::g->nbrs_cp[i][j]" );
+            sfree( g->atoms[i][j], __FILE__, __LINE__ );
+            sfree( g->top[i][j], __FILE__, __LINE__ );
+            sfree( g->mark[i][j], __FILE__, __LINE__ );
+            sfree( g->start[i][j], __FILE__, __LINE__ );
+            sfree( g->end[i][j], __FILE__, __LINE__ );
+            sfree( g->nbrs[i][j], __FILE__, __LINE__ );
+            sfree( g->nbrs_cp[i][j], __FILE__, __LINE__ );
         }
 
     for ( i = 0; i < g->ncell_max[0]; i++ )
     {
-        sfree( g->atoms[i], "Deallocate_Grid_Space::g->atoms[i]" );
-        sfree( g->top[i], "Deallocate_Grid_Space::g->top[i]" );
-        sfree( g->mark[i], "Deallocate_Grid_Space::g->mark[i]" );
-        sfree( g->start[i], "Deallocate_Grid_Space::g->start[i]" );
-        sfree( g->end[i], "Deallocate_Grid_Space::g->end[i]" );
-        sfree( g->nbrs[i], "Deallocate_Grid_Space::g->nbrs[i]" );
-        sfree( g->nbrs_cp[i], "Deallocate_Grid_Space::g->nbrs_cp[i]" );
+        sfree( g->atoms[i], __FILE__, __LINE__ );
+        sfree( g->top[i], __FILE__, __LINE__ );
+        sfree( g->mark[i], __FILE__, __LINE__ );
+        sfree( g->start[i], __FILE__, __LINE__ );
+        sfree( g->end[i], __FILE__, __LINE__ );
+        sfree( g->nbrs[i], __FILE__, __LINE__ );
+        sfree( g->nbrs_cp[i], __FILE__, __LINE__ );
     }
 
-    sfree( g->atoms, "Deallocate_Grid_Space::g->atoms" );
-    sfree( g->top, "Deallocate_Grid_Space::g->top" );
-    sfree( g->mark, "Deallocate_Grid_Space::g->mark" );
-    sfree( g->start, "Deallocate_Grid_Space::g->start" );
-    sfree( g->end, "Deallocate_Grid_Space::g->end" );
-    sfree( g->nbrs, "Deallocate_Grid_Space::g->nbrs" );
-    sfree( g->nbrs_cp, "Deallocate_Grid_Space::g->nbrs_cp" );
+    sfree( g->atoms, __FILE__, __LINE__ );
+    sfree( g->top, __FILE__, __LINE__ );
+    sfree( g->mark, __FILE__, __LINE__ );
+    sfree( g->start, __FILE__, __LINE__ );
+    sfree( g->end, __FILE__, __LINE__ );
+    sfree( g->nbrs, __FILE__, __LINE__ );
+    sfree( g->nbrs_cp, __FILE__, __LINE__ );
 }
 
 
@@ -750,19 +750,19 @@ static void Free_Storage( static_storage * const workspace,
 
     for ( i = 0; i < control->cm_solver_restart + 1; ++i )
     {
-        sfree( workspace->v[i], "Free_Storage::workspace->v[i]" );
+        sfree( workspace->v[i], __FILE__, __LINE__ );
     }
-    sfree( workspace->v, "Free_Storage::workspace->v" );
+    sfree( workspace->v, __FILE__, __LINE__ );
 
     for ( i = 0; i < 3; ++i )
     {
-        sfree( workspace->s[i], "Free_Storage::workspace->s[i]" );
-        sfree( workspace->t[i], "Free_Storage::workspace->t[i]" );
+        sfree( workspace->s[i], __FILE__, __LINE__ );
+        sfree( workspace->t[i], __FILE__, __LINE__ );
     }
-    sfree( workspace->s, "Free_Storage::workspace->s" );
-    sfree( workspace->t, "Free_Storage::workspace->t" );
+    sfree( workspace->s, __FILE__, __LINE__ );
+    sfree( workspace->t, __FILE__, __LINE__ );
 
-    sfree( workspace->orig_id, "Free_Storage::workspace->orig_id" );
+    sfree( workspace->orig_id, __FILE__, __LINE__ );
 }
 
 
@@ -793,23 +793,23 @@ void Reorder_Atoms( reax_system * const system, static_storage * const workspace
     top = 0;
     g = &system->g;
 
-    new_atoms = scalloc( system->N, sizeof(reax_atom), "Reorder_Atoms::new_atoms" );
-    orig_id = scalloc( system->N, sizeof(int), "Reorder_Atoms::orig_id" );
-    f_old = scalloc( system->N, sizeof(rvec), "Reorder_Atoms::f_old" );
+    new_atoms = scalloc( system->N, sizeof(reax_atom), __FILE__, __LINE__ );
+    orig_id = scalloc( system->N, sizeof(int), __FILE__, __LINE__ );
+    f_old = scalloc( system->N, sizeof(rvec), __FILE__, __LINE__ );
 
-    s = scalloc( 5, sizeof(real *), "Reorder_Atoms::s" );
-    t = scalloc( 5, sizeof(real *), "Reorder_Atoms::t" );
+    s = scalloc( 5, sizeof(real *), __FILE__, __LINE__ );
+    t = scalloc( 5, sizeof(real *), __FILE__, __LINE__ );
     for ( i = 0; i < 5; ++i )
     {
-        s[i] = scalloc( system->N_cm, sizeof(real), "Reorder_Atoms::s[i]" );
-        t[i] = scalloc( system->N_cm, sizeof(real), "Reorder_Atoms::t[i]" );
+        s[i] = scalloc( system->N_cm, sizeof(real), __FILE__, __LINE__ );
+        t[i] = scalloc( system->N_cm, sizeof(real), __FILE__, __LINE__ );
     }
 
     v = scalloc( control->cm_solver_restart + 1, sizeof(real *),
-            "Reorder_Atoms::v" );
+            __FILE__, __LINE__ );
     for ( i = 0; i < control->cm_solver_restart + 1; ++i )
     {
-        v[i] = scalloc( system->N_cm, sizeof(real), "Reorder_Atoms::v[i]" );
+        v[i] = scalloc( system->N_cm, sizeof(real), __FILE__, __LINE__ );
     }
 
     for ( i = 0; i < g->ncell[0]; i++ )
@@ -837,7 +837,7 @@ void Reorder_Atoms( reax_system * const system, static_storage * const workspace
         }
     }
 
-    sfree( system->atoms, "Reorder_Atoms::system->atoms" );
+    sfree( system->atoms, __FILE__, __LINE__ );
     Free_Storage( workspace, control );
 
     system->atoms = new_atoms;

@@ -113,13 +113,15 @@ static int compare_matrix_entry(const void *v1, const void *v2)
 void Sort_Matrix_Rows( sparse_matrix * const A )
 {
     unsigned int i, j, si, ei;
+    size_t temp_size;
     sparse_matrix_entry *temp;
 
 #if defined(_OPENMP)
 //    #pragma omp parallel default(none) private(i, j, si, ei, temp) shared(stderr)
 #endif
     {
-        temp = smalloc( sizeof(sparse_matrix_entry) * (A->n + 1), "Sort_Matrix_Rows::temp" );
+        temp = NULL;
+        temp_size = 0;
 
         /* sort each row of A using column indices */
 #if defined(_OPENMP)
@@ -129,6 +131,16 @@ void Sort_Matrix_Rows( sparse_matrix * const A )
         {
             si = A->start[i];
             ei = A->start[i + 1];
+
+            if ( temp_size < ei - si )
+            {
+                if ( temp != NULL )
+                {
+                    sfree( temp, __FILE__, __LINE__ );
+                }
+                temp = smalloc( sizeof(sparse_matrix_entry) * (ei - si), __FILE__, __LINE__ );
+                temp_size = ei - si;
+            }
 
             for ( j = 0; j < (ei - si); ++j )
             {
@@ -146,7 +158,7 @@ void Sort_Matrix_Rows( sparse_matrix * const A )
             }
         }
 
-        sfree( temp, "Sort_Matrix_Rows::temp" );
+        sfree( temp, __FILE__, __LINE__ );
     }
 }
 
@@ -171,9 +183,13 @@ static void compute_full_sparse_matrix( const sparse_matrix * const A,
     {
         Allocate_Matrix( A_full, A->n, A->n_max, 2 * A->m - A->n );
     }
-    else if ( A_full->m < 2 * A->m - A->n || realloc == TRUE )
+    else if ( A_full->m < 2 * A->m - A->n || A_full->n_max < A->n_max
+            || realloc == TRUE )
     {
-        Deallocate_Matrix( A_full );
+        if ( A_full->allocated == TRUE )
+        {
+            Deallocate_Matrix( A_full );
+        }
         Allocate_Matrix( A_full, A->n, A->n_max, 2 * A->m - A->n );
     }
 
@@ -236,14 +252,17 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A,
     {
         Allocate_Matrix( A_spar_patt, A->n, A->n_max, A->m );
     }
-    else if ( A_spar_patt->m < A->m || realloc == TRUE )
+    else if ( A_spar_patt->m < A->m || A_spar_patt->n_max < A->n_max
+            || realloc == TRUE )
     {
-        Deallocate_Matrix( A_spar_patt );
+        if ( A_spar_patt->allocated == TRUE )
+        {
+            Deallocate_Matrix( A_spar_patt );
+        }
         Allocate_Matrix( A_spar_patt, A->n, A->n_max, A->m );
     }
 
-    list = smalloc( sizeof(real) * A->start[A->n],
-            "setup_sparse_approx_inverse::list" );
+    list = smalloc( sizeof(real) * A->start[A->n], __FILE__, __LINE__ );
 
     /* quick-select algorithm for finding the k-th greatest element in the matrix, where
      *  list: values from the matrix
@@ -356,9 +375,13 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A,
         Allocate_Matrix( A_app_inv, A_spar_patt_full->n,
                 A_spar_patt_full->n_max, A_spar_patt_full->m );
     }
-    else if ( A_app_inv->m < A->m || realloc == TRUE )
+    else if ( A_app_inv->m < A->m || A_app_inv->n_max < A->n_max
+            || realloc == TRUE )
     {
-        Deallocate_Matrix( A_app_inv );
+        if ( A_app_inv->allocated == TRUE )
+        {
+            Deallocate_Matrix( A_app_inv );
+        }
 
         /* A_app_inv has the same sparsity pattern
          * as A_spar_patt_full (omit non-zero values) */
@@ -366,7 +389,7 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A,
                 A_spar_patt_full->n_max, A_spar_patt_full->m );
     }
 
-    sfree( list, "setup_sparse_approx_inverse::list" );
+    sfree( list, __FILE__, __LINE__ );
 }
 
 
@@ -399,7 +422,7 @@ void Calculate_Droptol( const sparse_matrix * const A,
             if ( droptol_local == NULL )
             {
                 droptol_local = smalloc( omp_get_num_threads() * A->n * sizeof(real),
-                        "Calculate_Droptol::droptol_local" );
+                        __FILE__, __LINE__ );
             }
         }
 
@@ -476,7 +499,7 @@ void Calculate_Droptol( const sparse_matrix * const A,
 #if defined(_OPENMP)
         #pragma omp master
         {
-            sfree( droptol_local, "Calculate_Droptol::droptol_local" );
+            sfree( droptol_local, __FILE__, __LINE__ );
         }
 #endif
     }
@@ -512,7 +535,11 @@ int Estimate_LU_Fill( const sparse_matrix * const A, const real * const droptol 
 }
 
 
-/* Jacobi preconditioner computation */
+/* Compute diagonal inverese (Jacobi) preconditioner
+ *
+ * H: matrix used to compute preconditioner, in CSR format
+ * Hdia_inv: computed diagonal inverse preconditioner
+ */
 real jacobi( const sparse_matrix * const H, real * const Hdia_inv )
 {
     unsigned int i;
@@ -552,9 +579,9 @@ real ICHOLT( const sparse_matrix * const A, const real * const droptol,
 
     start = Get_Time( );
 
-    Utop = smalloc( (A->n + 1) * sizeof(unsigned int), "ICHOLT::Utop" );
-    tmp_j = smalloc( A->n * sizeof(int), "ICHOLT::Utop" );
-    tmp_val = smalloc( A->n * sizeof(real), "ICHOLT::Utop" );
+    Utop = smalloc( (A->n + 1) * sizeof(unsigned int), __FILE__, __LINE__ );
+    tmp_j = smalloc( A->n * sizeof(int), __FILE__, __LINE__ );
+    tmp_val = smalloc( A->n * sizeof(real), __FILE__, __LINE__ );
 
     Ltop = 0;
     tmptop = 0;
@@ -683,9 +710,9 @@ real ICHOLT( const sparse_matrix * const A, const real * const droptol,
 
     //    fprintf( stderr, "nnz(U): %d, max: %d\n", Utop[U->n], U->n * 50 );
 
-    sfree( tmp_val, "ICHOLT::tmp_val" );
-    sfree( tmp_j, "ICHOLT::tmp_j" );
-    sfree( Utop, "ICHOLT::Utop" );
+    sfree( tmp_val, __FILE__, __LINE__ );
+    sfree( tmp_j, __FILE__, __LINE__ );
+    sfree( Utop, __FILE__, __LINE__ );
 
     return Get_Timing_Info( start );
 }
@@ -824,8 +851,8 @@ real ILUT( const sparse_matrix * const A, const real * const droptol,
     start = Get_Time( );
 
     /* use a dense vector with masking for the intermediate row w */
-    w = smalloc( sizeof(real) * A->n, "ILUT::w" );
-    nz_mask = smalloc( sizeof(unsigned int) * A->n, "ILUT::nz_mask" );
+    w = smalloc( sizeof(real) * A->n, __FILE__, __LINE__ );
+    nz_mask = smalloc( sizeof(unsigned int) * A->n, __FILE__, __LINE__ );
 
     compute_full_sparse_matrix( A, A_full, FALSE );
 
@@ -900,8 +927,8 @@ real ILUT( const sparse_matrix * const A, const real * const droptol,
         if ( Ltop + nz_cnt > L->m )
         {
             L->m = MAX( (5 * nz_cnt) + L->m, (unsigned int) (L->m * SAFE_ZONE) );
-            L->j = srealloc( L->j, sizeof(unsigned int) * L->m, "ILUT::L->j" );
-            L->val = srealloc( L->val, sizeof(real) * L->m, "ILUT::L->val" );
+            L->j = srealloc( L->j, sizeof(unsigned int) * L->m, __FILE__, __LINE__ );
+            L->val = srealloc( L->val, sizeof(real) * L->m, __FILE__, __LINE__ );
         }
 
         /* copy w[0:i-1] to row i of L */
@@ -928,8 +955,8 @@ real ILUT( const sparse_matrix * const A, const real * const droptol,
         if ( Utop + nz_cnt > U->m )
         {
             U->m = MAX( (5 * nz_cnt) + U->m, (unsigned int) (U->m * SAFE_ZONE) );
-            U->j = srealloc( U->j, sizeof(unsigned int) * U->m, "ILUT::L->j" );
-            U->val = srealloc( U->val, sizeof(real) * U->m, "ILUT::L->val" );
+            U->j = srealloc( U->j, sizeof(unsigned int) * U->m, __FILE__, __LINE__ );
+            U->val = srealloc( U->val, sizeof(real) * U->m, __FILE__, __LINE__ );
         }
 
         /* diagonal for U */
@@ -954,8 +981,8 @@ real ILUT( const sparse_matrix * const A, const real * const droptol,
     U->start[U->n] = Utop;
 
     Deallocate_Matrix( A_full );
-    sfree( nz_mask, "ILUT::nz_mask" );
-    sfree( w, "ILUT::w" );
+    sfree( nz_mask, __FILE__, __LINE__ );
+    sfree( w, __FILE__, __LINE__ );
 
     return Get_Timing_Info( start );
 }
@@ -980,10 +1007,10 @@ real ILUTP( const sparse_matrix * const A, const real * const droptol,
     start = Get_Time( );
 
     /* use a dense vector with masking for the intermediate row w */
-    w = smalloc( sizeof(real) * A->n, "ILUTP::w" );
-    nz_mask = smalloc( sizeof(int) * A->n, "ILUTP::nz_mask" );
-    perm = smalloc( sizeof(int) * A->n, "ILUTP::perm" );
-    perm_inv = smalloc( sizeof(int) * A->n, "ILUTP::perm_inv" );
+    w = smalloc( sizeof(real) * A->n, __FILE__, __LINE__ );
+    nz_mask = smalloc( sizeof(int) * A->n, __FILE__, __LINE__ );
+    perm = smalloc( sizeof(int) * A->n, __FILE__, __LINE__ );
+    perm_inv = smalloc( sizeof(int) * A->n, __FILE__, __LINE__ );
 
     compute_full_sparse_matrix( A, A_full, FALSE );
 
@@ -1112,10 +1139,10 @@ real ILUTP( const sparse_matrix * const A, const real * const droptol,
     U->start[U->n] = Utop;
 
     Deallocate_Matrix( A_full );
-    sfree( perm_inv, "ILUTP::perm_inv" );
-    sfree( perm, "ILUTP::perm" );
-    sfree( nz_mask, "ILUTP::nz_mask" );
-    sfree( w, "ILUTP::w" );
+    sfree( perm_inv, __FILE__, __LINE__ );
+    sfree( perm, __FILE__, __LINE__ );
+    sfree( nz_mask, __FILE__, __LINE__ );
+    sfree( w, __FILE__, __LINE__ );
 
     return Get_Timing_Info( start );
 }
@@ -1144,9 +1171,9 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
     Allocate_Matrix( &DAD, A->n, A->n_max, A->m );
     Allocate_Matrix( &U_T_temp, A->n, A->n_max, A->m );
 
-    D = smalloc( sizeof(real) * A->n, "FG_ICHOLT::D" );
-    D_inv = smalloc( sizeof(real) * A->n, "FG_ICHOLT::D_inv" );
-    gamma = smalloc( sizeof(real) * A->n, "FG_ICHOLT::gamma" );
+    D = smalloc( sizeof(real) * A->n, __FILE__, __LINE__ );
+    D_inv = smalloc( sizeof(real) * A->n, __FILE__, __LINE__ );
+    gamma = smalloc( sizeof(real) * A->n, __FILE__, __LINE__ );
 
 #if defined(_OPENMP)
     #pragma omp parallel for schedule(dynamic,512) \
@@ -1321,9 +1348,9 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
 
     Deallocate_Matrix( &U_T_temp );
     Deallocate_Matrix( &DAD );
-    sfree( gamma, "FG_ICHOLT::gamma" );
-    sfree( D_inv, "FG_ICHOLT::D_inv" );
-    sfree( D, "FG_ICHOLT::D" );
+    sfree( gamma, __FILE__, __LINE__ );
+    sfree( D_inv, __FILE__, __LINE__ );
+    sfree( D, __FILE__, __LINE__ );
 
     return Get_Timing_Info( start );
 }
@@ -1353,9 +1380,9 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
     Allocate_Matrix( &L_temp, A->n, A->n_max, A->m );
     Allocate_Matrix( &U_T_temp, A->n, A->n_max, A->m );
 
-    D = smalloc( sizeof(real) * A->n, "FG_ILUT::D" );
-    D_inv = smalloc( sizeof(real) * A->n, "FG_ILUT::D_inv" );
-    gamma = smalloc( sizeof(real) * A->n, "FG_ILUT::gamma" );
+    D = smalloc( sizeof(real) * A->n, __FILE__, __LINE__ );
+    D_inv = smalloc( sizeof(real) * A->n, __FILE__, __LINE__ );
+    gamma = smalloc( sizeof(real) * A->n, __FILE__, __LINE__ );
 
 #if defined(_OPENMP)
     #pragma omp parallel for schedule(dynamic,512) \
@@ -1617,9 +1644,9 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
     Deallocate_Matrix( &U_T_temp );
     Deallocate_Matrix( &L_temp );
     Deallocate_Matrix( &DAD );
-    sfree( gamma, "FG_ILUT::gamma" );
-    sfree( D_inv, "FG_ILUT::D_inv" );
-    sfree( D, "FG_ILUT::D_inv" );
+    sfree( gamma, __FILE__, __LINE__ );
+    sfree( D_inv, __FILE__, __LINE__ );
+    sfree( D, __FILE__, __LINE__ );
 
     return Get_Timing_Info( start );
 }
@@ -1677,10 +1704,10 @@ real sparse_approx_inverse( const sparse_matrix * const A,
     shared(stderr)
 #endif
     {
-        X = smalloc( sizeof(char) * A->n, "sparse_approx_inverse::X" );
-        Y = smalloc( sizeof(char) * A->n, "sparse_approx_inverse::Y" );
-        pos_x = smalloc( sizeof(int) * A->n, "sparse_approx_inverse::pos_x" );
-        pos_y = smalloc( sizeof(int) * A->n, "sparse_approx_inverse::pos_y" );
+        X = smalloc( sizeof(char) * A->n, __FILE__, __LINE__ );
+        Y = smalloc( sizeof(char) * A->n, __FILE__, __LINE__ );
+        pos_x = smalloc( sizeof(int) * A->n, __FILE__, __LINE__ );
+        pos_y = smalloc( sizeof(int) * A->n, __FILE__, __LINE__ );
 
         e_j = NULL;
         dense_matrix = NULL;
@@ -1750,15 +1777,13 @@ real sparse_approx_inverse( const sparse_matrix * const A,
             /* N x M dense matrix */
             if ( dense_matrix == NULL )
             {
-                dense_matrix = smalloc( sizeof(real) * N * M,
-                        "sparse_approx_inverse::dense_matrix" );
+                dense_matrix = smalloc( sizeof(real) * N * M, __FILE__, __LINE__ );
                 dense_matrix_size = sizeof(real) * N * M;
             }
             else if ( dense_matrix_size < sizeof(real) * N * M )
             {
-                sfree( dense_matrix, "sparse_approx_inverse::dense_matrix" );
-                dense_matrix = smalloc( sizeof(real) * N * M,
-                        "sparse_approx_inverse::dense_matrix" );
+                sfree( dense_matrix, __FILE__, __LINE__ );
+                dense_matrix = smalloc( sizeof(real) * N * M, __FILE__, __LINE__ );
                 dense_matrix_size = sizeof(real) * N * M;
             }
 
@@ -1786,13 +1811,13 @@ real sparse_approx_inverse( const sparse_matrix * const A,
              * that is the full column of the identity matrix */
             if ( e_j == NULL )
             {
-                e_j = smalloc( sizeof(real) * M, "sparse_approx_inverse::e_j" );
+                e_j = smalloc( sizeof(real) * M, __FILE__, __LINE__ );
                 e_j_size = sizeof(real) * M;
             }
             else if ( e_j_size < sizeof(real) * M )
             {
-                sfree( e_j, "sparse_approx_inverse::e_j"  );
-                e_j = smalloc( sizeof(real) * M, "sparse_approx_inverse::e_j" );
+                sfree( e_j, __FILE__, __LINE__  );
+                e_j = smalloc( sizeof(real) * M, __FILE__, __LINE__ );
                 e_j_size = sizeof(real) * M;
             }
 
@@ -1833,12 +1858,12 @@ real sparse_approx_inverse( const sparse_matrix * const A,
             }
         }
 
-        sfree( dense_matrix, "sparse_approx_inverse::dense_matrix" );
-        sfree( e_j, "sparse_approx_inverse::e_j"  );
-        sfree( pos_y, "sparse_approx_inverse::pos_y" );
-        sfree( pos_x, "sparse_approx_inverse::pos_x" );
-        sfree( Y, "sparse_approx_inverse::Y" );
-        sfree( X, "sparse_approx_inverse::X" );
+        sfree( dense_matrix, __FILE__, __LINE__ );
+        sfree( e_j, __FILE__, __LINE__  );
+        sfree( pos_y, __FILE__, __LINE__ );
+        sfree( pos_x, __FILE__, __LINE__ );
+        sfree( Y, __FILE__, __LINE__ );
+        sfree( X, __FILE__, __LINE__ );
     }
 
     return Get_Timing_Info( start );
@@ -1945,7 +1970,7 @@ void Transpose( const sparse_matrix * const A, sparse_matrix * const A_t )
 {
     unsigned int i, j, pj, *A_t_top;
 
-    A_t_top = scalloc( A->n + 1, sizeof(unsigned int), "Transpose::A_t_top" );
+    A_t_top = scalloc( A->n + 1, sizeof(unsigned int), __FILE__, __LINE__ );
 
     for ( i = 0; i < A->n + 1; ++i )
     {
@@ -1980,7 +2005,7 @@ void Transpose( const sparse_matrix * const A, sparse_matrix * const A_t )
         }
     }
 
-    sfree( A_t_top, "Transpose::A_t_top" );
+    sfree( A_t_top, __FILE__, __LINE__ );
 }
 
 
@@ -2317,8 +2342,8 @@ void graph_coloring( const control_params * const control,
             }
         }
 
-        fb_color = smalloc( sizeof(int) * A->n, "graph_coloring::fb_color" );
-        conflict_local = smalloc( sizeof(unsigned int) * A->n, "graph_coloring::fb_color" );
+        fb_color = smalloc( sizeof(int) * A->n, __FILE__, __LINE__ );
+        conflict_local = smalloc( sizeof(unsigned int) * A->n, __FILE__, __LINE__ );
 
         while ( workspace->recolor_cnt > 0 )
         {
@@ -2415,8 +2440,8 @@ void graph_coloring( const control_params * const control,
             p_conflict = p_temp;
         }
 
-        sfree( conflict_local, "graph_coloring::conflict_local" );
-        sfree( fb_color, "graph_coloring::fb_color" );
+        sfree( conflict_local, __FILE__, __LINE__ );
+        sfree( fb_color, __FILE__, __LINE__ );
     }
 }
 
@@ -2637,9 +2662,12 @@ void setup_graph_coloring( const control_params * const control,
     {
         Allocate_Matrix( H_p, H->n, H->n_max, H->m );
     }
-    else if ( H_p->m < H->m || realloc == TRUE )
+    else if ( H_p->m < H->m || H_p->n_max < H->n_max || realloc == TRUE )
     {
-        Deallocate_Matrix( H_p );
+        if ( H_p->allocated == TRUE )
+        {
+            Deallocate_Matrix( H_p );
+        }
         Allocate_Matrix( H_p, H->n, H->n_max, H->m );
     }
 
@@ -2743,7 +2771,7 @@ void jacobi_iter( const static_storage * const workspace,
 }
 
 
-/* Apply left-sided preconditioning while solver M^{-1}Ax = M^{-1}b
+/* Apply left-sided preconditioning while solving M^{-1}Ax = M^{-1}b
  *
  * workspace: data struct containing matrices, stored in CSR
  * control: data struct containing parameters
@@ -2759,7 +2787,7 @@ void jacobi_iter( const static_storage * const workspace,
  *   Each row of a matrix has at least one non-zero (i.e., no rows with all zeros) */
 static void apply_preconditioner( const static_storage * const workspace,
         const control_params * const control, const real * const y, real * const x,
-        const int fresh_pre, const int side )
+        int fresh_pre, int side )
 {
     int i, si;
 
@@ -3533,9 +3561,6 @@ int CG( const static_storage * const workspace, const control_params * const con
 
         t_start = Get_Time( );
         Vector_Sum( r, 1.0,  b, -1.0, d, N );
-#if defined(QMMM)
-        Vector_Mask_qmmm( r, workspace->mask_qmmm, N );
-#endif
         rnorm = Norm( r, N );
         t_vops += Get_Timing_Info( t_start );
 
@@ -3546,9 +3571,6 @@ int CG( const static_storage * const workspace, const control_params * const con
 
         t_start = Get_Time( );
         Vector_Copy( p, z, N );
-#if defined(QMMM)
-        Vector_Mask_qmmm( p, workspace->mask_qmmm, N );
-#endif
         sig_new = Dot( r, p, N );
         t_vops += Get_Timing_Info( t_start );
 
@@ -3563,9 +3585,6 @@ int CG( const static_storage * const workspace, const control_params * const con
             alpha = sig_new / tmp;
             Vector_Add( x, alpha, p, N );
             Vector_Add( r, -1.0 * alpha, d, N );
-#if defined(QMMM)
-            Vector_Mask_qmmm( r, workspace->mask_qmmm, N );
-#endif
             rnorm = Norm( r, N );
             t_vops += Get_Timing_Info( t_start );
 
@@ -3579,9 +3598,6 @@ int CG( const static_storage * const workspace, const control_params * const con
             sig_new = Dot( r, z, N );
             beta = sig_new / sig_old;
             Vector_Sum( p, 1.0, z, beta, p, N );
-#if defined(QMMM)
-            Vector_Mask_qmmm( p, workspace->mask_qmmm, N );
-#endif
             t_vops += Get_Timing_Info( t_start );
         }
 
@@ -3925,7 +3941,7 @@ real condest( const sparse_matrix * const L, const sparse_matrix * const U )
 
     N = L->n;
 
-    e = smalloc( sizeof(real) * N, "condest::e" );
+    e = smalloc( sizeof(real) * N, __FILE__, __LINE__ );
 
     for ( i = 0; i < N; ++i )
         e[i] = 1.0;
@@ -3944,7 +3960,7 @@ real condest( const sparse_matrix * const L, const sparse_matrix * const U )
 
     }
 
-    sfree( e, "condest::e" );
+    sfree( e, __FILE__, __LINE__ );
 
     return c;
 }
