@@ -514,7 +514,10 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
             data->press[0][0], data->press[1][1], data->press[2][2] );
 #endif
 
-    Compute_Polarization_Energy( system, control, data, workspace );
+    if ( control->polarization_energy_enabled == TRUE )
+    {
+        Compute_Polarization_Energy( system, control, data, workspace );
+    }
 }
 
 
@@ -753,7 +756,10 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
     data->E_vdW += e_vdW_total;
     data->E_Ele += e_ele_total;
 
-    Compute_Polarization_Energy( system, control, data, workspace );
+    if ( control->polarization_energy_enabled == TRUE )
+    {
+        Compute_Polarization_Energy( system, control, data, workspace );
+    }
 }
 
 

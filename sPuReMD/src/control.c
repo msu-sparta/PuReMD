@@ -219,6 +219,10 @@ int Set_Control_Parameter( const char * const keyword,
     {
         control->cm_solver_pre_app_jacobi_iters = sstrtol( values[0], __FILE__, __LINE__ );
     }
+    else if ( strncmp(keyword, "include_polarization_energy", MAX_LINE) == 0 )
+    {
+        control->polarization_energy_enabled = sstrtol( values[0], __FILE__, __LINE__ );
+    }
     else if ( strncmp(keyword, "temp_init", MAX_LINE) == 0 )
     {
         val = sstrtod( values[0], __FILE__, __LINE__ );
@@ -530,6 +534,7 @@ void Set_Control_Defaults( reax_system * const system,
     control->cm_solver_pre_comp_droptol = 0.01;
     control->cm_solver_pre_app_type = TRI_SOLVE_PA;
     control->cm_solver_pre_app_jacobi_iters = 50;
+    control->polarization_energy_enabled = TRUE;
 
     control->molec_anal = NO_ANALYSIS;
     control->freq_molec_anal = 0;
