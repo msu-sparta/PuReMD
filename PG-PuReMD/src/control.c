@@ -374,7 +374,7 @@ void Read_Control_File( const char * const control_file, control_params * const 
                 ival = atoi( tmp[1] );
                 control->cm_solver_pre_app_jacobi_iters = ival;
             }
-            else if ( strncmp(keyword, "include_polarization_energy", MAX_LINE) == 0 )
+            else if ( strncmp(tmp[0], "include_polarization_energy", MAX_LINE) == 0 )
             {
                 ival = atoi( tmp[1] );
                 control->polarization_energy_enabled = ival;
