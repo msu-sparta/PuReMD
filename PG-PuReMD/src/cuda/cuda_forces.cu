@@ -22,7 +22,9 @@
 #include "../tool_box.h"
 #include "../vector.h"
 
+#include "../cub/cub/warp/warp_reduce.cuh"
 #include "../cub/cub/warp/warp_scan.cuh"
+//#include <cub/warp/warp_reduce.cuh>
 //#include <cub/warp/warp_scan.cuh>
 
 
@@ -36,8 +38,9 @@ typedef enum
 } MATRIX_ENTRY_POSITION;
 
 
-CUDA_DEVICE real Init_Charge_Matrix_Entry( single_body_parameters *sbp_i, real *workspace_Tap,
-        control_params *control, int i, int j, real r_ij, real gamma, MATRIX_ENTRY_POSITION pos )
+CUDA_DEVICE real Init_Charge_Matrix_Entry( single_body_parameters const * const sbp_i,
+        real const * const workspace_Tap, control_params const * const control,
+        int i, int j, real r_ij, real gamma, MATRIX_ENTRY_POSITION pos )
 {
     real Tap, dr3gamij_1, dr3gamij_3, ret;
 
@@ -91,16 +94,15 @@ CUDA_DEVICE real Init_Charge_Matrix_Entry( single_body_parameters *sbp_i, real *
 }
 
 
-CUDA_DEVICE real Init_Charge_Matrix_Entry_Tab( LR_lookup_table *t_LR, real r_ij,
+CUDA_DEVICE real Init_Charge_Matrix_Entry_Tab( LR_lookup_table const * const t_LR, real r_ij,
         int ti, int tj, int num_atom_types )
 {
     int r, tmin, tmax;
     real val, dif, base;
-    LR_lookup_table *t; 
 
     tmin = MIN( ti, tj );
     tmax = MAX( ti, tj );
-    t = &t_LR[ index_lr(tmin,tmax, num_atom_types) ];
+    LR_lookup_table const * const t = &t_LR[ index_lr(tmin,tmax, num_atom_types) ];
 
     /* cubic spline interpolation */
     r = (int)(r_ij * t->inv_dx);
@@ -118,13 +120,14 @@ CUDA_DEVICE real Init_Charge_Matrix_Entry_Tab( LR_lookup_table *t_LR, real r_ij,
 }
 
 
-CUDA_GLOBAL void k_disable_hydrogen_bonding( control_params *control )
+CUDA_GLOBAL void k_disable_hydrogen_bonding( control_params * const control )
 {
     control->hbond_cut = 0.0;
 }
 
 
-CUDA_GLOBAL void k_init_end_index( int * intr_cnt, int *indices, int *end_indices, int N )
+CUDA_GLOBAL void k_init_end_index( int const * const intr_cnt,
+        int const * const indices, int * const end_indices, int N )
 {
     int i;
 
@@ -139,8 +142,10 @@ CUDA_GLOBAL void k_init_end_index( int * intr_cnt, int *indices, int *end_indice
 }
 
 
-CUDA_GLOBAL void k_init_hbond_indices( reax_atom * atoms, single_body_parameters *sbp,
-        int *hbonds, int *max_hbonds, int *indices, int *end_indices, int N )
+CUDA_GLOBAL void k_init_hbond_indices( reax_atom * const atoms,
+        single_body_parameters const * const sbp,
+        int const * const hbonds, int const * const max_hbonds,
+        int * const indices, int * const end_indices, int N )
 {
     int i, hindex, flag;
 
@@ -189,7 +194,8 @@ CUDA_GLOBAL void k_print_hbond_info( reax_atom *my_atoms, single_body_parameters
 /* 1 thread computes the distances and displacement vectors of an atom for its neighbors
  * in the far neighbors list if it's a NOT re-neighboring step
  */
-CUDA_GLOBAL void k_init_dist( reax_atom *my_atoms, reax_list far_nbr_list, int N )
+CUDA_GLOBAL void k_init_dist( reax_atom const * const my_atoms,
+        reax_list far_nbr_list, int N )
 {
     int i, j, pj, start_i, end_i;
     rvec x_i;
@@ -221,7 +227,8 @@ CUDA_GLOBAL void k_init_dist( reax_atom *my_atoms, reax_list far_nbr_list, int N
 /* 1 warp of threads computes the distances and displacement vectors of an atom for its neighbors
  * in the far neighbors list if it's a NOT re-neighboring step
  */
-CUDA_GLOBAL void k_init_dist_opt( reax_atom *my_atoms, reax_list far_nbr_list, int N )
+CUDA_GLOBAL void k_init_dist_opt( reax_atom const * const my_atoms,
+        reax_list far_nbr_list, int N )
 {
     int j, pj, start_i, end_i, thread_id, i, lane_id;
     rvec x_i;
@@ -253,6 +260,10 @@ CUDA_GLOBAL void k_init_dist_opt( reax_atom *my_atoms, reax_list far_nbr_list, i
 
 
 
+/* Reinitialize all bond order data structures. This kernel is needed
+ * to make the bond list initialization an atomic transaction (which
+ * is needed for the computation / reallocation logic).
+ */
 CUDA_GLOBAL void k_reset_bond_orders( storage workspace, int N )
 {
     int i;
@@ -272,20 +283,18 @@ CUDA_GLOBAL void k_reset_bond_orders( storage workspace, int N )
 /* Compute the charge matrix entries and store the matrix in half format
  * using the far neighbors list (stored in full format) and according to
  * the full shell communication method */
-CUDA_GLOBAL void k_init_cm_half_fs( reax_atom *my_atoms, single_body_parameters *sbp, 
-        two_body_parameters *tbp, storage workspace, control_params *control, 
+CUDA_GLOBAL void k_init_cm_half_fs( reax_atom * const my_atoms,
+        single_body_parameters const * const sbp, two_body_parameters const * const tbp,
+        storage workspace, control_params const * const control, 
         reax_list far_nbr_list, int num_atom_types,
-        int *max_cm_entries, int *realloc_cm_entries )
+        int * const max_cm_entries, int * const realloc_cm_entries )
 {
     int i, j, pj;
     int start_i, end_i;
-    int type_i, type_j;
+    int type_i, orig_id_i;
     int cm_top;
     int num_cm_entries;
     real r_ij;
-    single_body_parameters *sbp_i;
-    two_body_parameters *twbp;
-    reax_atom *atom_i, *atom_j;
     sparse_matrix *H;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -300,15 +309,14 @@ CUDA_GLOBAL void k_init_cm_half_fs( reax_atom *my_atoms, single_body_parameters 
 
     if ( i < H->n )
     {
-        atom_i = &my_atoms[i];
-        type_i = atom_i->type;
+        type_i = my_atoms[i].type;
+        orig_id_i = my_atoms[i].orig_id;
         start_i = Start_Index( i, &far_nbr_list );
         end_i = End_Index( i, &far_nbr_list );
-        sbp_i = &sbp[type_i];
 
         /* diagonal entry in the matrix */
         H->j[cm_top] = i;
-        H->val[cm_top] = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap, control,
+        H->val[cm_top] = Init_Charge_Matrix_Entry( &sbp[type_i], workspace.Tap, control,
                 i, i, 0.0, 0.0, DIAGONAL );
         ++cm_top;
 
@@ -317,18 +325,16 @@ CUDA_GLOBAL void k_init_cm_half_fs( reax_atom *my_atoms, single_body_parameters 
             if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut )
             {
                 j = far_nbr_list.far_nbr_list.nbr[pj];
-                atom_j = &my_atoms[j];
-                type_j = atom_j->type;
 
                 /* if j is a local OR ghost atom in the upper triangular region of the matrix */
-                if ( atom_i->orig_id < atom_j->orig_id )
+                if ( orig_id_i < my_atoms[j].orig_id )
                 {
-                    twbp = &tbp[ index_tbp(type_i, type_j, num_atom_types) ];
                     r_ij = far_nbr_list.far_nbr_list.d[pj];
 
                     H->j[cm_top] = j;
-                    H->val[cm_top] = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap,
-                            control, i, H->j[cm_top], r_ij, twbp->gamma, OFF_DIAGONAL );
+                    H->val[cm_top] = Init_Charge_Matrix_Entry( &sbp[type_i], workspace.Tap,
+                            control, i, H->j[cm_top], r_ij,
+                            tbp[ index_tbp(type_i, my_atoms[j].type, num_atom_types) ].gamma, OFF_DIAGONAL );
                     ++cm_top;
                 }
             }
@@ -351,10 +357,11 @@ CUDA_GLOBAL void k_init_cm_half_fs( reax_atom *my_atoms, single_body_parameters 
 /* Compute the tabulated charge matrix entries and store the matrix in half format
  * using the far neighbors list (stored in full format) and according to
  * the full shell communication method */
-CUDA_GLOBAL void k_init_cm_half_fs_tab( reax_atom *my_atoms, single_body_parameters *sbp, 
-        storage workspace, control_params *control, 
-        reax_list far_nbr_list, LR_lookup_table *t_LR, int num_atom_types,
-        int *max_cm_entries, int *realloc_cm_entries )
+CUDA_GLOBAL void k_init_cm_half_fs_tab( reax_atom * const my_atoms,
+        single_body_parameters const * const sbp,
+        storage workspace, control_params const * const control, 
+        reax_list far_nbr_list, LR_lookup_table const * const t_LR, int num_atom_types,
+        int * const max_cm_entries, int * const realloc_cm_entries )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -362,7 +369,6 @@ CUDA_GLOBAL void k_init_cm_half_fs_tab( reax_atom *my_atoms, single_body_paramet
     int cm_top;
     int num_cm_entries;
     real r_ij;
-    single_body_parameters *sbp_i;
     reax_atom *atom_i, *atom_j;
     sparse_matrix *H;
 
@@ -382,11 +388,10 @@ CUDA_GLOBAL void k_init_cm_half_fs_tab( reax_atom *my_atoms, single_body_paramet
         type_i = atom_i->type;
         start_i = Start_Index( i, &far_nbr_list );
         end_i = End_Index( i, &far_nbr_list );
-        sbp_i = &sbp[type_i];
 
         /* diagonal entry in the matrix */
         H->j[cm_top] = i;
-        H->val[cm_top] = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap, control,
+        H->val[cm_top] = Init_Charge_Matrix_Entry( &sbp[type_i], workspace.Tap, control,
                 i, i, 0.0, 0.0, DIAGONAL );
         ++cm_top;
 
@@ -429,20 +434,18 @@ CUDA_GLOBAL void k_init_cm_half_fs_tab( reax_atom *my_atoms, single_body_paramet
 /* Compute the charge matrix entries and store the matrix in full format
  * using the far neighbors list (stored in full format) and according to
  * the full shell communication method */
-CUDA_GLOBAL void k_init_cm_full_fs( reax_atom *my_atoms, single_body_parameters *sbp, 
-        two_body_parameters *tbp, storage workspace, control_params *control, 
+CUDA_GLOBAL void k_init_cm_full_fs( reax_atom * const my_atoms,
+        single_body_parameters const * const sbp, two_body_parameters const * const tbp,
+        storage workspace, control_params const * const control, 
         reax_list far_nbr_list, int num_atom_types,
-        int *max_cm_entries, int *realloc_cm_entries )
+        int * const max_cm_entries, int * const realloc_cm_entries )
 {
     int i, j, pj;
     int start_i, end_i;
-    int type_i, type_j;
+    int type_i;
     int cm_top;
     int num_cm_entries;
-    real r_ij;
-    single_body_parameters *sbp_i;
-    two_body_parameters *twbp;
-    reax_atom *atom_i, *atom_j;
+    reax_atom *atom_i;
     sparse_matrix *H;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -461,11 +464,10 @@ CUDA_GLOBAL void k_init_cm_full_fs( reax_atom *my_atoms, single_body_parameters 
         type_i = atom_i->type;
         start_i = Start_Index( i, &far_nbr_list );
         end_i = End_Index( i, &far_nbr_list );
-        sbp_i = &sbp[type_i];
 
         /* diagonal entry in the matrix */
         H->j[cm_top] = i;
-        H->val[cm_top] = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap, control,
+        H->val[cm_top] = Init_Charge_Matrix_Entry( &sbp[type_i], workspace.Tap, control,
                 i, i, 0.0, 0.0, DIAGONAL );
         ++cm_top;
 
@@ -474,15 +476,12 @@ CUDA_GLOBAL void k_init_cm_full_fs( reax_atom *my_atoms, single_body_parameters 
             if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut )
             {
                 j = far_nbr_list.far_nbr_list.nbr[pj];
-                atom_j = &my_atoms[j];
-                type_j = atom_j->type;
-
-                twbp = &tbp[ index_tbp(type_i, type_j, num_atom_types) ];
-                r_ij = far_nbr_list.far_nbr_list.d[pj];
 
                 H->j[cm_top] = j;
-                H->val[cm_top] = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap,
-                        control, i, j, r_ij, twbp->gamma, OFF_DIAGONAL );
+                H->val[cm_top] = Init_Charge_Matrix_Entry( &sbp[type_i], workspace.Tap,
+                        control, i, j, far_nbr_list.far_nbr_list.d[pj],
+                        tbp[ index_tbp(type_i, my_atoms[j].type, num_atom_types) ].gamma,
+                        OFF_DIAGONAL );
                 ++cm_top;
             }
         }
@@ -504,19 +503,17 @@ CUDA_GLOBAL void k_init_cm_full_fs( reax_atom *my_atoms, single_body_parameters 
 /* Compute the charge matrix entries and store the matrix in full format
  * using the far neighbors list (stored in full format) and according to
  * the full shell communication method */
-CUDA_GLOBAL void k_init_cm_full_fs_opt( reax_atom *my_atoms, single_body_parameters *sbp, 
-        two_body_parameters *tbp, storage workspace, control_params *control, 
+CUDA_GLOBAL void k_init_cm_full_fs_opt( reax_atom * const my_atoms,
+        single_body_parameters const * const sbp, two_body_parameters const * const tbp,
+        storage workspace, control_params const * const control, 
         reax_list far_nbr_list, int num_atom_types,
-        int *max_cm_entries, int *realloc_cm_entries )
+        int * const max_cm_entries, int * const realloc_cm_entries )
 {
-    extern __shared__ cub::WarpScan<int>::TempStorage temp[];
+    extern __shared__ cub::WarpScan<int>::TempStorage temp1[];
     int i, j, pj, thread_id, warp_id, lane_id, itr;
-    int start_i, end_i, type_i, type_j;
+    int start_i, end_i, type_i;
     int cm_top, num_cm_entries, offset, flag;
-    real r_ij;
-    single_body_parameters *sbp_i;
-    two_body_parameters *twbp;
-    reax_atom *atom_i, *atom_j;
+    reax_atom *atom_i;
     sparse_matrix *H;
 
     thread_id = blockIdx.x * blockDim.x + threadIdx.x;
@@ -540,13 +537,12 @@ CUDA_GLOBAL void k_init_cm_full_fs_opt( reax_atom *my_atoms, single_body_paramet
         type_i = atom_i->type;
         start_i = Start_Index( i, &far_nbr_list );
         end_i = End_Index( i, &far_nbr_list );
-        sbp_i = &sbp[type_i];
 
         /* diagonal entry in the matrix */
         if ( lane_id == 0 )
         {
             H->j[cm_top] = i;
-            H->val[cm_top] = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap, control,
+            H->val[cm_top] = Init_Charge_Matrix_Entry( &sbp[type_i], workspace.Tap, control,
                     i, i, 0.0, 0.0, DIAGONAL );
         }
         ++cm_top;
@@ -555,20 +551,16 @@ CUDA_GLOBAL void k_init_cm_full_fs_opt( reax_atom *my_atoms, single_body_paramet
         {
             offset = (pj < end_i && far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut) ? 1 : 0;
             flag = (offset == 1) ? TRUE : FALSE;
-            cub::WarpScan<int>(temp[warp_id]).ExclusiveSum(offset, offset);
+            cub::WarpScan<int>(temp1[warp_id]).ExclusiveSum(offset, offset);
 
             if ( flag == TRUE )
             {
                 j = far_nbr_list.far_nbr_list.nbr[pj];
-                atom_j = &my_atoms[j];
-                type_j = atom_j->type;
-
-                twbp = &tbp[ index_tbp(type_i, type_j, num_atom_types) ];
-                r_ij = far_nbr_list.far_nbr_list.d[pj];
 
                 H->j[cm_top + offset] = j;
-                H->val[cm_top + offset] = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap,
-                        control, i, j, r_ij, twbp->gamma, OFF_DIAGONAL );
+                H->val[cm_top + offset] = Init_Charge_Matrix_Entry( &sbp[type_i], workspace.Tap,
+                        control, i, j, far_nbr_list.far_nbr_list.d[pj],
+                        tbp[ index_tbp(type_i, my_atoms[j].type, num_atom_types) ].gamma, OFF_DIAGONAL );
             }
 
             /* get cm_top from thread in last lane */
@@ -596,19 +588,17 @@ CUDA_GLOBAL void k_init_cm_full_fs_opt( reax_atom *my_atoms, single_body_paramet
 /* Compute the tabulated charge matrix entries and store the matrix in full format
  * using the far neighbors list (stored in full format) and according to
  * the full shell communication method */
-CUDA_GLOBAL void k_init_cm_full_fs_tab( reax_atom *my_atoms, single_body_parameters *sbp, 
-        storage workspace, control_params *control, 
+CUDA_GLOBAL void k_init_cm_full_fs_tab( reax_atom * const my_atoms,
+        single_body_parameters const * const sbp, 
+        storage workspace, control_params const * const control, 
         reax_list far_nbr_list, LR_lookup_table *t_LR, int num_atom_types,
-        int *max_cm_entries, int *realloc_cm_entries )
+        int * const max_cm_entries, int * const realloc_cm_entries )
 {
     int i, j, pj;
     int start_i, end_i;
-    int type_i, type_j;
+    int type_i;
     int cm_top;
     int num_cm_entries;
-    real r_ij;
-    single_body_parameters *sbp_i;
-    reax_atom *atom_i, *atom_j;
     sparse_matrix *H;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -623,15 +613,13 @@ CUDA_GLOBAL void k_init_cm_full_fs_tab( reax_atom *my_atoms, single_body_paramet
 
     if ( i < H->n )
     {
-        atom_i = &my_atoms[i];
-        type_i = atom_i->type;
+        type_i = my_atoms[i].type;
         start_i = Start_Index( i, &far_nbr_list );
         end_i = End_Index( i, &far_nbr_list );
-        sbp_i = &sbp[type_i];
 
         /* diagonal entry in the matrix */
         H->j[cm_top] = i;
-        H->val[cm_top] = Init_Charge_Matrix_Entry( sbp_i, workspace.Tap, control,
+        H->val[cm_top] = Init_Charge_Matrix_Entry( &sbp[type_i], workspace.Tap, control,
                 i, i, 0.0, 0.0, DIAGONAL );
         ++cm_top;
 
@@ -641,14 +629,10 @@ CUDA_GLOBAL void k_init_cm_full_fs_tab( reax_atom *my_atoms, single_body_paramet
 
             if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut )
             {
-                atom_j = &my_atoms[j];
-                type_j = atom_j->type;
-
-                r_ij = far_nbr_list.far_nbr_list.d[pj];
-
                 H->j[cm_top] = j;
-                H->val[cm_top] = Init_Charge_Matrix_Entry_Tab( t_LR, r_ij,
-                        type_i, type_j, num_atom_types );
+                H->val[cm_top] = Init_Charge_Matrix_Entry_Tab( t_LR,
+                        far_nbr_list.far_nbr_list.d[pj],
+                        type_i, my_atoms[j].type, num_atom_types );
                 ++cm_top;
             }
         }
@@ -667,22 +651,20 @@ CUDA_GLOBAL void k_init_cm_full_fs_tab( reax_atom *my_atoms, single_body_paramet
 }
 
 
-CUDA_GLOBAL void k_init_bonds( reax_atom *my_atoms, single_body_parameters *sbp, 
-        two_body_parameters *tbp, storage workspace, control_params *control, 
+CUDA_GLOBAL void k_init_bonds( reax_atom * const my_atoms,
+        single_body_parameters const * const sbp, two_body_parameters const * const tbp,
+        storage workspace, control_params const * const control, 
         reax_list far_nbr_list, reax_list bond_list, int n, int N,
-        int num_atom_types, int *max_bonds, int *realloc_bonds )
+        int num_atom_types, int * const max_bonds, int * const realloc_bonds )
 {
-    int i, j, pj;
-    int start_i, end_i;
-    int type_i, type_j;
-    int btop_i;
-    int num_bonds;
+    int i, j, pj, start_i, end_i;
+    int type_i, type_j, tbp_ij;
+    int btop_i, num_bonds;
+    real total_bond_order_i;
+    rvec dDeltap_self_i;
     real cutoff, r_ij;
     real C12, C34, C56;
     real BO_s, BO_pi, BO_pi2, BO;
-    single_body_parameters *sbp_i, *sbp_j;
-    two_body_parameters *twbp;
-    reax_atom *atom_i, *atom_j;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -691,12 +673,12 @@ CUDA_GLOBAL void k_init_bonds( reax_atom *my_atoms, single_body_parameters *sbp,
         return;
     }
 
-    atom_i = &my_atoms[i];
-    type_i = atom_i->type;
+    type_i = my_atoms[i].type;
     start_i = Start_Index( i, &far_nbr_list );
     end_i = End_Index( i, &far_nbr_list );
     btop_i = Start_Index( i, &bond_list );
-    sbp_i = &sbp[type_i];
+    total_bond_order_i = 0.0;
+    rvec_MakeZero( dDeltap_self_i );
 
     if ( i < n )
     {
@@ -717,16 +699,14 @@ CUDA_GLOBAL void k_init_bonds( reax_atom *my_atoms, single_body_parameters *sbp,
         if ( far_nbr_list.far_nbr_list.d[pj] <= cutoff )
         {
             j = far_nbr_list.far_nbr_list.nbr[pj];
-            atom_j = &my_atoms[j];
-            type_j = atom_j->type;
+            type_j = my_atoms[j].type;
             r_ij = far_nbr_list.far_nbr_list.d[pj];
-            sbp_j = &sbp[type_j];
-            twbp = &tbp[ index_tbp(type_i, type_j, num_atom_types) ];
+            tbp_ij = index_tbp(type_i, type_j, num_atom_types);
 
             /* uncorrected bond orders */
-            if ( sbp_i->r_s > 0.0 && sbp_j->r_s > 0.0 )
+            if ( sbp[type_i].r_s > 0.0 && sbp[type_j].r_s > 0.0 )
             {
-                C12 = twbp->p_bo1 * POW( r_ij / twbp->r_s, twbp->p_bo2 );
+                C12 = tbp[tbp_ij].p_bo1 * POW( r_ij / tbp[tbp_ij].r_s, tbp[tbp_ij].p_bo2 );
                 BO_s = (1.0 + control->bo_cut) * EXP( C12 );
             }
             else
@@ -735,9 +715,9 @@ CUDA_GLOBAL void k_init_bonds( reax_atom *my_atoms, single_body_parameters *sbp,
                 BO_s = 0.0;
             }
 
-            if ( sbp_i->r_pi > 0.0 && sbp_j->r_pi > 0.0 )
+            if ( sbp[type_i].r_pi > 0.0 && sbp[type_j].r_pi > 0.0 )
             {
-                C34 = twbp->p_bo3 * POW( r_ij / twbp->r_p, twbp->p_bo4 );
+                C34 = tbp[tbp_ij].p_bo3 * POW( r_ij / tbp[tbp_ij].r_p, tbp[tbp_ij].p_bo4 );
                 BO_pi = EXP( C34 );
             }
             else
@@ -746,9 +726,9 @@ CUDA_GLOBAL void k_init_bonds( reax_atom *my_atoms, single_body_parameters *sbp,
                 BO_pi = 0.0;
             }
 
-            if ( sbp_i->r_pi_pi > 0.0 && sbp_j->r_pi_pi > 0.0 )
+            if ( sbp[type_i].r_pi_pi > 0.0 && sbp[type_j].r_pi_pi > 0.0 )
             {
-                C56 = twbp->p_bo5 * POW( r_ij / twbp->r_pp, twbp->p_bo6 );
+                C56 = tbp[tbp_ij].p_bo5 * POW( r_ij / tbp[tbp_ij].r_pp, tbp[tbp_ij].p_bo6 );
                 BO_pi2 = EXP( C56 );
             }
             else
@@ -769,7 +749,7 @@ CUDA_GLOBAL void k_init_bonds( reax_atom *my_atoms, single_body_parameters *sbp,
                         &far_nbr_list.far_nbr_list.rel_box[pj],
                         far_nbr_list.far_nbr_list.d[pj],
                         &far_nbr_list.far_nbr_list.dvec[pj], far_nbr_list.format,
-                        twbp, workspace.dDeltap_self, workspace.total_bond_order );
+                        &tbp[tbp_ij], dDeltap_self_i, &total_bond_order_i );
 
                 ++btop_i;
 
@@ -794,6 +774,9 @@ CUDA_GLOBAL void k_init_bonds( reax_atom *my_atoms, single_body_parameters *sbp,
      * (needed for atom ownership transfer via MPI) */
     my_atoms[i].num_bonds = num_bonds;
 
+    workspace.total_bond_order[i] = total_bond_order_i;
+    rvec_Copy( workspace.dDeltap_self[i], dDeltap_self_i );
+
     /* reallocation check */
     if ( num_bonds > max_bonds[i] )
     {
@@ -802,23 +785,23 @@ CUDA_GLOBAL void k_init_bonds( reax_atom *my_atoms, single_body_parameters *sbp,
 }
 
 
-CUDA_GLOBAL void k_init_bonds_opt( reax_atom *my_atoms, single_body_parameters *sbp, 
-        two_body_parameters *tbp, storage workspace, control_params *control, 
+CUDA_GLOBAL void k_init_bonds_opt( reax_atom * const my_atoms,
+        single_body_parameters const * const sbp, two_body_parameters const * const tbp,
+        storage workspace, control_params const * const control, 
         reax_list far_nbr_list, reax_list bond_list, int n, int N,
-        int num_atom_types, int *max_bonds, int *realloc_bonds )
+        int num_atom_types, int * const max_bonds, int * const realloc_bonds )
 {
-    extern __shared__ cub::WarpScan<int>::TempStorage temp[];
+    extern __shared__ cub::WarpScan<int>::TempStorage temp21[];
+    cub::WarpReduce<double>::TempStorage *temp22;
     int i, j, pj, thread_id, warp_id, lane_id, itr;
-    int start_i, end_i;
+    int start_i, end_i, tbp_ij;
     int type_i, type_j;
-    int btop_i, offset, flag;
-    int num_bonds;
+    int btop_i, offset, flag, num_bonds;
     real cutoff, r_ij;
     real C12, C34, C56;
     real BO_s, BO_pi, BO_pi2, BO;
-    single_body_parameters *sbp_i, *sbp_j;
-    two_body_parameters *twbp;
-    reax_atom *atom_i, *atom_j;
+    real total_bond_order_i;
+    rvec dDeltap_self_i;
 
     thread_id = blockIdx.x * blockDim.x + threadIdx.x;
     /* all threads within a warp are assigned the bonds
@@ -832,12 +815,13 @@ CUDA_GLOBAL void k_init_bonds_opt( reax_atom *my_atoms, single_body_parameters *
 
     warp_id = threadIdx.x / warpSize;
     lane_id = thread_id % warpSize;
-    atom_i = &my_atoms[i];
-    type_i = atom_i->type;
+    temp22 = (cub::WarpReduce<double>::TempStorage *) &temp21[warp_id];
+    type_i = my_atoms[i].type;
     start_i = Start_Index( i, &far_nbr_list );
     end_i = End_Index( i, &far_nbr_list );
     btop_i = Start_Index( i, &bond_list );
-    sbp_i = &sbp[type_i];
+    total_bond_order_i = 0.0;
+    rvec_MakeZero( dDeltap_self_i );
 
     if ( i < n )
     {
@@ -857,16 +841,14 @@ CUDA_GLOBAL void k_init_bonds_opt( reax_atom *my_atoms, single_body_parameters *
         if ( pj < end_i && far_nbr_list.far_nbr_list.d[pj] <= cutoff )
         {
             j = far_nbr_list.far_nbr_list.nbr[pj];
-            atom_j = &my_atoms[j];
-            type_j = atom_j->type;
+            type_j = my_atoms[j].type;
             r_ij = far_nbr_list.far_nbr_list.d[pj];
-            sbp_j = &sbp[type_j];
-            twbp = &tbp[ index_tbp(type_i, type_j, num_atom_types) ];
+            tbp_ij = index_tbp(type_i, type_j, num_atom_types);
 
             /* uncorrected bond orders */
-            if ( sbp_i->r_s > 0.0 && sbp_j->r_s > 0.0 )
+            if ( sbp[type_i].r_s > 0.0 && sbp[type_j].r_s > 0.0 )
             {
-                C12 = twbp->p_bo1 * POW( r_ij / twbp->r_s, twbp->p_bo2 );
+                C12 = tbp[tbp_ij].p_bo1 * POW( r_ij / tbp[tbp_ij].r_s, tbp[tbp_ij].p_bo2 );
                 BO_s = (1.0 + control->bo_cut) * EXP( C12 );
             }
             else
@@ -875,9 +857,9 @@ CUDA_GLOBAL void k_init_bonds_opt( reax_atom *my_atoms, single_body_parameters *
                 BO_s = 0.0;
             }
 
-            if ( sbp_i->r_pi > 0.0 && sbp_j->r_pi > 0.0 )
+            if ( sbp[type_i].r_pi > 0.0 && sbp[type_j].r_pi > 0.0 )
             {
-                C34 = twbp->p_bo3 * POW( r_ij / twbp->r_p, twbp->p_bo4 );
+                C34 = tbp[tbp_ij].p_bo3 * POW( r_ij / tbp[tbp_ij].r_p, tbp[tbp_ij].p_bo4 );
                 BO_pi = EXP( C34 );
             }
             else
@@ -886,9 +868,9 @@ CUDA_GLOBAL void k_init_bonds_opt( reax_atom *my_atoms, single_body_parameters *
                 BO_pi = 0.0;
             }
 
-            if ( sbp_i->r_pi_pi > 0.0 && sbp_j->r_pi_pi > 0.0 )
+            if ( sbp[type_i].r_pi_pi > 0.0 && sbp[type_j].r_pi_pi > 0.0 )
             {
-                C56 = twbp->p_bo5 * POW( r_ij / twbp->r_pp, twbp->p_bo6 );
+                C56 = tbp[tbp_ij].p_bo5 * POW( r_ij / tbp[tbp_ij].r_pp, tbp[tbp_ij].p_bo6 );
                 BO_pi2 = EXP( C56 );
             }
             else
@@ -909,7 +891,7 @@ CUDA_GLOBAL void k_init_bonds_opt( reax_atom *my_atoms, single_body_parameters *
 
         offset = (pj < end_i && far_nbr_list.far_nbr_list.d[pj] <= cutoff && BO >= control->bo_cut) ? 1 : 0;
         flag = (offset == 1) ? TRUE : FALSE;
-        cub::WarpScan<int>(temp[warp_id]).ExclusiveSum(offset, offset);
+        cub::WarpScan<int>(temp21[warp_id]).ExclusiveSum(offset, offset);
 
         if ( flag == TRUE )
         {
@@ -920,7 +902,7 @@ CUDA_GLOBAL void k_init_bonds_opt( reax_atom *my_atoms, single_body_parameters *
                     &far_nbr_list.far_nbr_list.rel_box[pj],
                     far_nbr_list.far_nbr_list.d[pj],
                     &far_nbr_list.far_nbr_list.dvec[pj], far_nbr_list.format,
-                    twbp, workspace.dDeltap_self, workspace.total_bond_order );
+                    &tbp[tbp_ij], dDeltap_self_i, &total_bond_order_i );
 
             /* TODO: future optimization if bond_mark implemented */
 //            if ( workspace->bond_mark[j] > workspace->bond_mark[i] + 1 )
@@ -940,6 +922,11 @@ CUDA_GLOBAL void k_init_bonds_opt( reax_atom *my_atoms, single_body_parameters *
         pj += warpSize;
     }
 
+    total_bond_order_i = cub::WarpReduce<double>(temp22[warp_id]).Sum(total_bond_order_i);
+    dDeltap_self_i[0] = cub::WarpReduce<double>(temp22[warp_id]).Sum(dDeltap_self_i[0]);
+    dDeltap_self_i[1] = cub::WarpReduce<double>(temp22[warp_id]).Sum(dDeltap_self_i[1]);
+    dDeltap_self_i[2] = cub::WarpReduce<double>(temp22[warp_id]).Sum(dDeltap_self_i[2]);
+
     if ( lane_id == 0 )
     {
         Set_End_Index( i, btop_i, &bond_list );
@@ -949,6 +936,9 @@ CUDA_GLOBAL void k_init_bonds_opt( reax_atom *my_atoms, single_body_parameters *
         /* copy bond info to atom structure
          * (needed for atom ownership transfer via MPI) */
         my_atoms[i].num_bonds = num_bonds;
+
+        workspace.total_bond_order[i] = total_bond_order_i;
+        rvec_Copy( workspace.dDeltap_self[i], dDeltap_self_i );
 
         /* reallocation check */
         if ( num_bonds > max_bonds[i] )
@@ -960,9 +950,10 @@ CUDA_GLOBAL void k_init_bonds_opt( reax_atom *my_atoms, single_body_parameters *
 
 
 /* Construct the interaction list for hydrogen bonds */
-CUDA_GLOBAL void k_init_hbonds( reax_atom *my_atoms, single_body_parameters *sbp, 
-        control_params *control, reax_list far_nbr_list, reax_list hbond_list,
-        int n, int N, int num_atom_types, int *max_hbonds, int *realloc_hbonds )
+CUDA_GLOBAL void k_init_hbonds( reax_atom * const my_atoms,
+        single_body_parameters const * const sbp, control_params const * const control,
+        reax_list far_nbr_list, reax_list hbond_list,
+        int n, int N, int num_atom_types, int * const max_hbonds, int * const realloc_hbonds )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -970,8 +961,7 @@ CUDA_GLOBAL void k_init_hbonds( reax_atom *my_atoms, single_body_parameters *sbp
     int ihb, jhb, ihb_top;
     int num_hbonds;
     real cutoff;
-    single_body_parameters *sbp_i, *sbp_j;
-    reax_atom *atom_i, *atom_j;
+    reax_atom *atom_i;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -984,8 +974,7 @@ CUDA_GLOBAL void k_init_hbonds( reax_atom *my_atoms, single_body_parameters *sbp
     type_i = atom_i->type;
     start_i = Start_Index( i, &far_nbr_list );
     end_i = End_Index( i, &far_nbr_list );
-    sbp_i = &sbp[type_i];
-    ihb = sbp_i->p_hbond;
+    ihb = sbp[type_i].p_hbond;
 
     cutoff = MIN( control->nonb_cut, control->hbond_cut );
 
@@ -999,10 +988,8 @@ CUDA_GLOBAL void k_init_hbonds( reax_atom *my_atoms, single_body_parameters *sbp
             if ( far_nbr_list.far_nbr_list.d[pj] <= cutoff )
             {
                 j = far_nbr_list.far_nbr_list.nbr[pj];
-                atom_j = &my_atoms[j];
-                type_j = atom_j->type;
-                sbp_j = &sbp[type_j];
-                jhb = sbp_j->p_hbond;
+                type_j = my_atoms[j].type;
+                jhb = sbp[type_j].p_hbond;
 
                 /* atom i: H bonding, ghost
                  * atom j: H atom, native */
@@ -1073,9 +1060,10 @@ CUDA_GLOBAL void k_init_hbonds( reax_atom *my_atoms, single_body_parameters *sbp
 
 
 /* Construct the interaction list for hydrogen bonds */
-CUDA_GLOBAL void k_init_hbonds_opt( reax_atom *my_atoms, single_body_parameters *sbp, 
-        control_params *control, reax_list far_nbr_list, reax_list hbond_list,
-        int n, int N, int num_atom_types, int *max_hbonds, int *realloc_hbonds )
+CUDA_GLOBAL void k_init_hbonds_opt( reax_atom * const my_atoms,
+        single_body_parameters const * const sbp, control_params const * const control,
+        reax_list far_nbr_list, reax_list hbond_list,
+        int n, int N, int num_atom_types, int * const max_hbonds, int * const realloc_hbonds )
 {
     extern __shared__ cub::WarpScan<int>::TempStorage temp[];
     int i, j, pj, thread_id, warp_id, lane_id, itr;
@@ -1084,8 +1072,7 @@ CUDA_GLOBAL void k_init_hbonds_opt( reax_atom *my_atoms, single_body_parameters 
     int ihb, jhb, ihb_top, offset, flag;
     int num_hbonds;
     real cutoff;
-    single_body_parameters *sbp_i, *sbp_j;
-    reax_atom *atom_i, *atom_j;
+    reax_atom *atom_i;
 
     thread_id = blockIdx.x * blockDim.x + threadIdx.x;
     /* all threads within a warp are assigned the bonds
@@ -1103,8 +1090,7 @@ CUDA_GLOBAL void k_init_hbonds_opt( reax_atom *my_atoms, single_body_parameters 
     type_i = atom_i->type;
     start_i = Start_Index( i, &far_nbr_list );
     end_i = End_Index( i, &far_nbr_list );
-    sbp_i = &sbp[type_i];
-    ihb = sbp_i->p_hbond;
+    ihb = sbp[type_i].p_hbond;
 
     cutoff = MIN( control->nonb_cut, control->hbond_cut );
 
@@ -1117,10 +1103,8 @@ CUDA_GLOBAL void k_init_hbonds_opt( reax_atom *my_atoms, single_body_parameters 
             if ( pj < end_i )
             {
                 j = far_nbr_list.far_nbr_list.nbr[pj];
-                atom_j = &my_atoms[j];
-                type_j = atom_j->type;
-                sbp_j = &sbp[type_j];
-                jhb = sbp_j->p_hbond;
+                type_j = my_atoms[j].type;
+                jhb = sbp[type_j].p_hbond;
 
                 offset = (pj < end_i && far_nbr_list.far_nbr_list.d[pj] <= cutoff
                         && ((i >= n && j < n && ihb == H_BONDING_ATOM && jhb == H_ATOM)
@@ -1209,9 +1193,9 @@ CUDA_GLOBAL void k_init_hbonds_opt( reax_atom *my_atoms, single_body_parameters 
 
 
 /* Construct the interaction list for bonds */
-CUDA_GLOBAL void k_estimate_storages_cm_half( reax_atom *my_atoms,
-        control_params *control, reax_list far_nbr_list, int cm_n, int cm_n_max,
-        int *cm_entries, int *max_cm_entries )
+CUDA_GLOBAL void k_estimate_storages_cm_half( reax_atom const * const my_atoms,
+        control_params const * const control, reax_list far_nbr_list,
+        int cm_n, int cm_n_max, int * const cm_entries, int * const max_cm_entries )
 {
     int i, j, pj; 
     int start_i, end_i;
@@ -1256,9 +1240,9 @@ CUDA_GLOBAL void k_estimate_storages_cm_half( reax_atom *my_atoms,
 }
 
 
-CUDA_GLOBAL void k_estimate_storages_cm_full( control_params *control,
+CUDA_GLOBAL void k_estimate_storages_cm_full( control_params const * const control,
         reax_list far_nbr_list, int cm_n, int cm_n_max,
-        int *cm_entries, int *max_cm_entries )
+        int * const cm_entries, int * const max_cm_entries )
 {
     int i, pj; 
     int start_i, end_i;
@@ -1300,22 +1284,19 @@ CUDA_GLOBAL void k_estimate_storages_cm_full( control_params *control,
 }
 
 
-CUDA_GLOBAL void k_estimate_storage_bonds( reax_atom *my_atoms, 
-        single_body_parameters *sbp, two_body_parameters *tbp,
+CUDA_GLOBAL void k_estimate_storage_bonds( reax_atom const * const my_atoms, 
+        single_body_parameters const * const sbp, two_body_parameters const * const tbp,
         control_params *control, reax_list far_nbr_list, 
         int num_atom_types, int n, int N, int total_cap,
-        int *bonds, int *max_bonds )
+        int * const bonds, int * const max_bonds )
 {
     int i, j, pj; 
     int start_i, end_i;
-    int type_i, type_j;
+    int type_i, type_j, tbp_ij;
     int num_bonds;
     real cutoff, r_ij; 
     real C12, C34, C56;
     real BO_s, BO_pi, BO_pi2;
-    single_body_parameters *sbp_i, *sbp_j;
-    two_body_parameters *twbp;
-    reax_atom *atom_i;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -1328,11 +1309,9 @@ CUDA_GLOBAL void k_estimate_storage_bonds( reax_atom *my_atoms,
 
     if ( i < N )
     {
-        atom_i = &my_atoms[i];
-        type_i = atom_i->type;
+        type_i = my_atoms[i].type;
         start_i = Start_Index( i, &far_nbr_list );
         end_i = End_Index( i, &far_nbr_list );
-        sbp_i = &sbp[type_i];
 
         if ( i < n )
         {
@@ -1350,13 +1329,12 @@ CUDA_GLOBAL void k_estimate_storage_bonds( reax_atom *my_atoms,
                 j = far_nbr_list.far_nbr_list.nbr[pj];
                 type_j = my_atoms[j].type;
                 r_ij = far_nbr_list.far_nbr_list.d[pj];
-                sbp_j = &sbp[type_j];
-                twbp = &tbp[ index_tbp(type_i ,type_j, num_atom_types) ];
+                tbp_ij = index_tbp(type_i ,type_j, num_atom_types);
 
                 /* uncorrected bond orders */
-                if ( sbp_i->r_s > 0.0 && sbp_j->r_s > 0.0 )
+                if ( sbp[type_i].r_s > 0.0 && sbp[type_j].r_s > 0.0 )
                 {
-                    C12 = twbp->p_bo1 * POW( r_ij / twbp->r_s, twbp->p_bo2 );
+                    C12 = tbp[tbp_ij].p_bo1 * POW( r_ij / tbp[tbp_ij].r_s, tbp[tbp_ij].p_bo2 );
                     BO_s = (1.0 + control->bo_cut) * EXP( C12 );
                 }
                 else
@@ -1365,9 +1343,9 @@ CUDA_GLOBAL void k_estimate_storage_bonds( reax_atom *my_atoms,
                     BO_s = 0.0;
                 }
 
-                if ( sbp_i->r_pi > 0.0 && sbp_j->r_pi > 0.0 )
+                if ( sbp[type_i].r_pi > 0.0 && sbp[type_j].r_pi > 0.0 )
                 {
-                    C34 = twbp->p_bo3 * POW( r_ij / twbp->r_p, twbp->p_bo4 );
+                    C34 = tbp[tbp_ij].p_bo3 * POW( r_ij / tbp[tbp_ij].r_p, tbp[tbp_ij].p_bo4 );
                     BO_pi = EXP( C34 );
                 }
                 else
@@ -1376,9 +1354,9 @@ CUDA_GLOBAL void k_estimate_storage_bonds( reax_atom *my_atoms,
                     BO_pi = 0.0;
                 }
 
-                if ( sbp_i->r_pi_pi > 0.0 && sbp_j->r_pi_pi > 0.0 )
+                if ( sbp[type_i].r_pi_pi > 0.0 && sbp[type_j].r_pi_pi > 0.0 )
                 {
-                    C56 = twbp->p_bo5 * POW( r_ij / twbp->r_pp, twbp->p_bo6 );
+                    C56 = tbp[tbp_ij].p_bo5 * POW( r_ij / tbp[tbp_ij].r_pp, tbp[tbp_ij].p_bo6 );
                     BO_pi2= EXP( C56 );
                 }
                 else
@@ -1403,10 +1381,10 @@ CUDA_GLOBAL void k_estimate_storage_bonds( reax_atom *my_atoms,
 }
 
 
-CUDA_GLOBAL void k_estimate_storage_hbonds( reax_atom *my_atoms, 
-        single_body_parameters *sbp, control_params *control,
+CUDA_GLOBAL void k_estimate_storage_hbonds( reax_atom const * const my_atoms, 
+        single_body_parameters const * const sbp, control_params const * const control,
         reax_list far_nbr_list, int num_atom_types, int n, int N,
-        int total_cap, int *hbonds, int *max_hbonds )
+        int total_cap, int * const hbonds, int * const max_hbonds )
 {
     int i, j, pj; 
     int start_i, end_i;
@@ -1414,8 +1392,6 @@ CUDA_GLOBAL void k_estimate_storage_hbonds( reax_atom *my_atoms,
     int ihb, jhb;
     int num_hbonds;
     real cutoff;
-    single_body_parameters *sbp_i, *sbp_j;
-    reax_atom *atom_i;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -1428,12 +1404,10 @@ CUDA_GLOBAL void k_estimate_storage_hbonds( reax_atom *my_atoms,
 
     if ( i < N )
     {
-        atom_i = &my_atoms[i];
-        type_i = atom_i->type;
+        type_i = my_atoms[i].type;
         start_i = Start_Index( i, &far_nbr_list );
         end_i = End_Index( i, &far_nbr_list );
-        sbp_i = &sbp[type_i];
-        ihb = sbp_i->p_hbond;
+        ihb = sbp[type_i].p_hbond;
 
         if ( i < n )
         { 
@@ -1450,8 +1424,7 @@ CUDA_GLOBAL void k_estimate_storage_hbonds( reax_atom *my_atoms,
             { 
                 j = far_nbr_list.far_nbr_list.nbr[pj];
                 type_j = my_atoms[j].type;
-                sbp_j = &sbp[type_j];
-                jhb = sbp_j->p_hbond;
+                jhb = sbp[type_j].p_hbond;
 
                 /* atom i: H bonding, ghost
                  * atom j: H atom, native */
@@ -1850,6 +1823,15 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
 }
 
 
+/* Initialize the bond list, hydrogen bond list, and charge matrix
+ * data structures along with updating the pairwise distances in the
+ * far neighbor (Verlet) list if required.
+ *
+ * NOTE: the control flow of the code follows a
+ * try-compute-else-reallocate-and-retry logic which requires that
+ * the initialization kernels be atomic transactions. Locks are used
+ * to mark if the transaction succeeds (and thus should not be repeated).
+ */
 int Cuda_Init_Forces( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace,
         reax_list **lists, output_controls *out_control ) 
@@ -2016,7 +1998,8 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
             + (system->N * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
         k_init_bonds_opt <<< blocks, DEF_BLOCK_SIZE,
-                     sizeof(cub::WarpScan<int>::TempStorage) * (DEF_BLOCK_SIZE / 32),
+                     (sizeof(cub::WarpScan<int>::TempStorage)
+                      + sizeof(cub::WarpReduce<double>::TempStorage)) * (DEF_BLOCK_SIZE / 32),
                      control->streams[1] >>>
             ( system->d_my_atoms, system->reax_param.d_sbp,
               system->reax_param.d_tbp, *(workspace->d_workspace),

@@ -14,8 +14,7 @@
 
 
 CUDA_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
-        simulation_data *data, storage *workspace, reax_list *bond_list,
-        rvec data_ext_press )
+        storage * const workspace, reax_list * const bond_list, rvec data_ext_press )
 {
     bond_data *nbr_j, *nbr_k;
     bond_order_data *bo_ij, *bo_ji;
@@ -172,7 +171,7 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
 
 
 CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
-        storage *workspace, reax_list *bond_list, rvec *f_i )
+        storage * const workspace, reax_list * const bond_list, rvec * const f_i )
 {
     bond_data *nbr_j, *nbr_k;
     bond_order_data *bo_ij, *bo_ji;
@@ -295,11 +294,10 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
 
 
 /* Initialize arrays */
-CUDA_GLOBAL void k_bond_order_part1( reax_atom *my_atoms, 
-        single_body_parameters *sbp, storage workspace, int N )
+CUDA_GLOBAL void k_bond_order_part1( reax_atom const * const my_atoms, 
+        single_body_parameters const * const sbp, storage workspace, int N )
 {
     int i, type_i;
-    single_body_parameters *sbp_i;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -310,21 +308,20 @@ CUDA_GLOBAL void k_bond_order_part1( reax_atom *my_atoms,
 
     /* Calculate Deltaprime, Deltaprime_boc values */
     type_i = my_atoms[i].type;
-    sbp_i = &sbp[type_i];
-    workspace.Deltap[i] = workspace.total_bond_order[i] - sbp_i->valency;
+    workspace.Deltap[i] = workspace.total_bond_order[i] - sbp[type_i].valency;
     workspace.Deltap_boc[i] = workspace.total_bond_order[i]
-        - sbp_i->valency_val;
+        - sbp[type_i].valency_val;
     workspace.total_bond_order[i] = 0.0; 
 }
 
 
 /* Main BO calculations */
-CUDA_GLOBAL void k_bond_order_part2( reax_atom *my_atoms, global_parameters gp, 
-        single_body_parameters *sbp, two_body_parameters *tbp, 
+CUDA_GLOBAL void k_bond_order_part2( reax_atom const * const my_atoms, global_parameters gp,
+        single_body_parameters const * const sbp, two_body_parameters const * const tbp,
         storage workspace, reax_list bond_list, int num_atom_types, int N )
 {
     int i, j, pj, type_i, type_j;
-    int start_i, end_i;
+    int start_i, end_i, tbp_ij;
     real val_i, Deltap_i, Deltap_boc_i;
     real val_j, Deltap_j, Deltap_boc_j;
     real f1, f2, f3, f4, f5, f4f5, exp_f4, exp_f5;
@@ -334,8 +331,6 @@ CUDA_GLOBAL void k_bond_order_part2( reax_atom *my_atoms, global_parameters gp,
     real A0_ij, A1_ij, A2_ij, A2_ji, A3_ij, A3_ji;
     real p_boc1, p_boc2;
     real total_bond_order_i;
-    single_body_parameters *sbp_i;
-    two_body_parameters *twbp;
     bond_order_data *bo_ij;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -350,8 +345,7 @@ CUDA_GLOBAL void k_bond_order_part2( reax_atom *my_atoms, global_parameters gp,
 
     /* Corrected Bond Order calculations */
     type_i = my_atoms[i].type;
-    sbp_i = &sbp[type_i];
-    val_i = sbp_i->valency;
+    val_i = sbp[type_i].valency;
     Deltap_i = workspace.Deltap[i];
     Deltap_boc_i = workspace.Deltap_boc[i];
     start_i = Start_Index( i, &bond_list );
@@ -367,9 +361,9 @@ CUDA_GLOBAL void k_bond_order_part2( reax_atom *my_atoms, global_parameters gp,
         //if ( i < j || workspace.bond_mark[j] > 3 )
         if ( i < j )
         {
-            twbp = &tbp[ index_tbp(type_i, type_j, num_atom_types) ];
+            tbp_ij = index_tbp(type_i, type_j, num_atom_types);
 
-            if ( twbp->ovc < 0.001 && twbp->v13cor < 0.001 )
+            if ( tbp[tbp_ij].ovc < 0.001 && tbp[tbp_ij].v13cor < 0.001 )
             {
                 /* There is no correction to bond orders nor to derivatives of
                  * bond order prime! So we leave bond orders unchanged and
@@ -396,7 +390,7 @@ CUDA_GLOBAL void k_bond_order_part2( reax_atom *my_atoms, global_parameters gp,
                 Deltap_boc_j = workspace.Deltap_boc[j];
 
                 /* on page 1 */
-                if ( twbp->ovc >= 0.001 )
+                if ( tbp[tbp_ij].ovc >= 0.001 )
                 {
                     /* Correction for overcoordination */
                     exp_p1i = EXP( -p_boc1 * Deltap_i );
@@ -437,23 +431,23 @@ CUDA_GLOBAL void k_bond_order_part2( reax_atom *my_atoms, global_parameters gp,
                     Cf1_ji = 0.0;
                 }
 
-                if ( twbp->v13cor >= 0.001 )
+                if ( tbp[tbp_ij].v13cor >= 0.001 )
                 {
                     /* Correction for 1-3 bond orders */
-                    exp_f4 = EXP( -twbp->p_boc3 * (twbp->p_boc4 * SQR( bo_ij->BO ) - Deltap_boc_i)
-                            + twbp->p_boc5 );
-                    exp_f5 = EXP( -twbp->p_boc3 * (twbp->p_boc4 * SQR( bo_ij->BO ) - Deltap_boc_j)
-                            + twbp->p_boc5 );
+                    exp_f4 = EXP( -tbp[tbp_ij].p_boc3 * (tbp[tbp_ij].p_boc4 * SQR( bo_ij->BO ) - Deltap_boc_i)
+                            + tbp[tbp_ij].p_boc5 );
+                    exp_f5 = EXP( -tbp[tbp_ij].p_boc3 * (tbp[tbp_ij].p_boc4 * SQR( bo_ij->BO ) - Deltap_boc_j)
+                            + tbp[tbp_ij].p_boc5 );
 
                     f4 = 1.0 / (1.0 + exp_f4);
                     f5 = 1.0 / (1.0 + exp_f5);
                     f4f5 = f4 * f5;
 
                     /* Bond Order pages 8-9, derivative of f4 and f5 */
-//                    temp = twbp->p_boc5
-//                        - twbp->p_boc3 * twbp->p_boc4 * SQR( bo_ij->BO );
-//                    u_ij = temp + twbp->p_boc3 * Deltap_boc_i;
-//                    u_ji = temp + twbp->p_boc3 * Deltap_boc_j;
+//                    temp = tbp[tbp_ij].p_boc5
+//                        - tbp[tbp_ij].p_boc3 * tbp[tbp_ij].p_boc4 * SQR( bo_ij->BO );
+//                    u_ij = temp + tbp[tbp_ij].p_boc3 * Deltap_boc_i;
+//                    u_ji = temp + tbp[tbp_ij].p_boc3 * Deltap_boc_j;
 //                    Cf45_ij = Cf45( u_ij, u_ji ) / f4f5;
 //                    Cf45_ji = Cf45( u_ji, u_ij ) / f4f5;
                     Cf45_ij = -f4 * exp_f4;
@@ -470,10 +464,10 @@ CUDA_GLOBAL void k_bond_order_part2( reax_atom *my_atoms, global_parameters gp,
 
                 /* Bond Order page 10, derivative of total bond order */
                 A0_ij = f1 * f4f5;
-                A1_ij = -2.0 * twbp->p_boc3 * twbp->p_boc4 * bo_ij->BO
+                A1_ij = -2.0 * tbp[tbp_ij].p_boc3 * tbp[tbp_ij].p_boc4 * bo_ij->BO
                     * (Cf45_ij + Cf45_ji);
-                A2_ij = Cf1_ij / f1 + twbp->p_boc3 * Cf45_ij;
-                A2_ji = Cf1_ji / f1 + twbp->p_boc3 * Cf45_ji;
+                A2_ij = Cf1_ij / f1 + tbp[tbp_ij].p_boc3 * Cf45_ij;
+                A2_ji = Cf1_ji / f1 + tbp[tbp_ij].p_boc3 * Cf45_ji;
                 A3_ij = A2_ij + Cf1_ij / f1;
                 A3_ji = A2_ji + Cf1_ji / f1;
 
@@ -518,9 +512,9 @@ CUDA_GLOBAL void k_bond_order_part2( reax_atom *my_atoms, global_parameters gp,
 
             /* now keeps total_BO */
             total_bond_order_i += bo_ij->BO;
-
-            /* NOTE: handle sym_index later in Cuda_Calculate_BO_Part3 */
         }
+
+        /* NOTE: handle sym_index later in k_bond_order_part3 */
     }
 
     __syncthreads( );
@@ -530,13 +524,13 @@ CUDA_GLOBAL void k_bond_order_part2( reax_atom *my_atoms, global_parameters gp,
 
 
 /* Main BO calculations */
-CUDA_GLOBAL void k_bond_order_part2_opt( reax_atom *my_atoms, global_parameters gp, 
-        single_body_parameters *sbp, two_body_parameters *tbp, 
+CUDA_GLOBAL void k_bond_order_part2_opt( reax_atom const * const my_atoms, global_parameters gp, 
+        single_body_parameters const * const sbp, two_body_parameters const * const tbp, 
         storage workspace, reax_list bond_list, int num_atom_types, int N )
 {
     extern __shared__ cub::WarpReduce<double>::TempStorage temp2[];
-    int i, j, pj, type_i, type_j, thread_id, warp_id, lane_id, itr;;
-    int start_i, end_i;
+    int i, j, pj, type_i, type_j, thread_id, warp_id, lane_id, itr;
+    int start_i, end_i, tbp_ij;
     real val_i, Deltap_i, Deltap_boc_i;
     real val_j, Deltap_j, Deltap_boc_j;
     real f1, f2, f3, f4, f5, f4f5, exp_f4, exp_f5;
@@ -546,8 +540,6 @@ CUDA_GLOBAL void k_bond_order_part2_opt( reax_atom *my_atoms, global_parameters 
     real A0_ij, A1_ij, A2_ij, A2_ji, A3_ij, A3_ji;
     real p_boc1, p_boc2;
     real total_bond_order_i;
-    single_body_parameters *sbp_i;
-    two_body_parameters *twbp;
     bond_order_data *bo_ij;
 
     thread_id = blockIdx.x * blockDim.x + threadIdx.x;
@@ -568,8 +560,7 @@ CUDA_GLOBAL void k_bond_order_part2_opt( reax_atom *my_atoms, global_parameters 
 
     /* Corrected Bond Order calculations */
     type_i = my_atoms[i].type;
-    sbp_i = &sbp[type_i];
-    val_i = sbp_i->valency;
+    val_i = sbp[type_i].valency;
     Deltap_i = workspace.Deltap[i];
     Deltap_boc_i = workspace.Deltap_boc[i];
     start_i = Start_Index( i, &bond_list );
@@ -587,9 +578,9 @@ CUDA_GLOBAL void k_bond_order_part2_opt( reax_atom *my_atoms, global_parameters 
             //if ( i < j || workspace.bond_mark[j] > 3 )
             if ( i < j )
             {
-                twbp = &tbp[ index_tbp(type_i, type_j, num_atom_types) ];
+                tbp_ij = index_tbp(type_i, type_j, num_atom_types);
 
-                if ( twbp->ovc < 0.001 && twbp->v13cor < 0.001 )
+                if ( tbp[tbp_ij].ovc < 0.001 && tbp[tbp_ij].v13cor < 0.001 )
                 {
                     /* There is no correction to bond orders nor to derivatives of
                      * bond order prime! So we leave bond orders unchanged and
@@ -616,7 +607,7 @@ CUDA_GLOBAL void k_bond_order_part2_opt( reax_atom *my_atoms, global_parameters 
                     Deltap_boc_j = workspace.Deltap_boc[j];
 
                     /* on page 1 */
-                    if ( twbp->ovc >= 0.001 )
+                    if ( tbp[tbp_ij].ovc >= 0.001 )
                     {
                         /* Correction for overcoordination */
                         exp_p1i = EXP( -p_boc1 * Deltap_i );
@@ -657,23 +648,23 @@ CUDA_GLOBAL void k_bond_order_part2_opt( reax_atom *my_atoms, global_parameters 
                         Cf1_ji = 0.0;
                     }
 
-                    if ( twbp->v13cor >= 0.001 )
+                    if ( tbp[tbp_ij].v13cor >= 0.001 )
                     {
                         /* Correction for 1-3 bond orders */
-                        exp_f4 = EXP( -twbp->p_boc3 * (twbp->p_boc4 * SQR( bo_ij->BO ) - Deltap_boc_i)
-                                + twbp->p_boc5 );
-                        exp_f5 = EXP( -twbp->p_boc3 * (twbp->p_boc4 * SQR( bo_ij->BO ) - Deltap_boc_j)
-                                + twbp->p_boc5 );
+                        exp_f4 = EXP( -tbp[tbp_ij].p_boc3 * (tbp[tbp_ij].p_boc4 * SQR( bo_ij->BO ) - Deltap_boc_i)
+                                + tbp[tbp_ij].p_boc5 );
+                        exp_f5 = EXP( -tbp[tbp_ij].p_boc3 * (tbp[tbp_ij].p_boc4 * SQR( bo_ij->BO ) - Deltap_boc_j)
+                                + tbp[tbp_ij].p_boc5 );
 
                         f4 = 1.0 / (1.0 + exp_f4);
                         f5 = 1.0 / (1.0 + exp_f5);
                         f4f5 = f4 * f5;
 
                         /* Bond Order pages 8-9, derivative of f4 and f5 */
-//                        temp = twbp->p_boc5
-//                            - twbp->p_boc3 * twbp->p_boc4 * SQR( bo_ij->BO );
-//                        u_ij = temp + twbp->p_boc3 * Deltap_boc_i;
-//                        u_ji = temp + twbp->p_boc3 * Deltap_boc_j;
+//                        temp = tbp[tbp_ij].p_boc5
+//                            - tbp[tbp_ij].p_boc3 * tbp[tbp_ij].p_boc4 * SQR( bo_ij->BO );
+//                        u_ij = temp + tbp[tbp_ij].p_boc3 * Deltap_boc_i;
+//                        u_ji = temp + tbp[tbp_ij].p_boc3 * Deltap_boc_j;
 //                        Cf45_ij = Cf45( u_ij, u_ji ) / f4f5;
 //                        Cf45_ji = Cf45( u_ji, u_ij ) / f4f5;
                         Cf45_ij = -f4 * exp_f4;
@@ -690,10 +681,10 @@ CUDA_GLOBAL void k_bond_order_part2_opt( reax_atom *my_atoms, global_parameters 
 
                     /* Bond Order page 10, derivative of total bond order */
                     A0_ij = f1 * f4f5;
-                    A1_ij = -2.0 * twbp->p_boc3 * twbp->p_boc4 * bo_ij->BO
+                    A1_ij = -2.0 * tbp[tbp_ij].p_boc3 * tbp[tbp_ij].p_boc4 * bo_ij->BO
                         * (Cf45_ij + Cf45_ji);
-                    A2_ij = Cf1_ij / f1 + twbp->p_boc3 * Cf45_ij;
-                    A2_ji = Cf1_ji / f1 + twbp->p_boc3 * Cf45_ji;
+                    A2_ij = Cf1_ij / f1 + tbp[tbp_ij].p_boc3 * Cf45_ij;
+                    A2_ji = Cf1_ji / f1 + tbp[tbp_ij].p_boc3 * Cf45_ji;
                     A3_ij = A2_ij + Cf1_ij / f1;
                     A3_ji = A2_ji + Cf1_ji / f1;
 
@@ -738,9 +729,9 @@ CUDA_GLOBAL void k_bond_order_part2_opt( reax_atom *my_atoms, global_parameters 
 
                 /* now keeps total_BO */
                 total_bond_order_i += bo_ij->BO;
-
-                /* NOTE: handle sym_index later in Cuda_Calculate_BO_Part3 */
             }
+
+            /* NOTE: handle sym_index later in k_bond_order_part3 */
         }
 
         pj += warpSize;
@@ -776,7 +767,7 @@ CUDA_GLOBAL void k_bond_order_part3( storage workspace, reax_list bond_list, int
         j = bond_list.bond_list[pj].nbr;
         bo_ij = &bond_list.bond_list[pj].bo_data;
 
-        //if ( i >= j || workspace.bond_mark[i] <= 3 )
+        //if ( i >= j && workspace.bond_mark[i] <= 3 )
         if ( i >= j )
         {
             /* We only need to update bond orders from bo_ji
@@ -797,13 +788,12 @@ CUDA_GLOBAL void k_bond_order_part3( storage workspace, reax_list bond_list, int
 
 
 /* Calculate helper variables */
-CUDA_GLOBAL void k_bond_order_part4( reax_atom *my_atoms,
-        global_parameters gp, single_body_parameters *sbp,
+CUDA_GLOBAL void k_bond_order_part4( reax_atom const * const my_atoms,
+        global_parameters gp, single_body_parameters const * const sbp,
         storage workspace, int N )
 {
     int i, type_i;
     real explp1, p_lp1;
-    single_body_parameters *sbp_i;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -817,18 +807,17 @@ CUDA_GLOBAL void k_bond_order_part4( reax_atom *my_atoms,
     /* Calculate some helper variables that are  used at many places
      * throughout force calculations */
     type_i = my_atoms[i].type;
-    sbp_i = &sbp[ type_i ];
 
-    workspace.Delta[i] = workspace.total_bond_order[i] - sbp_i->valency;
-    workspace.Delta_e[i] = workspace.total_bond_order[i] - sbp_i->valency_e;
+    workspace.Delta[i] = workspace.total_bond_order[i] - sbp[type_i].valency;
+    workspace.Delta_e[i] = workspace.total_bond_order[i] - sbp[type_i].valency_e;
     workspace.Delta_boc[i] = workspace.total_bond_order[i]
-        - sbp_i->valency_boc;
+        - sbp[type_i].valency_boc;
 
     workspace.vlpex[i] = workspace.Delta_e[i]
         - 2.0 * (int)(workspace.Delta_e[i] / 2.0);
     explp1 = EXP(-p_lp1 * SQR(2.0 + workspace.vlpex[i]));
     workspace.nlp[i] = explp1 - (int)(workspace.Delta_e[i] / 2.0);
-    workspace.Delta_lp[i] = sbp_i->nlp_opt - workspace.nlp[i];
+    workspace.Delta_lp[i] = sbp[type_i].nlp_opt - workspace.nlp[i];
     workspace.Clp[i] = 2.0 * p_lp1 * explp1 * (2.0 + workspace.vlpex[i]);
     /* Adri uses different dDelta_lp values than the ones in notes... */
     workspace.dDelta_lp[i] = workspace.Clp[i];
@@ -836,16 +825,16 @@ CUDA_GLOBAL void k_bond_order_part4( reax_atom *my_atoms,
 //        * ((FABS(workspace.Delta_e[i] / 2.0
 //                        - (int)(workspace.Delta_e[i] / 2.0)) < 0.1) ? 1 : 0 );
 
-    if ( sbp_i->mass > 21.0 )
+    if ( sbp[type_i].mass > 21.0 )
     {
-        workspace.nlp_temp[i] = 0.5 * (sbp_i->valency_e - sbp_i->valency);
-        workspace.Delta_lp_temp[i] = sbp_i->nlp_opt - workspace.nlp_temp[i];
+        workspace.nlp_temp[i] = 0.5 * (sbp[type_i].valency_e - sbp[type_i].valency);
+        workspace.Delta_lp_temp[i] = sbp[type_i].nlp_opt - workspace.nlp_temp[i];
         workspace.dDelta_lp_temp[i] = 0.0;
     }
     else
     {
         workspace.nlp_temp[i] = workspace.nlp[i];
-        workspace.Delta_lp_temp[i] = sbp_i->nlp_opt - workspace.nlp_temp[i];
+        workspace.Delta_lp_temp[i] = sbp[type_i].nlp_opt - workspace.nlp_temp[i];
         workspace.dDelta_lp_temp[i] = workspace.Clp[i];
     }
 }
@@ -930,9 +919,8 @@ CUDA_GLOBAL void k_total_forces_part1_opt( storage workspace, reax_list bond_lis
 }
 
 
-CUDA_GLOBAL void k_total_forces_virial_part1( storage workspace,
-        reax_list bond_list, simulation_data *data,
-        rvec *data_ext_press, int N )
+CUDA_GLOBAL void k_total_forces_virial_part1( storage workspace, reax_list bond_list,
+        rvec * const data_ext_press, int N )
 {
     int i, pj;
 
@@ -947,7 +935,7 @@ CUDA_GLOBAL void k_total_forces_virial_part1( storage workspace,
     {
         if ( i < bond_list.bond_list[pj].nbr )
         {
-            Cuda_Add_dBond_to_Forces_NPT( i, pj, data, &workspace, &bond_list,
+            Cuda_Add_dBond_to_Forces_NPT( i, pj, &workspace, &bond_list,
                     data_ext_press[i] );
         }
     }
@@ -955,8 +943,7 @@ CUDA_GLOBAL void k_total_forces_virial_part1( storage workspace,
 
 
 #if !defined(CUDA_ACCUM_ATOMIC)
-CUDA_GLOBAL void k_total_forces_part1_2( reax_atom *my_atoms, reax_list bond_list,
-        storage workspace, int N )
+CUDA_GLOBAL void k_total_forces_part1_2( reax_list bond_list, storage workspace, int N )
 {
     int i, pk;
     bond_data *nbr_k, *nbr_k_sym;
@@ -979,7 +966,7 @@ CUDA_GLOBAL void k_total_forces_part1_2( reax_atom *my_atoms, reax_list bond_lis
 #endif
 
 
-CUDA_GLOBAL void k_total_forces_part2( reax_atom *my_atoms, int n, 
+CUDA_GLOBAL void k_total_forces_part2( reax_atom * const my_atoms, int n,
         storage workspace )
 {
     int i;
@@ -995,9 +982,10 @@ CUDA_GLOBAL void k_total_forces_part2( reax_atom *my_atoms, int n,
 }
 
 
-void Cuda_Compute_Bond_Orders( reax_system * const system, control_params * const control, 
-        simulation_data * const data, storage * const workspace, 
-        reax_list ** const lists, output_controls * const out_control )
+void Cuda_Compute_Bond_Orders( reax_system const * const system,
+        control_params const * const control, simulation_data * const data,
+        storage * const workspace, reax_list ** const lists,
+        output_controls const * const out_control )
 {
     int blocks;
 
@@ -1018,7 +1006,7 @@ void Cuda_Compute_Bond_Orders( reax_system * const system, control_params * cons
     blocks = system->N * 32 / DEF_BLOCK_SIZE
         + (system->N * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
-    k_bond_order_part2 <<< blocks, DEF_BLOCK_SIZE,
+    k_bond_order_part2_opt <<< blocks, DEF_BLOCK_SIZE,
                        sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32),
                        control->streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp, 
@@ -1041,18 +1029,16 @@ void Cuda_Compute_Bond_Orders( reax_system * const system, control_params * cons
 }
 
 
-void Cuda_Total_Forces_Part1( reax_system * const system, control_params * const control, 
-        simulation_data *data, storage * const workspace, reax_list ** const lists )
+void Cuda_Total_Forces_Part1( reax_system const * const system,
+        control_params const * const control, simulation_data * const data,
+        storage * const workspace, reax_list ** const lists )
 {
     int blocks;
     rvec *spad_rvec;
 
     if ( control->virial == 0 )
     {
-//        blocks = system->N / DEF_BLOCK_SIZE
-//            + ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
-//
-//        k_total_forces_part1 <<< blocks, DEF_BLOCK_SIZE, 0,
+//        k_total_forces_part1 <<< control->blocks_n, control->block_size_n, 0,
 //                             control->streams[0] >>>
 //            ( *(workspace->d_workspace), *(lists[BONDS]), system->N );
 //        cudaCheckError( );
@@ -1080,9 +1066,7 @@ void Cuda_Total_Forces_Part1( reax_system * const system, control_params * const
 
         k_total_forces_virial_part1 <<< blocks, DEF_BLOCK_SIZE, 0,
                                     control->streams[0] >>>
-            ( *(workspace->d_workspace), *(lists[BONDS]), 
-              (simulation_data *)data->d_simulation_data, 
-              spad_rvec, system->N );
+            ( *(workspace->d_workspace), *(lists[BONDS]), spad_rvec, system->N );
         cudaCheckError( );
 
         blocks = system->N / DEF_BLOCK_SIZE
@@ -1108,17 +1092,16 @@ void Cuda_Total_Forces_Part1( reax_system * const system, control_params * const
         + ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
     /* post processing for the atomic forces */
-    k_total_forces_part1_2  <<< blocks, DEF_BLOCK_SIZE, 0,
+    k_total_forces_part1_2 <<< blocks, DEF_BLOCK_SIZE, 0,
                             control->streams[0] >>>
-        ( system->d_my_atoms, *(lists[BONDS]),
-          *(workspace->d_workspace), system->N );
+        ( *(lists[BONDS]), *(workspace->d_workspace), system->N );
     cudaCheckError( ); 
 #endif
 }
 
 
 void Cuda_Total_Forces_Part2( reax_system * const system,
-        control_params * const control, storage * const workspace )
+        control_params const * const control, storage * const workspace )
 {
     int blocks;
 

@@ -27,8 +27,9 @@
 #include "../vector.h"
 
 
-int Cuda_Compute_Valence_Angles( reax_system *, control_params *, 
-        simulation_data *, storage *, reax_list **, output_controls * );
+int Cuda_Compute_Valence_Angles( reax_system * const,
+        control_params const * const, simulation_data * const, storage * const ,
+        reax_list **, output_controls const * const );
 
 
 /* calculates the theta angle between atom triplet i-j-k */

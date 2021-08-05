@@ -9,14 +9,14 @@
 #include "../vector.h"
 
 
-void Cuda_Compute_Bond_Orders( reax_system * const, control_params * const, 
+void Cuda_Compute_Bond_Orders( reax_system const * const, control_params const * const, 
         simulation_data * const, storage * const, reax_list ** const,
-        output_controls * const );
+        output_controls const * const );
 
-void Cuda_Total_Forces_Part1( reax_system * const, control_params * const,
+void Cuda_Total_Forces_Part1( reax_system const * const, control_params const * const,
         simulation_data * const, storage *, reax_list ** const );
 
-void Cuda_Total_Forces_Part2( reax_system * const, control_params * const,
+void Cuda_Total_Forces_Part2( reax_system * const, control_params const * const,
         storage * const );
 
 
@@ -26,9 +26,10 @@ void Cuda_Total_Forces_Part2( reax_system * const, control_params * const,
  * and copy to avoid redundant computation) */
 CUDA_DEVICE static inline void Cuda_Compute_BOp( reax_list bond_list, real bo_cut,
         int i, int btop_i, int j, real C12, real C34, real C56, real BO_s,
-        real BO_pi, real BO_pi2, real BO, ivec *rel_box, real d, rvec *dvec,
-        int format, two_body_parameters *twbp, rvec *dDeltap_self,
-        real *total_bond_order )
+        real BO_pi, real BO_pi2, real BO,
+        ivec const * const rel_box, real d, rvec const * const dvec,
+        int format, two_body_parameters const * const twbp, rvec dDeltap_self_i,
+        real * const total_bond_order_i )
 {
     real r2;
     real Cln_BOp_s, Cln_BOp_pi, Cln_BOp_pi2;
@@ -68,14 +69,12 @@ CUDA_DEVICE static inline void Cuda_Compute_BOp( reax_list bond_list, real bo_cu
                 + bo_ij->BO_pi * Cln_BOp_pi
                 + bo_ij->BO_pi2 * Cln_BOp_pi2), ibond->dvec );
 
-//    rvec_Add( dDeltap_self[i], bo_ij->dBOp );
-    atomic_rvecAdd( dDeltap_self[i], bo_ij->dBOp );
+    rvec_Add( dDeltap_self_i, bo_ij->dBOp );
 
     bo_ij->BO_s -= bo_cut;
     bo_ij->BO -= bo_cut;
     /* currently total_BOp */
-//    total_bond_order[i] += bo_ij->BO; 
-    atomicAdd( (double *) &total_bond_order[i], bo_ij->BO ); 
+    *total_bond_order_i += bo_ij->BO; 
     bo_ij->Cdbo = 0.0;
     bo_ij->Cdbopi = 0.0;
     bo_ij->Cdbopi2 = 0.0;

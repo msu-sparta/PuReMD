@@ -703,6 +703,12 @@ void Coll_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
             fprintf( stderr, "[ERROR] MPI_Get_count returned MPI_UNDEFINED\n" );
             MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
         }
+        else if ( cnt1 != out_bufs[2 * d].cnt )
+        {
+            fprintf( stderr, "[ERROR] Coll_FS: counts mismatch (MPI_Get_count = %d, out_bufs[%d].cnt = %d\n",
+                  cnt1, 2 * d, out_bufs[2 * d].cnt );
+            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+        }
 
         smalloc_check( &mpi_data->in1_buffer, &mpi_data->in1_buffer_size,
                 type_size * cnt1, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
@@ -719,6 +725,12 @@ void Coll_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
         if ( cnt2 == MPI_UNDEFINED )
         {
             fprintf( stderr, "[ERROR] MPI_Get_count returned MPI_UNDEFINED\n" );
+            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+        }
+        else if ( cnt2 != out_bufs[2 * d + 1].cnt )
+        {
+            fprintf( stderr, "[ERROR] Coll_FS: counts mismatch (MPI_Get_count = %d, out_bufs[%d].cnt = %d\n",
+                  cnt2, 2 * d + 1, out_bufs[2 * d + 1].cnt );
             MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
         }
 

@@ -25,8 +25,9 @@
 #include "../reax_types.h"
 
 
-void Cuda_Compute_Bonds( reax_system *, control_params *, 
-        simulation_data *, storage *, reax_list **, output_controls * );
+void Cuda_Compute_Bonds( reax_system const * const, control_params const * const,
+        simulation_data * const, storage * const, reax_list **,
+        output_controls const * const );
 
 
 #endif

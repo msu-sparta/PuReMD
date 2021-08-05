@@ -656,10 +656,8 @@ void Cuda_Allocate_Workspace_Part2( reax_system *system, control_params *control
     cudaStreamSynchronize( control->streams[0] );
 
     /* force related storage */
-    sCudaMalloc( (void **) &workspace->f, sizeof(rvec) * total_cap,
-            __FILE__, __LINE__ );
-    sCudaMalloc( (void **) &workspace->CdDelta, sizeof(rvec) * total_cap,
-            __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &workspace->f, total_rvec, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &workspace->CdDelta, total_real, __FILE__, __LINE__ );
 }
 
 

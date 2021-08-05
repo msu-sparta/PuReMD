@@ -94,9 +94,9 @@ CUDA_GLOBAL void k_bonds( reax_atom *my_atoms, global_parameters gp,
                 - twbp->De_pp * bo_ij->BO_pi2;
 
             /* calculate derivatives of bond orders */
-            bo_ij->Cdbo += CEbo;
-            bo_ij->Cdbopi -= CEbo + twbp->De_p;
-            bo_ij->Cdbopi2 -= CEbo + twbp->De_pp;
+            atomicAdd( &bo_ij->Cdbo, CEbo );
+            atomicAdd( &bo_ij->Cdbopi, -1.0 * (CEbo + twbp->De_p) );
+            atomicAdd( &bo_ij->Cdbopi2, -1.0 * (CEbo + twbp->De_pp) );
 
             /* Stabilisation terminal triple bond */
             if ( bo_ij->BO >= 1.00 )
@@ -125,7 +125,7 @@ CUDA_GLOBAL void k_bonds( reax_atom *my_atoms, global_parameters gp,
                     decobdboub = -gp10 * exphu * hulpov
                         * (gp3 * exphub1 + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
 
-                    bo_ij->Cdbo += decobdbo;
+                    atomicAdd( &bo_ij->Cdbo, decobdbo );
                     CdDelta_i += decobdboua;
                     atomicAdd( &workspace->CdDelta[j], decobdboub );
                 }
@@ -213,9 +213,9 @@ CUDA_GLOBAL void k_bonds_opt( reax_atom *my_atoms, global_parameters gp,
                     - twbp->De_pp * bo_ij->BO_pi2;
 
                 /* calculate derivatives of bond orders */
-                bo_ij->Cdbo += CEbo;
-                bo_ij->Cdbopi -= CEbo + twbp->De_p;
-                bo_ij->Cdbopi2 -= CEbo + twbp->De_pp;
+                atomicAdd( &bo_ij->Cdbo, CEbo );
+                atomicAdd( &bo_ij->Cdbopi, -1.0 * (CEbo + twbp->De_p) );
+                atomicAdd( &bo_ij->Cdbopi2, -1.0 * (CEbo + twbp->De_pp) );
 
                 /* Stabilisation terminal triple bond */
                 if ( bo_ij->BO >= 1.00 )
@@ -244,7 +244,7 @@ CUDA_GLOBAL void k_bonds_opt( reax_atom *my_atoms, global_parameters gp,
                         decobdboub = -gp10 * exphu * hulpov
                             * (gp3 * exphub1 + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
 
-                        bo_ij->Cdbo += decobdbo;
+                        atomicAdd( &bo_ij->Cdbo, decobdbo );
                         CdDelta_i += decobdboua;
                         atomicAdd( &workspace->CdDelta[j], decobdboub );
                     }
@@ -271,9 +271,10 @@ CUDA_GLOBAL void k_bonds_opt( reax_atom *my_atoms, global_parameters gp,
 }
 
 
-void Cuda_Compute_Bonds( reax_system *system, control_params *control, 
-        simulation_data *data, storage *workspace, 
-        reax_list **lists, output_controls *out_control )
+void Cuda_Compute_Bonds( reax_system const * const system,
+        control_params const * const control, simulation_data * const data,
+        storage * const workspace, reax_list **lists,
+        output_controls const * const out_control )
 {
     int blocks;
 #if !defined(CUDA_ACCUM_ATOMIC)

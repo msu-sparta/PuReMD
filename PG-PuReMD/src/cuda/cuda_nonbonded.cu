@@ -33,11 +33,10 @@
 //#include <cub/warp/warp_reduce.cuh>
 
 
-CUDA_GLOBAL void k_compute_polarization_energy( reax_atom *my_atoms, 
-        single_body_parameters *sbp, int n, real *e_pol_g )
+CUDA_GLOBAL void k_compute_polarization_energy( reax_atom const * const my_atoms, 
+        single_body_parameters const * const sbp, int n, real * const e_pol_g )
 {
     int i, type_i;
-    real q;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -46,15 +45,14 @@ CUDA_GLOBAL void k_compute_polarization_energy( reax_atom *my_atoms,
         return;
     }
 
-    q = my_atoms[i].q;
     type_i = my_atoms[i].type;
 
 #if !defined(CUDA_ACCUM_ATOMIC)
-    e_pol_g[i] = KCALpMOL_to_EV * (sbp[type_i].chi * q
-            + (sbp[type_i].eta / 2.0) * SQR(q));
+    e_pol_g[i] = KCALpMOL_to_EV * (sbp[type_i].chi * my_atoms[i].q
+            + (sbp[type_i].eta / 2.0) * SQR(my_atoms[i].q));
 #else
     atomicAdd( (double *) e_pol_g, (double) (KCALpMOL_to_EV * (sbp[type_i].chi
-                    * q + (sbp[type_i].eta / 2.0) * SQR(q))) );
+                    * my_atoms[i].q + (sbp[type_i].eta / 2.0) * SQR(my_atoms[i].q))) );
 #endif
 }
 
@@ -63,13 +61,14 @@ CUDA_GLOBAL void k_compute_polarization_energy( reax_atom *my_atoms,
  * where the far neighbors list is in full format
  *
  * This implementation assigns one thread per atom */
-CUDA_GLOBAL void k_vdW_coulomb_energy_full( reax_atom *my_atoms, 
-        two_body_parameters *tbp, global_parameters gp, control_params *control, 
-        storage workspace, reax_list far_nbr_list, int n, int num_atom_types, 
-        real *e_vdW_g, real *e_ele_g )
+CUDA_GLOBAL void k_vdW_coulomb_energy_full( reax_atom const * const my_atoms,
+        two_body_parameters const * const tbp, global_parameters gp,
+        control_params const * const control, storage workspace,
+        reax_list far_nbr_list, int n, int num_atom_types, 
+        real * const e_vdW_g, real * const e_ele_g )
 {
     int i, j, pj;
-    int start_i, end_i, orig_i, orig_j;
+    int start_i, end_i, orig_i, orig_j, tbp_ij;
     real self_coef;
     real p_vdW1, p_vdW1i;
     real powr_vdW1, powgi_vdW1;
@@ -78,7 +77,6 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_full( reax_atom *my_atoms,
     real dr3gamij_1, dr3gamij_3;
     real e_ele_, e_vdW_, e_core, de_core, e_clb, de_clb;
     rvec temp, f_i;
-    two_body_parameters *twbp;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -106,8 +104,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_full( reax_atom *my_atoms,
                 && orig_i < orig_j )
         {
             r_ij = far_nbr_list.far_nbr_list.d[pj];
-            twbp = &tbp[
-                index_tbp(my_atoms[i].type, my_atoms[j].type, num_atom_types) ];
+            tbp_ij = index_tbp(my_atoms[i].type, my_atoms[j].type, num_atom_types);
 
             /* i == j: self-interaction from periodic image,
              * important for supporting small boxes! */
@@ -136,38 +133,38 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_full( reax_atom *my_atoms,
             {
                 /* shielding */
                 powr_vdW1 = POW( r_ij, p_vdW1 );
-                powgi_vdW1 = POW( 1.0 / twbp->gamma_w, p_vdW1 );
+                powgi_vdW1 = POW( 1.0 / tbp[tbp_ij].gamma_w, p_vdW1 );
 
                 fn13 = POW( powr_vdW1 + powgi_vdW1, p_vdW1i );
-                exp1 = EXP( twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
-                exp2 = EXP( 0.5 * twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
-                e_base = twbp->D * (exp1 - 2.0 * exp2);
+                exp1 = EXP( tbp[tbp_ij].alpha * (1.0 - fn13 / tbp[tbp_ij].r_vdW) );
+                exp2 = EXP( 0.5 * tbp[tbp_ij].alpha * (1.0 - fn13 / tbp[tbp_ij].r_vdW) );
+                e_base = tbp[tbp_ij].D * (exp1 - 2.0 * exp2);
 
                 e_vdW_ += self_coef * (e_base * Tap);
 
                 dfn13 = POW( r_ij, p_vdW1 - 1.0 )
                     * POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0 );
-                de_base = (twbp->D * twbp->alpha / twbp->r_vdW) * (exp2 - exp1) * dfn13;
+                de_base = (tbp[tbp_ij].D * tbp[tbp_ij].alpha / tbp[tbp_ij].r_vdW) * (exp2 - exp1) * dfn13;
             }
             /* no shielding */
             else
             {
-                exp1 = EXP( twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
-                exp2 = EXP( 0.5 * twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
-                e_base = twbp->D * (exp1 - 2.0 * exp2);
+                exp1 = EXP( tbp[tbp_ij].alpha * (1.0 - r_ij / tbp[tbp_ij].r_vdW) );
+                exp2 = EXP( 0.5 * tbp[tbp_ij].alpha * (1.0 - r_ij / tbp[tbp_ij].r_vdW) );
+                e_base = tbp[tbp_ij].D * (exp1 - 2.0 * exp2);
 
                 e_vdW_ += self_coef * (e_base * Tap);
 
-                de_base = (twbp->D * twbp->alpha / twbp->r_vdW) * (exp2 - exp1);
+                de_base = (tbp[tbp_ij].D * tbp[tbp_ij].alpha / tbp[tbp_ij].r_vdW) * (exp2 - exp1);
             }
 
             /* calculate inner core repulsion */
             if ( gp.vdw_type == 2 || gp.vdw_type == 3 )
             {
-                e_core = twbp->ecore * EXP( twbp->acore * (1.0 - (r_ij / twbp->rcore)) );
+                e_core = tbp[tbp_ij].ecore * EXP( tbp[tbp_ij].acore * (1.0 - (r_ij / tbp[tbp_ij].rcore)) );
                 e_vdW_ += self_coef * (e_core * Tap);
 
-                de_core = -(twbp->acore / twbp->rcore) * e_core;
+                de_core = -(tbp[tbp_ij].acore / tbp[tbp_ij].rcore) * e_core;
             }
             else
             {
@@ -180,7 +177,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_full( reax_atom *my_atoms,
 
             /* Coulomb Calculations */
             dr3gamij_1 = r_ij * r_ij * r_ij
-                + POW( twbp->gamma, -3.0 );
+                + POW( tbp[tbp_ij].gamma, -3.0 );
             dr3gamij_3 = POW( dr3gamij_1, 1.0 / 3.0 );
             e_clb = C_ELE * (my_atoms[i].q * my_atoms[j].q) / dr3gamij_3;
             e_ele_ += self_coef * (e_clb * Tap);
@@ -211,13 +208,14 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_full( reax_atom *my_atoms,
  * where the far neighbors list is in full format
  *
  * This implementation assigns one thread per atom */
-CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full( reax_atom *my_atoms, 
-        two_body_parameters *tbp, global_parameters gp, control_params *control, 
-        storage workspace, reax_list far_nbr_list, int n, int num_atom_types, 
-        real *e_vdW_g, real *e_ele_g, rvec *ext_press_g )
+CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full( reax_atom const * const my_atoms, 
+        two_body_parameters const * const tbp, global_parameters gp,
+        control_params const * const control, storage workspace,
+        reax_list far_nbr_list, int n, int num_atom_types, 
+        real * const e_vdW_g, real * const e_ele_g, rvec * const ext_press_g )
 {
     int i, j, pj;
-    int start_i, end_i, orig_i, orig_j;
+    int start_i, end_i, orig_i, orig_j, tbp_ij;
     real self_coef;
     real p_vdW1, p_vdW1i;
     real powr_vdW1, powgi_vdW1;
@@ -226,7 +224,6 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full( reax_atom *my_atoms,
     real dr3gamij_1, dr3gamij_3;
     real e_ele_, e_vdW_, e_core, de_core, e_clb, de_clb;
     rvec temp, f_i, ext_press_;
-    two_body_parameters *twbp;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -255,8 +252,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full( reax_atom *my_atoms,
                 && orig_i < orig_j )
         {
             r_ij = far_nbr_list.far_nbr_list.d[pj];
-            twbp = &tbp[
-                index_tbp(my_atoms[i].type, my_atoms[j].type, num_atom_types) ];
+            tbp_ij = index_tbp(my_atoms[i].type, my_atoms[j].type, num_atom_types);
 
             /* i == j: self-interaction from periodic image,
              * important for supporting small boxes! */
@@ -285,38 +281,38 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full( reax_atom *my_atoms,
             {
                 /* shielding */
                 powr_vdW1 = POW( r_ij, p_vdW1 );
-                powgi_vdW1 = POW( 1.0 / twbp->gamma_w, p_vdW1 );
+                powgi_vdW1 = POW( 1.0 / tbp[tbp_ij].gamma_w, p_vdW1 );
 
                 fn13 = POW( powr_vdW1 + powgi_vdW1, p_vdW1i );
-                exp1 = EXP( twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
-                exp2 = EXP( 0.5 * twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
-                e_base = twbp->D * (exp1 - 2.0 * exp2);
+                exp1 = EXP( tbp[tbp_ij].alpha * (1.0 - fn13 / tbp[tbp_ij].r_vdW) );
+                exp2 = EXP( 0.5 * tbp[tbp_ij].alpha * (1.0 - fn13 / tbp[tbp_ij].r_vdW) );
+                e_base = tbp[tbp_ij].D * (exp1 - 2.0 * exp2);
 
                 e_vdW_ += self_coef * (e_base * Tap);
 
                 dfn13 = POW( r_ij, p_vdW1 - 1.0 )
                     * POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0 );
-                de_base = (twbp->D * twbp->alpha / twbp->r_vdW) * (exp2 - exp1) * dfn13;
+                de_base = (tbp[tbp_ij].D * tbp[tbp_ij].alpha / tbp[tbp_ij].r_vdW) * (exp2 - exp1) * dfn13;
             }
             /* no shielding */
             else
             {
-                exp1 = EXP( twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
-                exp2 = EXP( 0.5 * twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
-                e_base = twbp->D * (exp1 - 2.0 * exp2);
+                exp1 = EXP( tbp[tbp_ij].alpha * (1.0 - r_ij / tbp[tbp_ij].r_vdW) );
+                exp2 = EXP( 0.5 * tbp[tbp_ij].alpha * (1.0 - r_ij / tbp[tbp_ij].r_vdW) );
+                e_base = tbp[tbp_ij].D * (exp1 - 2.0 * exp2);
 
                 e_vdW_ += self_coef * (e_base * Tap);
 
-                de_base = (twbp->D * twbp->alpha / twbp->r_vdW) * (exp2 - exp1);
+                de_base = (tbp[tbp_ij].D * tbp[tbp_ij].alpha / tbp[tbp_ij].r_vdW) * (exp2 - exp1);
             }
 
             /* calculate inner core repulsion */
             if ( gp.vdw_type == 2 || gp.vdw_type == 3 )
             {
-                e_core = twbp->ecore * EXP( twbp->acore * (1.0 - (r_ij / twbp->rcore)) );
+                e_core = tbp[tbp_ij].ecore * EXP( tbp[tbp_ij].acore * (1.0 - (r_ij / tbp[tbp_ij].rcore)) );
                 e_vdW_ += self_coef * (e_core * Tap);
 
-                de_core = -(twbp->acore / twbp->rcore) * e_core;
+                de_core = -(tbp[tbp_ij].acore / tbp[tbp_ij].rcore) * e_core;
             }
             else
             {
@@ -329,7 +325,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full( reax_atom *my_atoms,
 
             /* Coulomb Calculations */
             dr3gamij_1 = r_ij * r_ij * r_ij
-                + POW( twbp->gamma, -3.0 );
+                + POW( tbp[tbp_ij].gamma, -3.0 );
             dr3gamij_3 = POW( dr3gamij_1, 1.0 / 3.0 );
             e_clb = C_ELE * (my_atoms[i].q * my_atoms[j].q) / dr3gamij_3;
             e_ele_ += self_coef * (e_clb * Tap);
@@ -369,14 +365,15 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full( reax_atom *my_atoms,
  * where the far neighbors list is in full format
  *
  * This implementation assigns one warp of threads per atom */
-CUDA_GLOBAL void k_vdW_coulomb_energy_full_opt( reax_atom *my_atoms, 
-        two_body_parameters *tbp, global_parameters gp, control_params *control, 
-        storage workspace, reax_list far_nbr_list, int n, int num_atom_types, 
-        real *e_vdW_g, real *e_ele_g )
+CUDA_GLOBAL void k_vdW_coulomb_energy_full_opt( reax_atom const * const my_atoms, 
+        two_body_parameters const * const tbp, global_parameters gp,
+        control_params const * const control, storage workspace,
+        reax_list far_nbr_list, int n, int num_atom_types, 
+        real * const e_vdW_g, real * const e_ele_g )
 {
     extern __shared__ cub::WarpReduce<double>::TempStorage temp_storage[];
     int i, j, pj;
-    int start_i, end_i, orig_i, orig_j;
+    int start_i, end_i, orig_i, orig_j, tbp_ij;
     real self_coef;
     real p_vdW1, p_vdW1i;
     real powr_vdW1, powgi_vdW1;
@@ -385,7 +382,6 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_full_opt( reax_atom *my_atoms,
     real dr3gamij_1, dr3gamij_3;
     real e_vdW_, e_ele_, e_core, de_core, e_clb, de_clb;
     rvec temp, f_i;
-    two_body_parameters *twbp;
     int thread_id, warp_id, lane_id;
 
     thread_id = blockIdx.x * blockDim.x + threadIdx.x;
@@ -418,8 +414,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_full_opt( reax_atom *my_atoms,
                 && orig_i < orig_j )
         {
             r_ij = far_nbr_list.far_nbr_list.d[pj];
-            twbp = &tbp[
-                index_tbp(my_atoms[i].type, my_atoms[j].type, num_atom_types) ];
+            tbp_ij = index_tbp(my_atoms[i].type, my_atoms[j].type, num_atom_types);
 
             /* i == j: self-interaction from periodic image,
              * important for supporting small boxes! */
@@ -448,38 +443,38 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_full_opt( reax_atom *my_atoms,
             {
                 /* shielding */
                 powr_vdW1 = POW( r_ij, p_vdW1 );
-                powgi_vdW1 = POW( 1.0 / twbp->gamma_w, p_vdW1 );
+                powgi_vdW1 = POW( 1.0 / tbp[tbp_ij].gamma_w, p_vdW1 );
 
                 fn13 = POW( powr_vdW1 + powgi_vdW1, p_vdW1i );
-                exp1 = EXP( twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
-                exp2 = EXP( 0.5 * twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
-                e_base = twbp->D * (exp1 - 2.0 * exp2);
+                exp1 = EXP( tbp[tbp_ij].alpha * (1.0 - fn13 / tbp[tbp_ij].r_vdW) );
+                exp2 = EXP( 0.5 * tbp[tbp_ij].alpha * (1.0 - fn13 / tbp[tbp_ij].r_vdW) );
+                e_base = tbp[tbp_ij].D * (exp1 - 2.0 * exp2);
 
                 e_vdW_ += self_coef * (e_base * Tap);
 
                 dfn13 = POW( r_ij, p_vdW1 - 1.0 )
                     * POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0 );
-                de_base = (twbp->D * twbp->alpha / twbp->r_vdW) * (exp2 - exp1) * dfn13;
+                de_base = (tbp[tbp_ij].D * tbp[tbp_ij].alpha / tbp[tbp_ij].r_vdW) * (exp2 - exp1) * dfn13;
             }
             /* no shielding */
             else
             {
-                exp1 = EXP( twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
-                exp2 = EXP( 0.5 * twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
-                e_base = twbp->D * (exp1 - 2.0 * exp2);
+                exp1 = EXP( tbp[tbp_ij].alpha * (1.0 - r_ij / tbp[tbp_ij].r_vdW) );
+                exp2 = EXP( 0.5 * tbp[tbp_ij].alpha * (1.0 - r_ij / tbp[tbp_ij].r_vdW) );
+                e_base = tbp[tbp_ij].D * (exp1 - 2.0 * exp2);
 
                 e_vdW_ += self_coef * (e_base * Tap);
 
-                de_base = (twbp->D * twbp->alpha / twbp->r_vdW) * (exp2 - exp1);
+                de_base = (tbp[tbp_ij].D * tbp[tbp_ij].alpha / tbp[tbp_ij].r_vdW) * (exp2 - exp1);
             }
 
             /* calculate inner core repulsion */
             if ( gp.vdw_type == 2 || gp.vdw_type == 3 )
             {
-                e_core = twbp->ecore * EXP( twbp->acore * (1.0 - (r_ij / twbp->rcore)) );
+                e_core = tbp[tbp_ij].ecore * EXP( tbp[tbp_ij].acore * (1.0 - (r_ij / tbp[tbp_ij].rcore)) );
                 e_vdW_ += self_coef * (e_core * Tap);
 
-                de_core = -(twbp->acore / twbp->rcore) * e_core;
+                de_core = -(tbp[tbp_ij].acore / tbp[tbp_ij].rcore) * e_core;
             }
             else
             {
@@ -492,7 +487,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_full_opt( reax_atom *my_atoms,
 
             /* Coulomb Calculations */
             dr3gamij_1 = r_ij * r_ij * r_ij
-                + POW( twbp->gamma, -3.0 );
+                + POW( tbp[tbp_ij].gamma, -3.0 );
             dr3gamij_3 = POW( dr3gamij_1, 1.0 / 3.0 );
             e_clb = C_ELE * (my_atoms[i].q * my_atoms[j].q) / dr3gamij_3;
             e_ele_ += self_coef * (e_clb * Tap);
@@ -535,14 +530,15 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_full_opt( reax_atom *my_atoms,
  * where the far neighbors list is in full format
  *
  * This implementation assigns one warp of threads per atom */
-CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full_opt( reax_atom *my_atoms, 
-        two_body_parameters *tbp, global_parameters gp, control_params *control, 
-        storage workspace, reax_list far_nbr_list, int n, int num_atom_types, 
-        real *e_vdW_g, real *e_ele_g, rvec *ext_press_g )
+CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full_opt( reax_atom const * const my_atoms,
+        two_body_parameters const * const tbp, global_parameters gp,
+        control_params const * const control, storage workspace,
+        reax_list far_nbr_list, int n, int num_atom_types, 
+        real * const e_vdW_g, real * const e_ele_g, rvec * const ext_press_g )
 {
     extern __shared__ cub::WarpReduce<double>::TempStorage temp_storage[];
     int i, j, pj;
-    int start_i, end_i, orig_i, orig_j;
+    int start_i, end_i, orig_i, orig_j, tbp_ij;
     real self_coef;
     real p_vdW1, p_vdW1i;
     real powr_vdW1, powgi_vdW1;
@@ -551,7 +547,6 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full_opt( reax_atom *my_atoms,
     real dr3gamij_1, dr3gamij_3;
     real e_vdW_, e_ele_, e_core, de_core, e_clb, de_clb;
     rvec temp, f_i, ext_press_;
-    two_body_parameters *twbp;
     int thread_id, warp_id, lane_id;
 
     thread_id = blockIdx.x * blockDim.x + threadIdx.x;
@@ -585,8 +580,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full_opt( reax_atom *my_atoms,
                 && orig_i < orig_j )
         {
             r_ij = far_nbr_list.far_nbr_list.d[pj];
-            twbp = &tbp[
-                index_tbp(my_atoms[i].type, my_atoms[j].type, num_atom_types) ];
+            tbp_ij = index_tbp(my_atoms[i].type, my_atoms[j].type, num_atom_types);
 
             /* i == j: self-interaction from periodic image,
              * important for supporting small boxes! */
@@ -615,38 +609,38 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full_opt( reax_atom *my_atoms,
             {
                 /* shielding */
                 powr_vdW1 = POW( r_ij, p_vdW1 );
-                powgi_vdW1 = POW( 1.0 / twbp->gamma_w, p_vdW1 );
+                powgi_vdW1 = POW( 1.0 / tbp[tbp_ij].gamma_w, p_vdW1 );
 
                 fn13 = POW( powr_vdW1 + powgi_vdW1, p_vdW1i );
-                exp1 = EXP( twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
-                exp2 = EXP( 0.5 * twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
-                e_base = twbp->D * (exp1 - 2.0 * exp2);
+                exp1 = EXP( tbp[tbp_ij].alpha * (1.0 - fn13 / tbp[tbp_ij].r_vdW) );
+                exp2 = EXP( 0.5 * tbp[tbp_ij].alpha * (1.0 - fn13 / tbp[tbp_ij].r_vdW) );
+                e_base = tbp[tbp_ij].D * (exp1 - 2.0 * exp2);
 
                 e_vdW_ += self_coef * (e_base * Tap);
 
                 dfn13 = POW( r_ij, p_vdW1 - 1.0 )
                     * POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0 );
-                de_base = (twbp->D * twbp->alpha / twbp->r_vdW) * (exp2 - exp1) * dfn13;
+                de_base = (tbp[tbp_ij].D * tbp[tbp_ij].alpha / tbp[tbp_ij].r_vdW) * (exp2 - exp1) * dfn13;
             }
             /* no shielding */
             else
             {
-                exp1 = EXP( twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
-                exp2 = EXP( 0.5 * twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
-                e_base = twbp->D * (exp1 - 2.0 * exp2);
+                exp1 = EXP( tbp[tbp_ij].alpha * (1.0 - r_ij / tbp[tbp_ij].r_vdW) );
+                exp2 = EXP( 0.5 * tbp[tbp_ij].alpha * (1.0 - r_ij / tbp[tbp_ij].r_vdW) );
+                e_base = tbp[tbp_ij].D * (exp1 - 2.0 * exp2);
 
                 e_vdW_ += self_coef * (e_base * Tap);
 
-                de_base = (twbp->D * twbp->alpha / twbp->r_vdW) * (exp2 - exp1);
+                de_base = (tbp[tbp_ij].D * tbp[tbp_ij].alpha / tbp[tbp_ij].r_vdW) * (exp2 - exp1);
             }
 
             /* calculate inner core repulsion */
             if ( gp.vdw_type == 2 || gp.vdw_type == 3 )
             {
-                e_core = twbp->ecore * EXP( twbp->acore * (1.0 - (r_ij / twbp->rcore)) );
+                e_core = tbp[tbp_ij].ecore * EXP( tbp[tbp_ij].acore * (1.0 - (r_ij / tbp[tbp_ij].rcore)) );
                 e_vdW_ += self_coef * (e_core * Tap);
 
-                de_core = -(twbp->acore / twbp->rcore) * e_core;
+                de_core = -(tbp[tbp_ij].acore / tbp[tbp_ij].rcore) * e_core;
             }
             else
             {
@@ -659,7 +653,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full_opt( reax_atom *my_atoms,
 
             /* Coulomb Calculations */
             dr3gamij_1 = r_ij * r_ij * r_ij
-                + POW( twbp->gamma, -3.0 );
+                + POW( tbp[tbp_ij].gamma, -3.0 );
             dr3gamij_3 = POW( dr3gamij_1, 1.0 / 3.0 );
             e_clb = C_ELE * (my_atoms[i].q * my_atoms[j].q) / dr3gamij_3;
             e_ele_ += self_coef * (e_clb * Tap);
@@ -708,14 +702,13 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full_opt( reax_atom *my_atoms,
 
 
 /* one thread per atom implementation */
-CUDA_GLOBAL void k_vdW_coulomb_energy_tab_full( reax_atom *my_atoms, 
-        global_parameters gp, control_params *control, 
+CUDA_GLOBAL void k_vdW_coulomb_energy_tab_full( reax_atom const * const my_atoms, 
+        global_parameters gp, control_params const * const control, 
         storage workspace, reax_list far_nbr_list, 
-        LR_lookup_table *t_LR, int n, int num_atom_types, 
-        int step, int prev_steps, int energy_update_freq, 
-        real *e_vdW_g, real *e_ele_g, rvec *ext_press_g )
+        LR_lookup_table * const t_LR, int n, int num_atom_types, 
+        real * const e_vdW_g, real * const e_ele_g, rvec * const ext_press_g )
 {
-    int i, j, pj, r, steps, update_freq, update_energies;
+    int i, j, pj, r;
     int type_i, type_j, tmin, tmax;
     int start_i, end_i, orig_i, orig_j;
     real r_ij, self_coef, base, dif;
@@ -731,9 +724,6 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_tab_full( reax_atom *my_atoms,
         return;
     }
 
-    steps = step - prev_steps;
-    update_freq = energy_update_freq;
-    update_energies = update_freq > 0 && steps % update_freq == 0;
     e_ele_ = 0.0;
     e_vdW_ = 0.0;
     rvec_MakeZero( f_i );
@@ -768,14 +758,11 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_tab_full( reax_atom *my_atoms,
             base = (real)(r + 1) * t->dx;
             dif = r_ij - base;
 
-            if ( update_energies )
-            {
-                e_vdW_ += self_coef * (((t->vdW[r].d * dif + t->vdW[r].c) * dif + t->vdW[r].b)
-                    * dif + t->vdW[r].a);
+            e_vdW_ += self_coef * (((t->vdW[r].d * dif + t->vdW[r].c) * dif + t->vdW[r].b)
+                * dif + t->vdW[r].a);
 
-                e_ele_ += (((t->ele[r].d * dif + t->ele[r].c) * dif + t->ele[r].b)
-                    * dif + t->ele[r].a) * self_coef * my_atoms[i].q * my_atoms[j].q;
-            }    
+            e_ele_ += (((t->ele[r].d * dif + t->ele[r].c) * dif + t->ele[r].b)
+                * dif + t->ele[r].a) * self_coef * my_atoms[i].q * my_atoms[j].q;
 
             CEvd = ((t->CEvd[r].d * dif + t->CEvd[r].c) * dif + t->CEvd[r].b)
                 * dif + t->CEvd[r].a;
@@ -826,8 +813,9 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_tab_full( reax_atom *my_atoms,
 }
 
 
-static void Cuda_Compute_Polarization_Energy( reax_system *system,
-        control_params *control, storage *workspace, simulation_data *data )
+static void Cuda_Compute_Polarization_Energy( reax_system const * const system,
+        control_params const * const control, storage * const workspace,
+        simulation_data * const data )
 {
     int blocks;
 #if !defined(CUDA_ACCUM_ATOMIC)
@@ -864,9 +852,10 @@ static void Cuda_Compute_Polarization_Energy( reax_system *system,
 }
 
 
-void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control, 
-        simulation_data *data, storage *workspace, reax_list **lists,
-        output_controls *out_control )
+void Cuda_Compute_NonBonded_Forces( reax_system const * const system,
+        control_params const * const control, simulation_data * const data,
+        storage * const workspace, reax_list **lists,
+        output_controls const * const out_control )
 {
     int update_energy, blocks;
 #if !defined(CUDA_ACCUM_ATOMIC)
@@ -890,19 +879,16 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
     sCudaCheckMalloc( &workspace->scratch[4], &workspace->scratch_size[4],
             s, __FILE__, __LINE__ );
     spad = (real *) workspace->scratch[4];
-#endif
-
-#if defined(CUDA_ACCUM_ATOMIC)
-        sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_vdW,
-                0, sizeof(real), control->streams[4], __FILE__, __LINE__ );
-        sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_ele,
-                0, sizeof(real), control->streams[4], __FILE__, __LINE__ );
-        if ( control->virial == 1 )
-        {
-            sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_ext_press,
-                    0, sizeof(rvec), control->streams[4], __FILE__, __LINE__ );
-        }
-        cudaStreamSynchronize( control->streams[4] );
+#else
+    sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_vdW,
+            0, sizeof(real), control->streams[4], __FILE__, __LINE__ );
+    sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_ele,
+            0, sizeof(real), control->streams[4], __FILE__, __LINE__ );
+    if ( control->virial == 1 )
+    {
+        sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_ext_press,
+                0, sizeof(rvec), control->streams[4], __FILE__, __LINE__ );
+    }
 #endif
 
     blocks = system->n * 32 / DEF_BLOCK_SIZE
@@ -927,21 +913,21 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
 //#endif
 //            );
 
-        k_vdW_coulomb_energy_virial_full_opt <<< blocks, DEF_BLOCK_SIZE,
-                                 sizeof(real) * (DEF_BLOCK_SIZE / 32),
-                                 control->streams[4] >>>
-            ( system->d_my_atoms, system->reax_param.d_tbp, 
-              system->reax_param.d_gp, (control_params *) control->d_control_params, 
-              *(workspace->d_workspace), *(lists[FAR_NBRS]), 
-              system->n, system->reax_param.num_atom_types, 
+            k_vdW_coulomb_energy_virial_full_opt <<< blocks, DEF_BLOCK_SIZE,
+                                     sizeof(real) * (DEF_BLOCK_SIZE / 32),
+                                     control->streams[4] >>>
+                ( system->d_my_atoms, system->reax_param.d_tbp, 
+                  system->reax_param.d_gp, (control_params *) control->d_control_params, 
+                  *(workspace->d_workspace), *(lists[FAR_NBRS]), 
+                  system->n, system->reax_param.num_atom_types, 
 #if !defined(CUDA_ACCUM_ATOMIC)
-              spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
+                  spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
 #else
-              &((simulation_data *)data->d_simulation_data)->my_en.e_vdW,
-              &((simulation_data *)data->d_simulation_data)->my_en.e_ele,
-              &((simulation_data *)data->d_simulation_data)->my_ext_press
+                  &((simulation_data *)data->d_simulation_data)->my_en.e_vdW,
+                  &((simulation_data *)data->d_simulation_data)->my_en.e_ele,
+                  &((simulation_data *)data->d_simulation_data)->my_ext_press
 #endif
-            );
+                );
         }
         else
         {
@@ -959,20 +945,20 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
 //#endif
 //                );
 
-        k_vdW_coulomb_energy_full_opt <<< blocks, DEF_BLOCK_SIZE,
-                                 sizeof(real) * (DEF_BLOCK_SIZE / 32),
-                                 control->streams[4] >>>
-            ( system->d_my_atoms, system->reax_param.d_tbp, 
-              system->reax_param.d_gp, (control_params *) control->d_control_params, 
-              *(workspace->d_workspace), *(lists[FAR_NBRS]), 
-              system->n, system->reax_param.num_atom_types, 
+            k_vdW_coulomb_energy_full_opt <<< blocks, DEF_BLOCK_SIZE,
+                                     sizeof(real) * (DEF_BLOCK_SIZE / 32),
+                                     control->streams[4] >>>
+                ( system->d_my_atoms, system->reax_param.d_tbp, 
+                  system->reax_param.d_gp, (control_params *) control->d_control_params, 
+                  *(workspace->d_workspace), *(lists[FAR_NBRS]), 
+                  system->n, system->reax_param.num_atom_types, 
 #if !defined(CUDA_ACCUM_ATOMIC)
-              spad, &spad[system->n]
+                  spad, &spad[system->n]
 #else
-              &((simulation_data *)data->d_simulation_data)->my_en.e_vdW,
-              &((simulation_data *)data->d_simulation_data)->my_en.e_ele
+                  &((simulation_data *)data->d_simulation_data)->my_en.e_vdW,
+                  &((simulation_data *)data->d_simulation_data)->my_en.e_ele
 #endif
-            );
+                );
         }
         cudaCheckError( );
     }
@@ -983,10 +969,7 @@ void Cuda_Compute_NonBonded_Forces( reax_system *system, control_params *control
             ( system->d_my_atoms, system->reax_param.d_gp, 
               (control_params *) control->d_control_params, 
               *(workspace->d_workspace), *(lists[FAR_NBRS]), 
-              workspace->d_LR, system->n,
-              system->reax_param.num_atom_types, 
-              data->step, data->prev_steps, 
-              out_control->energy_update_freq,
+              workspace->d_LR, system->n, system->reax_param.num_atom_types, 
 #if !defined(CUDA_ACCUM_ATOMIC)
               spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
 #else

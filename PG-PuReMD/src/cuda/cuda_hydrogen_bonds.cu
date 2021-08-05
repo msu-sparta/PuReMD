@@ -35,24 +35,23 @@
 
 
 /* one thread per atom implementation */
-CUDA_GLOBAL void k_hydrogen_bonds_part1( reax_atom *my_atoms, single_body_parameters *sbp, 
-        hbond_parameters *d_hbp, global_parameters gp,
-        control_params *control, storage workspace,
+CUDA_GLOBAL void k_hydrogen_bonds_part1( reax_atom const * const my_atoms,
+        single_body_parameters const * const sbp, hbond_parameters const * const hbp,
+        global_parameters gp, control_params const * const control, storage workspace,
         reax_list far_nbr_list, reax_list bond_list, reax_list hbond_list, int n, 
-        int num_atom_types, real *e_hb_g )
+        int num_atom_types, real * const e_hb_g )
 {
     int i, j, k, pi, pk;
     int type_i, type_j, type_k;
     int start_j, end_j, hb_start_j, hb_end_j;
     int *hblist, hblist_size;
     int itr, top;
-    int nbr_jk;
+    int nbr_jk, hbp_ijk;
     real r_ij, r_jk, theta, cos_theta, sin_xhz4, cos_xhz1, sin_theta2;
     real e_hb, e_hb_, exp_hb2, exp_hb3, CEhb1, CEhb2, CEhb3;
     rvec dcos_theta_di, dcos_theta_dj, dcos_theta_dk;
     rvec dvec_jk;
     rvec f_j, f_k;
-    hbond_parameters *hbp;
     bond_order_data *bo_ij;
     bond_data *pbond_ij;
     hbond_data *phbond_jk;
@@ -132,7 +131,7 @@ CUDA_GLOBAL void k_hydrogen_bonds_part1( reax_atom *my_atoms, single_body_parame
                     bo_ij = &pbond_ij->bo_data;
                     type_i = my_atoms[i].type;
                     r_ij = pbond_ij->d;
-                    hbp = &d_hbp[ index_hbp(type_i, type_j, type_k, num_atom_types) ];
+                    hbp_ijk = index_hbp(type_i, type_j, type_k, num_atom_types);
 
                     Calculate_Theta( pbond_ij->dvec, r_ij, dvec_jk, r_jk,
                             &theta, &cos_theta );
@@ -146,21 +145,21 @@ CUDA_GLOBAL void k_hydrogen_bonds_part1( reax_atom *my_atoms, single_body_parame
                     sin_xhz4 = SQR( sin_theta2 );
                     sin_xhz4 *= sin_xhz4;
                     cos_xhz1 = ( 1.0 - cos_theta );
-                    exp_hb2 = EXP( -1.0 * hbp->p_hb2 * bo_ij->BO );
-                    exp_hb3 = EXP( -1.0 * hbp->p_hb3 * ( hbp->r0_hb / r_jk
-                                + r_jk / hbp->r0_hb - 2.0 ) );
+                    exp_hb2 = EXP( -1.0 * hbp[hbp_ijk].p_hb2 * bo_ij->BO );
+                    exp_hb3 = EXP( -1.0 * hbp[hbp_ijk].p_hb3 * ( hbp[hbp_ijk].r0_hb / r_jk
+                                + r_jk / hbp[hbp_ijk].r0_hb - 2.0 ) );
 
-                    e_hb = hbp->p_hb1 * (1.0 - exp_hb2) * exp_hb3 * sin_xhz4;
+                    e_hb = hbp[hbp_ijk].p_hb1 * (1.0 - exp_hb2) * exp_hb3 * sin_xhz4;
                     e_hb_ += e_hb;
 
-                    CEhb1 = hbp->p_hb1 * hbp->p_hb2 * exp_hb2 * exp_hb3 * sin_xhz4;
-                    CEhb2 = -0.5 * hbp->p_hb1 * (1.0 - exp_hb2) * exp_hb3 * cos_xhz1;
-                    CEhb3 = hbp->p_hb3 * e_hb * (hbp->r0_hb / SQR( r_jk )
-                            + -1.0 / hbp->r0_hb);
+                    CEhb1 = hbp[hbp_ijk].p_hb1 * hbp[hbp_ijk].p_hb2 * exp_hb2 * exp_hb3 * sin_xhz4;
+                    CEhb2 = -0.5 * hbp[hbp_ijk].p_hb1 * (1.0 - exp_hb2) * exp_hb3 * cos_xhz1;
+                    CEhb3 = hbp[hbp_ijk].p_hb3 * e_hb * (hbp[hbp_ijk].r0_hb / SQR( r_jk )
+                            + -1.0 / hbp[hbp_ijk].r0_hb);
 
                     /* hydrogen bond forces */
                     /* dbo term */
-                    bo_ij->Cdbo += CEhb1;
+                    atomicAdd( &bo_ij->Cdbo, CEhb1 );
 
                     /* dcos terms */
 #if !defined(CUDA_ACCUM_ATOMIC)
@@ -190,7 +189,6 @@ CUDA_GLOBAL void k_hydrogen_bonds_part1( reax_atom *my_atoms, single_body_parame
         }
 
 #if !defined(CUDA_ACCUM_ATOMIC)
-        /* write conflicts for accumulating partial forces resolved by subsequent kernels */
         rvecCopy( workspace.f[j], f_j );
         e_hb_g[j] = e_hb_;
 #else
@@ -202,23 +200,22 @@ CUDA_GLOBAL void k_hydrogen_bonds_part1( reax_atom *my_atoms, single_body_parame
 
 
 /* one thread per atom implementation */
-CUDA_GLOBAL void k_hydrogen_bonds_part1_opt( reax_atom *my_atoms, single_body_parameters *sbp, 
-        hbond_parameters *d_hbp, global_parameters gp,
-        control_params *control, storage workspace,
+CUDA_GLOBAL void k_hydrogen_bonds_part1_opt( reax_atom const * const my_atoms,
+        single_body_parameters const * const sbp, hbond_parameters const * const hbp,
+        global_parameters gp, control_params const * const control, storage workspace,
         reax_list far_nbr_list, reax_list bond_list, reax_list hbond_list, int n, 
-        int num_atom_types, real *e_hb_g )
+        int num_atom_types, real * const e_hb_g )
 {
     extern __shared__ cub::WarpReduce<double>::TempStorage temp_d[];
     int i, j, k, pi, pk, thread_id, warp_id, lane_id, itr;
     int type_i, type_j, type_k;
     int start_j, end_j, hb_start_j, hb_end_j;
-    int nbr_jk;
+    int nbr_jk, hbp_ijk;
     real r_jk, theta, cos_theta, sin_xhz4, cos_xhz1, sin_theta2;
     real e_hb, e_hb_, exp_hb2, exp_hb3, CEhb1, CEhb2, CEhb3;
     rvec dcos_theta_di, dcos_theta_dj, dcos_theta_dk;
     rvec dvec_jk;
     rvec f_j, f_k;
-    hbond_parameters *hbp;
     bond_order_data *bo_ij;
     bond_data *pbond_ij;
     hbond_data *phbond_jk;
@@ -279,7 +276,7 @@ CUDA_GLOBAL void k_hydrogen_bonds_part1_opt( reax_atom *my_atoms, single_body_pa
                             && bo_ij->BO >= HB_THRESHOLD
                             && my_atoms[i].orig_id != my_atoms[k].orig_id )
                     {
-                        hbp = &d_hbp[ index_hbp(type_i, type_j, type_k, num_atom_types) ];
+                        hbp_ijk = index_hbp(type_i, type_j, type_k, num_atom_types);
 
                         Calculate_Theta( pbond_ij->dvec, pbond_ij->d, dvec_jk, r_jk,
                                 &theta, &cos_theta );
@@ -293,21 +290,21 @@ CUDA_GLOBAL void k_hydrogen_bonds_part1_opt( reax_atom *my_atoms, single_body_pa
                         sin_xhz4 = SQR( sin_theta2 );
                         sin_xhz4 *= sin_xhz4;
                         cos_xhz1 = ( 1.0 - cos_theta );
-                        exp_hb2 = EXP( -1.0 * hbp->p_hb2 * bo_ij->BO );
-                        exp_hb3 = EXP( -1.0 * hbp->p_hb3 * ( hbp->r0_hb / r_jk
-                                    + r_jk / hbp->r0_hb - 2.0 ) );
+                        exp_hb2 = EXP( -1.0 * hbp[hbp_ijk].p_hb2 * bo_ij->BO );
+                        exp_hb3 = EXP( -1.0 * hbp[hbp_ijk].p_hb3 * ( hbp[hbp_ijk].r0_hb / r_jk
+                                    + r_jk / hbp[hbp_ijk].r0_hb - 2.0 ) );
 
-                        e_hb = hbp->p_hb1 * (1.0 - exp_hb2) * exp_hb3 * sin_xhz4;
+                        e_hb = hbp[hbp_ijk].p_hb1 * (1.0 - exp_hb2) * exp_hb3 * sin_xhz4;
                         e_hb_ += e_hb;
 
-                        CEhb1 = hbp->p_hb1 * hbp->p_hb2 * exp_hb2 * exp_hb3 * sin_xhz4;
-                        CEhb2 = -0.5 * hbp->p_hb1 * (1.0 - exp_hb2) * exp_hb3 * cos_xhz1;
-                        CEhb3 = hbp->p_hb3 * e_hb * (hbp->r0_hb / SQR( r_jk )
-                                + -1.0 / hbp->r0_hb);
+                        CEhb1 = hbp[hbp_ijk].p_hb1 * hbp[hbp_ijk].p_hb2 * exp_hb2 * exp_hb3 * sin_xhz4;
+                        CEhb2 = -0.5 * hbp[hbp_ijk].p_hb1 * (1.0 - exp_hb2) * exp_hb3 * cos_xhz1;
+                        CEhb3 = hbp[hbp_ijk].p_hb3 * e_hb * (hbp[hbp_ijk].r0_hb / SQR( r_jk )
+                                + -1.0 / hbp[hbp_ijk].r0_hb);
 
                         /* hydrogen bond forces */
                         /* dbo term */
-                        bo_ij->Cdbo += CEhb1;
+                        atomicAdd( &bo_ij->Cdbo, CEhb1 );
 
                         /* dcos terms */
 #if !defined(CUDA_ACCUM_ATOMIC)
@@ -362,18 +359,18 @@ CUDA_GLOBAL void k_hydrogen_bonds_part1_opt( reax_atom *my_atoms, single_body_pa
 
 
 /* one thread per atom implementation */
-CUDA_GLOBAL void k_hydrogen_bonds_virial_part1( reax_atom *my_atoms, single_body_parameters *sbp, 
-        hbond_parameters *d_hbp, global_parameters gp,
-        control_params *control, storage workspace,
+CUDA_GLOBAL void k_hydrogen_bonds_virial_part1( reax_atom const * const my_atoms,
+        single_body_parameters const * const sbp, hbond_parameters const * const hbp,
+        global_parameters gp, control_params const * const control, storage workspace,
         reax_list far_nbr_list, reax_list bond_list, reax_list hbond_list, int n, 
-        int num_atom_types, real *e_hb_g, rvec *ext_press_g )
+        int num_atom_types, real * const e_hb_g, rvec * const ext_press_g )
 {
     int i, j, k, pi, pk;
     int type_i, type_j, type_k;
     int start_j, end_j, hb_start_j, hb_end_j;
     int *hblist, hblist_size;
     int itr, top;
-    int nbr_jk;
+    int nbr_jk, hbp_ijk;
     ivec rel_jk;
     real r_ij, r_jk, theta, cos_theta, sin_xhz4, cos_xhz1, sin_theta2;
     real e_hb, e_hb_, exp_hb2, exp_hb3, CEhb1, CEhb2, CEhb3;
@@ -382,7 +379,6 @@ CUDA_GLOBAL void k_hydrogen_bonds_virial_part1( reax_atom *my_atoms, single_body
 #if defined(CUDA_ACCUM_ATOMIC)
     rvec f_j;
 #endif
-    hbond_parameters *hbp;
     bond_order_data *bo_ij;
     bond_data *pbond_ij;
     hbond_data *phbond_jk;
@@ -468,7 +464,7 @@ CUDA_GLOBAL void k_hydrogen_bonds_virial_part1( reax_atom *my_atoms, single_body
                     bo_ij = &pbond_ij->bo_data;
                     type_i = my_atoms[i].type;
                     r_ij = pbond_ij->d;
-                    hbp = &d_hbp[ index_hbp(type_i, type_j, type_k, num_atom_types) ];
+                    hbp_ijk = index_hbp(type_i, type_j, type_k, num_atom_types);
 
                     Calculate_Theta( pbond_ij->dvec, r_ij, dvec_jk, r_jk,
                             &theta, &cos_theta );
@@ -482,21 +478,21 @@ CUDA_GLOBAL void k_hydrogen_bonds_virial_part1( reax_atom *my_atoms, single_body
                     sin_xhz4 = SQR( sin_theta2 );
                     sin_xhz4 *= sin_xhz4;
                     cos_xhz1 = ( 1.0 - cos_theta );
-                    exp_hb2 = EXP( -1.0 * hbp->p_hb2 * bo_ij->BO );
-                    exp_hb3 = EXP( -1.0 * hbp->p_hb3 * ( hbp->r0_hb / r_jk
-                                + r_jk / hbp->r0_hb - 2.0 ) );
+                    exp_hb2 = EXP( -1.0 * hbp[hbp_ijk].p_hb2 * bo_ij->BO );
+                    exp_hb3 = EXP( -1.0 * hbp[hbp_ijk].p_hb3 * ( hbp[hbp_ijk].r0_hb / r_jk
+                                + r_jk / hbp[hbp_ijk].r0_hb - 2.0 ) );
 
-                    e_hb = hbp->p_hb1 * (1.0 - exp_hb2) * exp_hb3 * sin_xhz4;
+                    e_hb = hbp[hbp_ijk].p_hb1 * (1.0 - exp_hb2) * exp_hb3 * sin_xhz4;
                     e_hb_ += e_hb;
 
-                    CEhb1 = hbp->p_hb1 * hbp->p_hb2 * exp_hb2 * exp_hb3 * sin_xhz4;
-                    CEhb2 = -0.5 * hbp->p_hb1 * (1.0 - exp_hb2) * exp_hb3 * cos_xhz1;
-                    CEhb3 = hbp->p_hb3 * e_hb * (hbp->r0_hb / SQR( r_jk )
-                            + -1.0 / hbp->r0_hb);
+                    CEhb1 = hbp[hbp_ijk].p_hb1 * hbp[hbp_ijk].p_hb2 * exp_hb2 * exp_hb3 * sin_xhz4;
+                    CEhb2 = -0.5 * hbp[hbp_ijk].p_hb1 * (1.0 - exp_hb2) * exp_hb3 * cos_xhz1;
+                    CEhb3 = hbp[hbp_ijk].p_hb3 * e_hb * (hbp[hbp_ijk].r0_hb / SQR( r_jk )
+                            + -1.0 / hbp[hbp_ijk].r0_hb);
 
                     /* hydrogen bond forces */
                     /* dbo term */
-                    bo_ij->Cdbo += CEhb1;
+                    atomicAdd( &bo_ij->Cdbo, CEhb1 );
 
 #if !defined(CUDA_ACCUM_ATOMIC)
                     /* for pressure coupling, terms that are not related to bond order
@@ -737,9 +733,10 @@ CUDA_GLOBAL void k_hydrogen_bonds_part3_opt( reax_atom *atoms,
 
 
 
-void Cuda_Compute_Hydrogen_Bonds( reax_system *system, control_params *control, 
-        simulation_data *data, storage *workspace, 
-        reax_list **lists, output_controls *out_control )
+void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
+        control_params const * const control, simulation_data * const data,
+        storage * const workspace, reax_list ** lists,
+        output_controls const * const out_control )
 {
     int blocks;
 //    int hbs, hnbrs_blocks;
