@@ -1070,6 +1070,8 @@ struct control_params
     /* num. of iterations used to apply preconditioner via
      * Jacobi relaxation scheme (truncated Neumann series) */
     unsigned int cm_solver_pre_app_jacobi_iters;
+    /* TRUE if polarization energy calculation is enabled, FALSE otherwise */
+    unsigned int polarization_energy_enabled;
     /**/
     int molec_anal;
     /**/

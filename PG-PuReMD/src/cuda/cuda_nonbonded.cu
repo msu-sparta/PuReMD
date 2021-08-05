@@ -1016,7 +1016,7 @@ void Cuda_Compute_NonBonded_Forces( reax_system const * const system,
     }
 #endif
 
-    if ( update_energy == TRUE )
+    if ( update_energy == TRUE && control->polarization_energy_enabled == TRUE )
     {
         Cuda_Compute_Polarization_Energy( system, control, workspace, data );
     }

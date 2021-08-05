@@ -96,6 +96,7 @@ void Read_Control_File( const char * const control_file, control_params * const 
     control->cm_solver_pre_comp_droptol = 0.01;
     control->cm_solver_pre_app_type = TRI_SOLVE_PA;
     control->cm_solver_pre_app_jacobi_iters = 50;
+    control->polarization_energy_enabled = TRUE;
 
     control->T_init = 0.0;
     control->T_final = 300.;
@@ -385,6 +386,11 @@ void Read_Control_File( const char * const control_file, control_params * const 
             {
                 ival = atoi( tmp[1] );
                 control->cm_solver_pre_app_jacobi_iters = ival;
+            }
+            else if ( strncmp(tmp[0], "include_polarization_energy", MAX_LINE) == 0 )
+            {
+                ival = atoi( tmp[1] );
+                control->polarization_energy_enabled = ival;
             }
             else if ( strncmp(tmp[0], "temp_init", MAX_LINE) == 0 )
             {

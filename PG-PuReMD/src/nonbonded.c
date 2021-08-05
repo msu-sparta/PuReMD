@@ -269,7 +269,10 @@ void vdW_Coulomb_Energy( reax_system const * const system,
              data->ext_press[0], data->ext_press[1], data->ext_press[2] );
 #endif
 
-    Compute_Polarization_Energy( system, data );
+    if ( control->polarization_energy_enabled == TRUE )
+    {
+        Compute_Polarization_Energy( system, data );
+    }
 }
 
 
@@ -389,7 +392,10 @@ void Tabulated_vdW_Coulomb_Energy( reax_system const * const system,
         }
     }
 
-    Compute_Polarization_Energy( system, data );
+    if ( control->polarization_energy_enabled == TRUE )
+    {
+        Compute_Polarization_Energy( system, data );
+    }
 }
 
 
