@@ -116,18 +116,18 @@ extern "C" void Cuda_Copy_Atoms_Device_to_Host( reax_system *system, control_par
 
 
 /* Copy simulation data from device to host */
-extern "C" void Cuda_Copy_Simulation_Data_Device_to_Host( control_params *control,
-        simulation_data *host, simulation_data *dev )
+extern "C" void Cuda_Copy_Simulation_Data_Device_to_Host( control_params const * const control,
+        simulation_data * const data, simulation_data * const d_data )
 {
-    sCudaMemcpyAsync( &host->my_en, &dev->my_en, sizeof(energy_data), 
+    sCudaMemcpyAsync( &data->my_en, &d_data->my_en, sizeof(energy_data), 
             cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
     if ( control->virial == 1 )
     {
-        sCudaMemcpyAsync( &host->kin_press, &dev->kin_press, sizeof(real), 
+        sCudaMemcpyAsync( &data->kin_press, &d_data->kin_press, sizeof(real), 
                 cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
-        sCudaMemcpyAsync( host->int_press, dev->int_press, sizeof(rvec), 
+        sCudaMemcpyAsync( data->int_press, d_data->int_press, sizeof(rvec), 
                 cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
-        sCudaMemcpyAsync( host->ext_press, dev->ext_press, sizeof(rvec), 
+        sCudaMemcpyAsync( data->ext_press, d_data->ext_press, sizeof(rvec), 
                 cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
     }
 

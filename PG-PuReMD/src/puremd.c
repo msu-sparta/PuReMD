@@ -163,7 +163,7 @@ static void Post_Evolve( reax_system * const system, control_params * const cont
             || (out_control->write_steps > 0
                 && data->step % out_control->write_steps == 0) )
     {
-        Compute_Total_Energy( system, data, MPI_COMM_WORLD );
+        Compute_Total_Energy( system, control, data, MPI_COMM_WORLD );
     }
 }
 #endif
@@ -409,7 +409,7 @@ int simulate( const void * const handle )
 
         Compute_Kinetic_Energy( system, data, mpi_data->comm_mesh3D );
 
-        Compute_Total_Energy( system, data, MPI_COMM_WORLD );
+        Compute_Total_Energy( system, control, data, MPI_COMM_WORLD );
 
         Output_Results( system, control, data, lists, out_control, mpi_data );
 
