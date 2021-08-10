@@ -179,60 +179,71 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     dTap = dTap * r_ij + workspace->Tap[1];
 
 #if defined(QMMM)
-                    if ( system->atoms[i].qmmm_mask == TRUE && system->atoms[j].qmmm_mask == TRUE )
+                    if ( system->atoms[i].qmmm_mask == TRUE
+                            && system->atoms[j].qmmm_mask == TRUE )
                     {
 #endif
-                    /* vdWaals Calculations */
-                    if ( system->reax_param.gp.vdw_type == 1
-                            || system->reax_param.gp.vdw_type == 3 )
+                    /* van der Waals calculations */
+                    if ( system->atoms[i].is_dummy == FALSE
+                            && system->atoms[j].is_dummy == FALSE )
                     {
-                        /* shielding */
-                        powr_vdW1 = POW( r_ij, p_vdW1 );
-                        //TODO: better to compute and cache these values at simulation start rather than computing on-the-fly
-                        powgi_vdW1 = POW( 1.0 / twbp->gamma_w, p_vdW1 );
+                        if ( system->reax_param.gp.vdw_type == 1
+                                || system->reax_param.gp.vdw_type == 3 )
+                        {
+                            /* shielding */
+                            powr_vdW1 = POW( r_ij, p_vdW1 );
+                            //TODO: better to compute and cache these values at simulation start rather than computing on-the-fly
+                            powgi_vdW1 = POW( 1.0 / twbp->gamma_w, p_vdW1 );
 
-                        fn13 = POW( powr_vdW1 + powgi_vdW1, p_vdW1i );
-                        exp1 = EXP( twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
-                        exp2 = EXP( 0.5 * twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
-                        e_base = twbp->D * (exp1 - 2.0 * exp2);
+                            fn13 = POW( powr_vdW1 + powgi_vdW1, p_vdW1i );
+                            exp1 = EXP( twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
+                            exp2 = EXP( 0.5 * twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
+                            e_base = twbp->D * (exp1 - 2.0 * exp2);
 
-                        e_vdW = self_coef * (e_base * Tap);
-                        e_vdW_total += e_vdW;
+                            e_vdW = self_coef * (e_base * Tap);
+                            e_vdW_total += e_vdW;
 
-                        dfn13 = POW( r_ij, p_vdW1 - 1.0 )
-                            * POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0 );
-                        de_base = (twbp->D * twbp->alpha / twbp->r_vdW) * (exp2 - exp1) * dfn13;
-                    }
-                    /* no shielding */
-                    else
-                    {
-                        exp1 = EXP( twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
-                        exp2 = EXP( 0.5 * twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
-                        e_base = twbp->D * (exp1 - 2.0 * exp2);
+                            dfn13 = POW( r_ij, p_vdW1 - 1.0 )
+                                * POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0 );
+                            de_base = (twbp->D * twbp->alpha / twbp->r_vdW) * (exp2 - exp1) * dfn13;
+                        }
+                        /* no shielding */
+                        else
+                        {
+                            exp1 = EXP( twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
+                            exp2 = EXP( 0.5 * twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
+                            e_base = twbp->D * (exp1 - 2.0 * exp2);
 
-                        e_vdW = self_coef * (e_base * Tap);
-                        e_vdW_total += e_vdW;
+                            e_vdW = self_coef * (e_base * Tap);
+                            e_vdW_total += e_vdW;
 
-                        de_base = (twbp->D * twbp->alpha / twbp->r_vdW) * (exp2 - exp1);
-                    }
+                            de_base = (twbp->D * twbp->alpha / twbp->r_vdW) * (exp2 - exp1);
+                        }
 
-                    /* calculate inner core repulsion */
-                    if ( system->reax_param.gp.vdw_type == 2 || system->reax_param.gp.vdw_type == 3 )
-                    {
-                        e_core = twbp->ecore * EXP( twbp->acore * (1.0 - (r_ij / twbp->rcore)) );
-                        e_vdW += self_coef * (e_core * Tap);
-                        e_vdW_total += self_coef * (e_core * Tap);
+                        /* calculate inner core repulsion */
+                        if ( system->reax_param.gp.vdw_type == 2 || system->reax_param.gp.vdw_type == 3 )
+                        {
+                            e_core = twbp->ecore * EXP( twbp->acore * (1.0 - (r_ij / twbp->rcore)) );
+                            e_vdW += self_coef * (e_core * Tap);
+                            e_vdW_total += self_coef * (e_core * Tap);
 
-                        de_core = -(twbp->acore / twbp->rcore) * e_core;
+                            de_core = -(twbp->acore / twbp->rcore) * e_core;
+                        }
+                        else
+                        {
+                            e_core = 0.0;
+                            de_core = 0.0;
+                        }
+
+                        CEvd = self_coef * ( (de_base + de_core) * Tap
+                                + (e_base + e_core) * dTap );
                     }
                     else
                     {
                         e_core = 0.0;
                         de_core = 0.0;
+                        CEvd = 0.0;
                     }
-
-                    CEvd = self_coef * ( (de_base + de_core) * Tap
-                            + (e_base + e_core) * dTap );
 #if defined(QMMM)
                     }
                     else

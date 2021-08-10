@@ -760,8 +760,7 @@ struct reax_atom
     /* integer representation of element type of this atom */
     int type;
     /* TRUE if the atom is a dummy atom, FALSE otherwise
-     * Note: dummy atoms do not form bonds but participate
-     * in other (non-bonded) interactions */
+     * Note: dummy atoms _only_ participate in Coulomb interactions */
     int is_dummy;
     /* relative coordinates in terms of periodic images of the
      * simulation box which are used to track if this atom moves
