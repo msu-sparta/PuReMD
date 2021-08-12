@@ -112,14 +112,6 @@
 #define FABS fabs
 #define FMOD fmod
 
-/* transcendental constant pi */
-#if defined(M_PI)
-  /* GNU C library (libc), defined in math.h */
-  #define PI (M_PI)
-#else
-  #define PI (3.14159265)
-#endif
-
 #define SQR(x) ((x)*(x))
 #define CUBE(x) ((x)*(x)*(x))
 #define DEG2RAD(a) ((a)*PI/180.0)
@@ -130,12 +122,12 @@
 
 #if defined(USE_REF_FORTRAN_REAXFF_CONSTANTS)
   /* transcendental constant pi */
-//  #define PI (3.14159265)
+  #define PI (3.14159265)
   /* unit conversion from ??? to kcal / mol */
   #define C_ELE (332.0638)
   /* Boltzmann constant, AMU * A^2 / (ps^2 * K) */
-  #define K_B (0.831687)
-//  #define K_B (0.8314510)
+//  #define K_B (0.831687)
+  #define K_B (0.8314510)
   /* unit conversion for atomic force to AMU * A / ps^2 */
   #define F_CONV (4.184e2)
   /* energy conversion constant from electron volts to kilo-calories per mole */
@@ -154,6 +146,15 @@
   #define KCALpMOL_to_EV (23.060549)
 #endif
 
+/* transcendental constant pi */
+#if !defined(PI)
+  #if defined(M_PI)
+    /* GNU C library (libc), defined in math.h */
+    #define PI (M_PI)
+  #else
+    #define PI (3.14159265)
+  #endif
+#endif
 /* Coulomb energy conversion */
 #if !defined(C_ELE)
   #define C_ELE (332.06371)
@@ -174,7 +175,8 @@
 /* unit conversion for atomic energy */
 #if !defined(E_CONV)
   /* AMU * Angstroms^2 / ps^2 --> kcal / mol */
-  #define E_CONV (0.002391)
+//  #define E_CONV (0.002391)
+  #define E_CONV (1.0 / 418.40)
 #endif
 /* energy conversion constant from electron volts to kilo-calories per mole */
 #if !defined(EV_to_KCALpMOL)
@@ -357,13 +359,12 @@
     #define VDW_BLOCK_SIZE (256)
   #endif
 
-  /* max. num. of active CUDA streams */
-  #define MAX_CUDA_STREAMS (5)
-
+  /* max. num. of CUDA events used for synchronizing streams */
+  #define MAX_CUDA_STREAM_EVENTS (4)
 #endif
 
-/* max. num. of CUDA events used for synchronizing streams */
-#define MAX_CUDA_STREAM_EVENTS (4)
+/* max. num. of active CUDA streams */
+#define MAX_CUDA_STREAMS (5)
 
 
 /* ensemble type */
