@@ -63,6 +63,23 @@ extern "C" void Cuda_Copy_Atoms_Host_to_Device( reax_system *system, control_par
 }
 
 
+/* Copy sparse matrix from host to device */
+extern "C" void Cuda_Copy_Matrix_Host_to_Device( sparse_matrix const * const A,
+        sparse_matrix * const d_A, cudaStream_t s )
+{
+    sCudaMemcpyAsync( d_A->start, A->start, sizeof(int) * A->n,
+            cudaMemcpyHostToDevice, s, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( d_A->end, A->end, sizeof(int) * A->n,
+            cudaMemcpyHostToDevice, s, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( d_A->j, A->j, sizeof(int) * A->m,
+            cudaMemcpyHostToDevice, s, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( d_A->val, A->val, sizeof(real) * A->m,
+            cudaMemcpyHostToDevice, s, __FILE__, __LINE__ );
+
+    cudaStreamSynchronize( s );
+}
+
+
 /* Copy atomic system info from host to device */
 extern "C" void Cuda_Copy_System_Host_to_Device( reax_system *system,
         control_params *control )
@@ -112,6 +129,23 @@ extern "C" void Cuda_Copy_Atoms_Device_to_Host( reax_system *system, control_par
             cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
 
     cudaStreamSynchronize( control->streams[0] );
+}
+
+
+/* Copy sparse matrix from device to host */
+extern "C" void Cuda_Copy_Matrix_Device_to_Host( sparse_matrix * const A,
+        sparse_matrix const * const d_A, cudaStream_t s )
+{
+    sCudaMemcpyAsync( A->start, d_A->start, sizeof(int) * d_A->n,
+            cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( A->end, d_A->end, sizeof(int) * d_A->n,
+            cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( A->j, d_A->j, sizeof(int) * d_A->m,
+            cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( A->val, d_A->val, sizeof(real) * d_A->m,
+            cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
+
+    cudaStreamSynchronize( s );
 }
 
 

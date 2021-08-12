@@ -180,6 +180,19 @@ void Cuda_Init_Workspace( reax_system *system, control_params *control,
     workspace->d_workspace->realloc.thbody = FALSE;
     workspace->d_workspace->realloc.gcell_atoms = 0;
 
+    if ( control->cm_solver_pre_comp_type == SAI_PC )
+    {
+        workspace->H.allocated = FALSE;
+        workspace->H_full.allocated = FALSE;
+        workspace->H_spar_patt.allocated = FALSE;
+        workspace->H_spar_patt_full.allocated = FALSE;
+        workspace->H_app_inv.allocated = FALSE;
+        workspace->d_workspace->H_full.allocated = FALSE;
+        workspace->d_workspace->H_spar_patt.allocated = FALSE;
+        workspace->d_workspace->H_spar_patt_full.allocated = FALSE;
+        workspace->d_workspace->H_app_inv.allocated = FALSE;
+    }
+
     Cuda_Reset_Workspace( system, control, workspace );
 
     Init_Taper( control, workspace->d_workspace, mpi_data );

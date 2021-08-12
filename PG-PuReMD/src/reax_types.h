@@ -360,9 +360,10 @@
   /* max. num. of active CUDA streams */
   #define MAX_CUDA_STREAMS (5)
 
-  /* max. num. of CUDA events used for synchronizing streams */
-  #define MAX_CUDA_STREAM_EVENTS (4)
 #endif
+
+/* max. num. of CUDA events used for synchronizing streams */
+#define MAX_CUDA_STREAM_EVENTS (4)
 
 
 /* ensemble type */

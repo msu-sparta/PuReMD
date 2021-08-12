@@ -3703,9 +3703,9 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
     Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     dual_apply_preconditioner( system, workspace, control, data, mpi_data, workspace->w2,
-            workspace->n2, fresh_pre, LEFT );
+            workspace->n2, FALSE, LEFT );
     dual_apply_preconditioner( system, workspace, control, data, mpi_data, workspace->n2,
-            workspace->m2, fresh_pre, RIGHT );
+            workspace->m2, FALSE, RIGHT );
 
 #if defined(NEUTRAL_TERRITORY)
     Dual_Sparse_MatVec( system, control, data, mpi_data, H, workspace->m2,
@@ -3789,9 +3789,9 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         dual_apply_preconditioner( system, workspace, control, data, mpi_data, workspace->w2,
-                workspace->n2, fresh_pre, LEFT );
+                workspace->n2, FALSE, LEFT );
         dual_apply_preconditioner( system, workspace, control, data, mpi_data, workspace->n2,
-                workspace->m2, fresh_pre, RIGHT );
+                workspace->m2, FALSE, RIGHT );
 
 #if defined(NEUTRAL_TERRITORY)
         Dual_Sparse_MatVec( system, control, data, mpi_data, H, workspace->m2,
@@ -4112,9 +4112,9 @@ int dual_PIPECR( reax_system const * const system, control_params const * const 
         }
 
         dual_apply_preconditioner( system, workspace, control, data, mpi_data, workspace->w2,
-                workspace->n2, fresh_pre, LEFT );
+                workspace->n2, FALSE, LEFT );
         dual_apply_preconditioner( system, workspace, control, data, mpi_data, workspace->n2,
-                workspace->m2, fresh_pre, RIGHT );
+                workspace->m2, FALSE, RIGHT );
 
 #if defined(LOG_PERFORMANCE)
         time = Get_Time( );

@@ -21,12 +21,16 @@
 
 #include "cuda_charges.h"
 
+#include "cuda_allocate.h"
+#include "cuda_copy.h"
 #include "cuda_reduction.h"
 #include "cuda_spar_lin_alg.h"
 #include "cuda_utils.h"
 
+#include "../allocate.h"
 #include "../charges.h"
 #include "../comm_tools.h"
+#include "../lin_alg.h"
 #include "../tool_box.h"
 
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
@@ -305,9 +309,27 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
             break;
 
         case SAI_PC:
-//            setup_sparse_approx_inverse( system, data, workspace, mpi_data,
-//                    &workspace->H, &workspace->H_spar_patt, 
-//                    control->nprocs, control->cm_solver_pre_comp_sai_thres );
+            if ( workspace->H.allocated == FALSE )
+            {
+                Allocate_Matrix( &workspace->H,
+                        workspace->d_workspace->H.n, workspace->d_workspace->H.n_max,
+                        workspace->d_workspace->H.m, workspace->d_workspace->H.format );
+            }
+            else if ( workspace->H.m < workspace->d_workspace->H.m
+                   || workspace->H.n_max < workspace->d_workspace->H.n_max )
+            {
+                Deallocate_Matrix( &workspace->H );
+                Allocate_Matrix( &workspace->H,
+                        workspace->d_workspace->H.n, workspace->d_workspace->H.n_max,
+                        workspace->d_workspace->H.m, workspace->d_workspace->H.format );
+            }
+
+            Cuda_Copy_Matrix_Device_to_Host( &workspace->H, &workspace->d_workspace->H,
+                   control->streams[4] );
+
+            setup_sparse_approx_inverse( system, data, workspace, mpi_data,
+                    &workspace->H, &workspace->H_spar_patt, 
+                    control->nprocs, control->cm_solver_pre_comp_sai_thres );
             break;
 
         default:
@@ -342,9 +364,10 @@ static void Setup_Preconditioner_ACKS2( reax_system const * const system,
 static void Compute_Preconditioner_QEq( reax_system const * const system,
         control_params const * const control,
         simulation_data * const data, storage * const workspace,
-        mpi_datatypes const * const mpi_data )
+        mpi_datatypes * const mpi_data )
 {
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
+    int ret;
     real t_pc, total_pc;
 #endif
 
@@ -355,16 +378,37 @@ static void Compute_Preconditioner_QEq( reax_system const * const system,
     else if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
-//        t_pc = sparse_approx_inverse( system, data, workspace, mpi_data,
-//                &workspace->H, workspace->H_spar_patt, &workspace->H_app_inv, control->nprocs );
-//
-//        ret = MPI_Reduce( &t_pc, &total_pc, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, MPI_COMM_WORLD );
-//        Check_MPI_Error( ret, __FILE__, __LINE__ );
-//
-//        if( system->my_rank == MASTER_NODE )
-//        {
-//            data->timing.cm_solver_pre_comp += total_pc / control->nprocs;
-//        }
+        t_pc = sparse_approx_inverse( system, data, workspace, mpi_data,
+                &workspace->H, &workspace->H_spar_patt,
+                &workspace->H_app_inv, control->nprocs );
+
+        ret = MPI_Reduce( &t_pc, &total_pc, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, MPI_COMM_WORLD );
+        Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+        if ( workspace->d_workspace->H_app_inv.allocated == FALSE )
+        {
+            Cuda_Allocate_Matrix( &workspace->d_workspace->H_app_inv,
+                    workspace->H_app_inv.n, workspace->H_app_inv.n_max,
+                    workspace->H_app_inv.m, workspace->H_app_inv.format,
+                    control->streams[4] );
+        }
+        else if ( workspace->d_workspace->H_app_inv.m < workspace->H_app_inv.m
+               || workspace->d_workspace->H_app_inv.n_max < workspace->H_app_inv.n_max )
+        {
+            Cuda_Deallocate_Matrix( &workspace->d_workspace->H_app_inv );
+            Cuda_Allocate_Matrix( &workspace->d_workspace->H_app_inv,
+                    workspace->H_app_inv.n, workspace->H_app_inv.n_max,
+                    workspace->H_app_inv.m, workspace->H_app_inv.format,
+                    control->streams[4] );
+        }
+
+        Cuda_Copy_Matrix_Host_to_Device( &workspace->H_app_inv,
+                &workspace->d_workspace->H_app_inv, control->streams[4] );
+
+        if( system->my_rank == MASTER_NODE )
+        {
+            data->timing.cm_solver_pre_comp += total_pc / control->nprocs;
+        }
 #else
         fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
         exit( INVALID_INPUT );
@@ -638,11 +682,12 @@ void QEq( reax_system const * const system, control_params const * const control
         output_controls const * const out_control,
         mpi_datatypes * const mpi_data )
 {
-    int iters;
+    int iters, refactor;
 
     iters = 0;
+    refactor = is_refactoring_step( control, data );
 
-//    if ( is_refactoring_step( control, data ) == TRUE )
+    if ( refactor == TRUE )
     {
         Setup_Preconditioner_QEq( system, control, data, workspace, mpi_data );
 
@@ -690,12 +735,14 @@ void QEq( reax_system const * const system, control_params const * const control
 #if defined(DUAL_SOLVER)
         iters = Cuda_dual_CG( system, control, data, workspace,
                 &workspace->d_workspace->H, workspace->d_workspace->b,
-                control->cm_solver_q_err, workspace->d_workspace->x, mpi_data );
+                control->cm_solver_q_err, workspace->d_workspace->x, mpi_data, refactor );
 #else
         iters = Cuda_CG( system, control, data, workspace, &workspace->d_workspace->H,
-                workspace->d_workspace->b_s, control->cm_solver_q_err, workspace->d_workspace->s, mpi_data );
+                workspace->d_workspace->b_s, control->cm_solver_q_err, workspace->d_workspace->s,
+                mpi_data, refactor );
         iters += Cuda_CG( system, control, data, workspace, &workspace->d_workspace->H,
-                workspace->d_workspace->b_t, control->cm_solver_q_err, workspace->d_workspace->t, mpi_data );
+                workspace->d_workspace->b_t, control->cm_solver_q_err, workspace->d_workspace->t,
+                mpi_data, FALSE );
 #endif
         break;
 
@@ -703,12 +750,14 @@ void QEq( reax_system const * const system, control_params const * const control
 #if defined(DUAL_SOLVER)
         iters = Cuda_dual_SDM( system, control, data, workspace,
                 &workspace->d_workspace->H, workspace->d_workspace->b,
-                control->cm_solver_q_err, workspace->d_workspace->x, mpi_data );
+                control->cm_solver_q_err, workspace->d_workspace->x, mpi_data, refactor );
 #else
         iters = Cuda_SDM( system, control, data, workspace, &workspace->d_workspace->H,
-                workspace->d_workspace->b_s, control->cm_solver_q_err, workspace->d_workspace->s, mpi_data );
+                workspace->d_workspace->b_s, control->cm_solver_q_err, workspace->d_workspace->s,
+                mpi_data, refactor );
         iters += Cuda_SDM( system, control, data, workspace, &workspace->d_workspace->H,
-                workspace->d_workspace->b_t, control->cm_solver_q_err, workspace->d_workspace->t, mpi_data );
+                workspace->d_workspace->b_t, control->cm_solver_q_err, workspace->d_workspace->t,
+                mpi_data, FALSE );
 #endif
         break;
 
@@ -716,12 +765,14 @@ void QEq( reax_system const * const system, control_params const * const control
 #if defined(DUAL_SOLVER)
         iters = Cuda_dual_BiCGStab( system, control, data, workspace,
                 &workspace->d_workspace->H, workspace->d_workspace->b,
-                control->cm_solver_q_err, workspace->d_workspace->x, mpi_data );
+                control->cm_solver_q_err, workspace->d_workspace->x, mpi_data, refactor );
 #else
         iters = Cuda_BiCGStab( system, control, data, workspace, &workspace->d_workspace->H,
-                workspace->d_workspace->b_s, control->cm_solver_q_err, workspace->d_workspace->s, mpi_data );
+                workspace->d_workspace->b_s, control->cm_solver_q_err, workspace->d_workspace->s,
+                mpi_data, refactor );
         iters += Cuda_BiCGStab( system, control, data, workspace, &workspace->d_workspace->H,
-                workspace->d_workspace->b_t, control->cm_solver_q_err, workspace->d_workspace->t, mpi_data );
+                workspace->d_workspace->b_t, control->cm_solver_q_err, workspace->d_workspace->t,
+                mpi_data, FALSE );
 #endif
         break;
 
@@ -729,12 +780,14 @@ void QEq( reax_system const * const system, control_params const * const control
 #if defined(DUAL_SOLVER)
         iters = Cuda_dual_PIPECG( system, control, data, workspace,
                 &workspace->d_workspace->H, workspace->d_workspace->b,
-                control->cm_solver_q_err, workspace->d_workspace->x, mpi_data );
+                control->cm_solver_q_err, workspace->d_workspace->x, mpi_data, refactor );
 #else
         iters = Cuda_PIPECG( system, control, data, workspace, &workspace->d_workspace->H,
-                workspace->d_workspace->b_s, control->cm_solver_q_err, workspace->d_workspace->s, mpi_data );
+                workspace->d_workspace->b_s, control->cm_solver_q_err, workspace->d_workspace->s,
+                mpi_data, refactor );
         iters += Cuda_PIPECG( system, control, data, workspace, &workspace->d_workspace->H,
-                workspace->d_workspace->b_t, control->cm_solver_q_err, workspace->d_workspace->t, mpi_data );
+                workspace->d_workspace->b_t, control->cm_solver_q_err, workspace->d_workspace->t,
+                mpi_data, FALSE );
 #endif
         break;
 
@@ -742,12 +795,14 @@ void QEq( reax_system const * const system, control_params const * const control
 #if defined(DUAL_SOLVER)
         iters = Cuda_dual_PIPECR( system, control, data, workspace,
                 &workspace->d_workspace->H, workspace->d_workspace->b,
-                control->cm_solver_q_err, workspace->d_workspace->x, mpi_data );
+                control->cm_solver_q_err, workspace->d_workspace->x, mpi_data, refactor );
 #else
         iters = Cuda_PIPECR( system, control, data, workspace, &workspace->d_workspace->H,
-                workspace->d_workspace->b_s, control->cm_solver_q_err, workspace->d_workspace->s, mpi_data );
+                workspace->d_workspace->b_s, control->cm_solver_q_err, workspace->d_workspace->s,
+                mpi_data, refactor );
         iters += Cuda_PIPECR( system, control, data, workspace, &workspace->d_workspace->H,
-                workspace->d_workspace->b_t, control->cm_solver_q_err, workspace->d_workspace->t, mpi_data );
+                workspace->d_workspace->b_t, control->cm_solver_q_err, workspace->d_workspace->t,
+                mpi_data, FALSE );
 #endif
         break;
 

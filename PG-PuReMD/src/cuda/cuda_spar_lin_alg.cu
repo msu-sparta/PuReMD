@@ -40,6 +40,13 @@
 #define FULL_MASK (0xFFFFFFFF)
 
 
+enum preconditioner_type
+{
+    LEFT = 0,
+    RIGHT = 1,
+};
+
+
 /* Jacobi preconditioner computation */
 CUDA_GLOBAL void k_jacobi_cm_half( int *row_ptr_start,
         int *row_ptr_end, int *col_ind, real *vals,
@@ -727,7 +734,7 @@ static void Dual_Sparse_MatVec_Comm_Part2( const reax_system * const system,
 static void Dual_Sparse_MatVec( const reax_system * const system,
         control_params const * const control, simulation_data * const data,
         storage * const workspace, mpi_datatypes * const mpi_data,
-        sparse_matrix const * const A, rvec2 * const x,
+        sparse_matrix const * const A, rvec2 const * const x,
         int n, rvec2 * const b )
 {
 #if defined(LOG_PERFORMANCE)
@@ -939,11 +946,549 @@ static void Sparse_MatVec( reax_system const * const system,
 }
 
 
+/* Apply left-sided preconditioning while solving M^{-1}AX = M^{-1}B
+ *
+ * system:
+ * workspace: data struct containing matrices and vectors, stored in CSR
+ * control: data struct containing parameters
+ * data: struct containing timing simulation data (including performance data)
+ * y: vector to which to apply preconditioning,
+ *  specific to internals of iterative solver being used
+ * x (output): preconditioned vector
+ * fresh_pre: parameter indicating if this is a newly computed (fresh) preconditioner
+ * side: used in determining how to apply preconditioner if the preconditioner is
+ *  factorized as M = M_{1}M_{2} (e.g., incomplete LU, A \approx LU)
+ *
+ * Assumptions:
+ *   Matrices have non-zero diagonals
+ *   Each row of a matrix has at least one non-zero (i.e., no rows with all zeros) */
+static void dual_apply_preconditioner( reax_system const * const system,
+        storage * const workspace, control_params const * const control,
+        simulation_data * const data, mpi_datatypes * const  mpi_data,
+        rvec2 const * const y, rvec2 * const x, int fresh_pre, int side )
+{
+//    int i, si;
+
+    /* no preconditioning */
+    if ( control->cm_solver_pre_comp_type == NONE_PC )
+    {
+        if ( x != y )
+        {
+            Vector_Copy_rvec2( x, y, system->n, control->streams[4] );
+        }
+    }
+    else
+    {
+        switch ( side )
+        {
+            case LEFT:
+                switch ( control->cm_solver_pre_app_type )
+                {
+                    case TRI_SOLVE_PA:
+                        switch ( control->cm_solver_pre_comp_type )
+                        {
+                            case JACOBI_PC:
+                                dual_jacobi_apply( workspace->d_workspace->Hdia_inv,
+                                        y, x, system->n, control->streams[4] );
+                                break;
+//                            case ICHOLT_PC:
+//                            case ILUT_PC:
+//                            case ILUTP_PC:
+//                                  tri_solve( workspace->L, y, x, workspace->L->n, LOWER );
+//                                  break;
+                            case SAI_PC:
+#if defined(NEUTRAL_TERRITORY)
+                                Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
+                                        &workspace->d_workspace->H_app_inv,
+                                        y, H->NT, x );
+#else
+                                Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
+                                        &workspace->d_workspace->H_app_inv,
+                                        y, system->n, x );
+#endif
+                                break;
+                            default:
+                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                                exit( INVALID_INPUT );
+                                break;
+                        }
+                        break;
+                    case TRI_SOLVE_LEVEL_SCHED_PA:
+                        switch ( control->cm_solver_pre_comp_type )
+                        {
+                            case JACOBI_PC:
+                                dual_jacobi_apply( workspace->d_workspace->Hdia_inv,
+                                        y, x, system->n, control->streams[4] );
+                                break;
+//                            case ICHOLT_PC:
+//                            case ILUT_PC:
+//                            case ILUTP_PC:
+//                                  tri_solve_level_sched( (static_storage *) workspace,
+//                                          workspace->L, y, x, workspace->L->n, LOWER, fresh_pre );
+//                                  break;
+                            case SAI_PC:
+#if defined(NEUTRAL_TERRITORY)
+                                Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
+                                        &workspace->d_workspace->H_app_inv,
+                                        y, H->NT, x );
+#else
+                                Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
+                                        &workspace->d_workspace->H_app_inv,
+                                        y, system->n, x );
+#endif
+                                break;
+                            default:
+                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                                exit( INVALID_INPUT );
+                                break;
+                        }
+                        break;
+                    case TRI_SOLVE_GC_PA:
+                        switch ( control->cm_solver_pre_comp_type )
+                        {
+                            case JACOBI_PC:
+                            case SAI_PC:
+                                fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
+                                exit( INVALID_INPUT );
+                                break;
+//                            case ICHOLT_PC:
+//                            case ILUT_PC:
+//                            case ILUTP_PC:
+//                                  for ( i = 0; i < workspace->H->n; ++i )
+//                                  {
+//                                      workspace->y_p[i] = y[i];
+//                                  }
+//
+//                                  permute_vector( workspace, workspace->y_p, workspace->H->n, FALSE, LOWER );
+//                                  tri_solve_level_sched( (static_storage *) workspace,
+//                                  workspace->L, workspace->y_p, x, workspace->L->n, LOWER, fresh_pre );
+//                                  break;
+                            default:
+                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                                exit( INVALID_INPUT );
+                                break;
+                        }
+                        break;
+                    case JACOBI_ITER_PA:
+                        switch ( control->cm_solver_pre_comp_type )
+                        {
+                            case JACOBI_PC:
+                            case SAI_PC:
+                                fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
+                                exit( INVALID_INPUT );
+                                break;
+//                            case ICHOLT_PC:
+//                            case ILUT_PC:
+//                            case ILUTP_PC:
+//                                // construct D^{-1}_L
+//                                if ( fresh_pre == TRUE )
+//                                {
+//                                    for ( i = 0; i < workspace->L->n; ++i )
+//                                    {
+//                                        si = workspace->L->start[i + 1] - 1;
+//                                        workspace->Dinv_L[i] = 1.0 / workspace->L->val[si];
+//                                    }
+//                                }
+//
+//                                jacobi_iter( workspace, workspace->L, workspace->Dinv_L,
+//                                        y, x, LOWER, control->cm_solver_pre_app_jacobi_iters );
+//                                break;
+                            default:
+                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                                exit( INVALID_INPUT );
+                                break;
+                        }
+                        break;
+                    default:
+                        fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                        exit( INVALID_INPUT );
+                        break;
+
+                }
+                break;
+
+            case RIGHT:
+                switch ( control->cm_solver_pre_app_type )
+                {
+                    case TRI_SOLVE_PA:
+                        switch ( control->cm_solver_pre_comp_type )
+                        {
+                            case JACOBI_PC:
+                            case SAI_PC:
+                                if ( x != y )
+                                {
+                                    Vector_Copy_rvec2( x, y, system->n, control->streams[4] );
+                                }
+                                break;
+//                            case ICHOLT_PC:
+//                            case ILUT_PC:
+//                            case ILUTP_PC:
+//                                  tri_solve( workspace->U, y, x, workspace->U->n, UPPER );
+//                                  break;
+                            default:
+                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                                exit( INVALID_INPUT );
+                                break;
+                        }
+                        break;
+                    case TRI_SOLVE_LEVEL_SCHED_PA:
+                        switch ( control->cm_solver_pre_comp_type )
+                        {
+                            case JACOBI_PC:
+                            case SAI_PC:
+                                if ( x != y )
+                                {
+                                    Vector_Copy_rvec2( x, y, system->n, control->streams[4] );
+                                }
+                                break;
+//                            case ICHOLT_PC:
+//                            case ILUT_PC:
+//                            case ILUTP_PC:
+//                                  tri_solve_level_sched( (static_storage *) workspace,
+//                                          workspace->U, y, x, workspace->U->n, UPPER, fresh_pre );
+//                                  break;
+                            default:
+                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                                exit( INVALID_INPUT );
+                                break;
+                        }
+                        break;
+                    case TRI_SOLVE_GC_PA:
+                        switch ( control->cm_solver_pre_comp_type )
+                        {
+                            case JACOBI_PC:
+                            case SAI_PC:
+                                fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
+                                exit( INVALID_INPUT );
+                                break;
+//                            case ICHOLT_PC:
+//                            case ILUT_PC:
+//                            case ILUTP_PC:
+//                                  tri_solve_level_sched( (static_storage *) workspace,
+//                                  workspace->U, y, x, workspace->U->n, UPPER, fresh_pre );
+//                                  permute_vector( workspace, x, workspace->H->n, TRUE, UPPER );
+//                                  break;
+                            default:
+                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                                exit( INVALID_INPUT );
+                                break;
+                        }
+                        break;
+                    case JACOBI_ITER_PA:
+                        switch ( control->cm_solver_pre_comp_type )
+                        {
+                            case JACOBI_PC:
+                            case SAI_PC:
+                                fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
+                                exit( INVALID_INPUT );
+                                break;
+//                            case ICHOLT_PC:
+//                            case ILUT_PC:
+//                            case ILUTP_PC:
+//                                  if ( fresh_pre == TRUE )
+//                                  {
+//                                      for ( i = 0; i < workspace->U->n; ++i )
+//                                      {
+//                                          si = workspace->U->start[i];
+//                                          workspace->Dinv_U[i] = 1.0 / workspace->U->val[si];
+//                                      }
+//                                  }
+//
+//                                  jacobi_iter( workspace, workspace->U, workspace->Dinv_U,
+//                                          y, x, UPPER, control->cm_solver_pre_app_jacobi_iters );
+//                                  break;
+                            default:
+                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                                exit( INVALID_INPUT );
+                                break;
+                        }
+                        break;
+                    default:
+                        fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                        exit( INVALID_INPUT );
+                        break;
+
+                }
+                break;
+        }
+    }
+}
+
+
+/* Apply left-sided preconditioning while solving M^{-1}Ax = M^{-1}b
+ *
+ * system:
+ * workspace: data struct containing matrices and vectors, stored in CSR
+ * control: data struct containing parameters
+ * data: struct containing timing simulation data (including performance data)
+ * y: vector to which to apply preconditioning,
+ *  specific to internals of iterative solver being used
+ * x (output): preconditioned vector
+ * fresh_pre: parameter indicating if this is a newly computed (fresh) preconditioner
+ * side: used in determining how to apply preconditioner if the preconditioner is
+ *  factorized as M = M_{1}M_{2} (e.g., incomplete LU, A \approx LU)
+ *
+ * Assumptions:
+ *   Matrices have non-zero diagonals
+ *   Each row of a matrix has at least one non-zero (i.e., no rows with all zeros) */
+static void apply_preconditioner( reax_system const * const system,
+        storage * const workspace, control_params const * const control,
+        simulation_data * const data, mpi_datatypes * const  mpi_data,
+        real const * const y, real * const x, int fresh_pre, int side )
+{
+//    int i, si;
+
+    /* no preconditioning */
+    if ( control->cm_solver_pre_comp_type == NONE_PC )
+    {
+        if ( x != y )
+        {
+            Vector_Copy( x, y, system->n, control->streams[4] );
+        }
+    }
+    else
+    {
+        switch ( side )
+        {
+            case LEFT:
+                switch ( control->cm_solver_pre_app_type )
+                {
+                    case TRI_SOLVE_PA:
+                        switch ( control->cm_solver_pre_comp_type )
+                        {
+                            case JACOBI_PC:
+                                jacobi_apply( workspace->d_workspace->Hdia_inv,
+                                        y, x, system->n, control->streams[4] );
+                                break;
+//                            case ICHOLT_PC:
+//                            case ILUT_PC:
+//                            case ILUTP_PC:
+//                                  tri_solve( workspace->L, y, x, workspace->L->n, LOWER );
+//                                  break;
+                            case SAI_PC:
+#if defined(NEUTRAL_TERRITORY)
+                                Sparse_MatVec( system, control, data, workspace, mpi_data,
+                                        &workspace->d_workspace->H_app_inv,
+                                        y, H->NT, x );
+#else
+                                Sparse_MatVec( system, control, data, workspace, mpi_data,
+                                        &workspace->d_workspace->H_app_inv,
+                                        y, system->n, x );
+#endif
+                                break;
+                            default:
+                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                                exit( INVALID_INPUT );
+                                break;
+                        }
+                        break;
+                    case TRI_SOLVE_LEVEL_SCHED_PA:
+                        switch ( control->cm_solver_pre_comp_type )
+                        {
+                            case JACOBI_PC:
+                                jacobi_apply( workspace->d_workspace->Hdia_inv,
+                                        y, x, system->n, control->streams[4] );
+                                break;
+//                            case ICHOLT_PC:
+//                            case ILUT_PC:
+//                            case ILUTP_PC:
+//                                  tri_solve_level_sched( (static_storage *) workspace,
+//                                          workspace->L, y, x, workspace->L->n, LOWER, fresh_pre );
+//                                  break;
+                            case SAI_PC:
+#if defined(NEUTRAL_TERRITORY)
+                                Sparse_MatVec( system, control, data, workspace, mpi_data,
+                                        &workspace->d_workspace->H_app_inv,
+                                        y, H->NT, x );
+#else
+                                Sparse_MatVec( system, control, data, workspace, mpi_data,
+                                        &workspace->d_workspace->H_app_inv,
+                                        y, system->n, x );
+#endif
+                                break;
+                            default:
+                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                                exit( INVALID_INPUT );
+                                break;
+                        }
+                        break;
+                    case TRI_SOLVE_GC_PA:
+                        switch ( control->cm_solver_pre_comp_type )
+                        {
+                            case JACOBI_PC:
+                            case SAI_PC:
+                                fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
+                                exit( INVALID_INPUT );
+                                break;
+//                            case ICHOLT_PC:
+//                            case ILUT_PC:
+//                            case ILUTP_PC:
+//                                  for ( i = 0; i < workspace->H->n; ++i )
+//                                  {
+//                                      workspace->y_p[i] = y[i];
+//                                  }
+//
+//                                  permute_vector( workspace, workspace->y_p, workspace->H->n, FALSE, LOWER );
+//                                  tri_solve_level_sched( (static_storage *) workspace,
+//                                  workspace->L, workspace->y_p, x, workspace->L->n, LOWER, fresh_pre );
+//                                  break;
+                            default:
+                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                                exit( INVALID_INPUT );
+                                break;
+                        }
+                        break;
+                    case JACOBI_ITER_PA:
+                        switch ( control->cm_solver_pre_comp_type )
+                        {
+                            case JACOBI_PC:
+                            case SAI_PC:
+                                fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
+                                exit( INVALID_INPUT );
+                                break;
+//                            case ICHOLT_PC:
+//                            case ILUT_PC:
+//                            case ILUTP_PC:
+//                                // construct D^{-1}_L
+//                                if ( fresh_pre == TRUE )
+//                                {
+//                                    for ( i = 0; i < workspace->L->n; ++i )
+//                                    {
+//                                        si = workspace->L->start[i + 1] - 1;
+//                                        workspace->Dinv_L[i] = 1.0 / workspace->L->val[si];
+//                                    }
+//                                }
+//
+//                                jacobi_iter( workspace, workspace->L, workspace->Dinv_L,
+//                                        y, x, LOWER, control->cm_solver_pre_app_jacobi_iters );
+//                                break;
+                            default:
+                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                                exit( INVALID_INPUT );
+                                break;
+                        }
+                        break;
+                    default:
+                        fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                        exit( INVALID_INPUT );
+                        break;
+
+                }
+                break;
+
+            case RIGHT:
+                switch ( control->cm_solver_pre_app_type )
+                {
+                    case TRI_SOLVE_PA:
+                        switch ( control->cm_solver_pre_comp_type )
+                        {
+                            case JACOBI_PC:
+                            case SAI_PC:
+                                if ( x != y )
+                                {
+                                    Vector_Copy( x, y, system->n, control->streams[4] );
+                                }
+                                break;
+//                            case ICHOLT_PC:
+//                            case ILUT_PC:
+//                            case ILUTP_PC:
+//                                  tri_solve( workspace->U, y, x, workspace->U->n, UPPER );
+//                                  break;
+                            default:
+                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                                exit( INVALID_INPUT );
+                                break;
+                        }
+                        break;
+                    case TRI_SOLVE_LEVEL_SCHED_PA:
+                        switch ( control->cm_solver_pre_comp_type )
+                        {
+                            case JACOBI_PC:
+                            case SAI_PC:
+                                if ( x != y )
+                                {
+                                    Vector_Copy( x, y, system->n, control->streams[4] );
+                                }
+                                break;
+//                            case ICHOLT_PC:
+//                            case ILUT_PC:
+//                            case ILUTP_PC:
+//                                  tri_solve_level_sched( (static_storage *) workspace,
+//                                          workspace->U, y, x, workspace->U->n, UPPER, fresh_pre );
+//                                  break;
+                            default:
+                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                                exit( INVALID_INPUT );
+                                break;
+                        }
+                        break;
+                    case TRI_SOLVE_GC_PA:
+                        switch ( control->cm_solver_pre_comp_type )
+                        {
+                            case JACOBI_PC:
+                            case SAI_PC:
+                                fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
+                                exit( INVALID_INPUT );
+                                break;
+//                            case ICHOLT_PC:
+//                            case ILUT_PC:
+//                            case ILUTP_PC:
+//                                  tri_solve_level_sched( (static_storage *) workspace,
+//                                  workspace->U, y, x, workspace->U->n, UPPER, fresh_pre );
+//                                  permute_vector( workspace, x, workspace->H->n, TRUE, UPPER );
+//                                  break;
+                            default:
+                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                                exit( INVALID_INPUT );
+                                break;
+                        }
+                        break;
+                    case JACOBI_ITER_PA:
+                        switch ( control->cm_solver_pre_comp_type )
+                        {
+                            case JACOBI_PC:
+                            case SAI_PC:
+                                fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
+                                exit( INVALID_INPUT );
+                                break;
+//                            case ICHOLT_PC:
+//                            case ILUT_PC:
+//                            case ILUTP_PC:
+//                                  if ( fresh_pre == TRUE )
+//                                  {
+//                                      for ( i = 0; i < workspace->U->n; ++i )
+//                                      {
+//                                          si = workspace->U->start[i];
+//                                          workspace->Dinv_U[i] = 1.0 / workspace->U->val[si];
+//                                      }
+//                                  }
+//
+//                                  jacobi_iter( workspace, workspace->U, workspace->Dinv_U,
+//                                          y, x, UPPER, control->cm_solver_pre_app_jacobi_iters );
+//                                  break;
+                            default:
+                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                                exit( INVALID_INPUT );
+                                break;
+                        }
+                        break;
+                    default:
+                        fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                        exit( INVALID_INPUT );
+                        break;
+
+                }
+                break;
+        }
+    }
+}
+
+
 int Cuda_dual_SDM( reax_system const * const system,
         control_params const * const control,
         simulation_data * const data, storage * const workspace,
         sparse_matrix const * const H, rvec2 const * const b, real tol,
-        rvec2 * const x, mpi_datatypes * const mpi_data )
+        rvec2 * const x, mpi_datatypes * const mpi_data, int fresh_pre )
 {
     unsigned int i, matvecs;
     int ret;
@@ -968,8 +1513,10 @@ int Cuda_dual_SDM( reax_system const * const system,
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
-    dual_jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r2,
-            workspace->d_workspace->d2, system->n, control->streams[4] );
+    dual_apply_preconditioner( system, workspace, control, data, mpi_data,
+            workspace->d_workspace->r2, workspace->d_workspace->q2, fresh_pre, LEFT );
+    dual_apply_preconditioner( system, workspace, control, data, mpi_data,
+            workspace->d_workspace->q2, workspace->d_workspace->d2, fresh_pre, RIGHT );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -1040,8 +1587,10 @@ int Cuda_dual_SDM( reax_system const * const system,
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
-        dual_jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r2,
-                workspace->d_workspace->d2, system->n, control->streams[4] );
+        dual_apply_preconditioner( system, workspace, control, data, mpi_data,
+                workspace->d_workspace->r2, workspace->d_workspace->q2, FALSE, LEFT );
+        dual_apply_preconditioner( system, workspace, control, data, mpi_data,
+                workspace->d_workspace->q2, workspace->d_workspace->d2, FALSE, RIGHT );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -1056,7 +1605,7 @@ int Cuda_dual_SDM( reax_system const * const system,
 
         matvecs = Cuda_SDM( system, control, data, workspace, H,
                 workspace->d_workspace->b_t, tol,
-                workspace->d_workspace->t, mpi_data );
+                workspace->d_workspace->t, mpi_data, FALSE );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
                 workspace->d_workspace->t, 1, system->n, control->streams[4] );
@@ -1069,7 +1618,7 @@ int Cuda_dual_SDM( reax_system const * const system,
 
         matvecs = Cuda_SDM( system, control, data, workspace, H,
                 workspace->d_workspace->b_s, tol,
-                workspace->d_workspace->s, mpi_data );
+                workspace->d_workspace->s, mpi_data, FALSE );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
                 workspace->d_workspace->s, 0, system->n, control->streams[4] );
@@ -1095,7 +1644,7 @@ int Cuda_dual_SDM( reax_system const * const system,
 int Cuda_SDM( reax_system const * const system, control_params const * const control,
         simulation_data * const data, storage * const workspace,
         sparse_matrix const * const H, real const * const b, real tol,
-        real * const x, mpi_datatypes * const mpi_data )
+        real * const x, mpi_datatypes * const mpi_data, int fresh_pre )
 {
     unsigned int i;
     int ret;
@@ -1119,8 +1668,10 @@ int Cuda_SDM( reax_system const * const system, control_params const * const con
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
-    jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r,
-            workspace->d_workspace->d, system->n, control->streams[4] );
+    apply_preconditioner( system, workspace, control, data, mpi_data,
+            workspace->d_workspace->r, workspace->d_workspace->q, fresh_pre, LEFT );
+    apply_preconditioner( system, workspace, control, data, mpi_data,
+            workspace->d_workspace->q, workspace->d_workspace->d, fresh_pre, RIGHT );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -1181,8 +1732,10 @@ int Cuda_SDM( reax_system const * const system, control_params const * const con
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
-        jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r,
-                workspace->d_workspace->d, system->n, control->streams[4] );
+        apply_preconditioner( system, workspace, control, data, mpi_data,
+                workspace->d_workspace->r, workspace->d_workspace->q, FALSE, LEFT );
+        apply_preconditioner( system, workspace, control, data, mpi_data,
+                workspace->d_workspace->q, workspace->d_workspace->d, FALSE, RIGHT );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -1206,7 +1759,7 @@ int Cuda_dual_CG( reax_system const * const system,
         control_params const * const control,
         simulation_data * const data, storage * const workspace,
         sparse_matrix const * const H, rvec2 const * const b, real tol,
-        rvec2 * const x, mpi_datatypes * const mpi_data )
+        rvec2 * const x, mpi_datatypes * const mpi_data, int fresh_pre )
 {
     unsigned int i, matvecs;
     int ret;
@@ -1230,8 +1783,10 @@ int Cuda_dual_CG( reax_system const * const system,
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
-    dual_jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r2,
-            workspace->d_workspace->d2, system->n, control->streams[4] );
+    dual_apply_preconditioner( system, workspace, control, data, mpi_data,
+            workspace->d_workspace->r2, workspace->d_workspace->q2, fresh_pre, LEFT );
+    dual_apply_preconditioner( system, workspace, control, data, mpi_data,
+            workspace->d_workspace->q2, workspace->d_workspace->d2, fresh_pre, RIGHT );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -1301,8 +1856,10 @@ int Cuda_dual_CG( reax_system const * const system,
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
-        dual_jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r2,
-                workspace->d_workspace->p2, system->n, control->streams[4] );
+        dual_apply_preconditioner( system, workspace, control, data, mpi_data,
+                workspace->d_workspace->r2, workspace->d_workspace->q2, FALSE, LEFT );
+        dual_apply_preconditioner( system, workspace, control, data, mpi_data,
+                workspace->d_workspace->q2, workspace->d_workspace->p2, FALSE, RIGHT );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -1350,7 +1907,7 @@ int Cuda_dual_CG( reax_system const * const system,
 
         matvecs = Cuda_CG( system, control, data, workspace, H,
                 workspace->d_workspace->b_t, tol,
-                workspace->d_workspace->t, mpi_data );
+                workspace->d_workspace->t, mpi_data, FALSE );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
                 workspace->d_workspace->t, 1, system->n, control->streams[4] );
@@ -1363,7 +1920,7 @@ int Cuda_dual_CG( reax_system const * const system,
 
         matvecs = Cuda_CG( system, control, data, workspace, H,
                 workspace->d_workspace->b_s, tol,
-                workspace->d_workspace->s, mpi_data );
+                workspace->d_workspace->s, mpi_data, FALSE );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
                 workspace->d_workspace->s, 0, system->n, control->streams[4] );
@@ -1389,7 +1946,7 @@ int Cuda_dual_CG( reax_system const * const system,
 int Cuda_CG( reax_system const * const system, control_params const * const control,
         simulation_data * const data, storage * const workspace,
         sparse_matrix const * const H, real const * const b, real tol,
-        real * const x, mpi_datatypes * const mpi_data )
+        real * const x, mpi_datatypes * const mpi_data, int fresh_pre )
 {
     unsigned int i;
     int ret;
@@ -1414,8 +1971,10 @@ int Cuda_CG( reax_system const * const system, control_params const * const cont
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
-    jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r,
-            workspace->d_workspace->d, system->n, control->streams[4] );
+    apply_preconditioner( system, workspace, control, data, mpi_data,
+            workspace->d_workspace->r, workspace->d_workspace->q, fresh_pre, LEFT );
+    apply_preconditioner( system, workspace, control, data, mpi_data,
+            workspace->d_workspace->q, workspace->d_workspace->d, fresh_pre, RIGHT );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -1467,8 +2026,10 @@ int Cuda_CG( reax_system const * const system, control_params const * const cont
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
-        jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r,
-                workspace->d_workspace->p, system->n, control->streams[4] );
+        apply_preconditioner( system, workspace, control, data, mpi_data,
+                workspace->d_workspace->r, workspace->d_workspace->q, FALSE, LEFT );
+        apply_preconditioner( system, workspace, control, data, mpi_data,
+                workspace->d_workspace->q, workspace->d_workspace->p, FALSE, RIGHT );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -1534,7 +2095,7 @@ int Cuda_CG( reax_system const * const system, control_params const * const cont
 int Cuda_dual_BiCGStab( reax_system const * const system, control_params const * const control,
         simulation_data * const data, storage * const workspace,
         sparse_matrix const * const H, rvec2 const * const b, real tol,
-        rvec2 * const x, mpi_datatypes * const mpi_data )
+        rvec2 * const x, mpi_datatypes * const mpi_data, int fresh_pre )
 {
     unsigned int i, matvecs;
     int ret;
@@ -1642,8 +2203,12 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
-        dual_jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->p2,
-                workspace->d_workspace->d2, system->n, control->streams[4] );
+        dual_apply_preconditioner( system, workspace, control, data, mpi_data,
+                workspace->d_workspace->p2, workspace->d_workspace->y2,
+                i == 0 ? fresh_pre : FALSE, LEFT );
+        dual_apply_preconditioner( system, workspace, control, data, mpi_data,
+                workspace->d_workspace->y2, workspace->d_workspace->d2,
+                i == 0 ? fresh_pre : FALSE, RIGHT );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -1706,8 +2271,10 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
-        dual_jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->q2,
-                workspace->d_workspace->q_hat2, system->n, control->streams[4] );
+        dual_apply_preconditioner( system, workspace, control, data, mpi_data,
+                workspace->d_workspace->q2, workspace->d_workspace->y2, fresh_pre, LEFT );
+        dual_apply_preconditioner( system, workspace, control, data, mpi_data,
+                workspace->d_workspace->y2, workspace->d_workspace->q_hat2, fresh_pre, RIGHT );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -1787,7 +2354,7 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
 
         matvecs = Cuda_BiCGStab( system, control, data, workspace, H,
                 workspace->d_workspace->b_t, tol,
-                workspace->d_workspace->t, mpi_data );
+                workspace->d_workspace->t, mpi_data, FALSE );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
                 workspace->d_workspace->t, 1, system->n, control->streams[4] );
@@ -1800,7 +2367,7 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
 
         matvecs = Cuda_BiCGStab( system, control, data, workspace, H,
                 workspace->d_workspace->b_s, tol,
-                workspace->d_workspace->s, mpi_data );
+                workspace->d_workspace->s, mpi_data, FALSE );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
                 workspace->d_workspace->s, 0, system->n, control->streams[4] );
@@ -1841,7 +2408,7 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
 int Cuda_BiCGStab( reax_system const * const system, control_params const * const control,
         simulation_data * const data, storage * const workspace,
         sparse_matrix const * const H, real const * const b, real tol,
-        real * const x, mpi_datatypes * const mpi_data )
+        real * const x, mpi_datatypes * const mpi_data, int fresh_pre )
 {
     unsigned int i;
     int ret;
@@ -1933,8 +2500,12 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
-        jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->p,
-                workspace->d_workspace->d, system->n, control->streams[4] );
+        apply_preconditioner( system, workspace, control, data, mpi_data,
+                workspace->d_workspace->p, workspace->d_workspace->y,
+                i == 0 ? fresh_pre : FALSE, LEFT );
+        apply_preconditioner( system, workspace, control, data, mpi_data,
+                workspace->d_workspace->y, workspace->d_workspace->d,
+                i == 0 ? fresh_pre : FALSE, RIGHT );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -1994,8 +2565,10 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
-        jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->q,
-                workspace->d_workspace->q_hat, system->n, control->streams[4] );
+        apply_preconditioner( system, workspace, control, data, mpi_data,
+                workspace->d_workspace->q, workspace->d_workspace->y, fresh_pre, LEFT );
+        apply_preconditioner( system, workspace, control, data, mpi_data,
+                workspace->d_workspace->y, workspace->d_workspace->q_hat, fresh_pre, RIGHT );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -2086,7 +2659,7 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
 int Cuda_dual_PIPECG( reax_system const * const system, control_params const * const control,
         simulation_data * const data, storage * const workspace,
         sparse_matrix const * const H, rvec2 const * const b, real tol,
-        rvec2 * const x, mpi_datatypes * const mpi_data )
+        rvec2 * const x, mpi_datatypes * const mpi_data, int fresh_pre )
 {
     unsigned int i, matvecs;
     int ret;
@@ -2111,8 +2684,10 @@ int Cuda_dual_PIPECG( reax_system const * const system, control_params const * c
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
-    dual_jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r2,
-            workspace->d_workspace->u2, system->n, control->streams[4] );
+    dual_apply_preconditioner( system, workspace, control, data, mpi_data,
+            workspace->d_workspace->r2, workspace->d_workspace->m2, fresh_pre, LEFT );
+    dual_apply_preconditioner( system, workspace, control, data, mpi_data,
+            workspace->d_workspace->m2, workspace->d_workspace->u2, fresh_pre, RIGHT );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -2141,8 +2716,10 @@ int Cuda_dual_PIPECG( reax_system const * const system, control_params const * c
             MPI_COMM_WORLD, &req );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-    dual_jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->w2,
-            workspace->d_workspace->m2, system->n, control->streams[4] );
+    dual_apply_preconditioner( system, workspace, control, data, mpi_data,
+            workspace->d_workspace->w2, workspace->d_workspace->n2, FALSE, LEFT );
+    dual_apply_preconditioner( system, workspace, control, data, mpi_data,
+            workspace->d_workspace->n2, workspace->d_workspace->m2, FALSE, RIGHT );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -2223,8 +2800,10 @@ int Cuda_dual_PIPECG( reax_system const * const system, control_params const * c
                 MPI_COMM_WORLD, &req );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-        dual_jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->w2,
-                workspace->d_workspace->m2, system->n, control->streams[4] );
+        dual_apply_preconditioner( system, workspace, control, data, mpi_data,
+                workspace->d_workspace->w2, workspace->d_workspace->n2, FALSE, LEFT );
+        dual_apply_preconditioner( system, workspace, control, data, mpi_data,
+                workspace->d_workspace->n2, workspace->d_workspace->m2, FALSE, RIGHT );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -2262,7 +2841,7 @@ int Cuda_dual_PIPECG( reax_system const * const system, control_params const * c
 
         matvecs = Cuda_PIPECG( system, control, data, workspace, H,
                 workspace->d_workspace->b_t, tol,
-                workspace->d_workspace->t, mpi_data );
+                workspace->d_workspace->t, mpi_data, FALSE );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
                 workspace->d_workspace->t, 1, system->n, control->streams[4] );
@@ -2275,7 +2854,7 @@ int Cuda_dual_PIPECG( reax_system const * const system, control_params const * c
 
         matvecs = Cuda_PIPECG( system, control, data, workspace, H,
                 workspace->d_workspace->b_s, tol,
-                workspace->d_workspace->s, mpi_data );
+                workspace->d_workspace->s, mpi_data, FALSE );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
                 workspace->d_workspace->s, 0, system->n, control->streams[4] );
@@ -2309,7 +2888,7 @@ int Cuda_dual_PIPECG( reax_system const * const system, control_params const * c
 int Cuda_PIPECG( reax_system const * const system, control_params const * const control,
         simulation_data * const data, storage * const workspace,
         sparse_matrix const * const H, real const * const b, real tol,
-        real * const x, mpi_datatypes * const mpi_data )
+        real * const x, mpi_datatypes * const mpi_data, int fresh_pre )
 {
     unsigned int i;
     int ret;
@@ -2334,8 +2913,10 @@ int Cuda_PIPECG( reax_system const * const system, control_params const * const 
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
-    jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r,
-            workspace->d_workspace->u, system->n, control->streams[4] );
+    apply_preconditioner( system, workspace, control, data, mpi_data,
+            workspace->d_workspace->r, workspace->d_workspace->m, fresh_pre, LEFT );
+    apply_preconditioner( system, workspace, control, data, mpi_data,
+            workspace->d_workspace->m, workspace->d_workspace->u, fresh_pre, RIGHT );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -2364,8 +2945,10 @@ int Cuda_PIPECG( reax_system const * const system, control_params const * const 
             MPI_COMM_WORLD, &req );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-    jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->w,
-            workspace->d_workspace->m, system->n, control->streams[4] );
+    apply_preconditioner( system, workspace, control, data, mpi_data,
+            workspace->d_workspace->w, workspace->d_workspace->n, FALSE, LEFT );
+    apply_preconditioner( system, workspace, control, data, mpi_data,
+            workspace->d_workspace->n, workspace->d_workspace->m, FALSE, RIGHT );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -2433,8 +3016,10 @@ int Cuda_PIPECG( reax_system const * const system, control_params const * const 
                 MPI_COMM_WORLD, &req );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-        jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->w,
-                workspace->d_workspace->m, system->n, control->streams[4] );
+        apply_preconditioner( system, workspace, control, data, mpi_data,
+                workspace->d_workspace->w, workspace->d_workspace->n, FALSE, LEFT );
+        apply_preconditioner( system, workspace, control, data, mpi_data,
+                workspace->d_workspace->n, workspace->d_workspace->m, FALSE, RIGHT );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -2481,7 +3066,7 @@ int Cuda_PIPECG( reax_system const * const system, control_params const * const 
 int Cuda_dual_PIPECR( reax_system const * const system, control_params const * const control,
         simulation_data * const data, storage * const workspace,
         sparse_matrix const * const H, rvec2 const * const b, real tol,
-        rvec2 * const x, mpi_datatypes * const mpi_data )
+        rvec2 * const x, mpi_datatypes * const mpi_data, int fresh_pre )
 {
     unsigned int i, matvecs;
     int ret;
@@ -2506,8 +3091,10 @@ int Cuda_dual_PIPECR( reax_system const * const system, control_params const * c
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
-    dual_jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r2,
-            workspace->d_workspace->u2, system->n, control->streams[4] );
+    dual_apply_preconditioner( system, workspace, control, data, mpi_data,
+            workspace->d_workspace->r2, workspace->d_workspace->n2, fresh_pre, LEFT );
+    dual_apply_preconditioner( system, workspace, control, data, mpi_data,
+            workspace->d_workspace->n2, workspace->d_workspace->u2, fresh_pre, RIGHT );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -2550,8 +3137,10 @@ int Cuda_dual_PIPECR( reax_system const * const system, control_params const * c
             break;
         }
 
-        dual_jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->w2,
-                workspace->d_workspace->m2, system->n, control->streams[4] );
+        dual_apply_preconditioner( system, workspace, control, data, mpi_data,
+                workspace->d_workspace->w2, workspace->d_workspace->n2, FALSE, LEFT );
+        dual_apply_preconditioner( system, workspace, control, data, mpi_data,
+                workspace->d_workspace->n2, workspace->d_workspace->m2, FALSE, RIGHT );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -2640,7 +3229,7 @@ int Cuda_dual_PIPECR( reax_system const * const system, control_params const * c
 
         matvecs = Cuda_PIPECR( system, control, data, workspace, H,
                 workspace->d_workspace->b_t, tol,
-                workspace->d_workspace->t, mpi_data );
+                workspace->d_workspace->t, mpi_data, FALSE );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
                 workspace->d_workspace->t, 1, system->n, control->streams[4] );
@@ -2653,7 +3242,7 @@ int Cuda_dual_PIPECR( reax_system const * const system, control_params const * c
 
         matvecs = Cuda_PIPECR( system, control, data, workspace, H,
                 workspace->d_workspace->b_s, tol,
-                workspace->d_workspace->s, mpi_data );
+                workspace->d_workspace->s, mpi_data, FALSE );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
                 workspace->d_workspace->s, 0, system->n, control->streams[4] );
@@ -2684,7 +3273,7 @@ int Cuda_dual_PIPECR( reax_system const * const system, control_params const * c
 int Cuda_PIPECR( reax_system const * const system, control_params const * const control,
         simulation_data * const data, storage * const workspace,
         sparse_matrix const * const H, real const * const b, real tol,
-        real * const x, mpi_datatypes * const mpi_data )
+        real * const x, mpi_datatypes * const mpi_data, int fresh_pre )
 {
     unsigned int i;
     int ret;
@@ -2709,8 +3298,10 @@ int Cuda_PIPECR( reax_system const * const system, control_params const * const 
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
-    jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->r,
-            workspace->d_workspace->u, system->n, control->streams[4] );
+    apply_preconditioner( system, workspace, control, data, mpi_data,
+            workspace->d_workspace->r, workspace->d_workspace->n, fresh_pre, LEFT );
+    apply_preconditioner( system, workspace, control, data, mpi_data,
+            workspace->d_workspace->n, workspace->d_workspace->u, fresh_pre, RIGHT );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -2746,8 +3337,10 @@ int Cuda_PIPECR( reax_system const * const system, control_params const * const 
 
     for ( i = 0; i < control->cm_solver_max_iters && r_norm / b_norm > tol; ++i )
     {
-        jacobi_apply( workspace->d_workspace->Hdia_inv, workspace->d_workspace->w,
-                workspace->d_workspace->m, system->n, control->streams[4] );
+        apply_preconditioner( system, workspace, control, data, mpi_data,
+                workspace->d_workspace->w, workspace->d_workspace->n, FALSE, LEFT );
+        apply_preconditioner( system, workspace, control, data, mpi_data,
+                workspace->d_workspace->n, workspace->d_workspace->m, FALSE, RIGHT );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );

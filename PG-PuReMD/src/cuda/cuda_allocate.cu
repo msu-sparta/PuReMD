@@ -538,14 +538,30 @@ void Cuda_Allocate_Workspace_Part2( reax_system *system, control_params *control
 
     case SDM_S:
         sCudaMalloc( (void **) &workspace->r, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->r, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->d, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->d, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->q, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->q, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->p, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->p, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
         sCudaMalloc( (void **) &workspace->r2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->r2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->d2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->d2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->q2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->q2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->p2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->p2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
 #endif
         break;
 
@@ -580,70 +596,178 @@ void Cuda_Allocate_Workspace_Part2( reax_system *system, control_params *control
 
     case BiCGStab_S:
         sCudaMalloc( (void **) &workspace->y, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->y, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->g, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->g, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->z, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->z, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->r, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->r, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->d, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->d, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->q, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->q, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->p, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->p, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->r_hat, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->r_hat, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->q_hat, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->q_hat, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
         sCudaMalloc( (void **) &workspace->y2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->y2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->g2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->g2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->z2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->z2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->r2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->r2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->d2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->d2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->q2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->q2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->p2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->p2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->r_hat2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->r_hat2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->q_hat2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->q_hat2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
 #endif
         break;
 
     case PIPECG_S:
         sCudaMalloc( (void **) &workspace->z, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->z, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->r, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->r, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->d, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->d, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->q, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->q, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->p, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->p, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->m, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->m, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->n, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->n, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->u, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->u, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->w, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->w, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
         sCudaMalloc( (void **) &workspace->z2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->z2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->r2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->r2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->d2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->d2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->q2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->q2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->p2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->p2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->m2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->m2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->n2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->n2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->u2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->u2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->w2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->w2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
 #endif
         break;
 
     case PIPECR_S:
         sCudaMalloc( (void **) &workspace->z, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->z, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->r, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->r, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->d, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->d, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->q, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->q, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->p, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->p, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->m, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->m, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->n, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->n, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->u, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->u, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->w, total_real, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->w, FALSE, total_real, 
+                control->streams[0], __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
         sCudaMalloc( (void **) &workspace->z2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->z2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->r2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->r2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->d2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->d2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->q2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->q2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->p2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->p2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->m2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->m2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->n2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->n2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->u2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->u2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->w2, total_rvec2, __FILE__, __LINE__ );
+        sCudaMemsetAsync( workspace->w2, FALSE, total_rvec2, 
+                control->streams[0], __FILE__, __LINE__ );
 #endif
         break;
 
