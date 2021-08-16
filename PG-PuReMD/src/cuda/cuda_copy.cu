@@ -67,9 +67,9 @@ extern "C" void Cuda_Copy_Atoms_Host_to_Device( reax_system *system, control_par
 extern "C" void Cuda_Copy_Matrix_Host_to_Device( sparse_matrix const * const A,
         sparse_matrix * const d_A, cudaStream_t s )
 {
-    sCudaMemcpyAsync( d_A->start, A->start, sizeof(int) * A->n,
+    sCudaMemcpyAsync( d_A->start, A->start, sizeof(int) * A->n_max,
             cudaMemcpyHostToDevice, s, __FILE__, __LINE__ );
-    sCudaMemcpyAsync( d_A->end, A->end, sizeof(int) * A->n,
+    sCudaMemcpyAsync( d_A->end, A->end, sizeof(int) * A->n_max,
             cudaMemcpyHostToDevice, s, __FILE__, __LINE__ );
     sCudaMemcpyAsync( d_A->j, A->j, sizeof(int) * A->m,
             cudaMemcpyHostToDevice, s, __FILE__, __LINE__ );
@@ -136,9 +136,9 @@ extern "C" void Cuda_Copy_Atoms_Device_to_Host( reax_system *system, control_par
 extern "C" void Cuda_Copy_Matrix_Device_to_Host( sparse_matrix * const A,
         sparse_matrix const * const d_A, cudaStream_t s )
 {
-    sCudaMemcpyAsync( A->start, d_A->start, sizeof(int) * d_A->n,
+    sCudaMemcpyAsync( A->start, d_A->start, sizeof(int) * d_A->n_max,
             cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
-    sCudaMemcpyAsync( A->end, d_A->end, sizeof(int) * d_A->n,
+    sCudaMemcpyAsync( A->end, d_A->end, sizeof(int) * d_A->n_max,
             cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
     sCudaMemcpyAsync( A->j, d_A->j, sizeof(int) * d_A->m,
             cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );

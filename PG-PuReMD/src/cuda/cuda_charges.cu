@@ -327,6 +327,8 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
             Cuda_Copy_Matrix_Device_to_Host( &workspace->H, &workspace->d_workspace->H,
                    control->streams[4] );
 
+            workspace->H.n = workspace->d_workspace->H.n;
+
             setup_sparse_approx_inverse( system, data, workspace, mpi_data,
                     &workspace->H, &workspace->H_spar_patt, 
                     control->nprocs, control->cm_solver_pre_comp_sai_thres );
@@ -404,6 +406,8 @@ static void Compute_Preconditioner_QEq( reax_system const * const system,
 
         Cuda_Copy_Matrix_Host_to_Device( &workspace->H_app_inv,
                 &workspace->d_workspace->H_app_inv, control->streams[4] );
+
+        workspace->d_workspace->H_app_inv.n = workspace->H_app_inv.n;
 
         if( system->my_rank == MASTER_NODE )
         {

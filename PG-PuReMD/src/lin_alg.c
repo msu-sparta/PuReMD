@@ -666,30 +666,35 @@ void setup_sparse_approx_inverse( reax_system const * const system,
 
 #if defined(NEUTRAL_TERRITORY)
     num_rows = A->NT;
-    fprintf( stdout,"%d %d %d\n", A->n, A->NT, A->m );
-    fflush( stdout );
 #else
     num_rows = A->n;
 #endif
 
     if ( A_spar_patt->allocated == FALSE )
     {
+        Allocate_Matrix( A_spar_patt, A->n,
 #if defined(NEUTRAL_TERRITORY)
-        Allocate_Matrix( A_spar_patt, A->n, A->NT, A->m, A->format );
+                A->NT,
 #else
-        Allocate_Matrix( A_spar_patt, A->n, system->local_cap, A->m, A->format );
+                A->n_max,
 #endif
+                A->m, A->format );
     }
-
-    else /*if ( (*A_spar_patt)->m < A->m )*/
+    else if ( A_spar_patt->m < A->m 
+            || A_spar_patt->n_max < A->n_max )
     {
         Deallocate_Matrix( A_spar_patt );
+
+        Allocate_Matrix( A_spar_patt, A->n,
 #if defined(NEUTRAL_TERRITORY)
-        Allocate_Matrix( A_spar_patt, A->n, A->NT, A->m, A->format );
+                A->NT,
 #else
-        Allocate_Matrix( A_spar_patt, A->n, system->local_cap, A->m, A->format );
+                A->n_max,
 #endif
+                A->m, A->format );
     }
+
+    A_spar_patt->n = A->n;
 
     n_local = 0;
     for ( i = 0; i < num_rows; ++i )
@@ -1443,15 +1448,19 @@ real sparse_approx_inverse( reax_system const * const system,
 
     if ( A_app_inv->allocated == FALSE )
     {
-        Allocate_Matrix( A_app_inv, A_spar_patt->n, system->local_cap, A_spar_patt->m,
+        Allocate_Matrix( A_app_inv, A_spar_patt->n, A_spar_patt->n_max, A_spar_patt->m,
                 SYM_FULL_MATRIX );
     }
-    else /* if ( A_app_inv->m < A_spar_patt->m ) */
+    else if ( A_app_inv->m < A_spar_patt->m
+            || A_app_inv->n_max < A_spar_patt->n_max )
     {
         Deallocate_Matrix( A_app_inv );
-        Allocate_Matrix( A_app_inv, A_spar_patt->n, system->local_cap, A_spar_patt->m,
+
+        Allocate_Matrix( A_app_inv, A_spar_patt->n, A_spar_patt->n_max, A_spar_patt->m,
                 SYM_FULL_MATRIX );
     }
+
+    A_app_inv->n = A_spar_patt->n;
 
     X = NULL;
     j_send = NULL;
@@ -1469,13 +1478,20 @@ real sparse_approx_inverse( reax_system const * const system,
     size_e = 0;
     size_dense = 0;
 
-
     row_nnz = smalloc( sizeof(int) * system->total_cap,
            "sparse_approx_inverse::row_nnz" );
     j_list = smalloc( sizeof(int *) * system->N,
            "sparse_approx_inverse::j_list" );
     val_list = smalloc( sizeof(real *) * system->N,
            "sparse_approx_inverse::val_list" );
+    for ( i = 0; i < system->N; ++i )
+    {
+        j_list[i] = NULL;
+    }
+    for ( i = 0; i < system->N; ++i )
+    {
+        val_list[i] = NULL;
+    }
 
     for ( i = 0; i < system->total_cap; ++i )
     {
@@ -1496,7 +1512,7 @@ real sparse_approx_inverse( reax_system const * const system,
     out_bufs = mpi_data->out_buffers;
 
     /* use a Dist-like approach to send the row information */
-    for ( d = 0; d < 3; ++d)
+    for ( d = 0; d < 3; ++d )
     {
         flag1 = 0;
         flag2 = 0;
@@ -1509,13 +1525,13 @@ real sparse_approx_inverse( reax_system const * const system,
             cnt = 0;
 
             /* calculate the total data that will be received */
-            for( i = nbr1->atoms_str; i < (nbr1->atoms_str + nbr1->atoms_cnt); ++i )
+            for ( i = nbr1->atoms_str; i < (nbr1->atoms_str + nbr1->atoms_cnt); ++i )
             {
                 cnt += row_nnz[i];
             }
 
             /* initiate Irecv */
-            if( cnt )
+            if ( cnt > 0 )
             {
                 flag1 = 1;
                 
@@ -1551,13 +1567,13 @@ real sparse_approx_inverse( reax_system const * const system,
         {
             /* calculate the total data that will be received */
             cnt = 0;
-            for( i = nbr2->atoms_str; i < (nbr2->atoms_str + nbr2->atoms_cnt); ++i )
+            for ( i = nbr2->atoms_str; i < (nbr2->atoms_str + nbr2->atoms_cnt); ++i )
             {
                 cnt += row_nnz[i];
             }
 
             /* initiate Irecv */
-            if( cnt )
+            if ( cnt > 0 )
             {
                 flag2 = 1;
 
@@ -1725,7 +1741,7 @@ real sparse_approx_inverse( reax_system const * const system,
             cnt = 0;
             for ( i = nbr1->atoms_str; i < (nbr1->atoms_str + nbr1->atoms_cnt); ++i )
             {
-                j_list[i] = smalloc( sizeof(int) *  row_nnz[i],
+                j_list[i] = smalloc( sizeof(int) * row_nnz[i],
                        "sparse_approx_inverse::j_list[i]" );
                 val_list[i] = smalloc( sizeof(real) * row_nnz[i],
                        "sparse_approx_inverse::val_list[i]" );
@@ -1806,7 +1822,7 @@ real sparse_approx_inverse( reax_system const * const system,
              * search through the row of full A of that index */
 
             /* the case where the local matrix has that index's row */
-            if( j_temp < A->n )
+            if ( j_temp < A->n )
             {
                 for ( k = A->start[ j_temp ]; k < A->end[ j_temp ]; ++k )
                 {
@@ -1931,7 +1947,7 @@ real sparse_approx_inverse( reax_system const * const system,
         /* accumulate the resulting vector to build A_app_inv */
         A_app_inv->start[i] = A_spar_patt->start[i];
         A_app_inv->end[i] = A_spar_patt->end[i];
-        for ( k = A_app_inv->start[i]; k < A_app_inv->end[i]; ++k)
+        for ( k = A_app_inv->start[i]; k < A_app_inv->end[i]; ++k )
         {
             A_app_inv->j[k] = A_spar_patt->j[k];
             A_app_inv->val[k] = e_j[k - A_spar_patt->start[i]];
@@ -1941,13 +1957,22 @@ real sparse_approx_inverse( reax_system const * const system,
     sfree( dense_matrix, "sparse_approx_inverse::dense_matrix" );
     sfree( e_j, "sparse_approx_inverse::e_j" );
     sfree( X, "sparse_approx_inverse::X" );
-    /*for ( i = 0; i < system->N; ++i )
+    for ( i = 0; i < system->N; ++i )
     {
-        sfree( j_list[i], "sparse_approx_inverse::j_list" );
-        sfree( val_list[i], "sparse_approx_inverse::val_list" );
+        if ( j_list[i] != NULL )
+        {
+            sfree( j_list[i], "sparse_approx_inverse::j_list" );
+        }
     }
     sfree( j_list, "sparse_approx_inverse::j_list" );
-    sfree( val_list, "sparse_approx_inverse::val_list" );*/
+    for ( i = 0; i < system->N; ++i )
+    {
+        if ( val_list[i] != NULL )
+        {
+            sfree( val_list[i], "sparse_approx_inverse::val_list" );
+        }
+    }
+    sfree( val_list, "sparse_approx_inverse::val_list" );
     sfree( row_nnz, "sparse_approx_inverse::row_nnz" );
 
     ret = MPI_Reduce( &t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM,
