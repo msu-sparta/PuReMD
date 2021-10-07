@@ -380,6 +380,12 @@ int simulate( const void * const handle )
 
         if ( ret_forces != SUCCESS )
         {
+            Estimate_Storages( spmd_handle->system, spmd_handle->control,
+                   spmd_handle->workspace, spmd_handle->lists,
+                   spmd_handle->workspace->realloc.cm,
+                   spmd_handle->workspace->realloc.bonds
+                   || spmd_handle->workspace->realloc.hbonds );
+
             ret_forces = Compute_Forces( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                     spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control,
                     spmd_handle->realloc );
