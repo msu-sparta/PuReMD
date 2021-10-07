@@ -28,9 +28,6 @@
 void PreAllocate_Space( reax_system * const, control_params  const * const,
         static_storage * const, int );
 
-void Reallocate( reax_system * const, control_params const * const,
-        static_storage * const, reax_list ** const, int );
-
 void Allocate_Matrix( sparse_matrix * const , int, int, int );
 
 void Deallocate_Matrix( sparse_matrix * const  );
@@ -39,6 +36,12 @@ void Initialize_HBond_List( int, int const * const, int * const,
         reax_list * const );
 
 void Initialize_Bond_List( int * const, reax_list * const );
+
+void Reallocate_Part1( reax_system * const, control_params const * const,
+        static_storage * const, reax_list ** const );
+
+void Reallocate_Part2( reax_system const * const, control_params const * const,
+        simulation_data const * const, static_storage * const, reax_list ** const );
 
 
 #endif

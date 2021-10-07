@@ -42,10 +42,10 @@
  * Define the preprocessor definition SMALL_BOX_SUPPORT to enable (in
  * reax_types.h). */
 typedef int (*count_far_neighbors_function)( rvec, rvec, int, int,
-        simulation_box*, real );
+        simulation_box const * const, real );
 
 typedef int (*find_far_neighbors_function)( rvec, rvec, int, int,
-        simulation_box*, real, far_neighbor_data* );
+        simulation_box const * const, real, far_neighbor_data * const, int );
 
 
 static void Choose_Neighbor_Counter( reax_system const * const system,
@@ -132,7 +132,7 @@ static inline real DistSqr_to_CP( rvec cp, rvec x )
 
 
 /* Estimate the storage requirements for the far neighbor list */
-int Estimate_Num_Neighbors( reax_system * const system,
+void Estimate_Num_Neighbors( reax_system const * const system,
         control_params const * const control, static_storage * const workspace,
         reax_list ** const lists )
 {
@@ -143,15 +143,12 @@ int Estimate_Num_Neighbors( reax_system * const system,
     int *nbr_atoms;
     ivec *nbrs;
     rvec *nbrs_cp;
-    grid *g;
+    grid const * const g = &system->g;
     count_far_neighbors_function Count_Far_Neighbors;
 
-    g = &system->g;
     num_far = 0;
 
     Choose_Neighbor_Counter( system, control, &Count_Far_Neighbors );
-
-    Bin_Atoms( system, workspace );
 
     /* for each cell in the grid along the 3
      * Cartesian directions: (i, j, k) => (x, y, z) */
@@ -211,45 +208,33 @@ int Estimate_Num_Neighbors( reax_system * const system,
         }
     }
 
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "[INFO] Estimate_Num_Neighbors: num_far = %d\n",
-            (int) CEIL( num_far * SAFE_ZONE ) );
-#endif
-
-    return (int) CEIL( num_far * SAFE_ZONE );
+    workspace->realloc.total_far_nbrs = (int) CEIL( num_far * SAFE_ZONE );
 }
 
 
 /* Generate the far neighbor list */
-void Generate_Neighbor_Lists( reax_system * const system,
+int Generate_Neighbor_Lists( reax_system * const system,
         control_params const * const control, simulation_data * const data,
         static_storage * const workspace, reax_list ** const lists )
 {
     int i, j, k, l, m, itr;
     int x, y, z;
     int atom1, atom2, max;
-    int num_far, count;
+    int num_far, count, ret;
     int *nbr_atoms;
     ivec *nbrs;
     rvec *nbrs_cp;
-    grid *g;
+    grid const * const g = &system->g;
     reax_list *far_nbrs;
-    far_neighbor_data *nbr_data;
     find_far_neighbors_function Find_Far_Neighbors;
     real t_start, t_elapsed;
 
     t_start = Get_Time( );
-    g = &system->g;
     num_far = 0;
     far_nbrs = lists[FAR_NBRS];
+    ret = SUCCESS;
 
     Choose_Neighbor_Finder( system, control, &Find_Far_Neighbors );
-
-    Bin_Atoms( system, workspace );
-
-#if defined(REORDER_ATOMS)
-    Reorder_Atoms( system, workspace, control );
-#endif
 
     for ( i = 0; i < far_nbrs->n; ++i )
     {
@@ -300,11 +285,11 @@ void Generate_Neighbor_Lists( reax_system * const system,
 
                                 if ( atom1 >= atom2 )
                                 {
-                                    nbr_data = &far_nbrs->far_nbr_list[num_far];
-
                                     count = Find_Far_Neighbors( system->atoms[atom1].x,
                                             system->atoms[atom2].x, atom1, atom2,
-                                            &system->box, control->vlist_cut, nbr_data );
+                                            &system->box, control->vlist_cut,
+                                            &far_nbrs->far_nbr_list[num_far],
+                                            far_nbrs->total_intrs - num_far );
 
                                     num_far += count;
                                 }
@@ -315,11 +300,6 @@ void Generate_Neighbor_Lists( reax_system * const system,
                     }
 
                     Set_End_Index( atom1, num_far, far_nbrs );
-
-#if defined(DEBUG_FOCUS)
-                    fprintf( stderr, "[INFO] Generate_Neighbor_Lists: i = %d, start = %d, end = %d, itr = %d\n",
-                            atom1, Start_Index(atom1,far_nbrs), End_Index(atom1,far_nbrs), itr );
-#endif
                 }
             }
         }
@@ -331,16 +311,9 @@ void Generate_Neighbor_Lists( reax_system * const system,
         ivec_MakeZero( system->atoms[i].rel_map );
     }
 
-    if ( num_far > far_nbrs->total_intrs * DANGER_ZONE )
+    if ( num_far > far_nbrs->total_intrs )
     {
-        workspace->realloc.num_far = num_far;
-
-        if ( num_far > far_nbrs->total_intrs )
-        {
-            fprintf( stderr, "[ERROR] Generate_Neighbor_Lists: step%d-ran out of space on far_nbrs: top=%d, max=%d",
-                     data->step, num_far, far_nbrs->total_intrs );
-            exit( INSUFFICIENT_MEMORY );
-        }
+        ret = FAILURE;
     }
 
 #if defined(DEBUG_FOCUS)
@@ -358,4 +331,6 @@ void Generate_Neighbor_Lists( reax_system * const system,
 
     t_elapsed = Get_Timing_Info( t_start );
     data->timing.nbrs += t_elapsed;
+
+    return ret;
 }

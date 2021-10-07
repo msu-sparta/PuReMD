@@ -718,22 +718,26 @@ void Valence_Angles( reax_system *system, control_params *control,
 
     if ( num_thb_intrs >= thb_intrs->total_intrs * DANGER_ZONE )
     {
-        workspace->realloc.num_3body = num_thb_intrs;
+        workspace->realloc.total_thbodies = (int) CEIL( num_thb_intrs * SAFE_ZONE );
+        workspace->realloc.thbody = TRUE;
+
+        /* retry functionality is not implemented as valence angle list
+         * computation is not an atomic transaction, so use older reallocation strategy for now */
         if ( num_thb_intrs > thb_intrs->total_intrs )
         {
-            fprintf( stderr, "step%d-ran out of space on angle_list: top=%d, max=%d",
+            fprintf( stderr, "[ERROR] step%d-ran out of space on angle_list: top=%d, max=%d",
                      data->step, num_thb_intrs, thb_intrs->total_intrs );
             exit( INSUFFICIENT_MEMORY );
         }
     }
 
 #if defined(TEST_ENERGY)
-    fprintf( stderr, "Number of angle interactions: %d\n", num_thb_intrs );
+    fprintf( stderr, "[INFO] Number of angle interactions: %d\n", num_thb_intrs );
 
-    fprintf( stderr, "Angle Energy: %g\t Penalty Energy: %g\t Coalition Energy: %g\n",
+    fprintf( stderr, "[INFO] Angle Energy: %g\t Penalty Energy: %g\t Coalition Energy: %g\n",
              data->E_Ang, data->E_Pen, data->E_Coa );
 
-    fprintf( stderr, "3body: press (%23.15e %23.15e %23.15e)\n",
+    fprintf( stderr, "[INFO] 3body: press (%23.15e %23.15e %23.15e)\n",
              data->press[0][0], data->press[1][1], data->press[2][2] );
 #endif
 }

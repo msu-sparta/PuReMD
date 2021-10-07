@@ -38,8 +38,8 @@
 #include "vector.h"
 
 
-static void Generate_Initial_Velocities( reax_system *system,
-        control_params *control, real T )
+static void Generate_Initial_Velocities( reax_system * const system,
+        control_params const * const control, real T )
 {
     int i;
     real scale, norm;
@@ -98,8 +98,8 @@ static void Generate_Initial_Velocities( reax_system *system,
 }
 
 
-static void Init_System( reax_system *system, control_params *control,
-        simulation_data *data )
+static void Init_System( reax_system * const system, control_params * const control,
+        simulation_data * const data, static_storage * const workspace, int realloc )
 {
     int i;
     rvec dx;
@@ -155,12 +155,26 @@ static void Init_System( reax_system *system, control_params *control,
     }
 
     Setup_Grid( system );
+
+    Bin_Atoms( system, workspace );
+
+#if defined(REORDER_ATOMS)
+    Reorder_Atoms( system, workspace, control );
+#endif
+
+    if ( realloc == TRUE )
+    {
+        /* list management */
+        system->bonds = smalloc( sizeof(int) * system->N_max, __FILE__, __LINE__ );
+
+        system->hbonds = smalloc( sizeof(int) * system->N_max, __FILE__, __LINE__ );
+    }
 }
 
 
-static void Init_Simulation_Data( reax_system *system, control_params *control,
-        simulation_data *data, output_controls *out_control,
-        evolve_function *Evolve, int realloc )
+static void Init_Simulation_Data( reax_system * const system,
+        control_params * const control, simulation_data * const data,
+        evolve_function * const Evolve, int realloc )
 {
 #if defined(_OPENMP)
     if ( realloc == TRUE && (control->ensemble == sNPT || control->ensemble == iNPT
@@ -278,8 +292,9 @@ static void Init_Simulation_Data( reax_system *system, control_params *control,
 }
 
 
-/* Initialize Taper params */
-static void Init_Taper( control_params *control, static_storage *workspace )
+/* Initialize taper function applied to van der Waals and Coulomb interactions */
+static void Init_Taper( control_params const * const control,
+        static_storage * const workspace )
 {
     real d1, d7;
     real swa, swa2, swa3;
@@ -322,8 +337,9 @@ static void Init_Taper( control_params *control, static_storage *workspace )
 }
 
 
-static void Init_Workspace( reax_system *system, control_params *control,
-        static_storage *workspace, int realloc )
+static void Init_Workspace( reax_system * const system,
+        control_params const * const control, static_storage * const workspace,
+        int realloc )
 {
     int i;
 
@@ -770,71 +786,82 @@ static void Init_Workspace( reax_system *system, control_params *control,
            __FILE__, __LINE__ );
 #endif
 
-    workspace->realloc.num_far = -1;
-    workspace->realloc.Htop = -1;
-    workspace->realloc.hbonds = -1;
-    workspace->realloc.bonds = -1;
-    workspace->realloc.num_3body = -1;
+    workspace->realloc.far_nbrs = FALSE;
+    workspace->realloc.cm = FALSE;
+    workspace->realloc.hbonds = FALSE;
+    workspace->realloc.bonds = FALSE;
+    workspace->realloc.thbody = FALSE;
     workspace->realloc.gcell_atoms = -1;
 
     Reset_Workspace( system, workspace );
 
-    /* Initialize Taper function */
     Init_Taper( control, workspace );
 }
 
 
-static void Init_Lists( reax_system *system, control_params *control,
-        simulation_data *data, static_storage *workspace,
-        reax_list **lists, output_controls *out_control, int realloc )
+static void Init_Lists( reax_system * const system,
+        control_params * const control, simulation_data * const data,
+        static_storage * const workspace, reax_list ** const lists, int realloc )
 {
-    int i, num_nbrs, num_bonds, num_hbonds, num_3body, Htop;
-    int *hb_top, *bond_top;
+    int i, ret;
 
-    num_nbrs = Estimate_Num_Neighbors( system, control, workspace, lists );
+    if ( realloc == TRUE )
+    {
+        Estimate_Num_Neighbors( system, control, workspace, lists );
 
-    if ( lists[FAR_NBRS]->allocated == FALSE )
-    {
-        Make_List( system->N, system->N_max, num_nbrs, TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
-    }
-    else if ( realloc == TRUE || lists[FAR_NBRS]->total_intrs < num_nbrs )
-    {
-        if ( lists[FAR_NBRS]->allocated == TRUE )
+        if ( lists[FAR_NBRS]->allocated == FALSE )
         {
-            Delete_List( TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
+            Make_List( system->N, system->N_max, workspace->realloc.total_far_nbrs,
+                    TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
         }
-        Make_List( system->N, system->N_max, 
-                MAX( num_nbrs, lists[FAR_NBRS]->total_intrs ),
-                TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
+        else if ( realloc == TRUE
+                || lists[FAR_NBRS]->total_intrs < workspace->realloc.total_far_nbrs )
+        {
+            if ( lists[FAR_NBRS]->allocated == TRUE )
+            {
+                Delete_List( TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
+            }
+            Make_List( system->N, system->N_max, 
+                    MAX( workspace->realloc.total_far_nbrs, lists[FAR_NBRS]->total_intrs ),
+                    TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
+        }
     }
-    else
+
+    lists[FAR_NBRS]->n = system->N;
+
+    ret = Generate_Neighbor_Lists( system, control, data, workspace, lists );
+
+    if ( ret != SUCCESS )
     {
-        lists[FAR_NBRS]->n = system->N;
+        Estimate_Num_Neighbors( system, control, workspace, lists );
+
+        Delete_List( TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
+        Make_List( system->N, system->N_max, 
+                MAX( workspace->realloc.total_far_nbrs, lists[FAR_NBRS]->total_intrs ),
+                TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
+
+        Generate_Neighbor_Lists( system, control, data, workspace, lists );
     }
 
-    Generate_Neighbor_Lists( system, control, data, workspace, lists );
-
-    Htop = 0;
-    hb_top = scalloc( system->N, sizeof(int), __FILE__, __LINE__ );
-    bond_top = scalloc( system->N, sizeof(int), __FILE__, __LINE__ );
-    num_3body = 0;
-
-    Estimate_Storage_Sizes( system, control, lists, &Htop,
-            hb_top, bond_top, &num_3body );
-    num_3body = MAX( num_3body, MIN_BONDS );
+    if ( realloc == TRUE )
+    {
+        Estimate_Storages( system, control, workspace, lists, TRUE, TRUE );
+    }
 
     if ( workspace->H.allocated == FALSE )
     {
-        Allocate_Matrix( &workspace->H, system->N_cm, system->N_cm_max, Htop );
+        Allocate_Matrix( &workspace->H, system->N_cm, system->N_cm_max,
+                workspace->realloc.total_cm_entries );
     }
-    else if ( realloc == TRUE || workspace->H.m < Htop
+    else if ( realloc == TRUE || workspace->H.m < workspace->realloc.total_cm_entries
             || workspace->H.n_max < system->N_cm_max )
     {
         if ( workspace->H.allocated == TRUE )
         {
             Deallocate_Matrix( &workspace->H );
         }
-        Allocate_Matrix( &workspace->H, system->N_cm, system->N_cm_max, Htop );
+        Allocate_Matrix( &workspace->H, system->N_cm, system->N_cm_max,
+                workspace->realloc.total_cm_entries );
     }
     else
     {
@@ -844,12 +871,13 @@ static void Init_Lists( reax_system *system, control_params *control,
     if ( workspace->H_sp.allocated == FALSE )
     {
         /* TODO: better estimate for H_sp?
-         *   If so, need to refactor Estimate_Storage_Sizes
+         *   If so, need to refactor Estimate_Storages
          *   to use various cut-off distances as parameters
          *   (non-bonded, hydrogen, 3body, etc.) */
-        Allocate_Matrix( &workspace->H_sp, system->N_cm, system->N_cm_max, Htop );
+        Allocate_Matrix( &workspace->H_sp, system->N_cm, system->N_cm_max,
+                workspace->realloc.total_cm_entries );
     }
-    else if ( realloc == TRUE || workspace->H_sp.m < Htop
+    else if ( realloc == TRUE || workspace->H_sp.m < workspace->realloc.total_cm_entries
             || workspace->H.n_max < system->N_cm_max )
     {
         if ( workspace->H_sp.allocated == TRUE )
@@ -857,10 +885,11 @@ static void Init_Lists( reax_system *system, control_params *control,
             Deallocate_Matrix( &workspace->H_sp );
         }
         /* TODO: better estimate for H_sp?
-         *   If so, need to refactor Estimate_Storage_Sizes
+         *   If so, need to refactor Estimate_Storages
          *   to use various cut-off distances as parameters
          *   (non-bonded, hydrogen, 3body, etc.) */
-        Allocate_Matrix( &workspace->H_sp, system->N_cm, system->N_cm_max, Htop );
+        Allocate_Matrix( &workspace->H_sp, system->N_cm, system->N_cm_max,
+                workspace->realloc.total_cm_entries );
     }
     else
     {
@@ -870,7 +899,6 @@ static void Init_Lists( reax_system *system, control_params *control,
     workspace->num_H = 0;
     if ( control->hbond_cut > 0.0 )
     {
-        /* init hydrogen atom indexes */
         for ( i = 0; i < system->N; ++i )
         {
             if ( system->reax_param.sbp[ system->atoms[i].type ].p_hbond == H_ATOM )
@@ -882,78 +910,60 @@ static void Init_Lists( reax_system *system, control_params *control,
                 workspace->hbond_index[i] = -1;
             }
         }
-
-        if ( workspace->num_H == 0 )
+        for ( i = system->N; i < system->N_max; ++i )
         {
-            control->hbond_cut = 0.0;
-        }
-        else
-        {
-            num_hbonds = 0;
-            for ( i = 0; i < system->N; ++i )
-            {
-                num_hbonds += hb_top[i];
-            }
-
-            if ( lists[HBONDS]->allocated == FALSE )
-            {
-                workspace->num_H_max = (int) CEIL( SAFE_ZONE * workspace->num_H );
-
-                Make_List( workspace->num_H, workspace->num_H_max,
-                        (int) CEIL( SAFE_ZONE * num_hbonds ),
-                        TYP_HBOND, lists[HBONDS] );
-            }
-            else if ( workspace->num_H_max < workspace->num_H
-                    || lists[HBONDS]->total_intrs < num_hbonds )
-            {
-                if ( workspace->num_H_max < workspace->num_H )
-                {
-                    workspace->num_H_max = (int) CEIL( SAFE_ZONE * workspace->num_H );
-                }
-
-                if ( lists[HBONDS]->allocated == TRUE )
-                {
-                    Delete_List( TYP_HBOND, lists[HBONDS] );
-                }
-                Make_List( workspace->num_H, workspace->num_H_max,
-                        MAX( num_hbonds, lists[HBONDS]->total_intrs ),
-                        TYP_HBOND, lists[HBONDS] );
-            }
-            else
-            {
-                lists[HBONDS]->n = workspace->num_H;
-            }
-
-            Initialize_HBond_List( system->N, workspace->hbond_index, hb_top, lists[HBONDS] );
+            workspace->hbond_index[i] = -1;
         }
     }
 
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "estimated storage - num_hbonds: %d\n", num_hbonds );
-    fprintf( stderr, "memory allocated: hbonds = %ldMB\n",
-             num_hbonds * sizeof(hbond_data) / (1024 * 1024) );
-#endif
-
-    num_bonds = 0;
-    for ( i = 0; i < system->N; ++i )
+    if ( control->hbond_cut > 0.0 && workspace->num_H > 0 )
     {
-        num_bonds += bond_top[i];
+        if ( lists[HBONDS]->allocated == FALSE )
+        {
+            workspace->num_H_max = (int) CEIL( SAFE_ZONE * workspace->num_H );
+
+            Make_List( workspace->num_H, workspace->num_H_max,
+                    (int) CEIL( SAFE_ZONE * workspace->realloc.total_hbonds ),
+                    TYP_HBOND, lists[HBONDS] );
+        }
+        else if ( workspace->num_H_max < workspace->num_H
+                || lists[HBONDS]->total_intrs < workspace->realloc.total_hbonds )
+        {
+            if ( workspace->num_H_max < workspace->num_H )
+            {
+                workspace->num_H_max = (int) CEIL( SAFE_ZONE * workspace->num_H );
+            }
+
+            if ( lists[HBONDS]->allocated == TRUE )
+            {
+                Delete_List( TYP_HBOND, lists[HBONDS] );
+            }
+            Make_List( workspace->num_H, workspace->num_H_max,
+                    MAX( workspace->realloc.total_hbonds, lists[HBONDS]->total_intrs ),
+                    TYP_HBOND, lists[HBONDS] );
+        }
+        else
+        {
+            lists[HBONDS]->n = workspace->num_H;
+        }
+
+        Init_List_Indices( lists[HBONDS] );
     }
 
     /* bonds list */
     if ( lists[BONDS]->allocated == FALSE )
     {
-        Make_List( system->N, system->N_max, (int) CEIL( num_bonds * SAFE_ZONE ),
+        Make_List( system->N, system->N_max, (int) CEIL( workspace->realloc.total_bonds * SAFE_ZONE ),
                 TYP_BOND, lists[BONDS] );
     }
-    else if ( realloc == TRUE || lists[BONDS]->total_intrs < num_bonds )
+    else if ( realloc == TRUE || lists[BONDS]->total_intrs < workspace->realloc.total_bonds )
     {
         if ( lists[BONDS]->allocated == TRUE )
         {
             Delete_List( TYP_BOND, lists[BONDS] );
         }
         Make_List( system->N, system->N_max,
-                MAX( num_bonds, lists[BONDS]->total_intrs ),
+                MAX( workspace->realloc.total_bonds, lists[BONDS]->total_intrs ),
                 TYP_BOND, lists[BONDS] );
     }
     else
@@ -961,45 +971,34 @@ static void Init_Lists( reax_system *system, control_params *control,
         lists[BONDS]->n = system->N;
     }
 
-    Initialize_Bond_List( bond_top, lists[BONDS] );
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "estimated storage - num_bonds: %d\n", num_bonds );
-    fprintf( stderr, "memory allocated: bonds = %ldMB\n",
-             num_bonds * sizeof(bond_data) / (1024 * 1024) );
-#endif
+    Init_List_Indices( lists[BONDS] );
 
     /* 3bodies list */
     if ( lists[THREE_BODIES]->allocated == FALSE )
     {
-        Make_List( num_bonds, num_bonds, num_3body, TYP_THREE_BODY, lists[THREE_BODIES] );
+        Make_List( workspace->realloc.total_bonds, (int) CEIL( workspace->realloc.total_bonds * SAFE_ZONE ),
+                workspace->realloc.total_thbodies, TYP_THREE_BODY, lists[THREE_BODIES] );
     }
-    else if ( lists[THREE_BODIES]->n_max < num_bonds
-            || lists[THREE_BODIES]->total_intrs < num_3body )
+    else if ( lists[THREE_BODIES]->n_max < workspace->realloc.total_bonds
+            || lists[THREE_BODIES]->total_intrs < workspace->realloc.total_thbodies )
     {
         if ( lists[THREE_BODIES]->allocated == TRUE )
         {
             Delete_List( TYP_THREE_BODY, lists[THREE_BODIES] );
         }
-        Make_List( MAX( num_bonds, lists[THREE_BODIES]->n_max),
-                MAX( num_bonds, lists[THREE_BODIES]->n_max),
-                MAX( num_3body, lists[THREE_BODIES]->total_intrs ),
+        Make_List( workspace->realloc.total_bonds,
+                MAX( workspace->realloc.total_bonds, lists[THREE_BODIES]->n_max),
+                MAX( workspace->realloc.total_thbodies, lists[THREE_BODIES]->total_intrs ),
                 TYP_THREE_BODY, lists[THREE_BODIES] );
     }
     else
     {
-        lists[THREE_BODIES]->n = num_bonds;
+        lists[THREE_BODIES]->n = workspace->realloc.total_bonds;
     }
-
-#if defined(DEBUG_FOCUS)
-    fprintf( stderr, "estimated storage - num_3body: %d\n", num_3body );
-    fprintf( stderr, "memory allocated: 3-body = %ldMB\n",
-             num_3body * sizeof(three_body_interaction_data) / (1024 * 1024) );
-#endif
 
 #if defined(TEST_FORCES)
     //TODO: increased num. of DDELTA list elements, find a better count later
-    Make_List( system->N, num_bonds * 20, TYP_DDELTA, lists[DDELTA] );
+    Make_List( system->N, workspace->realloc.total_bonds * 20, TYP_DDELTA, lists[DDELTA] );
 
     for ( i = 0; i < lists[DDELTA]->n; ++i )
     {
@@ -1007,7 +1006,8 @@ static void Init_Lists( reax_system *system, control_params *control,
         Set_End_Index( i, 0, lists[DDELTA] );
     }
 
-    Make_List( num_bonds, num_bonds * MAX_BONDS * 3, TYP_DBO, lists[DBO] );
+    Make_List( workspace->realloc.total_bonds, workspace->realloc.total_bonds * MAX_BONDS * 3,
+            TYP_DBO, lists[DBO] );
 
     for ( i = 0; i < lists[DBO]->n; ++i )
     {
@@ -1015,9 +1015,6 @@ static void Init_Lists( reax_system *system, control_params *control,
         Set_End_Index( i, 0, lists[DBO] );
     }
 #endif
-
-    sfree( hb_top, __FILE__, __LINE__ );
-    sfree( bond_top, __FILE__, __LINE__ );
 }
 
 
@@ -1282,10 +1279,10 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
 }
 
 
-void Initialize( reax_system *system, control_params *control,
-        simulation_data *data, static_storage *workspace, reax_list **lists,
-        output_controls *out_control, evolve_function *Evolve,
-        int output_enabled, int realloc )
+void Initialize( reax_system * const system, control_params * const control,
+        simulation_data * const data, static_storage * const workspace,
+        reax_list ** const lists, output_controls * const out_control,
+        evolve_function * const Evolve, int output_enabled, int realloc )
 {
 #if defined(_OPENMP)
     #pragma omp parallel default(none) shared(control)
@@ -1308,13 +1305,13 @@ void Initialize( reax_system *system, control_params *control,
 
     Randomize( );
 
-    Init_System( system, control, data );
+    Init_System( system, control, data, workspace, realloc );
 
-    Init_Simulation_Data( system, control, data, out_control, Evolve, realloc );
+    Init_Simulation_Data( system, control, data, Evolve, realloc );
 
     Init_Workspace( system, control, workspace, realloc );
 
-    Init_Lists( system, control, data, workspace, lists, out_control, realloc );
+    Init_Lists( system, control, data, workspace, lists, realloc );
 
     Init_Out_Controls( system, control, workspace, out_control, output_enabled );
 
@@ -1386,6 +1383,9 @@ static void Finalize_System( reax_system *system, control_params *control,
 
         sfree( system->atoms, __FILE__, __LINE__ );
     }
+
+    sfree( system->bonds, __FILE__, __LINE__ );
+    sfree( system->hbonds, __FILE__, __LINE__ );
 }
 
 

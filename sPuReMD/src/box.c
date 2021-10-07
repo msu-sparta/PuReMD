@@ -243,7 +243,7 @@ void Update_Box_Semi_Isotropic( simulation_box *box, rvec mu )
  *      the simulation box that this atom was re-mapped into
  *      during the position update where (0,0,0) represents no mapping
  *  */
-void Update_Atom_Position_Periodic( rvec x, rvec dx, ivec rel_map, simulation_box *box )
+void Update_Atom_Position_Periodic( rvec x, rvec dx, ivec rel_map, simulation_box  const * const box )
 {
     int i, remapped;
     real tmp;
@@ -302,7 +302,7 @@ void Update_Atom_Position_Periodic( rvec x, rvec dx, ivec rel_map, simulation_bo
  *  x: updated atom position
  *  rel_map: unused
  *  */
-void Update_Atom_Position_Non_Periodic( rvec x, rvec dx, ivec rel_map, simulation_box *box )
+void Update_Atom_Position_Non_Periodic( rvec x, rvec dx, ivec rel_map, simulation_box  const * const box )
 {
     int i;
     real tmp;
@@ -344,8 +344,9 @@ void Update_Atom_Position_Non_Periodic( rvec x, rvec dx, ivec rel_map, simulatio
  * r: displacement vector betweeon the atoms
  * return value: distance
  */
-real Compute_Atom_Distance_Periodic( simulation_box* box, rvec x1, rvec x2,
-        ivec x1_rel_map, ivec x2_rel_map, ivec x2_rel_box, rvec r )
+real Compute_Atom_Distance_Periodic( simulation_box const * const box,
+        rvec x1, rvec x2, ivec x1_rel_map, ivec x2_rel_map, ivec x2_rel_box,
+        rvec r )
 {
     int i;
     real norm;
@@ -385,7 +386,7 @@ real Compute_Atom_Distance_Periodic( simulation_box* box, rvec x1, rvec x2,
  * r: displacement vector betweeon the atoms
  * return value: distance
  */
-real Compute_Atom_Distance_Non_Periodic( simulation_box* box, rvec x1, rvec x2,
+real Compute_Atom_Distance_Non_Periodic( simulation_box const * const box, rvec x1, rvec x2,
         ivec x1_rel_map, ivec x2_rel_map, ivec x2_rel_box, rvec r )
 {
     int i;
@@ -425,7 +426,7 @@ void Compute_Atom_Distance_Triclinic( control_params *control,
 }
 
 
-void Update_Atom_Position_Triclinic( control_params *control, simulation_box *box,
+void Update_Atom_Position_Triclinic( control_params *control, simulation_box * const box,
         rvec x, rvec dx, ivec rel_map )
 {
     rvec xa, dxa;
@@ -468,7 +469,8 @@ real Metric_Product( rvec x1, rvec x2, simulation_box* box )
  * vlist_cut.  If so, this neighborhood is added to the list of far neighbors.
  * Note: Periodic boundary conditions do not apply. */
 int Find_Non_Periodic_Far_Neighbors( rvec x1, rvec x2, int atom, int nbr_atom,
-        simulation_box *box, real vlist_cut, far_neighbor_data *data )
+        simulation_box const * const box, real vlist_cut,
+        far_neighbor_data * const data, int max )
 {
     int count;
     real norm_sqr;
@@ -479,11 +481,14 @@ int Find_Non_Periodic_Far_Neighbors( rvec x1, rvec x2, int atom, int nbr_atom,
 
     if ( norm_sqr <= SQR( vlist_cut ) && norm_sqr >= MIN_NBR_DIST )
     {
-        data->nbr = nbr_atom;
-        ivec_MakeZero( data->rel_box );
-//        rvec_MakeZero( data->ext_factor );
-        data->d = SQRT( norm_sqr );
-        rvec_Copy( data->dvec, dvec );
+        if ( max > 0 )
+        {
+            data->nbr = nbr_atom;
+            ivec_MakeZero( data->rel_box );
+//            rvec_MakeZero( data->ext_factor );
+            data->d = SQRT( norm_sqr );
+            rvec_Copy( data->dvec, dvec );
+        }
         count = 1;
     }
     else
@@ -498,7 +503,7 @@ int Find_Non_Periodic_Far_Neighbors( rvec x1, rvec x2, int atom, int nbr_atom,
 /* Similar to Find_Non_Periodic_Far_Neighbors but does not
  * update the far neighbors list */
 int Count_Non_Periodic_Far_Neighbors( rvec x1, rvec x2, int atom, int nbr_atom,
-        simulation_box *box, real vlist_cut )
+        simulation_box const * const box, real vlist_cut )
 {
     int count;
     real norm_sqr;
@@ -525,7 +530,8 @@ int Count_Non_Periodic_Far_Neighbors( rvec x1, rvec x2, int atom, int nbr_atom,
  * If the periodic distance between x1 and x2 is less than vlist_cut, this
  * neighborhood is added to the list of far neighbors. */
 int Find_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, int atom, int nbr_atom,
-        simulation_box *box, real vlist_cut, far_neighbor_data *data )
+        simulation_box const * const box, real vlist_cut,
+        far_neighbor_data * const data, int max )
 {
     int i, count;
     real norm_sqr, tmp, sqr_vlist_cut;
@@ -568,11 +574,14 @@ int Find_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, int atom, int nbr_ato
 
     if ( norm_sqr <= sqr_vlist_cut && norm_sqr >= MIN_NBR_DIST )
     {
-        data->nbr = nbr_atom;
-        ivec_Copy( data->rel_box, rel_box );
-//        rvec_Copy( data->ext_factor, ext_factor );
-        data->d = SQRT( norm_sqr );
-        rvec_Copy( data->dvec, dvec );
+        if ( max > 0 )
+        {
+            data->nbr = nbr_atom;
+            ivec_Copy( data->rel_box, rel_box );
+//            rvec_Copy( data->ext_factor, ext_factor );
+            data->d = SQRT( norm_sqr );
+            rvec_Copy( data->dvec, dvec );
+        }
         count = 1;
     }
     else
@@ -587,7 +596,7 @@ int Find_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, int atom, int nbr_ato
 /* Similar to Find_Periodic_Far_Neighbors_Big_Box but does not
  * update the far neighbors list */
 int Count_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, int atom, int nbr_atom,
-        simulation_box *box, real vlist_cut )
+        simulation_box const * const box, real vlist_cut )
 {
     int i, count;
     real norm_sqr, d, tmp;
@@ -640,7 +649,8 @@ int Count_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, int atom, int nbr_at
  * might get too small (such as <5 A!). In this case we have to consider the
  * periodic images of x2 that are two boxs away!!! */
 int Find_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int atom, int nbr_atom,
-        simulation_box *box, real vlist_cut, far_neighbor_data *data )
+        simulation_box const * const box, real vlist_cut,
+        far_neighbor_data * const data, int max )
 {
     int i, j, k, count;
     int imax, jmax, kmax;
@@ -676,54 +686,57 @@ int Find_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int atom, int nbr_a
 
                 if ( sqr_norm <= sqr_vlist_cut && sqr_norm >= MIN_NBR_DIST )
                 {
-                    data[count].nbr = nbr_atom;
+                    if ( count < max )
+                    {
+                        data[count].nbr = nbr_atom;
 
-                    data[count].rel_box[0] = i;
-                    data[count].rel_box[1] = j;
-                    data[count].rel_box[2] = k;
+                        data[count].rel_box[0] = i;
+                        data[count].rel_box[1] = j;
+                        data[count].rel_box[2] = k;
 
-//                    if ( i )
-//                    {
-//                        data[count].ext_factor[0] = (real)i / -ABS(i);
-//                    }
-//                    else
-//                    {
-//                        data[count].ext_factor[0] = 0;
-//                    }
-//
-//                    if ( j )
-//                    {
-//                        data[count].ext_factor[1] = (real)j / -ABS(j);
-//                    }
-//                    else
-//                    {
-//                        data[count].ext_factor[1] = 0;
-//                    }
-//
-//                    if ( k )
-//                    {
-//                        data[count].ext_factor[2] = (real)k / -ABS(k);
-//                    }
-//                    else
-//                    {
-//                        data[count].ext_factor[2] = 0;
-//                    }
-//
-//                    if ( i == 0 && j == 0 && k == 0 )
-//                    {
-//                        data[count].imaginary = 0;
-//                    }
-//                    else
-//                    {
-//                        data[count].imaginary = 1;
-//                    }
+//                        if ( i )
+//                        {
+//                            data[count].ext_factor[0] = (real)i / -ABS(i);
+//                        }
+//                        else
+//                        {
+//                            data[count].ext_factor[0] = 0;
+//                        }
+//    
+//                        if ( j )
+//                        {
+//                            data[count].ext_factor[1] = (real)j / -ABS(j);
+//                        }
+//                        else
+//                        {
+//                            data[count].ext_factor[1] = 0;
+//                        }
+//    
+//                        if ( k )
+//                        {
+//                            data[count].ext_factor[2] = (real)k / -ABS(k);
+//                        }
+//                        else
+//                        {
+//                            data[count].ext_factor[2] = 0;
+//                        }
+//    
+//                        if ( i == 0 && j == 0 && k == 0 )
+//                        {
+//                            data[count].imaginary = 0;
+//                        }
+//                        else
+//                        {
+//                            data[count].imaginary = 1;
+//                        }
 
-                    data[count].d = SQRT( sqr_norm );
-                    assert( data[count].d > 0.0 );
+                        data[count].d = SQRT( sqr_norm );
+                        assert( data[count].d > 0.0 );
 
-                    data[count].dvec[0] = d_i;
-                    data[count].dvec[1] = d_j;
-                    data[count].dvec[2] = d_k;
+                        data[count].dvec[0] = d_i;
+                        data[count].dvec[1] = d_j;
+                        data[count].dvec[2] = d_k;
+                    }
 
                     ++count;
                 }
@@ -738,7 +751,7 @@ int Find_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int atom, int nbr_a
 /* Similar to Find_Periodic_Far_Neighbors_Small_Box but does not
  * update the far neighbors list */
 int Count_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int atom, int nbr_atom,
-        simulation_box *box, real vlist_cut )
+        simulation_box const * const box, real vlist_cut )
 {
     int i, j, k, count;
     int imax, jmax, kmax;

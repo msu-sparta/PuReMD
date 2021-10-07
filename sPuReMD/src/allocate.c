@@ -21,6 +21,7 @@
 
 #include "allocate.h"
 
+#include "grid.h"
 #include "list.h"
 #include "tool_box.h"
 
@@ -97,7 +98,8 @@ void PreAllocate_Space( reax_system * const system,
 }
 
 
-static void Reallocate_Neighbor_List( reax_list *far_nbr_list, int n, int n_max, int num_intrs )
+static void Reallocate_Neighbor_List( reax_list * const far_nbr_list, int n,
+        int n_max, int num_intrs )
 {
     if ( far_nbr_list->allocated == TRUE )
     {
@@ -146,7 +148,6 @@ void Deallocate_Matrix( sparse_matrix * const H )
 static void Reallocate_Matrix( sparse_matrix *H, int n, int n_max, int m )
 {
     Deallocate_Matrix( H );
-
     Allocate_Matrix( H, n, n_max, m );
 }
 
@@ -178,157 +179,26 @@ void Initialize_HBond_List( int n, int const * const h_index,
 }
 
 
-static void Reallocate_Initialize_HBond_List( int n, int num_h, int num_h_max,
-        int *h_index, reax_list *hbond_list )
+static void Reallocate_List( reax_list * const list, int n, int n_max,
+        int max_intrs, int type )
 {
-    int i, num_hbonds, *hb_top;
-
-    hb_top = scalloc( n, sizeof(int), __FILE__, __LINE__ );
-    num_hbonds = 0;
-
-    for ( i = 0; i < n; ++i )
+    if ( list->allocated == TRUE )
     {
-        if ( h_index[i] >= 0 )
-        {
-            hb_top[i] = MAX( Num_Entries( h_index[i], hbond_list ) * SAFE_HBONDS,
-                    MIN_HBONDS );
-            num_hbonds += hb_top[i];
-        }
+        Delete_List( type, list );
     }
-
-    if ( hbond_list->allocated == TRUE )
-    {
-        Delete_List( TYP_HBOND, hbond_list );
-    }
-    Make_List( num_h, num_h_max, num_hbonds, TYP_HBOND, hbond_list );
-
-    Initialize_HBond_List( n, h_index, hb_top, hbond_list );
-
-    sfree( hb_top, __FILE__, __LINE__ );
+    Make_List( n, n_max, max_intrs, type, list );
 }
 
 
-void Initialize_Bond_List( int * const bond_top,
-        reax_list * const bond_list )
-{
-    int i;
-
-    /* find starting indexes for each atom and the total number of bonds */
-    for ( i = 1; i < bond_list->n; ++i )
-    {
-        bond_top[i] += bond_top[i - 1];
-    }
-
-    Set_Start_Index( 0, 0, bond_list );
-    Set_End_Index( 0, 0, bond_list );
-    for ( i = 1; i < bond_list->n; ++i )
-    {
-        Set_Start_Index( i, bond_top[i - 1], bond_list );
-        Set_End_Index( i, bond_top[i - 1], bond_list );
-    }
-}
-
-
-static void Reallocate_Initialize_Bond_List( int n, int n_max,
-        reax_list *bond_list, int *num_bonds, int *est_3body )
-{
-    int i;
-    int *bond_top;
-
-    bond_top = scalloc( n, sizeof(int), __FILE__, __LINE__ );
-    *num_bonds = 0;
-    *est_3body = 0;
-
-    for ( i = 0; i < n; ++i )
-    {
-        *est_3body += SQR( Num_Entries( i, bond_list ) );
-        bond_top[i] = MAX( Num_Entries( i, bond_list ) * 2, MIN_BONDS );
-        *num_bonds += bond_top[i];
-    }
-
-    if ( bond_list->allocated == TRUE )
-    {
-        Delete_List( TYP_BOND, bond_list );
-    }
-    Make_List( n, n_max, (int) CEIL( *num_bonds * SAFE_ZONE ),
-            TYP_BOND, bond_list );
-
-    Initialize_Bond_List( bond_top, bond_list );
-
-    sfree( bond_top, __FILE__, __LINE__ );
-}
-
-
-void Reallocate( reax_system * const system, control_params const * const control,
-        static_storage * const workspace, reax_list ** const lists,
-        int nbr_flag )
+void Reallocate_Part1( reax_system * const system, control_params const * const control,
+        static_storage * const workspace, reax_list ** const lists )
 {
     int i, j, k;
-    int num_bonds, est_3body;
     reallocate_data *realloc;
     grid *g;
 
     realloc = &workspace->realloc;
     g = &system->g;
-
-    if ( realloc->num_far > 0 && nbr_flag == TRUE )
-    {
-        Reallocate_Neighbor_List( lists[FAR_NBRS],
-                system->N, system->N_max, realloc->num_far * SAFE_ZONE );
-        realloc->num_far = -1;
-    }
-
-    if ( realloc->Htop > 0 )
-    {
-        Reallocate_Matrix( &workspace->H, system->N_cm, system->N_cm_max,
-                realloc->Htop * SAFE_ZONE );
-        realloc->Htop = -1;
-
-        Deallocate_Matrix( &workspace->L );
-        Deallocate_Matrix( &workspace->U );
-    }
-
-    if ( control->hbond_cut > 0.0 && realloc->hbonds > 0 )
-    {
-        Reallocate_Initialize_HBond_List( system->N, workspace->num_H,
-                workspace->num_H_max, workspace->hbond_index, lists[HBONDS] );
-        realloc->hbonds = -1;
-    }
-
-    num_bonds = est_3body = -1;
-    if ( realloc->bonds > 0 )
-    {
-        Reallocate_Initialize_Bond_List( system->N, system->N_max, lists[BONDS], &num_bonds, &est_3body );
-        realloc->bonds = -1;
-        realloc->num_3body = MAX( realloc->num_3body, est_3body );
-    }
-
-    if ( realloc->num_3body > 0 )
-    {
-        if ( lists[THREE_BODIES]->allocated == TRUE )
-        {
-            Delete_List( TYP_THREE_BODY, lists[THREE_BODIES] );
-        }
-
-        if ( num_bonds == -1 )
-        {
-            num_bonds = lists[BONDS]->total_intrs;
-        }
-        realloc->num_3body *= SAFE_ZONE;
-
-        Make_List( num_bonds, num_bonds, realloc->num_3body,
-                TYP_THREE_BODY, lists[THREE_BODIES] );
-        realloc->num_3body = -1;
-
-#if defined(DEBUG_FOCUS)
-        fprintf( stderr, "[INFO] reallocating 3 bodies\n" );
-        fprintf( stderr, "[INFO] reallocated - num_bonds: %d\n", num_bonds );
-        fprintf( stderr, "[INFO] reallocated - num_3body: %d\n", realloc->num_3body );
-        fprintf( stderr, "[INFO] reallocated 3body memory: %ldMB\n",
-                 realloc->num_3body * sizeof(three_body_interaction_data) /
-                 (1024 * 1024) );
-#endif
-    }
 
     if ( realloc->gcell_atoms > -1 )
     {
@@ -343,12 +213,70 @@ void Reallocate( reax_system * const system, control_params const * const contro
                 for ( k = 0; k < g->ncell_max[2]; k++ )
                 {
                     sfree( g->atoms[i][j][k], __FILE__, __LINE__ );
-                    g->atoms[i][j][k] = scalloc( workspace->realloc.gcell_atoms, sizeof(int),
-                                __FILE__, __LINE__ );
+                    g->atoms[i][j][k] = scalloc( workspace->realloc.gcell_atoms,
+                            sizeof(int), __FILE__, __LINE__ );
                 }
             }
         }
 
         realloc->gcell_atoms = -1;
+    }
+}
+
+
+void Reallocate_Part2( reax_system const * const system,
+        control_params const * const control, simulation_data const * const data,
+        static_storage * const workspace, reax_list ** const lists )
+{
+    int renbr;
+    reallocate_data *realloc;
+
+    realloc = &workspace->realloc;
+    renbr = ((data->step - data->prev_steps) % control->reneighbor) == 0 ? TRUE : FALSE;
+
+    if ( renbr == TRUE && realloc->far_nbrs == TRUE )
+    {
+        Reallocate_Neighbor_List( lists[FAR_NBRS],
+                system->N, system->N_max, realloc->total_far_nbrs );
+        Init_List_Indices( lists[FAR_NBRS] );
+
+        realloc->far_nbrs = FALSE;
+    }
+
+    if ( realloc->cm == TRUE )
+    {
+        Reallocate_Matrix( &workspace->H, system->N_cm, system->N_cm_max,
+                realloc->total_cm_entries );
+
+        realloc->cm = FALSE;
+    }
+
+    if ( realloc->bonds == TRUE )
+    {
+        Reallocate_List( lists[BONDS], system->N, system->N_max,
+                realloc->total_bonds, TYP_BOND );
+        Init_List_Indices( lists[BONDS] );
+
+        realloc->bonds = FALSE;
+        realloc->thbody = TRUE;
+    }
+
+    if ( control->hbond_cut > 0.0 && workspace->num_H > 0 && realloc->hbonds == TRUE )
+    {
+        Reallocate_List( lists[HBONDS], workspace->num_H, workspace->num_H_max,
+                realloc->total_hbonds, TYP_HBOND );
+        Init_List_Indices( lists[HBONDS] );
+
+        realloc->hbonds = FALSE;
+    }
+
+    if ( realloc->thbody == TRUE )
+    {
+        Reallocate_List( lists[THREE_BODIES], realloc->total_bonds,
+                (int) CEIL( realloc->total_bonds * SAFE_ZONE ),
+                realloc->total_thbodies, TYP_THREE_BODY );
+        Init_List_Indices( lists[THREE_BODIES] );
+
+        realloc->thbody = FALSE;
     }
 }

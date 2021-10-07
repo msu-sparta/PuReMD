@@ -353,7 +353,7 @@ int setup_callback( const void * const handle, const callback_function callback 
  */
 int simulate( const void * const handle )
 {
-    int steps, ret;
+    int steps, ret, ret_forces, retries;
     evolve_function Evolve;
     spuremd_handle *spmd_handle;
 
@@ -374,9 +374,22 @@ int simulate( const void * const handle )
         Reset( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                 spmd_handle->workspace, spmd_handle->lists );
 
-        Compute_Forces( spmd_handle->system, spmd_handle->control, spmd_handle->data,
+        ret_forces = Compute_Forces( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                 spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control,
                 spmd_handle->realloc );
+
+        if ( ret_forces != SUCCESS )
+        {
+            ret_forces = Compute_Forces( spmd_handle->system, spmd_handle->control, spmd_handle->data,
+                    spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control,
+                    spmd_handle->realloc );
+
+            if ( ret_forces != SUCCESS )
+            {
+                fprintf( stderr, "[ERROR] Unrecoverable memory allocation issue (Compute_Forces). Terminating...\n" );
+                exit( INVALID_GEO );
+            }
+        }
 
         Compute_Kinetic_Energy( spmd_handle->system, spmd_handle->data );
 
@@ -414,54 +427,76 @@ int simulate( const void * const handle )
         }
         //}
 
-        for ( ++spmd_handle->data->step; spmd_handle->data->step <= spmd_handle->control->nsteps; spmd_handle->data->step++ )
+        ++spmd_handle->data->step;
+        retries = 0;
+        while ( spmd_handle->data->step <= spmd_handle->control->nsteps
+                && retries < MAX_RETRIES )
         {
+            ret = SUCCESS;
+
             if ( spmd_handle->control->T_mode != 0 )
             {
                 Temperature_Control( spmd_handle->control, spmd_handle->data,
                         spmd_handle->out_control );
             }
 
-            Evolve( spmd_handle->system, spmd_handle->control, spmd_handle->data,
+            ret = Evolve( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                     spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control );
 
-            Post_Evolve( spmd_handle->system, spmd_handle->control, spmd_handle->data,
-                    spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control );
-
-            if ( spmd_handle->output_enabled == TRUE )
+            if ( ret == SUCCESS )
             {
-                Output_Results( spmd_handle->system, spmd_handle->control, spmd_handle->data,
+                Post_Evolve( spmd_handle->system, spmd_handle->control, spmd_handle->data,
                         spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control );
             }
 
-            Check_Energy( spmd_handle->data );
-
-            if ( spmd_handle->output_enabled == TRUE )
+            if ( ret == SUCCESS )
             {
-                steps = spmd_handle->data->step - spmd_handle->data->prev_steps;
-
-                Analysis( spmd_handle->system, spmd_handle->control, spmd_handle->data,
-                        spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control );
-
-                if ( spmd_handle->out_control->restart_freq > 0
-                        && steps % spmd_handle->out_control->restart_freq == 0 )
+                if ( spmd_handle->output_enabled == TRUE )
                 {
-                    Write_Restart( spmd_handle->system, spmd_handle->control, spmd_handle->data,
-                            spmd_handle->workspace, spmd_handle->out_control );
+                    Output_Results( spmd_handle->system, spmd_handle->control, spmd_handle->data,
+                            spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control );
                 }
 
-                if ( spmd_handle->out_control->write_steps > 0
-                        && steps % spmd_handle->out_control->write_steps == 0 )
+                Check_Energy( spmd_handle->data );
+
+                if ( spmd_handle->output_enabled == TRUE )
                 {
-                    Write_PDB( spmd_handle->system, spmd_handle->lists[BONDS], spmd_handle->data,
-                            spmd_handle->control, spmd_handle->workspace, spmd_handle->out_control );
+                    steps = spmd_handle->data->step - spmd_handle->data->prev_steps;
+
+                    Analysis( spmd_handle->system, spmd_handle->control, spmd_handle->data,
+                            spmd_handle->workspace, spmd_handle->lists, spmd_handle->out_control );
+
+                    if ( spmd_handle->out_control->restart_freq > 0
+                            && steps % spmd_handle->out_control->restart_freq == 0 )
+                    {
+                        Write_Restart( spmd_handle->system, spmd_handle->control, spmd_handle->data,
+                                spmd_handle->workspace, spmd_handle->out_control );
+                    }
+
+                    if ( spmd_handle->out_control->write_steps > 0
+                            && steps % spmd_handle->out_control->write_steps == 0 )
+                    {
+                        Write_PDB( spmd_handle->system, spmd_handle->lists[BONDS], spmd_handle->data,
+                                spmd_handle->control, spmd_handle->workspace, spmd_handle->out_control );
+                    }
                 }
+
+                if ( spmd_handle->callback != NULL )
+                {
+                    spmd_handle->callback( spmd_handle->system->N, spmd_handle->system->atoms,
+                            spmd_handle->data );
+                }
+
+                ++spmd_handle->data->step;
+                retries = 0;
             }
-
-            if ( spmd_handle->callback != NULL )
+            else
             {
-                spmd_handle->callback( spmd_handle->system->N, spmd_handle->system->atoms,
-                        spmd_handle->data );
+                ++retries;
+
+#if defined(DEBUG_FOCUS)
+                fprintf( stderr, "[INFO] p%d: retrying step %d...\n", system->my_rank, data->step );
+#endif
             }
         }
 

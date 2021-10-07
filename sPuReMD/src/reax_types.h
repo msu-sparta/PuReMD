@@ -70,12 +70,12 @@
 #if defined(USE_REF_FORTRAN_REAXFF_CONSTANTS)
   /* transcendental constant pi */
   #define PI (3.14159265)
-  /* unit conversion from ??? to kcal / mol */
+  /* unit conversion, ??? to kcal / mol */
   #define C_ELE (332.0638)
-  /* Boltzmann constant, AMU * A^2 / (ps^2 * K) */
+  /* Boltzmann constant, in J / mol / K */
 //  #define K_B (0.831687)
   #define K_B (0.8314510)
-  /* unit conversion for atomic force to AMU * A / ps^2 */
+  /* unit conversion for atomic force, kcal to J */
   #define F_CONV (4.184e2)
   /* energy conversion constant from electron volts to kilo-calories per mole */
   #define KCALpMOL_to_EV (23.02)
@@ -110,13 +110,13 @@
 #if !defined(K_B)
   /* in ??? */
 //  #define K_B (503.398008)
-  /* Boltzmann constant, AMU * A^2 / (ps^2 * K) */
+  /* in J / mol / K */
 //  #define K_B (0.831687)
   #define K_B (0.8314510)
 #endif
 /* unit conversion for atomic force */
 #if !defined(F_CONV)
-  /* to AMU * A / ps^2 */
+  /* ??? to AMU * A / ps^2 */
   #define F_CONV (1.0e6 / 48.88821291 / 48.88821291)
 #endif
 /* unit conversion for atomic energy */
@@ -195,6 +195,10 @@
 #define MAX_dT (2.0)
 /* min. temperature scaler for atomic positions and velocities in NPT ensembles */
 #define MIN_dT (0.0)
+
+/* max. num. of main simulation loop retries;
+ * retries occur when memory allocation checks determine more memory is needed */
+#define MAX_RETRIES (5)
 
 #define ALMOST_ZERO (1.0e-10)
 #define NEG_INF (-1.0e10)
@@ -433,31 +437,32 @@ typedef struct spuremd_handle spuremd_handle;
 
 
 /* function pointer for calculating a bonded interaction */
-typedef void (*interaction_function)( reax_system*, control_params*,
-        simulation_data*, static_storage*, reax_list**, output_controls* );
+typedef void (*interaction_function)( reax_system *, control_params *,
+        simulation_data *, static_storage *, reax_list **, output_controls * );
 /* function pointer for calculating pairwise atom distance */
-typedef real (*atom_distance_function)( simulation_box*,
+typedef real (*atom_distance_function)( simulation_box const * const,
         rvec, rvec, ivec, ivec, ivec, rvec );
 /* function pointer for updating atom positions */
-typedef void (*update_atom_position_function)( rvec, rvec, ivec, simulation_box* );
+typedef void (*update_atom_position_function)( rvec, rvec, ivec, simulation_box const * const );
 #if defined(TEST_FORCES)
 /* function pointers for printed bonded interactions */
-typedef void (*print_interaction)(reax_system*, control_params*, simulation_data*,
-        static_storage*, reax_list**, output_controls* );
+typedef void (*print_interaction)( reax_system *, control_params *, simulation_data *,
+        static_storage *, reax_list **, output_controls * );
 #endif
 /* function pointer for evolving the atomic system (i.e., updating the positions)
  * given the pre-computed forces from the prescribed interactions */
-typedef void (*evolve_function)( reax_system*, control_params*,
-        simulation_data*, static_storage*, reax_list**, output_controls* );
+typedef int (*evolve_function)( reax_system * const, control_params * const,
+        simulation_data * const, static_storage * const, reax_list ** const,
+        output_controls * const );
 /* function pointer for a callback function to be triggered after
  * completion of a simulation step -- useful for, e.g., the Python wrapper */
-typedef void (*callback_function)( int, reax_atom*, simulation_data* );
+typedef void (*callback_function)( int, reax_atom *, simulation_data * );
 /* function pointer for writing trajectory file header */
-typedef int (*write_header_function)( reax_system*, control_params*,
-        static_storage*, output_controls* );
+typedef int (*write_header_function)( reax_system *, control_params *,
+        static_storage *, output_controls * );
 /* function pointer for apending a frame to the trajectory file */
-typedef int (*append_traj_frame_function)( reax_system*, control_params*,
-        simulation_data*, static_storage*, reax_list **, output_controls* );
+typedef int (*append_traj_frame_function)( reax_system *, control_params *,
+        simulation_data *, static_storage *, reax_list **, output_controls * );
 /* function pointer for writing to the trajectory file */
 typedef int (*write_function)( FILE *, const char *, ... );
 
@@ -891,14 +896,21 @@ struct reax_system
     unsigned int num_molec_charge_constraints;
     /* max. num. of charge constraints on groups of atoms (i.e., molecules) */
     unsigned int max_num_molec_charge_constraints;
-    /* atom info */
-    reax_atom *atoms;
     /* atomic interaction parameters */
     reax_interaction reax_param;
-    /* simulation space (a.k.a. box) parameters */
+    /* grid specifying domain (i.e., spatial) decompisition
+     * of atoms within simulation box */
     simulation_box box;
     /* grid structure used for binning atoms and tracking neighboring bins */
     grid g;
+    /* collection of atomic info. */
+    reax_atom *atoms;
+    /* num. bonds per atom */
+    int *bonds;
+    /* num. hydrogen bonds per atom */
+    int *hbonds;
+    /* num. matrix entries per row */
+    int *cm_entries;
 };
 
 
@@ -1439,15 +1451,35 @@ struct sparse_matrix
 };
 
 
+/* used to determine if and how much space should be reallocated */
 struct reallocate_data
 {
-    int num_far;
-    int Htop;
+    /* TRUE if far neighbor list needs
+     * to be reallocated, FALSE otherwise */
+    int far_nbrs;
+    /* total num. of (max) far neighbors across all atoms */
+    int total_far_nbrs;
+    /* TRUE if charge matrix needs
+     * to be reallocated, FALSE otherwise */
+    int cm;
+    /* total num. matrix entries (sum over max) */
+    int total_cm_entries;
+    /* TRUE if hbond list needs
+     * to be reallocated, FALSE otherwise */
     int hbonds;
-    int num_hbonds;
+    /* total num. hydrogen bonds (sum over max) */
+    int total_hbonds;
+    /* TRUE if bond list needs
+     * to be reallocated, FALSE otherwise */
     int bonds;
-    int num_bonds;
-    int num_3body;
+    /* total num. bonds (sum over max) */
+    int total_bonds;
+    /* TRUE if three body list needs
+     * to be reallocated, FALSE otherwise */
+    int thbody;
+    /* total num. three body interactions */
+    int total_thbodies;
+    /**/
     int gcell_atoms;
 };
 
@@ -1664,23 +1696,21 @@ struct static_storage
 };
 
 
-/* interaction lists */
+/* 1-D flattened list of lists used for various interaction types */
 struct reax_list
 {
-    /* 0 if struct members are NOT allocated, 1 otherwise */
+    /* FALSE if struct members are NOT allocated, TRUE otherwise */
     int allocated;
-    /* num. active entries in list for this simulation */
+    /* num. active entries (i.e., nested lists) in the list for this simulation */
     int n;
-    /* max. num. entries in list across all simulations */
+    /* max. num. entries (i.e., nested lists) in the list across all simulations */
     int n_max;
     /* total interactions across all entries which can be stored in the list */
     int total_intrs;
-    /* starting position of atom's interactions */
+    /* starting position of interactions for an inner list */
     int *index;
-    /* ending position of atom's interactions */
+    /* ending position of interactions for an inner list */
     int *end_index;
-    /* max. num. of interactions per list entry */
-    int *max_intrs;
     /* interaction list (polymorphic via union dereference) */
 //    union
 //    {

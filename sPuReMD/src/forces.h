@@ -25,13 +25,14 @@
 #include "reax_types.h"
 
 
-void Init_Bonded_Force_Functions( control_params* );
+void Init_Bonded_Force_Functions( control_params * const );
 
-void Compute_Forces( reax_system *, control_params *, simulation_data *,
-        static_storage *, reax_list **, output_controls *, int );
+void Estimate_Storages( reax_system const * const, control_params const * const,
+        static_storage * const, reax_list ** const, int, int );
 
-void Estimate_Storage_Sizes( reax_system *, control_params *, reax_list **,
-        int *, int *, int *, int * );
+int Compute_Forces( reax_system * const, control_params * const,
+        simulation_data * const, static_storage * const, reax_list ** const,
+        output_controls * const, int );
 
 
 #endif

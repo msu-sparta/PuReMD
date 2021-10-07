@@ -24,7 +24,8 @@
 #include "tool_box.h"
 
 
-void Make_List( int n, int n_max, int total_intrs, int type, reax_list* l )
+/* Allocates a new instance of reax_list with internal lists of specified type */
+void Make_List( int n, int n_max, int total_intrs, int type, reax_list * const l )
 {
     assert( n > 0 );
     assert( n_max > 0 );
@@ -141,7 +142,8 @@ void Make_List( int n, int n_max, int total_intrs, int type, reax_list* l )
 }
 
 
-void Delete_List( int type, reax_list* l )
+/* Deallocates any space allocated for a reax_list instance */
+void Delete_List( int type, reax_list * const l )
 {
     assert( l != NULL );
 
@@ -215,5 +217,24 @@ void Delete_List( int type, reax_list* l )
         fprintf( stderr, "[ERROR] unknown list type. Terminating...\n" );
         exit( INVALID_INPUT );
         break;
+    }
+}
+
+
+/* Initialize list indices
+ *
+ * l: pointer to list
+ * */
+void Init_List_Indices( reax_list * const l )
+{
+    int i;
+
+    assert( l != NULL );
+    assert( l->n > 0 );
+
+    for ( i = 0; i < l->n; ++i )
+    {
+        Set_Start_Index( i, 0, l );
+        Set_End_Index( i, 0, l );
     }
 }

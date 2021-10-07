@@ -59,7 +59,8 @@ void Temperature_Control( control_params *control, simulation_data *data,
 }
 
 
-void Compute_Total_Mass( reax_system *system, simulation_data *data )
+void Compute_Total_Mass( reax_system const * const system,
+        simulation_data * const data )
 {
     int i;
 
@@ -74,7 +75,8 @@ void Compute_Total_Mass( reax_system *system, simulation_data *data )
 }
 
 
-void Compute_Center_of_Mass( reax_system *system, simulation_data *data )
+void Compute_Center_of_Mass( reax_system const * const system,
+        simulation_data * const data )
 {
     int i;
     real m, xx, xy, xz, yy, yz, zz, det;
@@ -181,7 +183,8 @@ void Compute_Center_of_Mass( reax_system *system, simulation_data *data )
 }
 
 
-void Compute_Kinetic_Energy( reax_system* system, simulation_data* data )
+void Compute_Kinetic_Energy( reax_system const * const  system,
+        simulation_data * const data )
 {
     int i;
     real m;

@@ -25,11 +25,28 @@
 #include "reax_types.h"
 
 
-void Make_List( int, int, int, int, reax_list* );
+/* Allocates a new instance of reax_list with internal lists of specified type */
+void Make_List( int, int, int, int, reax_list * const );
 
-void Delete_List( int, reax_list* );
+/* Deallocates any space allocated for a reax_list instance */
+void Delete_List( int, reax_list * const );
+
+void Init_List_Indices( reax_list * const );
 
 
+/* Return the size for the i-th internal list
+ *
+ * Inputs:
+ *  l: list of lists (reax_list)
+ *  i: list to return size for
+ *
+ * Returns:
+ *  size of i-th internal list
+ *
+ * Unchecked runtime exceptions:
+ *  l is not a NULL pointer
+ *  i is a valid internal list index
+ * */
 static inline int Num_Entries( int i, reax_list const * const l )
 {
     assert( l != NULL );

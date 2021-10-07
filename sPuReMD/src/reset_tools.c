@@ -200,7 +200,7 @@ void Reset_Neighbor_Lists( reax_system *system, control_params *control,
         Set_End_Index( i, tmp, bonds );
     }
 
-    if ( control->hbond_cut > 0.0 )
+    if ( control->hbond_cut > 0.0 && workspace->num_H > 0 )
     {
         for ( i = 0; i < system->N; ++i )
         {
@@ -266,7 +266,6 @@ void Reset_Grid( grid *g )
         }
     }
 }
-
 
 
 void Reset_Marks( grid *g, ivec *grid_stack, int grid_top )
