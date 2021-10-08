@@ -95,8 +95,8 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                 type_j = system->atoms[j].type;
                 start_j = Start_Index( j, bonds );
                 end_j = End_Index( j, bonds );
-                hb_start_j = Start_Index( workspace->hbond_index[j], hbonds );
-                hb_end_j = End_Index( workspace->hbond_index[j], hbonds );
+                hb_start_j = Start_Index( j, hbonds );
+                hb_end_j = End_Index( j, hbonds );
 #if defined(_OPENMP)
                 f_j = &workspace->f_local[tid * system->N + j];
 #else

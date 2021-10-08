@@ -1641,10 +1641,6 @@ struct static_storage
 
     /* num. hydrogen atoms for this simulation */
     int num_H;
-    /* max. num. hydrogen atoms across all simulations */
-    int num_H_max;
-    /* for hydrogen bonds */
-    int *hbond_index;
 
     rvec *a; // used in integrators
     rvec *f_old;

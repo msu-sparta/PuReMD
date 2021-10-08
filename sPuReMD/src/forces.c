@@ -1021,7 +1021,7 @@ static void Init_Bond_Full( reax_system const * const system,
 
             if ( ihb == H_ATOM )
             {
-                ihb_top = End_Index( workspace->hbond_index[i], hbonds );
+                ihb_top = End_Index( i, hbonds );
             }
             else
             {
@@ -1082,11 +1082,11 @@ static void Init_Bond_Full( reax_system const * const system,
                         {
                             if ( num_hbonds < hbonds->total_intrs )
                             {
-                                jhb_top = End_Index( workspace->hbond_index[j], hbonds );
+                                jhb_top = End_Index( j, hbonds );
                                 hbonds->hbond_list[jhb_top].nbr = i;
                                 hbonds->hbond_list[jhb_top].scl = -1;
                                 hbonds->hbond_list[jhb_top].ptr = nbr_pj;
-                                Set_End_Index( workspace->hbond_index[j], jhb_top + 1, hbonds );
+                                Set_End_Index( j, jhb_top + 1, hbonds );
                             }
                             ++num_hbonds;
                         }
@@ -1224,19 +1224,31 @@ static void Init_Bond_Full( reax_system const * const system,
         Set_End_Index( i, btop_i, bonds );
         if ( ihb == H_ATOM )
         {
-            Set_End_Index( workspace->hbond_index[i], ihb_top, hbonds );
+            Set_End_Index( i, ihb_top, hbonds );
         }
     }
 
-    if ( num_bonds > bonds->total_intrs )
+    for ( i = 0; i < bonds->n; ++i )
     {
-        workspace->realloc.bonds = TRUE;
+        if ( Num_Entries( i, bonds ) > system->bonds[i] )
+        {
+            workspace->realloc.bonds = TRUE;
+            break;
+        }
+
     }
 
-    if ( control->hbond_cut > 0.0 && workspace->num_H > 0
-            && num_hbonds > hbonds->total_intrs )
+    if ( control->hbond_cut > 0.0 && workspace->num_H > 0 )
     {
-        workspace->realloc.hbonds = TRUE;
+        for ( i = 0; i < hbonds->n; ++i )
+        {
+            if ( Num_Entries( i, hbonds ) > system->hbonds[i] )
+            {
+                workspace->realloc.hbonds = TRUE;
+                break;
+            }
+
+        }
     }
 }
 
@@ -1298,6 +1310,9 @@ static int Init_Forces( reax_system * const system,
         {
             rvec_MakeZero( workspace->dDeltap_self[i] );
         }
+
+        Init_List_Indices( lists[BONDS], system->bonds );
+        Init_List_Indices( lists[HBONDS], system->hbonds );
 
 //        if ( lists[FAR_NBRS]->format == HALF_LIST )
 //        {
@@ -1528,13 +1543,13 @@ static void Estimate_Storages_Bonds( reax_system const * const system,
     }
 
     workspace->realloc.total_thbodies = 0;
-    for ( i = 0; i < system->N; ++i )
+    for ( i = 0; i < system->N_max; ++i )
     {
         //TODO: the factor of 2 depends on the bond list format (and also effects thbody list), revisit later
         system->bonds[i] = MAX( (int) CEIL( system->bonds[i] * 2.0 * SAFE_ZONE ), MIN_BONDS );
     }
 
-    for ( i = 0; i < system->N; ++i )
+    for ( i = 0; i < system->N_max; ++i )
     {
         system->hbonds[i] = MAX( (int) CEIL( system->hbonds[i] * SAFE_HBONDS ), MIN_HBONDS );
     }

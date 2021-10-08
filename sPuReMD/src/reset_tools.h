@@ -33,9 +33,6 @@ void Reset_Energies( simulation_data* );
 
 void Reset_Workspace( reax_system*, static_storage* );
 
-void Reset_Neighbor_Lists( reax_system*, control_params*,
-                           static_storage*, reax_list** );
-
 void Reset( reax_system*, control_params*, simulation_data*,
             static_storage*, reax_list** );
 

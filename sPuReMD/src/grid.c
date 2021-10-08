@@ -730,15 +730,6 @@ static void Copy_Storage( reax_system const * const system,static_storage * cons
     workspace->b_s[top] = -system->reax_param.sbp[ old_type ].chi;
     workspace->b_t[top] = -1.0;
 
-    if ( system->reax_param.sbp[ old_type ].p_hbond == H_ATOM )
-    {
-        workspace->hbond_index[top] = (*num_H)++;
-    }
-    else
-    {
-        workspace->hbond_index[top] = -1;
-    }
-
     rvec_Copy( f_old[top], workspace->f_old[old_id] );
 }
 

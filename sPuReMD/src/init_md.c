@@ -345,10 +345,6 @@ static void Init_Workspace( reax_system * const system,
 
     if ( realloc == TRUE )
     {
-        /* hydrogen bond list */
-        workspace->hbond_index = smalloc( system->N_max * sizeof( int ),
-               __FILE__, __LINE__ );
-
         /* bond order related storage  */
         workspace->total_bond_order = smalloc( system->N_max * sizeof( real ),
                __FILE__, __LINE__ );
@@ -903,16 +899,8 @@ static void Init_Lists( reax_system * const system,
         {
             if ( system->reax_param.sbp[ system->atoms[i].type ].p_hbond == H_ATOM )
             {
-                workspace->hbond_index[i] = workspace->num_H++;
+                workspace->num_H++;
             }
-            else
-            {
-                workspace->hbond_index[i] = -1;
-            }
-        }
-        for ( i = system->N; i < system->N_max; ++i )
-        {
-            workspace->hbond_index[i] = -1;
         }
     }
 
@@ -920,34 +908,25 @@ static void Init_Lists( reax_system * const system,
     {
         if ( lists[HBONDS]->allocated == FALSE )
         {
-            workspace->num_H_max = (int) CEIL( SAFE_ZONE * workspace->num_H );
-
-            Make_List( workspace->num_H, workspace->num_H_max,
+            Make_List( system->N, system->N_max,
                     (int) CEIL( SAFE_ZONE * workspace->realloc.total_hbonds ),
                     TYP_HBOND, lists[HBONDS] );
         }
-        else if ( workspace->num_H_max < workspace->num_H
+        else if ( system->N_max < system->N
                 || lists[HBONDS]->total_intrs < workspace->realloc.total_hbonds )
         {
-            if ( workspace->num_H_max < workspace->num_H )
-            {
-                workspace->num_H_max = (int) CEIL( SAFE_ZONE * workspace->num_H );
-            }
-
             if ( lists[HBONDS]->allocated == TRUE )
             {
                 Delete_List( TYP_HBOND, lists[HBONDS] );
             }
-            Make_List( workspace->num_H, workspace->num_H_max,
+            Make_List( system->N, system->N_max,
                     MAX( workspace->realloc.total_hbonds, lists[HBONDS]->total_intrs ),
                     TYP_HBOND, lists[HBONDS] );
         }
         else
         {
-            lists[HBONDS]->n = workspace->num_H;
+            lists[HBONDS]->n = system->N;
         }
-
-        Init_List_Indices( lists[HBONDS] );
     }
 
     /* bonds list */
@@ -970,8 +949,6 @@ static void Init_Lists( reax_system * const system,
     {
         lists[BONDS]->n = system->N;
     }
-
-    Init_List_Indices( lists[BONDS] );
 
     /* 3bodies list */
     if ( lists[THREE_BODIES]->allocated == FALSE )
@@ -1407,7 +1384,6 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
 {
     int i;
 
-    sfree( workspace->hbond_index, __FILE__, __LINE__ );
     sfree( workspace->total_bond_order, __FILE__, __LINE__ );
     sfree( workspace->Deltap, __FILE__, __LINE__ );
     sfree( workspace->Deltap_boc, __FILE__, __LINE__ );

@@ -178,60 +178,6 @@ void Reset_Workspace( reax_system *system, static_storage *workspace )
 }
 
 
-void Reset_Neighbor_Lists( reax_system *system, control_params *control,
-        static_storage *workspace, reax_list **lists )
-{
-    int i, tmp;
-    reax_list *bonds, *hbonds;
-#if defined(TEST_FORCES)
-    reax_list *dDeltas, *dBOs;
-#endif
-
-    bonds = lists[BONDS];
-    hbonds = lists[HBONDS];
-#if defined(TEST_FORCES)
-    dDeltas = lists[DDELTA];
-    dBOs = lists[DBO];
-#endif
-
-    for ( i = 0; i < bonds->n; ++i )
-    {
-        tmp = Start_Index( i, bonds );
-        Set_End_Index( i, tmp, bonds );
-    }
-
-    if ( control->hbond_cut > 0.0 && workspace->num_H > 0 )
-    {
-        for ( i = 0; i < system->N; ++i )
-        {
-            if ( system->reax_param.sbp[system->atoms[i].type].p_hbond == H_ATOM )
-            {
-                tmp = Start_Index( workspace->hbond_index[i], hbonds );
-                Set_End_Index( workspace->hbond_index[i], tmp, hbonds );
-
-//                fprintf( stderr, "i:%d, hbond: %d-%d\n",
-//                        i, Start_Index( workspace->hbond_index[i], hbonds ),
-//                        End_Index( workspace->hbond_index[i], hbonds ) );
-            }
-        }
-    }
-
-#if defined(TEST_FORCES)
-    for ( i = 0; i < dDeltas->n; ++i )
-    {
-        tmp = Start_Index( i, dDeltas );
-        Set_End_Index( i, tmp, dDeltas );
-    }
-
-    for ( i = 0; i < dBOs->n; ++i )
-    {
-        tmp = Start_Index( i, dBOs );
-        Set_End_Index( i, tmp, dBOs );
-    }
-#endif
-}
-
-
 void Reset( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace, reax_list **lists  )
 {
@@ -246,8 +192,6 @@ void Reset( reax_system *system, control_params *control,
     }
 
     Reset_Workspace( system, workspace );
-
-    Reset_Neighbor_Lists( system, control, workspace, lists );
 }
 
 

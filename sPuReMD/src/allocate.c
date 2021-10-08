@@ -152,33 +152,6 @@ static void Reallocate_Matrix( sparse_matrix *H, int n, int n_max, int m )
 }
 
 
-void Initialize_HBond_List( int n, int const * const h_index,
-        int * const hb_top, reax_list * const hbond_list )
-{
-    int i;
-
-    /* find starting indexes for each H and the total number of hbonds */
-    for ( i = 1; i < n; ++i )
-    {
-        hb_top[i] += hb_top[i - 1];
-    }
-
-    for ( i = 0; i < n; ++i )
-    {
-        if ( h_index[i] == 0 )
-        {
-            Set_Start_Index( 0, 0, hbond_list );
-            Set_End_Index( 0, 0, hbond_list );
-        }
-        else if ( h_index[i] > 0 )
-        {
-            Set_Start_Index( h_index[i], hb_top[i - 1], hbond_list );
-            Set_End_Index( h_index[i], hb_top[i - 1], hbond_list );
-        }
-    }
-}
-
-
 static void Reallocate_List( reax_list * const list, int n, int n_max,
         int max_intrs, int type )
 {
@@ -238,7 +211,6 @@ void Reallocate_Part2( reax_system const * const system,
     {
         Reallocate_Neighbor_List( lists[FAR_NBRS],
                 system->N, system->N_max, realloc->total_far_nbrs );
-        Init_List_Indices( lists[FAR_NBRS] );
 
         realloc->far_nbrs = FALSE;
     }
@@ -255,7 +227,6 @@ void Reallocate_Part2( reax_system const * const system,
     {
         Reallocate_List( lists[BONDS], system->N, system->N_max,
                 realloc->total_bonds, TYP_BOND );
-        Init_List_Indices( lists[BONDS] );
 
         realloc->bonds = FALSE;
         realloc->thbody = TRUE;
@@ -263,9 +234,8 @@ void Reallocate_Part2( reax_system const * const system,
 
     if ( control->hbond_cut > 0.0 && workspace->num_H > 0 && realloc->hbonds == TRUE )
     {
-        Reallocate_List( lists[HBONDS], workspace->num_H, workspace->num_H_max,
+        Reallocate_List( lists[HBONDS], system->N, system->N_max,
                 realloc->total_hbonds, TYP_HBOND );
-        Init_List_Indices( lists[HBONDS] );
 
         realloc->hbonds = FALSE;
     }
@@ -275,7 +245,6 @@ void Reallocate_Part2( reax_system const * const system,
         Reallocate_List( lists[THREE_BODIES], realloc->total_bonds,
                 (int) CEIL( realloc->total_bonds * SAFE_ZONE ),
                 realloc->total_thbodies, TYP_THREE_BODY );
-        Init_List_Indices( lists[THREE_BODIES] );
 
         realloc->thbody = FALSE;
     }

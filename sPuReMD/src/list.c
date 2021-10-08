@@ -224,17 +224,23 @@ void Delete_List( int type, reax_list * const l )
 /* Initialize list indices
  *
  * l: pointer to list
+ * max_intrs: max. num. of interactions for each list element
  * */
-void Init_List_Indices( reax_list * const l )
+void Init_List_Indices( reax_list * const l, int * const max_intrs )
 {
     int i;
 
     assert( l != NULL );
     assert( l->n > 0 );
+    assert( max_intrs > 0 );
 
-    for ( i = 0; i < l->n; ++i )
+    /* exclusive prefix sum of max_intrs replaces start indices,
+     * set end indices to the same as start indices for safety */
+    Set_Start_Index( 0, 0, l );
+    Set_End_Index( 0, 0, l );
+    for ( i = 1; i < l->n; ++i )
     {
-        Set_Start_Index( i, 0, l );
-        Set_End_Index( i, 0, l );
+        Set_Start_Index( i, Start_Index( i - 1, l ) + max_intrs[i - 1], l );
+        Set_End_Index( i, Start_Index( i, l ), l );
     }
 }

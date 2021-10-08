@@ -31,7 +31,7 @@ void Make_List( int, int, int, int, reax_list * const );
 /* Deallocates any space allocated for a reax_list instance */
 void Delete_List( int, reax_list * const );
 
-void Init_List_Indices( reax_list * const );
+void Init_List_Indices( reax_list * const, int * const );
 
 
 /* Return the size for the i-th internal list
