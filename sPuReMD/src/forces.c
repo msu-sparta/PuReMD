@@ -1312,7 +1312,10 @@ static int Init_Forces( reax_system * const system,
         }
 
         Init_List_Indices( lists[BONDS], system->bonds );
-        Init_List_Indices( lists[HBONDS], system->hbonds );
+        if ( control->hbond_cut > 0.0 && workspace->num_H > 0 )
+        {
+            Init_List_Indices( lists[HBONDS], system->hbonds );
+        }
 
 //        if ( lists[FAR_NBRS]->format == HALF_LIST )
 //        {
