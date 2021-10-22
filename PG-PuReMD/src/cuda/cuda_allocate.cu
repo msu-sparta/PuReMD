@@ -1041,9 +1041,9 @@ void Cuda_Reallocate_Part1( reax_system *system, control_params *control,
             {
                 for ( k = g->native_str[2]; k < g->native_end[2]; k++ )
                 {
-                    sfree( g->cells[ index_grid_3d(i,j,k,g) ].atoms, "g:atoms" );
+                    sfree( g->cells[ index_grid_3d(i,j,k,g) ].atoms, __FILE__, __LINE__ );
                     g->cells[ index_grid_3d(i,j,k,g) ].atoms = (int *)
-                            scalloc( realloc->gcell_atoms, sizeof(int), "g:atoms" );
+                            scalloc( realloc->gcell_atoms, sizeof(int), __FILE__, __LINE__ );
                 }
             }
         }

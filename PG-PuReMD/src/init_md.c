@@ -200,24 +200,24 @@ void Init_System( reax_system * const system, control_params * const control,
 
     /* list management */
     system->far_nbrs = smalloc( sizeof(int) * system->total_cap,
-            "Init_System::system->far_nbrs" );
+            __FILE__, __LINE__ );
     system->max_far_nbrs = smalloc( sizeof(int) * system->total_cap,
-            "Init_System::system->max_far_nbrs" );
+            __FILE__, __LINE__ );
 
     system->bonds = smalloc( sizeof(int) * system->total_cap,
-            "Init_System::system->bonds" );
+            __FILE__, __LINE__ );
     system->max_bonds = smalloc( sizeof(int) * system->total_cap,
-            "Init_System::system->max_bonds" );
+            __FILE__, __LINE__ );
 
     system->hbonds = smalloc( sizeof(int) * system->total_cap,
-            "Init_System::system->hbonds" );
+            __FILE__, __LINE__ );
     system->max_hbonds = smalloc( sizeof(int) * system->total_cap,
-            "Init_System::system->max_hbonds" );
+            __FILE__, __LINE__ );
 
     system->cm_entries = smalloc( sizeof(int) * system->local_cap,
-            "Init_System::system->cm_entries" );
+            __FILE__, __LINE__ );
     system->max_cm_entries = smalloc( sizeof(int) * system->local_cap,
-            "Init_System::max_cm_entries->max_hbonds" );
+            __FILE__, __LINE__ );
     
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: n=%d, local_cap=%d\n",
@@ -786,24 +786,24 @@ static void Finalize_System( reax_system * const system, control_params * const 
 
     Deallocate_Grid( &system->my_grid );
 
-    sfree( reax->gp.l, "Finalize_System::reax->gp.l" );
+    sfree( reax->gp.l, __FILE__, __LINE__ );
 
-    sfree( reax->sbp, "Finalize_System::reax->sbp" );
-    sfree( reax->tbp, "Finalize_System::reax->tbp" );
-    sfree( reax->thbp, "Finalize_System::reax->thbp" );
-    sfree( reax->hbp, "Finalize_System::reax->hbp" );
-    sfree( reax->fbp, "Finalize_System::reax->fbp" );
+    sfree( reax->sbp, __FILE__, __LINE__ );
+    sfree( reax->tbp, __FILE__, __LINE__ );
+    sfree( reax->thbp, __FILE__, __LINE__ );
+    sfree( reax->hbp, __FILE__, __LINE__ );
+    sfree( reax->fbp, __FILE__, __LINE__ );
 
-    sfree( system->far_nbrs, "Finalize_System::system->far_nbrs" );
-    sfree( system->max_far_nbrs, "Finalize_System::system->max_far_nbrs" );
-    sfree( system->bonds, "Finalize_System::system->bonds" );
-    sfree( system->max_bonds, "Finalize_System::system->max_bonds" );
-    sfree( system->hbonds, "Finalize_System::system->hbonds" );
-    sfree( system->max_hbonds, "Finalize_System::system->max_hbonds" );
-    sfree( system->cm_entries, "Finalize_System::system->cm_entries" );
-    sfree( system->max_cm_entries, "Finalize_System::system->max_cm_entries" );
+    sfree( system->far_nbrs, __FILE__, __LINE__ );
+    sfree( system->max_far_nbrs, __FILE__, __LINE__ );
+    sfree( system->bonds, __FILE__, __LINE__ );
+    sfree( system->max_bonds, __FILE__, __LINE__ );
+    sfree( system->hbonds, __FILE__, __LINE__ );
+    sfree( system->max_hbonds, __FILE__, __LINE__ );
+    sfree( system->cm_entries, __FILE__, __LINE__ );
+    sfree( system->max_cm_entries, __FILE__, __LINE__ );
 
-    sfree( system->my_atoms, "Finalize_System::system->atoms" );
+    sfree( system->my_atoms, __FILE__, __LINE__ );
 }
 
 
@@ -816,23 +816,23 @@ static void Finalize_Simulation_Data( reax_system * const system, control_params
 static void Finalize_Workspace( reax_system * const system, control_params * const control,
         storage * const workspace )
 {
-    sfree( workspace->total_bond_order, "Finalize_Workspace::workspace->total_bond_order" );
-    sfree( workspace->Deltap, "Finalize_Workspace::workspace->Deltap" );
-    sfree( workspace->Deltap_boc, "Finalize_Workspace::workspace->Deltap_boc" );
-    sfree( workspace->dDeltap_self, "Finalize_Workspace::workspace->dDeltap_self" );
-    sfree( workspace->Delta, "Finalize_Workspace::workspace->Delta" );
-    sfree( workspace->Delta_lp, "Finalize_Workspace::workspace->Delta_lp" );
-    sfree( workspace->Delta_lp_temp, "Finalize_Workspace::workspace->Delta_lp_temp" );
-    sfree( workspace->dDelta_lp, "Finalize_Workspace::workspace->dDelta_lp" );
-    sfree( workspace->dDelta_lp_temp, "Finalize_Workspace::workspace->dDelta_lp_temp" );
-    sfree( workspace->Delta_e, "Finalize_Workspace::workspace->Delta_e" );
-    sfree( workspace->Delta_boc, "Finalize_Workspace::workspace->Delta_boc" );
-    sfree( workspace->nlp, "Finalize_Workspace::workspace->nlp" );
-    sfree( workspace->nlp_temp, "Finalize_Workspace::workspace->nlp_temp" );
-    sfree( workspace->Clp, "Finalize_Workspace::workspace->Clp" );
-    sfree( workspace->CdDelta, "Finalize_Workspace::workspace->CdDelta" );
-    sfree( workspace->vlpex, "Finalize_Workspace::workspace->vlpex" );
-    sfree( workspace->bond_mark, "Finalize_Workspace::bond_mark" );
+    sfree( workspace->total_bond_order, __FILE__, __LINE__ );
+    sfree( workspace->Deltap, __FILE__, __LINE__ );
+    sfree( workspace->Deltap_boc, __FILE__, __LINE__ );
+    sfree( workspace->dDeltap_self, __FILE__, __LINE__ );
+    sfree( workspace->Delta, __FILE__, __LINE__ );
+    sfree( workspace->Delta_lp, __FILE__, __LINE__ );
+    sfree( workspace->Delta_lp_temp, __FILE__, __LINE__ );
+    sfree( workspace->dDelta_lp, __FILE__, __LINE__ );
+    sfree( workspace->dDelta_lp_temp, __FILE__, __LINE__ );
+    sfree( workspace->Delta_e, __FILE__, __LINE__ );
+    sfree( workspace->Delta_boc, __FILE__, __LINE__ );
+    sfree( workspace->nlp, __FILE__, __LINE__ );
+    sfree( workspace->nlp_temp, __FILE__, __LINE__ );
+    sfree( workspace->Clp, __FILE__, __LINE__ );
+    sfree( workspace->CdDelta, __FILE__, __LINE__ );
+    sfree( workspace->vlpex, __FILE__, __LINE__ );
+    sfree( workspace->bond_mark, __FILE__, __LINE__ );
 
     Deallocate_Matrix( &workspace->H );
     if ( control->cm_solver_pre_comp_type == SAI_PC )
@@ -845,129 +845,129 @@ static void Finalize_Workspace( reax_system * const system, control_params * con
 
     if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
-        sfree( workspace->Hdia_inv, "Finalize_Workspace::workspace->Hdia_inv" );
+        sfree( workspace->Hdia_inv, __FILE__, __LINE__ );
     }
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
             || control->cm_solver_pre_comp_type == ILUTP_PC
             || control->cm_solver_pre_comp_type == FG_ILUT_PC )
     {
-        sfree( workspace->droptol, "Finalize_Workspace::workspace->droptol" );
+        sfree( workspace->droptol, __FILE__, __LINE__ );
     }
-    sfree( workspace->b_s, "Finalize_Workspace::workspace->b_s" );
-    sfree( workspace->b_t, "Finalize_Workspace::workspace->b_t" );
-    sfree( workspace->b_prc, "Finalize_Workspace::workspace->b_prc" );
-    sfree( workspace->b_prm, "Finalize_Workspace::workspace->b_prm" );
-    sfree( workspace->s, "Finalize_Workspace::workspace->s" );
-    sfree( workspace->t, "Finalize_Workspace::workspace->t" );
-    sfree( workspace->b, "Finalize_Workspace::workspace->b" );
-    sfree( workspace->x, "Finalize_Workspace::workspace->x" );
+    sfree( workspace->b_s, __FILE__, __LINE__ );
+    sfree( workspace->b_t, __FILE__, __LINE__ );
+    sfree( workspace->b_prc, __FILE__, __LINE__ );
+    sfree( workspace->b_prm, __FILE__, __LINE__ );
+    sfree( workspace->s, __FILE__, __LINE__ );
+    sfree( workspace->t, __FILE__, __LINE__ );
+    sfree( workspace->b, __FILE__, __LINE__ );
+    sfree( workspace->x, __FILE__, __LINE__ );
 
     switch ( control->cm_solver_type )
     {
         case GMRES_S:
         case GMRES_H_S:
-            sfree( workspace->y, "Finalize_Workspace::workspace->y" );
-            sfree( workspace->z, "Finalize_Workspace::workspace->z" );
-            sfree( workspace->g, "Finalize_Workspace::workspace->g" );
-            sfree( workspace->h, "Finalize_Workspace::workspace->h" );
-            sfree( workspace->hs, "Finalize_Workspace::workspace->hs" );
-            sfree( workspace->hc, "Finalize_Workspace::workspace->hc" );
-            sfree( workspace->v, "Finalize_Workspace::workspace->v" );
+            sfree( workspace->y, __FILE__, __LINE__ );
+            sfree( workspace->z, __FILE__, __LINE__ );
+            sfree( workspace->g, __FILE__, __LINE__ );
+            sfree( workspace->h, __FILE__, __LINE__ );
+            sfree( workspace->hs, __FILE__, __LINE__ );
+            sfree( workspace->hc, __FILE__, __LINE__ );
+            sfree( workspace->v, __FILE__, __LINE__ );
             break;
 
         case CG_S:
-            sfree( workspace->r, "Finalize_Workspace::workspace->r" );
-            sfree( workspace->d, "Finalize_Workspace::workspace->d" );
-            sfree( workspace->q, "Finalize_Workspace::workspace->q" );
-            sfree( workspace->p, "Finalize_Workspace::workspace->p" );
+            sfree( workspace->r, __FILE__, __LINE__ );
+            sfree( workspace->d, __FILE__, __LINE__ );
+            sfree( workspace->q, __FILE__, __LINE__ );
+            sfree( workspace->p, __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
-            sfree( workspace->r2, "Finalize_Workspace::workspace->r2" );
-            sfree( workspace->d2, "Finalize_Workspace::workspace->d2" );
-            sfree( workspace->q2, "Finalize_Workspace::workspace->q2" );
-            sfree( workspace->p2, "Finalize_Workspace::workspace->p2" );
+            sfree( workspace->r2, __FILE__, __LINE__ );
+            sfree( workspace->d2, __FILE__, __LINE__ );
+            sfree( workspace->q2, __FILE__, __LINE__ );
+            sfree( workspace->p2, __FILE__, __LINE__ );
 #endif
             break;
 
         case SDM_S:
-            sfree( workspace->r, "Finalize_Workspace::workspace->r" );
-            sfree( workspace->d, "Finalize_Workspace::workspace->d" );
-            sfree( workspace->q, "Finalize_Workspace::workspace->q" );
-            sfree( workspace->p, "Finalize_Workspace::workspace->p" );
+            sfree( workspace->r, __FILE__, __LINE__ );
+            sfree( workspace->d, __FILE__, __LINE__ );
+            sfree( workspace->q, __FILE__, __LINE__ );
+            sfree( workspace->p, __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
-            sfree( workspace->r2, "Finalize_Workspace::workspace->r2" );
-            sfree( workspace->d2, "Finalize_Workspace::workspace->d2" );
-            sfree( workspace->q2, "Finalize_Workspace::workspace->q2" );
-            sfree( workspace->p2, "Finalize_Workspace::workspace->p2" );
+            sfree( workspace->r2, __FILE__, __LINE__ );
+            sfree( workspace->d2, __FILE__, __LINE__ );
+            sfree( workspace->q2, __FILE__, __LINE__ );
+            sfree( workspace->p2, __FILE__, __LINE__ );
 #endif
             break;
 
         case BiCGStab_S:
-            sfree( workspace->y, "Finalize_Workspace::workspace->y" );
-            sfree( workspace->g, "Finalize_Workspace::workspace->g" );
-            sfree( workspace->z, "Finalize_Workspace::workspace->z" );
-            sfree( workspace->r, "Finalize_Workspace::workspace->r" );
-            sfree( workspace->d, "Finalize_Workspace::workspace->d" );
-            sfree( workspace->q, "Finalize_Workspace::workspace->q" );
-            sfree( workspace->p, "Finalize_Workspace::workspace->p" );
-            sfree( workspace->r_hat, "Finalize_Workspace::workspace->r_hat" );
-            sfree( workspace->q_hat, "Finalize_Workspace::workspace->q_hat" );
+            sfree( workspace->y, __FILE__, __LINE__ );
+            sfree( workspace->g, __FILE__, __LINE__ );
+            sfree( workspace->z, __FILE__, __LINE__ );
+            sfree( workspace->r, __FILE__, __LINE__ );
+            sfree( workspace->d, __FILE__, __LINE__ );
+            sfree( workspace->q, __FILE__, __LINE__ );
+            sfree( workspace->p, __FILE__, __LINE__ );
+            sfree( workspace->r_hat, __FILE__, __LINE__ );
+            sfree( workspace->q_hat, __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
-            sfree( workspace->y2, "Finalize_Workspace::workspace->y2" );
-            sfree( workspace->g2, "Finalize_Workspace::workspace->g2" );
-            sfree( workspace->z2, "Finalize_Workspace::workspace->z2" );
-            sfree( workspace->r2, "Finalize_Workspace::workspace->r2" );
-            sfree( workspace->d2, "Finalize_Workspace::workspace->d2" );
-            sfree( workspace->q2, "Finalize_Workspace::workspace->q2" );
-            sfree( workspace->p2, "Finalize_Workspace::workspace->p2" );
-            sfree( workspace->r_hat2, "Finalize_Workspace::workspace->r_hat2" );
-            sfree( workspace->q_hat2, "Finalize_Workspace::workspace->q_hat2" );
+            sfree( workspace->y2, __FILE__, __LINE__ );
+            sfree( workspace->g2, __FILE__, __LINE__ );
+            sfree( workspace->z2, __FILE__, __LINE__ );
+            sfree( workspace->r2, __FILE__, __LINE__ );
+            sfree( workspace->d2, __FILE__, __LINE__ );
+            sfree( workspace->q2, __FILE__, __LINE__ );
+            sfree( workspace->p2, __FILE__, __LINE__ );
+            sfree( workspace->r_hat2, __FILE__, __LINE__ );
+            sfree( workspace->q_hat2, __FILE__, __LINE__ );
 #endif
             break;
 
         case PIPECG_S:
-            sfree( workspace->z, "Finalize_Workspace::workspace->z" );
-            sfree( workspace->r, "Finalize_Workspace::workspace->r" );
-            sfree( workspace->d, "Finalize_Workspace::workspace->d" );
-            sfree( workspace->q, "Finalize_Workspace::workspace->q" );
-            sfree( workspace->p, "Finalize_Workspace::workspace->p" );
-            sfree( workspace->m, "Finalize_Workspace::workspace->m" );
-            sfree( workspace->n, "Finalize_Workspace::workspace->n" );
-            sfree( workspace->u, "Finalize_Workspace::workspace->u" );
-            sfree( workspace->w, "Finalize_Workspace::workspace->w" );
+            sfree( workspace->z, __FILE__, __LINE__ );
+            sfree( workspace->r, __FILE__, __LINE__ );
+            sfree( workspace->d, __FILE__, __LINE__ );
+            sfree( workspace->q, __FILE__, __LINE__ );
+            sfree( workspace->p, __FILE__, __LINE__ );
+            sfree( workspace->m, __FILE__, __LINE__ );
+            sfree( workspace->n, __FILE__, __LINE__ );
+            sfree( workspace->u, __FILE__, __LINE__ );
+            sfree( workspace->w, __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
-            sfree( workspace->z2, "Finalize_Workspace::workspace->z2" );
-            sfree( workspace->r2, "Finalize_Workspace::workspace->r2" );
-            sfree( workspace->d2, "Finalize_Workspace::workspace->d2" );
-            sfree( workspace->q2, "Finalize_Workspace::workspace->q2" );
-            sfree( workspace->p2, "Finalize_Workspace::workspace->p2" );
-            sfree( workspace->m2, "Finalize_Workspace::workspace->m2" );
-            sfree( workspace->n2, "Finalize_Workspace::workspace->n2" );
-            sfree( workspace->u2, "Finalize_Workspace::workspace->u2" );
-            sfree( workspace->w2, "Finalize_Workspace::workspace->w2" );
+            sfree( workspace->z2, __FILE__, __LINE__ );
+            sfree( workspace->r2, __FILE__, __LINE__ );
+            sfree( workspace->d2, __FILE__, __LINE__ );
+            sfree( workspace->q2, __FILE__, __LINE__ );
+            sfree( workspace->p2, __FILE__, __LINE__ );
+            sfree( workspace->m2, __FILE__, __LINE__ );
+            sfree( workspace->n2, __FILE__, __LINE__ );
+            sfree( workspace->u2, __FILE__, __LINE__ );
+            sfree( workspace->w2, __FILE__, __LINE__ );
 #endif
             break;
 
         case PIPECR_S:
-            sfree( workspace->z, "Finalize_Workspace::workspace->z" );
-            sfree( workspace->r, "Finalize_Workspace::workspace->r" );
-            sfree( workspace->d, "Finalize_Workspace::workspace->d" );
-            sfree( workspace->q, "Finalize_Workspace::workspace->q" );
-            sfree( workspace->p, "Finalize_Workspace::workspace->p" );
-            sfree( workspace->m, "Finalize_Workspace::workspace->m" );
-            sfree( workspace->n, "Finalize_Workspace::workspace->n" );
-            sfree( workspace->u, "Finalize_Workspace::workspace->u" );
-            sfree( workspace->w, "Finalize_Workspace::workspace->w" );
+            sfree( workspace->z, __FILE__, __LINE__ );
+            sfree( workspace->r, __FILE__, __LINE__ );
+            sfree( workspace->d, __FILE__, __LINE__ );
+            sfree( workspace->q, __FILE__, __LINE__ );
+            sfree( workspace->p, __FILE__, __LINE__ );
+            sfree( workspace->m, __FILE__, __LINE__ );
+            sfree( workspace->n, __FILE__, __LINE__ );
+            sfree( workspace->u, __FILE__, __LINE__ );
+            sfree( workspace->w, __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
-            sfree( workspace->z2, "Finalize_Workspace::workspace->z2" );
-            sfree( workspace->r2, "Finalize_Workspace::workspace->r2" );
-            sfree( workspace->d2, "Finalize_Workspace::workspace->d2" );
-            sfree( workspace->q2, "Finalize_Workspace::workspace->q2" );
-            sfree( workspace->p2, "Finalize_Workspace::workspace->p2" );
-            sfree( workspace->m2, "Finalize_Workspace::workspace->m2" );
-            sfree( workspace->n2, "Finalize_Workspace::workspace->n2" );
-            sfree( workspace->u2, "Finalize_Workspace::workspace->u2" );
-            sfree( workspace->w2, "Finalize_Workspace::workspace->w2" );
+            sfree( workspace->z2, __FILE__, __LINE__ );
+            sfree( workspace->r2, __FILE__, __LINE__ );
+            sfree( workspace->d2, __FILE__, __LINE__ );
+            sfree( workspace->q2, __FILE__, __LINE__ );
+            sfree( workspace->p2, __FILE__, __LINE__ );
+            sfree( workspace->m2, __FILE__, __LINE__ );
+            sfree( workspace->n2, __FILE__, __LINE__ );
+            sfree( workspace->u2, __FILE__, __LINE__ );
+            sfree( workspace->w2, __FILE__, __LINE__ );
 #endif
             break;
 
@@ -980,52 +980,52 @@ static void Finalize_Workspace( reax_system * const system, control_params * con
     /* integrator storage */
     if ( control->ensemble == nhNVT )
     {
-        sfree( workspace->v_const, "Finalize_Workspace::workspace->v_const" );
+        sfree( workspace->v_const, __FILE__, __LINE__ );
     }
 
     /* storage for analysis */
     if ( control->molecular_analysis || control->diffusion_coef )
     {
-        sfree( workspace->mark, "Finalize_Workspace::workspace->mark" );
-        sfree( workspace->old_mark, "Finalize_Workspace::workspace->old_mark" );
+        sfree( workspace->mark, __FILE__, __LINE__ );
+        sfree( workspace->old_mark, __FILE__, __LINE__ );
     }
 
     if ( control->diffusion_coef )
     {
-        sfree( workspace->x_old, "Finalize_Workspace::workspace->x_old" );
+        sfree( workspace->x_old, __FILE__, __LINE__ );
     }
 
     /* force-related storage */
-    sfree( workspace->f, "Finalize_Workspace::workspace->f" );
+    sfree( workspace->f, __FILE__, __LINE__ );
 
     /* space for keeping restriction info, if any */
     if ( control->restrict_bonds )
     {
-        sfree( workspace->restricted, "Finalize_Workspace::workspace->restricted" );
-        sfree( workspace->restricted_list, "Finalize_Workspace::workspace->restricted_list" );
+        sfree( workspace->restricted, __FILE__, __LINE__ );
+        sfree( workspace->restricted_list, __FILE__, __LINE__ );
     }
 
 #if defined(TEST_FORCES)
-    sfree( workspace->dDelta, "Finalize_Workspace::workspace->dDelta" );
-    sfree( workspace->f_ele, "Finalize_Workspace::workspace->f_ele" );
-    sfree( workspace->f_vdw, "Finalize_Workspace::workspace->f_vdw" );
-    sfree( workspace->f_bo, "Finalize_Workspace::workspace->f_bo" );
-    sfree( workspace->f_be, "Finalize_Workspace::workspace->f_be" );
-    sfree( workspace->f_lp, "Finalize_Workspace::workspace->f_lp" );
-    sfree( workspace->f_ov, "Finalize_Workspace::workspace->f_ov" );
-    sfree( workspace->f_un, "Finalize_Workspace::workspace->f_un" );
-    sfree( workspace->f_ang, "Finalize_Workspace::workspace->f_ang" );
-    sfree( workspace->f_coa, "Finalize_Workspace::workspace->f_coa" );
-    sfree( workspace->f_pen, "Finalize_Workspace::workspace->f_pen" );
-    sfree( workspace->f_hb, "Finalize_Workspace::workspace->f_hb" );
-    sfree( workspace->f_tor, "Finalize_Workspace::workspace->f_tor" );
-    sfree( workspace->f_con, "Finalize_Workspace::workspace->f_con" );
-    sfree( workspace->f_tot, "Finalize_Workspace::workspace->f_tot" );
+    sfree( workspace->dDelta, __FILE__, __LINE__ );
+    sfree( workspace->f_ele, __FILE__, __LINE__ );
+    sfree( workspace->f_vdw, __FILE__, __LINE__ );
+    sfree( workspace->f_bo, __FILE__, __LINE__ );
+    sfree( workspace->f_be, __FILE__, __LINE__ );
+    sfree( workspace->f_lp, __FILE__, __LINE__ );
+    sfree( workspace->f_ov, __FILE__, __LINE__ );
+    sfree( workspace->f_un, __FILE__, __LINE__ );
+    sfree( workspace->f_ang, __FILE__, __LINE__ );
+    sfree( workspace->f_coa, __FILE__, __LINE__ );
+    sfree( workspace->f_pen, __FILE__, __LINE__ );
+    sfree( workspace->f_hb, __FILE__, __LINE__ );
+    sfree( workspace->f_tor, __FILE__, __LINE__ );
+    sfree( workspace->f_con, __FILE__, __LINE__ );
+    sfree( workspace->f_tot, __FILE__, __LINE__ );
 
-    sfree( workspace->rcounts, "Finalize_Workspace::workspace->rcounts" );
-    sfree( workspace->displs, "Finalize_Workspace::workspace->displs" );
-    sfree( workspace->id_all, "Finalize_Workspace::workspace->id_all" );
-    sfree( workspace->f_all, "Finalize_Workspace::workspace->f_all" );
+    sfree( workspace->rcounts, __FILE__, __LINE__ );
+    sfree( workspace->displs, __FILE__, __LINE__ );
+    sfree( workspace->id_all, __FILE__, __LINE__ );
+    sfree( workspace->f_all, __FILE__, __LINE__ );
 #endif
 }
 
@@ -1037,7 +1037,7 @@ static void Finalize_Lists( control_params * const control, reax_list ** const l
     for ( i = 0; i < LIST_N; ++i )
     {
         Delete_List( lists[i] );
-        sfree( lists[i], "Finalize_Lists::lists[i]" );
+        sfree( lists[i], __FILE__, __LINE__ );
     }
 }
 

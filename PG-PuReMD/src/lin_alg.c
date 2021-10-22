@@ -78,13 +78,13 @@ void Sort_Matrix_Rows( sparse_matrix * const A )
 
         if ( temp == NULL )
         {
-            temp = smalloc( sizeof(sparse_matrix_entry) * (ei - si), "Sort_Matrix_Rows::temp" );
+            temp = smalloc( sizeof(sparse_matrix_entry) * (ei - si), __FILE__, __LINE__ );
             temp_size = ei - si;
         }
         else if ( temp_size < ei - si )
         {
-            sfree( temp, "Sort_Matrix_Rows::temp" );
-            temp = smalloc( sizeof(sparse_matrix_entry) * (ei - si), "Sort_Matrix_Rows::temp" );
+            sfree( temp, __FILE__, __LINE__ );
+            temp = smalloc( sizeof(sparse_matrix_entry) * (ei - si), __FILE__, __LINE__ );
             temp_size = ei - si;
         }
 
@@ -104,7 +104,7 @@ void Sort_Matrix_Rows( sparse_matrix * const A )
         }
     }
 
-    sfree( temp, "Sort_Matrix_Rows::temp" );
+    sfree( temp, __FILE__, __LINE__ );
 }
 
 
@@ -628,7 +628,7 @@ static void Sparse_MatVec( reax_system const * const system,
 void setup_sparse_approx_inverse( reax_system const * const system,
         simulation_data * const data,
         storage * const workspace, mpi_datatypes * const mpi_data,
-        sparse_matrix * const A, sparse_matrix *A_spar_patt,
+        sparse_matrix * const A, sparse_matrix * A_spar_patt,
         int nprocs, real filter )
 {
     int i, ret, bin, total, pos;
@@ -711,35 +711,23 @@ void setup_sparse_approx_inverse( reax_system const * const system,
     t_comm += Get_Time( ) - t_start;
 
     /* count num. bin elements for each processor, uniform bin sizes */
-    input_array = smalloc( sizeof(real) * n_local,
-           "setup_sparse_approx_inverse::input_array" );
-    scounts_local = smalloc( sizeof(int) * nprocs,
-           "setup_sparse_approx_inverse::scounts_local" );
-    scounts = smalloc( sizeof(int) * nprocs,
-           "setup_sparse_approx_inverse::scounts" );
-    bin_elements = smalloc( sizeof(int) * nprocs,
-           "setup_sparse_approx_inverse::bin_elements" );
-    dspls_local = smalloc( sizeof(int) * nprocs,
-           "setup_sparse_approx_inverse::displs_local" );
-    bucketlist_local = smalloc( sizeof(real) * n_local,
-          "setup_sparse_approx_inverse::bucketlist_local" );
-    dspls = smalloc( sizeof(int) * nprocs,
-           "setup_sparse_approx_inverse::dspls" );
+    input_array = smalloc( sizeof(real) * n_local, __FILE__, __LINE__ );
+    scounts_local = smalloc( sizeof(int) * nprocs, __FILE__, __LINE__ );
+    scounts = smalloc( sizeof(int) * nprocs, __FILE__, __LINE__ );
+    bin_elements = smalloc( sizeof(int) * nprocs, __FILE__, __LINE__ );
+    dspls_local = smalloc( sizeof(int) * nprocs, __FILE__, __LINE__ );
+    bucketlist_local = smalloc( sizeof(real) * n_local, __FILE__, __LINE__ );
+    dspls = smalloc( sizeof(int) * nprocs, __FILE__, __LINE__ );
     if ( nprocs > 1 )
     {
-        pivotlist = smalloc( sizeof(real) *  (nprocs - 1),
-                "setup_sparse_approx_inverse::pivotlist" );
+        pivotlist = smalloc( sizeof(real) * (nprocs - 1), __FILE__, __LINE__ );
     }
-    samplelist_local = smalloc( sizeof(real) * s_local,
-           "setup_sparse_approx_inverse::samplelist_local" );
+    samplelist_local = smalloc( sizeof(real) * s_local, __FILE__, __LINE__ );
     if ( system->my_rank == MASTER_NODE )
     {
-        samplelist = smalloc( sizeof(real) * s,
-               "setup_sparse_approx_inverse::samplelist" );
-        srecv = smalloc( sizeof(int) * nprocs,
-               "setup_sparse_approx_inverse::srecv" );
-        sdispls = smalloc( sizeof(int) * nprocs,
-               "setup_sparse_approx_inverse::sdispls" );
+        samplelist = smalloc( sizeof(real) * s, __FILE__, __LINE__ );
+        srecv = smalloc( sizeof(int) * nprocs, __FILE__, __LINE__ );
+        sdispls = smalloc( sizeof(int) * nprocs, __FILE__, __LINE__ );
     }
 
     n_local = 0;
@@ -759,11 +747,12 @@ void setup_sparse_approx_inverse( reax_system const * const system,
 
     /* gather samples at the root process */
     t_start = Get_Time( );
-    ret = MPI_Gather( &s_local, 1, MPI_INT, srecv, 1, MPI_INT, MASTER_NODE, MPI_COMM_WORLD );
+    ret = MPI_Gather( &s_local, 1, MPI_INT, srecv, 1, MPI_INT,
+            MASTER_NODE, MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
     t_comm += Get_Time( ) - t_start;
 
-    if( system->my_rank == MASTER_NODE )
+    if ( system->my_rank == MASTER_NODE )
     {
         sdispls[0] = 0;
         for ( i = 0; i < nprocs - 1; ++i )
@@ -791,7 +780,8 @@ void setup_sparse_approx_inverse( reax_system const * const system,
 
     /* broadcast pivots */
     t_start = Get_Time( );
-    ret = MPI_Bcast( pivotlist, nprocs - 1, MPI_DOUBLE, MASTER_NODE, MPI_COMM_WORLD );
+    ret = MPI_Bcast( pivotlist, nprocs - 1, MPI_DOUBLE,
+            MASTER_NODE, MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
     t_comm += Get_Time( ) - t_start;
 
@@ -830,7 +820,8 @@ void setup_sparse_approx_inverse( reax_system const * const system,
 
     /* determine counts for elements per process */
     t_start = Get_Time( );
-    ret = MPI_Allreduce( MPI_IN_PLACE, scounts, nprocs, MPI_INT, MPI_SUM, MPI_COMM_WORLD );
+    ret = MPI_Allreduce( MPI_IN_PLACE, scounts, nprocs, MPI_INT,
+            MPI_SUM, MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
     t_comm += Get_Time( ) - t_start;
 
@@ -853,8 +844,7 @@ void setup_sparse_approx_inverse( reax_system const * const system,
     n_gather = scounts[target_proc];
     if ( system->my_rank == target_proc )
     {
-        bucketlist = smalloc( sizeof( real ) * n_gather,
-               "setup_sparse_approx_inverse::bucketlist" );
+        bucketlist = smalloc( sizeof( real ) * n_gather, __FILE__, __LINE__ );
     }
 
     /* send local buckets to target processor for quickselect */
@@ -874,7 +864,8 @@ void setup_sparse_approx_inverse( reax_system const * const system,
     }
 
     t_start = Get_Time( );
-    ret = MPI_Gatherv( bucketlist_local + dspls_local[target_proc], scounts_local[target_proc], MPI_DOUBLE,
+    ret = MPI_Gatherv( bucketlist_local + dspls_local[target_proc],
+            scounts_local[target_proc], MPI_DOUBLE,
             bucketlist, scounts, dspls, MPI_DOUBLE, target_proc, MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
     t_comm += Get_Time( ) - t_start;
@@ -962,7 +953,7 @@ void setup_sparse_approx_inverse( reax_system const * const system,
 
         for ( pj = A->start[i]; pj < A->end[i]; ++pj )
         {
-            if ( ( A->val[pj] >= threshold )  || ( A->j[pj] == i ) )
+            if ( A->val[pj] >= threshold || A->j[pj] == i )
             {
                 A_spar_patt->val[size] = A->val[pj];
                 A_spar_patt->j[size] = A->j[pj];
@@ -997,27 +988,27 @@ void setup_sparse_approx_inverse( reax_system const * const system,
         data->timing.cm_solver_comm += total_comm / nprocs;
     }
 
-    sfree( input_array, "setup_sparse_approx_inverse::input_array" );
-    sfree( scounts_local, "setup_sparse_approx_inverse::scounts_local" );
-    sfree( scounts, "setup_sparse_approx_inverse::scounts" );
-    sfree( bin_elements, "setup_sparse_approx_inverse::bin_elements" );
-    sfree( dspls_local, "setup_sparse_approx_inverse::displs_local" );
-    sfree( bucketlist_local, "setup_sparse_approx_inverse::bucketlist_local" );
-    sfree( dspls, "setup_sparse_approx_inverse::dspls" );
+    sfree( input_array, __FILE__, __LINE__ );
+    sfree( scounts_local, __FILE__, __LINE__ );
+    sfree( scounts, __FILE__, __LINE__ );
+    sfree( bin_elements, __FILE__, __LINE__ );
+    sfree( dspls_local, __FILE__, __LINE__ );
+    sfree( bucketlist_local, __FILE__, __LINE__ );
+    sfree( dspls, __FILE__, __LINE__ );
     if ( nprocs > 1 )
     {
-        sfree( pivotlist, "setup_sparse_approx_inverse::pivotlist" );
+        sfree( pivotlist, __FILE__, __LINE__ );
     }
-    sfree( samplelist_local, "setup_sparse_approx_inverse::samplelist_local" );
+    sfree( samplelist_local, __FILE__, __LINE__ );
     if ( system->my_rank == MASTER_NODE )
     {
-        sfree( samplelist, "setup_sparse_approx_inverse::samplelist" );
-        sfree( srecv, "setup_sparse_approx_inverse::srecv" );
-        sfree( sdispls, "setup_sparse_approx_inverse::sdispls" );
+        sfree( samplelist, __FILE__, __LINE__ );
+        sfree( srecv, __FILE__, __LINE__ );
+        sfree( sdispls, __FILE__, __LINE__ );
     }
     if ( system->my_rank == target_proc )
     {
-        sfree( bucketlist, "setup_sparse_approx_inverse::bucketlist" );
+        sfree( bucketlist, __FILE__, __LINE__ );
     }
 }
 
@@ -1055,15 +1046,19 @@ real sparse_approx_inverse( reax_system const * const system,
 
     if ( A_app_inv->allocated == FALSE )
     {
-        //TODO: FULL_MATRIX?
-        Allocate_Matrix( A_app_inv, A_spar_patt->n, A->NT, A_spar_patt->m, SYM_FULL_MATRIX );
+        Allocate_Matrix( A_app_inv, A_spar_patt->n, A->NT,
+                A_spar_patt->m, SYM_FULL_MATRIX );
     }
-    
-    else /* if ( A_app_inv->m < A_spar_patt->m ) */
+    else if ( A_app_inv->m < A_spar_patt->m
+            || A_app_inv->n_max < A_spar_patt->n_max )
     {
         Deallocate_Matrix( A_app_inv );
-        Allocate_Matrix( A_app_inv, A_spar_patt->n, A->NT, A_spar_patt->m, SYM_FULL_MATRIX );
+
+        Allocate_Matrix( A_app_inv, A_spar_patt->n, A->NT,
+                A_spar_patt->m, SYM_FULL_MATRIX );
     }
+
+    A_app_inv->n = A_spar_patt->n;
 
     pos_x = NULL;
     X = NULL;
@@ -1079,12 +1074,12 @@ real sparse_approx_inverse( reax_system const * const system,
         j_recv[d] = NULL;
         val_recv[d] = NULL;
     }
-    ////////////////////
-    row_nnz = (int *) malloc( sizeof(int) * A->NT );
+
+    row_nnz = smalloc( sizeof(int) * A->NT, __FILE__, __LINE__ );
 
     //TODO: allocation size
-    j_list = (int **) malloc( sizeof(int *) * system->N );
-    val_list = (real **) malloc( sizeof(real *) * system->N );
+    j_list = smalloc( sizeof(int *) * system->N, __FILE__, __LINE__ );
+    val_list = smalloc( sizeof(real *) * system->N, __FILE__, __LINE__ );
 
     for ( i = 0; i < A->NT; ++i )
     {
@@ -1126,8 +1121,8 @@ real sparse_approx_inverse( reax_system const * const system,
             {
                 count += 2;
 
-                j_recv[d] = (int *) malloc( sizeof(int) * cnt );
-                val_recv[d] = (real *) malloc( sizeof(real) * cnt );
+                j_recv[d] = smalloc( sizeof(int) * cnt, __FILE__, __LINE__ );
+                val_recv[d] = smalloc( sizeof(real) * cnt, __FILE__, __LINE__ );
 
                 fprintf( stdout, "Dist communication receive phase direction %d will receive %d\n", d, cnt );
                 fflush( stdout );
@@ -1163,10 +1158,10 @@ real sparse_approx_inverse( reax_system const * const system,
             fprintf( stdout,"Dist communication    send phase direction %d should  send %d\n", d, cnt );
             fflush( stdout );
 
-            if ( cnt )
+            if ( cnt > 0 )
             {
-                j_send = (int *) malloc( sizeof(int) * cnt );
-                val_send = (real *) malloc( sizeof(real) * cnt );
+                j_send = smalloc( sizeof(int) * cnt, __FILE__, __LINE__ );
+                val_send = smalloc( sizeof(real) * cnt, __FILE__, __LINE__ );
 
                 cnt = 0;
                 for ( i = 0; i < out_bufs[d].cnt; ++i )
@@ -1214,7 +1209,7 @@ real sparse_approx_inverse( reax_system const * const system,
         {
             if ( index % 2 == 0 )
             {
-                j_list[i] = (int *) malloc( sizeof(int) *  row_nnz[i] );
+                j_list[i] = smalloc( sizeof(int) * row_nnz[i], __FILE__, __LINE__ );
                 for ( pj = 0; pj < row_nnz[i]; ++pj )
                 {
                     j_list[i][pj] = j_recv[index / 2][cnt];
@@ -1223,7 +1218,7 @@ real sparse_approx_inverse( reax_system const * const system,
             }
             else
             {
-                val_list[i] = (real *) malloc( sizeof(real) * row_nnz[i] );
+                val_list[i] = smalloc( sizeof(real) * row_nnz[i], __FILE__, __LINE__ );
                 for ( pj = 0; pj < row_nnz[i]; ++pj )
                 {
                     val_list[i][pj] = val_recv[index / 2][cnt];
@@ -1237,8 +1232,8 @@ real sparse_approx_inverse( reax_system const * const system,
     fprintf( stdout, "Dist communication for sending row info worked\n" );
     fflush( stdout );
     //TODO: size?
-    X = (int *) malloc( sizeof(int) * (system->bigN + 1) );
-    pos_x = (int *) malloc( sizeof(int) * (system->bigN + 1) );
+    X = smalloc( sizeof(int) * (system->bigN + 1), __FILE__, __LINE__ );
+    pos_x = smalloc( sizeof(int) * (system->bigN + 1), __FILE__, __LINE__ );
 
     for ( i = 0; i < A_spar_patt->NT; ++i )
     {
@@ -1301,7 +1296,7 @@ real sparse_approx_inverse( reax_system const * const system,
         }
 
         /* allocate memory for NxM dense matrix */
-        dense_matrix = (real *) malloc( sizeof(real) * N * M );
+        dense_matrix = smalloc( sizeof(real) * N * M, __FILE__, __LINE__ );
 
         /* fill in the entries of dense matrix */
         for ( d_j = 0; d_j < N; ++d_j)
@@ -1357,7 +1352,7 @@ real sparse_approx_inverse( reax_system const * const system,
 
         /* create the right hand side of the linear equation
          * that is the full column of the identity matrix */
-        e_j = (real *) malloc( sizeof(real) * M );
+        e_j = smalloc( sizeof(real) * M, __FILE__, __LINE__ );
         //////////////////////
         for ( k = 0; k < M; ++k )
         {
@@ -1393,13 +1388,13 @@ real sparse_approx_inverse( reax_system const * const system,
             A_app_inv->j[k] = A_spar_patt->j[k];
             A_app_inv->val[k] = e_j[k - A_spar_patt->start[i]];
         }
-        free( dense_matrix );
-        free( e_j );
+        sfree( dense_matrix, __FILE__, __LINE__ );
+        sfree( e_j, __FILE__, __LINE__ );
     }
 
-    free( pos_x);
-    free( X );
-    /////////////////////
+    sfree( pos_x, __FILE__, __LINE__ );
+    sfree( X, __FILE__, __LINE__ );
+
     ret = MPI_Reduce( &t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM,
             MASTER_NODE, MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
@@ -1456,8 +1451,8 @@ real sparse_approx_inverse( reax_system const * const system,
     {
         Deallocate_Matrix( A_app_inv );
 
-        Allocate_Matrix( A_app_inv, A_spar_patt->n, A_spar_patt->n_max, A_spar_patt->m,
-                SYM_FULL_MATRIX );
+        Allocate_Matrix( A_app_inv, A_spar_patt->n, A_spar_patt->n_max,
+                A_spar_patt->m, SYM_FULL_MATRIX );
     }
 
     A_app_inv->n = A_spar_patt->n;
@@ -1478,12 +1473,9 @@ real sparse_approx_inverse( reax_system const * const system,
     size_e = 0;
     size_dense = 0;
 
-    row_nnz = smalloc( sizeof(int) * system->total_cap,
-           "sparse_approx_inverse::row_nnz" );
-    j_list = smalloc( sizeof(int *) * system->N,
-           "sparse_approx_inverse::j_list" );
-    val_list = smalloc( sizeof(real *) * system->N,
-           "sparse_approx_inverse::val_list" );
+    row_nnz = smalloc( sizeof(int) * system->total_cap, __FILE__, __LINE__ );
+    j_list = smalloc( sizeof(int *) * system->N, __FILE__, __LINE__ );
+    val_list = smalloc( sizeof(real *) * system->N, __FILE__, __LINE__ );
     for ( i = 0; i < system->N; ++i )
     {
         j_list[i] = NULL;
@@ -1514,13 +1506,13 @@ real sparse_approx_inverse( reax_system const * const system,
     /* use a Dist-like approach to send the row information */
     for ( d = 0; d < 3; ++d )
     {
-        flag1 = 0;
-        flag2 = 0;
+        flag1 = FALSE;
+        flag2 = FALSE;
         cnt = 0;
 
         /* initiate recvs */
         nbr1 = &system->my_nbrs[2 * d];
-        if ( nbr1->atoms_cnt )
+        if ( nbr1->atoms_cnt > 0 )
         {
             cnt = 0;
 
@@ -1533,22 +1525,20 @@ real sparse_approx_inverse( reax_system const * const system,
             /* initiate Irecv */
             if ( cnt > 0 )
             {
-                flag1 = 1;
+                flag1 = TRUE;
                 
                 if ( size_recv1 < cnt )
                 {
                     if ( size_recv1 )
                     {
-                        sfree( j_recv1, "sparse_approx_inverse::j_recv1" );
-                        sfree( val_recv1, "sparse_approx_inverse::val_recv1" );
+                        sfree( j_recv1, __FILE__, __LINE__ );
+                        sfree( val_recv1, __FILE__, __LINE__ );
                     }
 
-                    size_recv1 = cnt * SAFE_ZONE;
+                    size_recv1 = (int) CEIL( cnt * SAFE_ZONE );
 
-                    j_recv1 = smalloc( sizeof(int) * size_recv1,
-                            "sparse_approx_inverse::j_recv1" );
-                    val_recv1 = smalloc( sizeof(real) * size_recv1,
-                            "sparse_approx_inverse::val_recv1" );
+                    j_recv1 = smalloc( sizeof(int) * size_recv1, __FILE__, __LINE__ );
+                    val_recv1 = smalloc( sizeof(real) * size_recv1, __FILE__, __LINE__ );
                 }
 
                 t_start = Get_Time( );
@@ -1563,7 +1553,7 @@ real sparse_approx_inverse( reax_system const * const system,
         }
 
         nbr2 = &system->my_nbrs[2 * d + 1];
-        if ( nbr2->atoms_cnt )
+        if ( nbr2->atoms_cnt > 0 )
         {
             /* calculate the total data that will be received */
             cnt = 0;
@@ -1575,22 +1565,20 @@ real sparse_approx_inverse( reax_system const * const system,
             /* initiate Irecv */
             if ( cnt > 0 )
             {
-                flag2 = 1;
+                flag2 = TRUE;
 
                 if ( size_recv2 < cnt )
                 {
                     if ( size_recv2 )
                     {
-                        sfree( j_recv2, "sparse_approx_inverse::j_recv2" );
-                        sfree( val_recv2, "sparse_approx_inverse::val_recv2" );
+                        sfree( j_recv2, __FILE__, __LINE__ );
+                        sfree( val_recv2, __FILE__, __LINE__ );
                     }
 
-                    size_recv2 = cnt * SAFE_ZONE;
+                    size_recv2 = (int) CEIL( cnt * SAFE_ZONE );
 
-                    j_recv2 = smalloc( sizeof(int) * size_recv2,
-                            "sparse_approx_inverse::j_recv2" );
-                    val_recv2 = smalloc( sizeof(real) * size_recv2,
-                            "sparse_approx_inverse::val_recv2" );
+                    j_recv2 = smalloc( sizeof(int) * size_recv2, __FILE__, __LINE__ );
+                    val_recv2 = smalloc( sizeof(real) * size_recv2, __FILE__, __LINE__ );
                 }
 
                 t_start = Get_Time( );
@@ -1617,18 +1605,16 @@ real sparse_approx_inverse( reax_system const * const system,
             {
                 if ( size_send < cnt )
                 {
-                    if ( size_send )
+                    if ( size_send > 0 )
                     {
-                        sfree( j_send, "sparse_approx_inverse::j_send" );
-                        sfree( val_send, "sparse_approx_inverse::val_send" );
+                        sfree( j_send, __FILE__, __LINE__ );
+                        sfree( val_send, __FILE__, __LINE__ );
                     }
 
-                    size_send = cnt * SAFE_ZONE;
+                    size_send = (int) CEIL( cnt * SAFE_ZONE );
 
-                    j_send = smalloc( sizeof(int) * size_send,
-                            "sparse_approx_inverse::j_send" );
-                    val_send = smalloc( sizeof(real) * size_send,
-                            "sparse_approx_inverse::j_send" );
+                    j_send = smalloc( sizeof(int) * size_send, __FILE__, __LINE__ );
+                    val_send = smalloc( sizeof(real) * size_send, __FILE__, __LINE__ );
                 }
 
                 cnt = 0;
@@ -1666,7 +1652,7 @@ real sparse_approx_inverse( reax_system const * const system,
             }
         }
 
-        if ( out_bufs[2 * d + 1].cnt )
+        if ( out_bufs[2 * d + 1].cnt > 0 )
         {
             cnt = 0;
             for ( i = 0; i < out_bufs[2 * d + 1].cnt; ++i )
@@ -1676,21 +1662,18 @@ real sparse_approx_inverse( reax_system const * const system,
 
             if ( cnt > 0 )
             {
-
                 if ( size_send < cnt )
                 {
                     if ( size_send )
                     {
-                        sfree( j_send, "sparse_approx_inverse::j_send" );
-                        sfree( val_send, "sparse_approx_inverse::j_send" );
+                        sfree( j_send, __FILE__, __LINE__ );
+                        sfree( val_send, __FILE__, __LINE__ );
                     }
 
-                    size_send = cnt * SAFE_ZONE;
+                    size_send = (int) CEIL( cnt * SAFE_ZONE );
 
-                    j_send = smalloc( sizeof(int) * size_send,
-                            "sparse_approx_inverse::j_send" );
-                    val_send = smalloc( sizeof(real) * size_send,
-                            "sparse_approx_inverse::val_send" );
+                    j_send = smalloc( sizeof(int) * size_send, __FILE__, __LINE__ );
+                    val_send = smalloc( sizeof(real) * size_send, __FILE__, __LINE__ );
                 }
 
                 cnt = 0;
@@ -1726,10 +1709,9 @@ real sparse_approx_inverse( reax_system const * const system,
                 Check_MPI_Error( ret, __FILE__, __LINE__ );
                 t_comm += Get_Time( ) - t_start;
             }
-
         }
 
-        if ( flag1 )
+        if ( flag1 == TRUE )
         {
             t_start = Get_Time( );
             ret = MPI_Wait( &req1, &stat1 );
@@ -1741,10 +1723,8 @@ real sparse_approx_inverse( reax_system const * const system,
             cnt = 0;
             for ( i = nbr1->atoms_str; i < (nbr1->atoms_str + nbr1->atoms_cnt); ++i )
             {
-                j_list[i] = smalloc( sizeof(int) * row_nnz[i],
-                       "sparse_approx_inverse::j_list[i]" );
-                val_list[i] = smalloc( sizeof(real) * row_nnz[i],
-                       "sparse_approx_inverse::val_list[i]" );
+                j_list[i] = smalloc( sizeof(int) * row_nnz[i], __FILE__, __LINE__ );
+                val_list[i] = smalloc( sizeof(real) * row_nnz[i], __FILE__, __LINE__ );
 
                 for ( pj = 0; pj < row_nnz[i]; ++pj )
                 {
@@ -1755,7 +1735,7 @@ real sparse_approx_inverse( reax_system const * const system,
             }
         }
 
-        if ( flag2 )
+        if ( flag2 == TRUE )
         {
             t_start = Get_Time( );
             ret = MPI_Wait( &req3, &stat3 );
@@ -1767,10 +1747,8 @@ real sparse_approx_inverse( reax_system const * const system,
             cnt = 0;
             for ( i = nbr2->atoms_str; i < (nbr2->atoms_str + nbr2->atoms_cnt); ++i )
             {
-                j_list[i] = smalloc( sizeof(int) *  row_nnz[i],
-                       "sparse_approx_inverse::j_list[i]" );
-                val_list[i] = smalloc( sizeof(real) * row_nnz[i],
-                       "sparse_approx_inverse::val_list[i]" );
+                j_list[i] = smalloc( sizeof(int) *  row_nnz[i], __FILE__, __LINE__ );
+                val_list[i] = smalloc( sizeof(real) * row_nnz[i], __FILE__, __LINE__ );
 
                 for ( pj = 0; pj < row_nnz[i]; ++pj )
                 {
@@ -1782,22 +1760,20 @@ real sparse_approx_inverse( reax_system const * const system,
         }
     }
 
-    sfree( j_send, "sparse_approx_inverse::j_send" );
-    sfree( val_send, "sparse_approx_inverse::val_send" );
-    sfree( j_recv1, "sparse_approx_inverse::j_recv1" );
-    sfree( j_recv2, "sparse_approx_inverse::j_recv2" );
-    sfree( val_recv1, "sparse_approx_inverse::val_recv1" );
-    sfree( val_recv2, "sparse_approx_inverse::val_recv2" );
+    sfree( j_send, __FILE__, __LINE__ );
+    sfree( val_send, __FILE__, __LINE__ );
+    sfree( j_recv1, __FILE__, __LINE__ );
+    sfree( j_recv2, __FILE__, __LINE__ );
+    sfree( val_recv1, __FILE__, __LINE__ );
+    sfree( val_recv2, __FILE__, __LINE__ );
 
-    X = smalloc( sizeof(int) * (system->bigN + 1),
-            "sparse_approx_inverse::X" );
+    X = smalloc( sizeof(int) * (system->bigN + 1), __FILE__, __LINE__ );
     //size of q should be equal to the maximum possible cardinalty 
     //of the set formed by neighbors of neighbors of an atom
     //i.e, maximum number of rows of dense matrix
     //for water systems, this number is 34000
     //for silica systems, it is 12000
-    q = smalloc( sizeof(int) * 50000,
-            "sparse_approx_inverse::q" );
+    q = smalloc( sizeof(int) * 50000, __FILE__, __LINE__ );
 
     for ( i = 0; i <= system->bigN; ++i )
     {
@@ -1832,7 +1808,6 @@ real sparse_approx_inverse( reax_system const * const system,
                     q[push++] = atom->orig_id;
                 }
             }
-
             /* the case where we communicated that index's row */
             else
             {
@@ -1863,19 +1838,18 @@ real sparse_approx_inverse( reax_system const * const system,
         /* allocate memory for NxM dense matrix */
         if ( size_dense < N * M )
         {
-            if ( size_dense )
+            if ( size_dense > 0 )
             {
-                sfree( dense_matrix, "sparse_approx_inverse::dense_matrix" );
+                sfree( dense_matrix, __FILE__, __LINE__ );
             }
             
-            size_dense = N * M * SAFE_ZONE;
+            size_dense = (int) CEIL( N * M * SAFE_ZONE );
 
-            dense_matrix = smalloc( sizeof(real) * size_dense,
-                "sparse_approx_inverse::dense_matrix" );
+            dense_matrix = smalloc( sizeof(real) * size_dense, __FILE__, __LINE__ );
         }
 
         /* fill in the entries of dense matrix */
-        for ( d_j = 0; d_j < N; ++d_j)
+        for ( d_j = 0; d_j < N; ++d_j )
         {
             /* all rows are initialized to zero */
             for ( d_i = 0; d_i < M; ++d_i )
@@ -1908,14 +1882,14 @@ real sparse_approx_inverse( reax_system const * const system,
          * that is the full column of the identity matrix */
         if ( size_e < M )
         {
-            if ( size_e )
+            if ( size_e > 0 )
             {
-                sfree( e_j, "sparse_approx_inverse::e_j" );
+                sfree( e_j, __FILE__, __LINE__ );
             }
 
-            size_e = M * SAFE_ZONE;
+            size_e = (int) CEIL( M * SAFE_ZONE );
 
-            e_j = smalloc( sizeof(real) * size_e, "sparse_approx_inverse::e_j" );
+            e_j = smalloc( sizeof(real) * size_e, __FILE__, __LINE__ );
         }
 
         for ( k = 0; k < M; ++k )
@@ -1954,26 +1928,26 @@ real sparse_approx_inverse( reax_system const * const system,
         }
     }
 
-    sfree( dense_matrix, "sparse_approx_inverse::dense_matrix" );
-    sfree( e_j, "sparse_approx_inverse::e_j" );
-    sfree( X, "sparse_approx_inverse::X" );
+    sfree( dense_matrix, __FILE__, __LINE__ );
+    sfree( e_j, __FILE__, __LINE__ );
+    sfree( X, __FILE__, __LINE__ );
     for ( i = 0; i < system->N; ++i )
     {
         if ( j_list[i] != NULL )
         {
-            sfree( j_list[i], "sparse_approx_inverse::j_list" );
+            sfree( j_list[i], __FILE__, __LINE__ );
         }
     }
-    sfree( j_list, "sparse_approx_inverse::j_list" );
+    sfree( j_list, __FILE__, __LINE__ );
     for ( i = 0; i < system->N; ++i )
     {
         if ( val_list[i] != NULL )
         {
-            sfree( val_list[i], "sparse_approx_inverse::val_list" );
+            sfree( val_list[i], __FILE__, __LINE__ );
         }
     }
-    sfree( val_list, "sparse_approx_inverse::val_list" );
-    sfree( row_nnz, "sparse_approx_inverse::row_nnz" );
+    sfree( val_list, __FILE__, __LINE__ );
+    sfree( row_nnz, __FILE__, __LINE__ );
 
     ret = MPI_Reduce( &t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM,
             MASTER_NODE, MPI_COMM_WORLD );

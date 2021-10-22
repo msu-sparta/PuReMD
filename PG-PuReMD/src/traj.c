@@ -77,12 +77,12 @@ int Reallocate_Output_Buffer( output_controls *out_control, int req_space,
 {
     if ( out_control->buffer_len > 0 )
     {
-        sfree( out_control->buffer, "Reallocate_Output_Buffer::out_control->buffer" );
+        sfree( out_control->buffer, __FILE__, __LINE__ );
     }
 
     out_control->buffer_len = req_space * SAFE_ZONE;
-    out_control->buffer = (char*) smalloc( out_control->buffer_len * sizeof(char),
-            "Reallocate_Output_Buffer::out_control->buffer" );
+    out_control->buffer = smalloc( out_control->buffer_len * sizeof(char),
+            __FILE__, __LINE__ );
     if ( out_control->buffer == NULL )
     {
         fprintf( stderr,
@@ -475,7 +475,7 @@ void Init_Traj( reax_system *system, control_params *control,
 
     /* allocate line & buffer space */
     out_control->line = scalloc( MAX_TRJ_LINE_LEN + 1, sizeof(char),
-           "Init_Traj::out_control->line" );
+           __FILE__, __LINE__ );
     out_control->buffer_len = 0;
     out_control->buffer = NULL;
 
@@ -525,8 +525,7 @@ void Init_Traj( reax_system *system, control_params *control,
     {
         if ( system->my_rank == MASTER_NODE )
         {
-            out_control->strj = sfopen( fname, "w",
-                   "Init_Traj::out_control->strj" );
+            out_control->strj = sfopen( fname, "w", __FILE__, __LINE__ );
         }
     }
     else
@@ -1135,9 +1134,9 @@ void End_Traj( int my_rank, output_controls *out_control )
     }
     else if ( my_rank == MASTER_NODE )
     {
-        sfclose( out_control->strj, "End_Traj::out_control->strj" );
+        sfclose( out_control->strj, __FILE__, __LINE__ );
     }
 
-    sfree( out_control->buffer, "End_Traj::out_control->buffer" );
-    sfree( out_control->line, "End_Traj::out_control->line" );
+    sfree( out_control->buffer, __FILE__, __LINE__ );
+    sfree( out_control->line, __FILE__, __LINE__ );
 }

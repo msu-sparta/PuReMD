@@ -159,9 +159,9 @@ void Estimate_NT_Atoms( reax_system * const system, mpi_datatypes * const mpi_da
 
         /* allocate the estimated space */
         out_bufs[d].index = scalloc( 2 * nbr->est_send, sizeof(int),
-                "Estimate_NT_Atoms::out_bufs[d].index", MPI_COMM_WORLD );
+                __FILE__, __LINE__ );
         out_bufs[d].out_atoms = scalloc( 2 * nbr->est_send, sizeof(real),
-                "Estimate_NT_Atoms::out_bufs[d].out_atoms", MPI_COMM_WORLD );
+                __FILE__, __LINE__ );
 
         /* sort the atoms to their outgoing buffers */
         // TODO: to call or not to call?
@@ -409,7 +409,7 @@ static void Unpack_Transfer_Message( reax_system * const system,
     {
         /* need space for my_atoms now, other reallocations will trigger in Reallocate */
         system->my_atoms = srealloc( system->my_atoms,
-                sizeof(reax_atom) * (end + cnt), "Unpack_Transfer_Message" );
+                sizeof(reax_atom) * (end + cnt), __FILE__, __LINE__ );
     }
 
     /* adjust coordinates of recved atoms if nbr is a periodic one */
@@ -524,7 +524,7 @@ void Unpack_Exchange_Message( reax_system * const system, int end,
     {
         /* need space for my_atoms now, other reallocations will trigger in Reallocate */
         system->my_atoms = srealloc( system->my_atoms,
-                sizeof(reax_atom) * (end + cnt), "Unpack_Exchange_Message" );
+                sizeof(reax_atom) * (end + cnt), __FILE__, __LINE__ );
     }
 
     if ( nbr->prdc[dim] )
@@ -657,11 +657,11 @@ int SendRecv( reax_system * const system, mpi_datatypes * const mpi_data,
             check_srealloc( &out_bufs[i].out_atoms,
                     &out_bufs[i].out_atoms_size,
                     type_size * (out_bufs[i].cnt + cnt[i]),
-                    TRUE, SAFE_ZONE, "SendRecv::mpi_data->out_atoms" );
+                    TRUE, SAFE_ZONE, __FILE__, __LINE__ );
             check_srealloc( (void **) &out_bufs[i].index,
                     &out_bufs[i].index_size,
                     sizeof(int) * (out_bufs[i].cnt + cnt[i]),
-                    TRUE, SAFE_ZONE, "SendRecv::mpi_data->index" );
+                    TRUE, SAFE_ZONE, __FILE__, __LINE__ );
         }
 
         sort_func( system, start, end, d, out_bufs, mpi_data );

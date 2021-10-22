@@ -43,7 +43,7 @@ void Read_Control_File( const char * const control_file, control_params * const 
     int c, i, ival;
     real val;
 
-    fp = sfopen( control_file, "r", "Read_Control_File::fp" );
+    fp = sfopen( control_file, "r", __FILE__, __LINE__ );
 
     /* assign default values */
     strncpy( control->sim_name, "default.sim", sizeof(control->sim_name) - 1 );
@@ -134,11 +134,11 @@ void Read_Control_File( const char * const control_file, control_params * const 
     control->restrict_type = 0;
 
     /* memory allocations */
-    s = (char*) smalloc( sizeof(char) * MAX_LINE, "Read_Control_File::s" );
-    tmp = (char**) smalloc( sizeof(char*) * MAX_TOKENS, "Read_Control_File::tmp" );
+    s = smalloc( sizeof(char) * MAX_LINE, __FILE__, __LINE__ );
+    tmp = smalloc( sizeof(char*) * MAX_TOKENS, __FILE__, __LINE__ );
     for ( i = 0; i < MAX_TOKENS; i++ )
     {
-        tmp[i] = (char*) smalloc( sizeof(char) * MAX_LINE, "Read_Control_File::tmp[i]" );
+        tmp[i] = smalloc( sizeof(char) * MAX_LINE, __FILE__, __LINE__ );
     }
 
     /* read control parameters file */
@@ -608,10 +608,10 @@ void Read_Control_File( const char * const control_file, control_params * const 
     /* free memory allocations at the top */
     for ( i = 0; i < MAX_TOKENS; i++ )
     {
-        sfree( tmp[i], "Read_Control_File::tmp[i]" );
+        sfree( tmp[i], __FILE__, __LINE__ );
     }
-    sfree( tmp, "Read_Control_File::tmp" );
-    sfree( s, "Read_Control_File::s" );
+    sfree( tmp, __FILE__, __LINE__ );
+    sfree( s, __FILE__, __LINE__ );
 
-    sfclose( fp, "Read_Control_Field::fp" );
+    sfclose( fp, __FILE__, __LINE__ );
 }

@@ -97,8 +97,8 @@ void Sort_Matrix_Rows( sparse_matrix * const A, reax_system const * const system
     max_temp_storage_bytes = 0;
 
     /* copy row indices from device */
-    start = (int *) smalloc( sizeof(int) * system->total_cap, "Sort_Matrix_Rows::start" );
-    end = (int *) smalloc( sizeof(int) * system->total_cap, "Sort_Matrix_Rows::end" );
+    start = (int *) smalloc( sizeof(int) * system->total_cap, __FILE__, __LINE__ );
+    end = (int *) smalloc( sizeof(int) * system->total_cap, __FILE__, __LINE__ );
     sCudaMemcpyAsync( start, A->start, sizeof(int) * system->total_cap, 
             cudaMemcpyDeviceToHost, control->streams[4], __FILE__, __LINE__ );
     sCudaMemcpyAsync( end, A->end, sizeof(int) * system->total_cap, 
@@ -154,8 +154,8 @@ void Sort_Matrix_Rows( sparse_matrix * const A, reax_system const * const system
     sCudaFree( d_temp_storage, __FILE__, __LINE__ );
     sCudaFree( d_j_temp, __FILE__, __LINE__ );
     sCudaFree( d_val_temp, __FILE__, __LINE__ );
-    sfree( start, "Sort_Matrix_Rows::start" );
-    sfree( end, "Sort_Matrix_Rows::end" );
+    sfree( start, __FILE__, __LINE__ );
+    sfree( end, __FILE__, __LINE__ );
 }
 
 

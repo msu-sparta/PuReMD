@@ -97,7 +97,7 @@ void Hydrogen_Bonds( reax_system * const system, control_params * const control,
             {
                 hblist_size = Num_Entries( j, bond_list );
                 hblist = srealloc( hblist, sizeof(int) * hblist_size,
-                        "Hydrogen_Bonds::hblist" );
+                        __FILE__, __LINE__ );
             }
 
             /* search bonded atoms i to atom j (hydrogen atom) for potential hydrogen bonding */
@@ -243,7 +243,7 @@ void Hydrogen_Bonds( reax_system * const system, control_params * const control,
 
     if ( hblist != NULL )
     {
-        sfree( hblist, "Hydrogen_Bonds::hblist" );
+        sfree( hblist, __FILE__, __LINE__ );
     }
 
 #if defined(DEBUG_FOCUS)

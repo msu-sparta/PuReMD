@@ -82,7 +82,7 @@ void Read_Geo_File( const char * const geo_file, reax_system * const system,
     reax_atom *atom;
 
     /* open the geometry file */
-    geo = sfopen( geo_file, "r", "Read_Geo_File::geo" );
+    geo = sfopen( geo_file, "r", __FILE__, __LINE__ );
 
     /* read box information */
     fscanf( geo, CUSTOM_BOXGEO_FORMAT,
@@ -144,7 +144,7 @@ void Read_Geo_File( const char * const geo_file, reax_system * const system,
         }
     }
 
-    sfclose( geo, "Read_Geo_File::geo" );
+    sfclose( geo, __FILE__, __LINE__ );
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: finished reading the geo file\n", system->my_rank );
@@ -287,7 +287,7 @@ void Read_PDB_File( const char * const pdb_file, reax_system * const system,
     rvec x;
     reax_atom *atom;
 
-    pdb = sfopen( pdb_file, "r", "Read_PDB_File::pdb" );
+    pdb = sfopen( pdb_file, "r", __FILE__, __LINE__ );
 
     Allocate_Tokenizer_Space( &s, MAX_LINE, &s1, MAX_LINE,
             &tmp, MAX_TOKENS, MAX_TOKEN_LEN );
@@ -483,7 +483,7 @@ void Read_PDB_File( const char * const pdb_file, reax_system * const system,
 
     Deallocate_Tokenizer_Space( &s, &s1, &tmp, MAX_TOKENS );
 
-    sfclose( pdb, "Read_PDB_File::pdb" );
+    sfclose( pdb, __FILE__, __LINE__ );
 }
 
 
@@ -507,7 +507,7 @@ void Write_PDB_File( reax_system * const system, reax_list * const bond_list,
     np = control->nprocs;
 
     /* Allocation*/
-    line = smalloc( sizeof(char) * PDB_ATOM_FORMAT_O_LENGTH, "Write_PDB_File::line" );
+    line = smalloc( sizeof(char) * PDB_ATOM_FORMAT_O_LENGTH, __FILE__, __LINE__ );
     if ( me == MASTER_NODE )
     {
         buffer_req = system->bigN * PDB_ATOM_FORMAT_O_LENGTH;
@@ -517,7 +517,7 @@ void Write_PDB_File( reax_system * const system, reax_list * const bond_list,
         buffer_req = system->n * PDB_ATOM_FORMAT_O_LENGTH;
     }
 
-    buffer = smalloc( sizeof(char) * buffer_req, "Write_PDB_File::buffer" );
+    buffer = smalloc( sizeof(char) * buffer_req, __FILE__, __LINE__ );
 
     pdb = NULL;
     line[0] = '\0';
@@ -544,7 +544,7 @@ void Write_PDB_File( reax_system * const system, reax_list * const bond_list,
         snprintf( fname, sizeof(fname) - 1, "%.*s-%d.pdb",
                 (int) strlen(control->sim_name), control->sim_name, data->step );
         fname[sizeof(fname) - 1] = '\0';
-        pdb = sfopen( fname, "w", "Write_PDB_File::pdb" );
+        pdb = sfopen( fname, "w", __FILE__, __LINE__ );
         fprintf( pdb, PDB_CRYST1_FORMAT_O,
                  "CRYST1",
                  system->big_box.box_norms[0], system->big_box.box_norms[1],
@@ -605,7 +605,7 @@ void Write_PDB_File( reax_system * const system, reax_list * const bond_list,
     if ( me == MASTER_NODE )
     {
         fprintf( pdb, "%s", buffer );
-        sfclose( pdb, "Write_PDB_File::pdb" );
+        sfclose( pdb, __FILE__, __LINE__ );
     }
 
     /* Writing connect information */
@@ -627,8 +627,8 @@ void Write_PDB_File( reax_system * const system, reax_list * const bond_list,
     }
     */
 
-    sfree( buffer, "Write_PDB_File::buffer" );
-    sfree( line, "Write_PDB_File::line" );
+    sfree( buffer, __FILE__, __LINE__ );
+    sfree( line, __FILE__, __LINE__ );
 }
 
 
@@ -653,7 +653,7 @@ void Read_BGF( const char * const bgf_file, reax_system * const system,
     endptr = NULL;
     ratom = 0;
 
-    bgf = sfopen( bgf_file, "r", "Read_BGF::bgf" );
+    bgf = sfopen( bgf_file, "r", __FILE__, __LINE__ );
 
     Allocate_Tokenizer_Space( &line, MAX_LINE, &backup, MAX_LINE,
             &tokens, MAX_TOKENS, MAX_TOKEN_LEN );
@@ -691,7 +691,7 @@ void Read_BGF( const char * const bgf_file, reax_system * const system,
         MPI_Abort( MPI_COMM_WORLD, INVALID_GEO );
     }
 
-    sfclose( bgf, "Read_BGF::bgf" );
+    sfclose( bgf, __FILE__, __LINE__ );
 
     system->n = n;
     system->N = n;
@@ -699,13 +699,13 @@ void Read_BGF( const char * const bgf_file, reax_system * const system,
     PreAllocate_Space( system, control, workspace );
 
 //    workspace->map_serials = scalloc( MAX_ATOM_ID, sizeof(int),
-//            "Read_BGF::workspace->map_serials" );
+//            __FILE__, __LINE__ );
 //    for ( i = 0; i < MAX_ATOM_ID; ++i )
 //    {
 //        workspace->map_serials[i] = -1;
 //    }
 
-    bgf = sfopen( bgf_file, "r", "Read_BGF::bgf" );
+    bgf = sfopen( bgf_file, "r", __FILE__, __LINE__ );
     atom_cnt = 0;
     token_cnt = 0;
 
@@ -843,5 +843,5 @@ void Read_BGF( const char * const bgf_file, reax_system * const system,
 
     Deallocate_Tokenizer_Space( &line, &backup, &tokens, MAX_TOKENS );
 
-    sfclose( bgf, "Read_BGF::bgf" );
+    sfclose( bgf, __FILE__, __LINE__ );
 }

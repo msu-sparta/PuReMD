@@ -70,8 +70,7 @@ void Init_Output_Files( reax_system *system, control_params *control,
         {
             /* out file */
             sprintf( temp, "%s.out", control->sim_name );
-            out_control->out = sfopen( temp, "w",
-                    "Init_Output_Controls::output_control->out" );
+            out_control->out = sfopen( temp, "w", __FILE__, __LINE__ );
 
 #if !defined(DEBUG) && !defined(DEBUG_FOCUS)
             fprintf( out_control->out, "%-6s%14s%14s%14s%11s%13s%13s\n",
@@ -86,8 +85,7 @@ void Init_Output_Files( reax_system *system, control_params *control,
 
             /* potential file */
             sprintf( temp, "%s.pot", control->sim_name );
-            out_control->pot = sfopen( temp, "w",
-                    "Init_Output_Controls::output_control->pot" );
+            out_control->pot = sfopen( temp, "w", __FILE__, __LINE__ );
 
 #if !defined(DEBUG) && !defined(DEBUG_FOCUS)
             fprintf( out_control->pot,
@@ -107,8 +105,7 @@ void Init_Output_Files( reax_system *system, control_params *control,
 #if defined(LOG_PERFORMANCE)
             /* log file */
             sprintf( temp, "%s.log", control->sim_name );
-            out_control->log = sfopen( temp, "w",
-                    "Init_Output_Controls::output_control->log" );
+            out_control->log = sfopen( temp, "w", __FILE__, __LINE__ );
 
 //            fprintf( out_control->log, "%6s%8s%8s%8s%8s%8s%8s%8s%8s%8s\n",
 //                     "step", "total", "comm", "nbrs", "init", "bonded", "nonb",
@@ -134,8 +131,7 @@ void Init_Output_Files( reax_system *system, control_params *control,
                 control->ensemble == sNPT )
         {
             sprintf( temp, "%s.prs", control->sim_name );
-            out_control->prs = sfopen( temp, "w",
-                    "Init_Output_Controls::output_control->prs" );
+            out_control->prs = sfopen( temp, "w", __FILE__, __LINE__ );
 
             fprintf( out_control->prs, "%8s%13s%13s%13s%13s%13s%13s%13s\n",
                     "step", "Pint/norm[x]", "Pint/norm[y]", "Pint/norm[z]",
@@ -150,8 +146,7 @@ void Init_Output_Files( reax_system *system, control_params *control,
         {
             sprintf( temp, "%s.dpl", control->sim_name );
 
-            out_control->dpl = sfopen( temp, "w",
-                    "Init_Output_Controls::output_control->dpl" );
+            out_control->dpl = sfopen( temp, "w", __FILE__, __LINE__ );
 
             fprintf( out_control->dpl, "%6s%20s%30s",
                      "step", "molecule count", "avg dipole moment norm" );
@@ -164,8 +159,7 @@ void Init_Output_Files( reax_system *system, control_params *control,
         if ( control->diffusion_coef )
         {
             sprintf( temp, "%s.drft", control->sim_name );
-            out_control->drft = sfopen( temp, "w",
-                    "Init_Output_Controls::output_control->drft" );
+            out_control->drft = sfopen( temp, "w", __FILE__, __LINE__ );
 
             fprintf( out_control->drft, "%7s%20s%20s\n",
                      "step", "type count", "avg disp^2" );
@@ -184,8 +178,7 @@ void Init_Output_Files( reax_system *system, control_params *control,
         if ( system->my_rank == MASTER_NODE )
         {
             sprintf( temp, "%s.mol", control->sim_name );
-            out_control->mol = sfopen( temp, "w",
-                    "Init_Output_Controls::output_control->mol" );
+            out_control->mol = sfopen( temp, "w", __FILE__, __LINE__ );
         }
 
         ret = MPI_Bcast( &out_control->mol, 1, MPI_LONG, 0, MPI_COMM_WORLD );
@@ -195,148 +188,120 @@ void Init_Output_Files( reax_system *system, control_params *control,
 #if defined(TEST_ENERGY)
     /* bond energy file */
     sprintf( temp, "%s.ebond.%d", control->sim_name, system->my_rank );
-    out_control->ebond = sfopen( temp, "w",
-            "Init_Output_Controls::output_control->ebond" );
+    out_control->ebond = sfopen( temp, "w", __FILE__, __LINE__ );
 
     /* lone-pair energy file */
     sprintf( temp, "%s.elp.%d", control->sim_name, system->my_rank );
-    out_control->elp = sfopen( temp, "w",
-            "Init_Output_Controls::output_control->elp" );
+    out_control->elp = sfopen( temp, "w", __FILE__, __LINE__ );
 
     /* overcoordination energy file */
     sprintf( temp, "%s.eov.%d", control->sim_name, system->my_rank );
-    out_control->eov = sfopen( temp, "w",
-            "Init_Output_Controls::output_control->eov" );
+    out_control->eov = sfopen( temp, "w", __FILE__, __LINE__ );
 
     /* undercoordination energy file */
     sprintf( temp, "%s.eun.%d", control->sim_name, system->my_rank );
-    out_control->eun = sfopen( temp, "w",
-            "Init_Output_Controls::output_control->eun" );
+    out_control->eun = sfopen( temp, "w", __FILE__, __LINE__ );
 
     /* angle energy file */
     sprintf( temp, "%s.eval.%d", control->sim_name, system->my_rank );
-    out_control->eval = sfopen( temp, "w",
-            "Init_Output_Controls::output_control->angle" );
+    out_control->eval = sfopen( temp, "w", __FILE__, __LINE__ );
 
     /* coalition energy file */
     sprintf( temp, "%s.ecoa.%d", control->sim_name, system->my_rank );
-    out_control->ecoa = sfopen( temp, "w",
-            "Init_Output_Controls::output_control->ecoa" );
+    out_control->ecoa = sfopen( temp, "w", __FILE__, __LINE__ );
 
     /* penalty energy file */
     sprintf( temp, "%s.epen.%d", control->sim_name, system->my_rank );
-    out_control->epen = sfopen( temp, "w",
-            "Init_Output_Controls::output_control->epen" );
+    out_control->epen = sfopen( temp, "w", __FILE__, __LINE__ );
 
     /* torsion energy file */
     sprintf( temp, "%s.etor.%d", control->sim_name, system->my_rank );
-    out_control->etor = sfopen( temp, "w",
-            "Init_Output_Controls::output_control->etor" );
+    out_control->etor = sfopen( temp, "w", __FILE__, __LINE__ );
 
     /* conjugation energy file */
     sprintf( temp, "%s.econ.%d", control->sim_name, system->my_rank );
-    out_control->econ = sfopen( temp, "w",
-            "Init_Output_Controls::output_control->econ" );
+    out_control->econ = sfopen( temp, "w", __FILE__, __LINE__ );
 
     /* hydrogen bond energy file */
     sprintf( temp, "%s.ehb.%d", control->sim_name, system->my_rank );
-    out_control->ehb = sfopen( temp, "w",
-            "Init_Output_Controls::output_control->ehb" );
+    out_control->ehb = sfopen( temp, "w", __FILE__, __LINE__ );
 
     /* vdWaals energy file */
     sprintf( temp, "%s.evdw.%d", control->sim_name, system->my_rank );
-    out_control->evdw = sfopen( temp, "w",
-            "Init_Output_Controls::output_control->evdw" );
+    out_control->evdw = sfopen( temp, "w", __FILE__, __LINE__ );
 
     /* coulomb energy file */
     sprintf( temp, "%s.ecou.%d", control->sim_name, system->my_rank );
-    out_control->ecou = sfopen( temp, "w",
-            "Init_Output_Controls::output_control->ecou" );
+    out_control->ecou = sfopen( temp, "w", __FILE__, __LINE__ );
 #endif
 
 #if defined(TEST_FORCES)
     /* bond orders file */
     sprintf( temp, "%s.fbo.%d", control->sim_name, system->my_rank );
-    out_control->fbo = sfopen( temp, "w",
-            "Init_Output_Controls::output_control->fbo" );
+    out_control->fbo = sfopen( temp, "w", __FILE__, __LINE__ );
 
     /* bond orders derivatives file */
     sprintf( temp, "%s.fdbo.%d", control->sim_name, system->my_rank );
-    out_control->fdbo = sfopen( temp, "w",
-            "Init_Output_Controls::output_control->fdbo" );
+    out_control->fdbo = sfopen( temp, "w", __FILE__, __LINE__ );
 
     /* produce a single force file - to be written by p0 */
     if ( system->my_rank == MASTER_NODE )
     {
         /* bond forces file */
         sprintf( temp, "%s.fbond", control->sim_name );
-        out_control->fbond = sfopen( temp, "w",
-                "Init_Output_Controls::output_control->fbond" );
+        out_control->fbond = sfopen( temp, "w", __FILE__, __LINE__ );
 
         /* lone-pair forces file */
         sprintf( temp, "%s.flp", control->sim_name );
-        out_control->flp = sfopen( temp, "w",
-                "Init_Output_Controls::output_control->flp" );
+        out_control->flp = sfopen( temp, "w", __FILE__, __LINE__ );
 
         /* overcoordination forces file */
         sprintf( temp, "%s.fov", control->sim_name );
-        out_control->fov = sfopen( temp, "w",
-                "Init_Output_Controls::output_control->fov" );
+        out_control->fov = sfopen( temp, "w", __FILE__, __LINE__ );
 
         /* undercoordination forces file */
         sprintf( temp, "%s.fun", control->sim_name );
-        out_control->fun = sfopen( temp, "w",
-                "Init_Output_Controls::output_control->fun" );
+        out_control->fun = sfopen( temp, "w", __FILE__, __LINE__ );
 
         /* angle forces file */
         sprintf( temp, "%s.fang", control->sim_name );
-        out_control->fang = sfopen( temp, "w",
-                "Init_Output_Controls::output_control->fang" );
+        out_control->fang = sfopen( temp, "w", __FILE__, __LINE__ );
 
         /* coalition forces file */
         sprintf( temp, "%s.fcoa", control->sim_name );
-        out_control->fcoa = sfopen( temp, "w",
-                "Init_Output_Controls::output_control->fcoa" );
+        out_control->fcoa = sfopen( temp, "w", __FILE__, __LINE__ );
 
         /* penalty forces file */
         sprintf( temp, "%s.fpen", control->sim_name );
-        out_control->fpen = sfopen( temp, "w",
-                "Init_Output_Controls::output_control->fpen" );
+        out_control->fpen = sfopen( temp, "w", __FILE__, __LINE__ );
 
         /* torsion forces file */
         sprintf( temp, "%s.ftor", control->sim_name );
-        out_control->ftor = sfopen( temp, "w",
-                "Init_Output_Controls::output_control->ftor" );
+        out_control->ftor = sfopen( temp, "w", __FILE__, __LINE__ );
 
         /* conjugation forces file */
         sprintf( temp, "%s.fcon", control->sim_name );
-        out_control->fcon = sfopen( temp, "w",
-                "Init_Output_Controls::output_control->fcon" );
+        out_control->fcon = sfopen( temp, "w", __FILE__, __LINE__ );
 
         /* hydrogen bond forces file */
         sprintf( temp, "%s.fhb", control->sim_name );
-        out_control->fhb = sfopen( temp, "w",
-                "Init_Output_Controls::output_control->fhb" );
+        out_control->fhb = sfopen( temp, "w", __FILE__, __LINE__ );
 
         /* vdw forces file */
         sprintf( temp, "%s.fvdw", control->sim_name );
-        out_control->fvdw = sfopen( temp, "w",
-                "Init_Output_Controls::output_control->fvdw" );
+        out_control->fvdw = sfopen( temp, "w", __FILE__, __LINE__ );
 
         /* nonbonded forces file */
         sprintf( temp, "%s.fele", control->sim_name );
-        out_control->fele = sfopen( temp, "w",
-                "Init_Output_Controls::output_control->fele" );
+        out_control->fele = sfopen( temp, "w", __FILE__, __LINE__ );
 
         /* total force file */
         sprintf( temp, "%s.ftot", control->sim_name );
-        out_control->ftot = sfopen( temp, "w",
-                "Init_Output_Controls::output_control->ftot" );
+        out_control->ftot = sfopen( temp, "w", __FILE__, __LINE__ );
 
         /* force comprison file */
         sprintf( temp, "%s.fcomp", control->sim_name );
-        out_control->fcomp = sfopen( temp, "w",
-                "Init_Output_Controls::output_control->fcomp" );
+        out_control->fcomp = sfopen( temp, "w", __FILE__, __LINE__ );
     }
 #endif
 
@@ -344,18 +309,15 @@ void Init_Output_Files( reax_system *system, control_params *control,
 #if defined(TEST_FORCES) || defined(TEST_ENERGY)
     /* far neighbor list file */
     sprintf( temp, "%s.far_nbrs_list.%d", control->sim_name, system->my_rank );
-    out_control->flist = sfopen( temp, "w",
-            "Init_Output_Controls::output_control->flist" );
+    out_control->flist = sfopen( temp, "w", __FILE__, __LINE__ );
 
     /* bond list file */
     sprintf( temp, "%s.bond_list.%d", control->sim_name, system->my_rank );
-    out_control->blist = sfopen( temp, "w",
-            "Init_Output_Controls::output_control->blist" );
+    out_control->blist = sfopen( temp, "w", __FILE__, __LINE__ );
 
     /* near neighbor list file */
     sprintf( temp, "%s.near_nbrs_list.%d", control->sim_name, system->my_rank );
-    out_control->nlist = sfopen( temp, "w",
-            "Init_Output_Controls::output_control->nlist" );
+    out_control->nlist = sfopen( temp, "w", __FILE__, __LINE__ );
 #endif
 #endif
 }
@@ -375,20 +337,17 @@ void Finalize_Output_Files( reax_system *system, control_params *control,
         {
             if ( out_control->out )
             {
-                sfclose( out_control->out,
-                        "Close_Output_Files::out_control->out" );
+                sfclose( out_control->out, __FILE__, __LINE__ );
             }
             if ( out_control->pot )
             {
-                sfclose( out_control->pot,
-                        "Close_Output_Files::out_control->pot" );
+                sfclose( out_control->pot, __FILE__, __LINE__ );
             }
 
 #if defined(LOG_PERFORMANCE)
             if ( out_control->log )
             {
-                sfclose( out_control->log,
-                        "Close_Output_Files::out_control->log" );
+                sfclose( out_control->log, __FILE__, __LINE__ );
             }
 #endif
         }
@@ -398,104 +357,69 @@ void Finalize_Output_Files( reax_system *system, control_params *control,
         {
             if ( out_control->prs )
             {
-                sfclose( out_control->prs,
-                        "Close_Output_Files::out_control->prs" );
+                sfclose( out_control->prs, __FILE__, __LINE__ );
             }
         }
 
         if ( control->dipole_anal )
         {
-            sfclose( out_control->dpl,
-                    "Close_Output_Files::out_control->dpl" );
+            sfclose( out_control->dpl, __FILE__, __LINE__ );
         }
 
         if ( control->diffusion_coef )
         {
-            sfclose( out_control->drft,
-                    "Close_Output_Files::out_control->drft" );
+            sfclose( out_control->drft, __FILE__, __LINE__ );
         }
 
         if ( control->molecular_analysis )
         {
-            sfclose( out_control->mol,
-                    "Close_Output_Files::out_control->mol" );
+            sfclose( out_control->mol, __FILE__, __LINE__ );
         }
     }
 
 #if defined(TEST_ENERGY)
-    sfclose( out_control->ebond,
-            "Close_Output_Files::out_control->ebond" );
-    sfclose( out_control->elp,
-            "Close_Output_Files::out_control->elp" );
-    sfclose( out_control->eov,
-            "Close_Output_Files::out_control->eov" );
-    sfclose( out_control->eun,
-            "Close_Output_Files::out_control->eun" );
-    sfclose( out_control->eval,
-            "Close_Output_Files::out_control->eval" );
-    sfclose( out_control->epen,
-            "Close_Output_Files::out_control->epen" );
-    sfclose( out_control->ecoa,
-            "Close_Output_Files::out_control->ecoa" );
-    sfclose( out_control->ehb,
-            "Close_Output_Files::out_control->ehb" );
-    sfclose( out_control->etor,
-            "Close_Output_Files::out_control->etor" );
-    sfclose( out_control->econ,
-            "Close_Output_Files::out_control->econ" );
-    sfclose( out_control->evdw,
-            "Close_Output_Files::out_control->evdw" );
-    sfclose( out_control->ecou,
-            "Close_Output_Files::out_control->ecou" );
+    sfclose( out_control->ebond, __FILE__, __LINE__ );
+    sfclose( out_control->elp, __FILE__, __LINE__ );
+    sfclose( out_control->eov, __FILE__, __LINE__ );
+    sfclose( out_control->eun, __FILE__, __LINE__ );
+    sfclose( out_control->eval, __FILE__, __LINE__ );
+    sfclose( out_control->epen, __FILE__, __LINE__ );
+    sfclose( out_control->ecoa, __FILE__, __LINE__ );
+    sfclose( out_control->ehb, __FILE__, __LINE__ );
+    sfclose( out_control->etor, __FILE__, __LINE__ );
+    sfclose( out_control->econ, __FILE__, __LINE__ );
+    sfclose( out_control->evdw, __FILE__, __LINE__ );
+    sfclose( out_control->ecou, __FILE__, __LINE__ );
 #endif
 
 #if defined(TEST_FORCES)
-    sfclose( out_control->fbo,
-            "Close_Output_Files::out_control->fbo" );
-    sfclose( out_control->fdbo,
-            "Close_Output_Files::out_control->fdbo" );
+    sfclose( out_control->fbo, __FILE__, __LINE__ );
+    sfclose( out_control->fdbo, __FILE__, __LINE__ );
 
     if ( system->my_rank == MASTER_NODE )
     {
-        sfclose( out_control->fbond,
-                "Close_Output_Files::out_control->fbond" );
-        sfclose( out_control->flp,
-                "Close_Output_Files::out_control->flp" );
-        sfclose( out_control->fov,
-                "Close_Output_Files::out_control->fov" );
-        sfclose( out_control->fun,
-                "Close_Output_Files::out_control->fun" );
-        sfclose( out_control->fang,
-                "Close_Output_Files::out_control->fang" );
-        sfclose( out_control->fcoa,
-                "Close_Output_Files::out_control->fcoa" );
-        sfclose( out_control->fpen,
-                "Close_Output_Files::out_control->fpen" );
-        sfclose( out_control->ftor,
-                "Close_Output_Files::out_control->ftor" );
-        sfclose( out_control->fcon,
-                "Close_Output_Files::out_control->fcon" );
-        sfclose( out_control->fhb,
-                "Close_Output_Files::out_control->fhb" );
-        sfclose( out_control->fvdw,
-                "Close_Output_Files::out_control->fvdw" );
-        sfclose( out_control->fele,
-                "Close_Output_Files::out_control->fele" );
-        sfclose( out_control->ftot,
-                "Close_Output_Files::out_control->ftot" );
-        sfclose( out_control->fcomp,
-                "Close_Output_Files::out_control->fcomp" );
+        sfclose( out_control->fbond, __FILE__, __LINE__ );
+        sfclose( out_control->flp, __FILE__, __LINE__ );
+        sfclose( out_control->fov, __FILE__, __LINE__ );
+        sfclose( out_control->fun, __FILE__, __LINE__ );
+        sfclose( out_control->fang, __FILE__, __LINE__ );
+        sfclose( out_control->fcoa, __FILE__, __LINE__ );
+        sfclose( out_control->fpen, __FILE__, __LINE__ );
+        sfclose( out_control->ftor, __FILE__, __LINE__ );
+        sfclose( out_control->fcon, __FILE__, __LINE__ );
+        sfclose( out_control->fhb, __FILE__, __LINE__ );
+        sfclose( out_control->fvdw, __FILE__, __LINE__ );
+        sfclose( out_control->fele, __FILE__, __LINE__ );
+        sfclose( out_control->ftot, __FILE__, __LINE__ );
+        sfclose( out_control->fcomp, __FILE__, __LINE__ );
     }
 #endif
 
 #if defined(PURE_REAX)
 #if defined(TEST_FORCES) || defined(TEST_ENERGY)
-    sfclose( out_control->flist,
-            "Close_Output_Files::out_control->flist" );
-    sfclose( out_control->blist,
-            "Close_Output_Files::out_control->blist" );
-    sfclose( out_control->nlist,
-            "Close_Output_Files::out_control->nlist" );
+    sfclose( out_control->flist, __FILE__, __LINE__ );
+    sfclose( out_control->blist, __FILE__, __LINE__ );
+    sfclose( out_control->nlist, __FILE__, __LINE__ );
 #endif
 #endif
 }
@@ -626,7 +550,7 @@ void Print_Native_GCells( reax_system *system )
     };
 
     sprintf( fname, "native_gcells.%d", system->my_rank );
-    f = sfopen( fname, "w", "Print_Native_GCells::f" );
+    f = sfopen( fname, "w", __FILE__, __LINE__ );
     g = &system->my_grid;
 
     for ( i = g->native_str[0]; i < g->native_end[0]; i++ )
@@ -657,7 +581,7 @@ void Print_Native_GCells( reax_system *system )
         }
     }
 
-    sfclose( f, "Print_Native_GCells::f" );
+    sfclose( f, __FILE__, __LINE__ );
 }
 
 
@@ -675,7 +599,7 @@ void Print_All_GCells( reax_system *system )
     };
 
     sprintf( fname, "all_gcells.%d", system->my_rank );
-    f = sfopen( fname, "w", "Print_All_GCells::f" );
+    f = sfopen( fname, "w", __FILE__, __LINE__ );
     g = &system->my_grid;
 
     for ( i = 0; i < g->ncells[0]; i++ )
@@ -706,7 +630,7 @@ void Print_All_GCells( reax_system *system )
         }
     }
 
-    sfclose( f, "Print_All_GCells::f" );
+    sfclose( f, __FILE__, __LINE__ );
 }
 
 
@@ -717,7 +641,7 @@ void Print_My_Atoms( reax_system *system, control_params *control, int step )
     FILE *fh;
 
     sprintf( fname, "%s.my_atoms.%d.%d", control->sim_name, step, system->my_rank );
-    fh = sfopen( fname, "w", "Print_My_Atoms::fh" );
+    fh = sfopen( fname, "w", __FILE__, __LINE__ );
 
     // fprintf( stderr, "p%d had %d atoms\n",
     //   system->my_rank, system->n );
@@ -732,7 +656,7 @@ void Print_My_Atoms( reax_system *system, control_params *control, int step )
                  system->my_atoms[i].x[2] );
     }
 
-    sfclose( fh, "Print_My_Atoms::fh" );
+    sfclose( fh, __FILE__, __LINE__ );
 }
 
 
@@ -743,7 +667,7 @@ void Print_My_Ext_Atoms( reax_system *system )
     FILE *fh;
 
     sprintf( fname, "my_ext_atoms.%d", system->my_rank );
-    fh = sfopen( fname, "w", "Print_My_Ext_Atoms::fh" );
+    fh = sfopen( fname, "w", __FILE__, __LINE__ );
 
     // fprintf( stderr, "p%d had %d atoms\n",
     //   system->my_rank, system->n );
@@ -758,7 +682,7 @@ void Print_My_Ext_Atoms( reax_system *system )
                  system->my_atoms[i].x[2] );
     }
 
-    sfclose( fh, "Print_My_Ext_Atoms::fh" );
+    sfclose( fh, __FILE__, __LINE__ );
 }
 
 
@@ -771,7 +695,7 @@ void Print_Far_Neighbors( reax_system *system, reax_list **lists,
     reax_list *far_nbrs;
 
     sprintf( fname, "%s.far_nbrs.%d", control->sim_name, system->my_rank );
-    fout = sfopen( fname, "w", "Print_Far_Neighbors::fout" );
+    fout = sfopen( fname, "w", __FILE__, __LINE__ );
     far_nbrs = lists[FAR_NBRS];
     natoms = system->N;
 
@@ -798,7 +722,7 @@ void Print_Far_Neighbors( reax_system *system, reax_list **lists,
         }
     }
 
-    sfclose( fout, "Print_Far_Neighbors::fout" );
+    sfclose( fout, __FILE__, __LINE__ );
 }
 
 
@@ -824,7 +748,7 @@ void Print_Sparse_Matrix2( reax_system *system, sparse_matrix *A, char *fname )
     int i, pj;
     FILE *f;
     
-    f = sfopen( fname, "w", "Print_Sparse_Matrix2::f" );
+    f = sfopen( fname, "w", __FILE__, __LINE__ );
 
     for ( i = 0; i < A->n; ++i )
     {
@@ -838,7 +762,7 @@ void Print_Sparse_Matrix2( reax_system *system, sparse_matrix *A, char *fname )
         }
     }
 
-    sfclose( f, "Print_Sparse_Matrix2::f" );
+    sfclose( f, __FILE__, __LINE__ );
 }
 
 
@@ -848,7 +772,7 @@ void Print_Symmetric_Sparse( reax_system *system, sparse_matrix *A, char *fname 
     reax_atom *ai, *aj;
     FILE *f;
 
-    f = sfopen( fname, "w", "Print_Symmetric_Sparse::f" );
+    f = sfopen( fname, "w", __FILE__, __LINE__ );
 
     for ( i = 0; i < A->n; ++i )
     {
@@ -869,7 +793,7 @@ void Print_Symmetric_Sparse( reax_system *system, sparse_matrix *A, char *fname 
         }
     }
 
-    sfclose( f, "Print_Symmetric_Sparse::f" );
+    sfclose( f, __FILE__, __LINE__ );
 }
 
 
@@ -886,7 +810,7 @@ void Print_Linear_System( reax_system *system, control_params *control,
 
     /* print rhs and init guesses for QEq */
     sprintf( fname, "%s.p%dstate%d", control->sim_name, system->my_rank, step );
-    out = sfopen( fname, "w", "Print_Linear_System::out" );
+    out = sfopen( fname, "w", __FILE__, __LINE__ );
 
     for ( i = 0; i < system->n; i++ )
     {
@@ -896,7 +820,7 @@ void Print_Linear_System( reax_system *system, control_params *control,
                  workspace->s[i], workspace->b_s[i],
                  workspace->t[i], workspace->b_t[i] );
     }
-    sfclose( out, "Print_Linear_System::out" );
+    sfclose( out, __FILE__, __LINE__ );
 
     /* print charge matrix */
     sprintf( fname, "%s.p%dH%d", control->sim_name, system->my_rank, step );
@@ -904,7 +828,7 @@ void Print_Linear_System( reax_system *system, control_params *control,
 
     /* print the incomplete H matrix */
 //    sprintf( fname, "%s.p%dHinc%d", control->sim_name, system->my_rank, step );
-//    out = sfopen( fname, "w", "Print_Linear_System::out" );
+//    out = sfopen( fname, "w", __FILE__, __LINE__ );
 //    H = workspace->H;
 //    for( i = 0; i < H->n; ++i )
 //    {
@@ -922,7 +846,7 @@ void Print_Linear_System( reax_system *system, control_params *control,
 //            }
 //        }
 //    }
-//    sfclose( out, "Print_Linear_System::out" );
+//    sfclose( out, __FILE__, __LINE__ );
 
     // print the L from incomplete cholesky decomposition
 //    sprintf( fname, "%s.p%dL%d", control->sim_name, system->my_rank, step );
@@ -937,7 +861,7 @@ void Print_LinSys_Soln( reax_system *system, real *x, real *b_prm, real *b )
     FILE *fout;
 
     sprintf( fname, "qeq.%d.out", system->my_rank );
-    fout = sfopen( fname, "w", "Print_LinSys_Soln::fout" );
+    fout = sfopen( fname, "w", __FILE__, __LINE__ );
 
     for ( i = 0; i < system->n; ++i )
     {
@@ -945,7 +869,7 @@ void Print_LinSys_Soln( reax_system *system, real *x, real *b_prm, real *b )
                  system->my_atoms[i].orig_id, x[i], b_prm[i], b[i] );
     }
 
-    sfclose( fout, "Print_LinSys_Soln::fout" );
+    sfclose( fout, __FILE__, __LINE__ );
 }
 
 
@@ -956,7 +880,7 @@ void Print_Charges( reax_system *system )
     FILE *fout;
 
     sprintf( fname, "q.%d.out", system->my_rank );
-    fout = sfopen( fname, "w", "Print_Charges::fout" );
+    fout = sfopen( fname, "w", __FILE__, __LINE__ );
 
     for ( i = 0; i < system->n; ++i )
     {
@@ -967,7 +891,7 @@ void Print_Charges( reax_system *system )
                  system->my_atoms[i].q );
     }
 
-    sfclose( fout, "Print_Charges::fout" );
+    sfclose( fout, __FILE__, __LINE__ );
 }
 
 
@@ -984,7 +908,7 @@ void Print_HBonds( reax_system *system, reax_list **lists,
     hbond_list = lists[HBONDS];
 
     sprintf( fname, "%s.hbonds.%d.%d", control->sim_name, step, system->my_rank );
-    fout = sfopen( fname, "w", "Print_HBonds::fout" );
+    fout = sfopen( fname, "w", __FILE__, __LINE__ );
 
     for ( i = 0; i < system->numH; ++i )
     {
@@ -1001,7 +925,7 @@ void Print_HBonds( reax_system *system, reax_list **lists,
         }
     }
 
-    sfclose( fout, "Print_HBonds::fout" );
+    sfclose( fout, __FILE__, __LINE__ );
 }
 
  
@@ -1014,7 +938,7 @@ void Print_HBond_Indices( reax_system *system, reax_list **lists,
     reax_list *hbonds = lists[HBONDS];
 
     sprintf( fname, "%s.hbonds_indices.%d.%d", control->sim_name, step, system->my_rank );
-    fout = sfopen( fname, "w", "Print_HBond_Indices::fout" );
+    fout = sfopen( fname, "w", __FILE__, __LINE__ );
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -1022,7 +946,7 @@ void Print_HBond_Indices( reax_system *system, reax_list **lists,
                 i, Start_Index(i, hbonds), End_Index(i, hbonds) );
     }
 
-    sfclose( fout, "Print_HBond_Indices::fout" );
+    sfclose( fout, __FILE__, __LINE__ );
 }
 
 
@@ -1037,7 +961,7 @@ void Print_Bonds( reax_system *system, reax_list **lists,
     reax_list *bonds = lists[BONDS];
 
     sprintf( fname, "%s.bonds.%d.%d", control->sim_name, step, system->my_rank );
-    fout = sfopen( fname, "w", "Print_Bonds::fout" );
+    fout = sfopen( fname, "w", __FILE__, __LINE__ );
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -1054,7 +978,7 @@ void Print_Bonds( reax_system *system, reax_list **lists,
         }
     }
 
-    sfclose( fout, "Print_Bonds::fout" );
+    sfclose( fout, __FILE__, __LINE__ );
 }
 
 
@@ -1068,7 +992,7 @@ void Print_Three_Bodies( reax_system *system, reax_list **lists,
     reax_list *thb_list = lists[THREE_BODIES];
 
     sprintf( fname, "%s.thbs.%d.%d", control->sim_name, step, system->my_rank );
-    fout = sfopen( fname, "w", "Print_Three_Bodies::fout" );
+    fout = sfopen( fname, "w", __FILE__, __LINE__ );
 
     for ( i = 0; i < thb_list->n; ++i )
     {
@@ -1084,7 +1008,7 @@ void Print_Three_Bodies( reax_system *system, reax_list **lists,
         }
     }
 
-    sfclose( fout, "Print_Three_Bodies::fout" );
+    sfclose( fout, __FILE__, __LINE__ );
 }
 
 
@@ -1102,7 +1026,7 @@ void Print_Bond_List2( reax_system *system, reax_list *bonds, char *fname )
     int num;
 
     num = 0;
-    f = sfopen( fname, "w", "Print_Bond_List2::f" );
+    f = sfopen( fname, "w", __FILE__, __LINE__ );
 
     for ( i = 0; i < system->n; ++i )
     {
@@ -1158,7 +1082,7 @@ void Print_Far_Neighbors_List_Adj_Format( reax_system *system,
     FILE *fout;
 
     sprintf( fname, "%s.far.%d.%d", control->sim_name, step, system->my_rank );
-    fout = sfopen( fname, "w", "Print_Far_Neighbors_List_Adj_Format" );
+    fout = sfopen( fname, "w", __FILE__, __LINE__ );
 
     num_intrs = 0;
     intrs = NULL;
@@ -1178,8 +1102,7 @@ void Print_Far_Neighbors_List_Adj_Format( reax_system *system,
         if ( Num_Entries( i, list ) > num_intrs )
         {
             num_intrs = Num_Entries( i, list );
-            intrs = srealloc( intrs, num_intrs * sizeof(int),
-                    "Print_Far_Neighbor_List_Adj_Format::intrs" );
+            intrs = srealloc( intrs, num_intrs * sizeof(int), __FILE__, __LINE__ );
         }
 
         for ( pj = Start_Index(i, list); pj < End_Index(i, list); ++pj )
@@ -1203,10 +1126,10 @@ void Print_Far_Neighbors_List_Adj_Format( reax_system *system,
 
     if ( intrs != NULL )
     {
-        sfree( intrs, "Print_Far_Neighbor_List_Adj_Format::intrs" );
+        sfree( intrs, __FILE__, __LINE__ );
     }
 
-    sfclose( fout, "Print_Far_Neighbors_List_Adj_Format" );
+    sfclose( fout, __FILE__, __LINE__ );
 }
 
 

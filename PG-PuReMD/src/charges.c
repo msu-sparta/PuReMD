@@ -308,7 +308,7 @@ static void Calculate_Charges_QEq( reax_system const * const system,
     rvec2 my_sum, all_sum;
     reax_atom *atom;
 
-    q = smalloc( sizeof(real) * system->N, "Calculate_Charges_QEq::q" );
+    q = smalloc( sizeof(real) * system->N, __FILE__, __LINE__ );
 
     my_sum[0] = 0.0;
     my_sum[1] = 0.0;
@@ -374,7 +374,7 @@ static void Calculate_Charges_QEq( reax_system const * const system,
         system->my_atoms[i].q = q[i];
     }
 
-    sfree( q, "Calculate_Charges_QEq::q" );
+    sfree( q, __FILE__, __LINE__ );
 }
 
 

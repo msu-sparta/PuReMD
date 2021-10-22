@@ -252,7 +252,7 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
 
         case ACKS2_CM:
             X_diag = smalloc( sizeof(real) * system->N,
-                    "Init_Charge_Matrix_Remaining_Entries::X_diag" );
+                    __FILE__, __LINE__ );
 
             for ( i = 0; i < system->N; ++i )
             {
@@ -420,7 +420,7 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
 //            H_sp->val[*H_sp_top] = 0.0;
 //            *H_sp_top = *H_sp_top + 1;
 
-            sfree( X_diag, "Init_Charge_Matrix_Remaining_Entries::X_diag" );
+            sfree( X_diag, __FILE__, __LINE__ );
             break;
 
         default:
@@ -1254,7 +1254,7 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
     bond_list = lists[BONDS];
 
     q = smalloc( sizeof(int) * (system->N - system->n),
-            "Init_Bond_Full::q" );
+            __FILE__, __LINE__ );
 
     for ( i = 0; i < system->n; ++i )
     {
@@ -1407,7 +1407,7 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
         }
     }
 
-    sfree( q, "Init_Bond_Full::q" );
+    sfree( q, __FILE__, __LINE__ );
 }
 
 

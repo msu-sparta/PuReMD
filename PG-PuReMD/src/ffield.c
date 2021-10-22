@@ -48,13 +48,13 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
     int index1, index2;
 
     /* open force field file */
-    fp = sfopen( ffield_file, "r", "Read_Force_Field::fp" );
+    fp = sfopen( ffield_file, "r", __FILE__, __LINE__ );
 
-    s = smalloc( sizeof(char) * MAX_LINE, "Read_Force_Field::s" );
-    tmp = smalloc( sizeof(char *) * MAX_TOKENS, "Read_Force_Field::tmp");
+    s = smalloc( sizeof(char) * MAX_LINE, __FILE__, __LINE__ );
+    tmp = smalloc( sizeof(char *) * MAX_TOKENS, __FILE__, __LINE__ );
     for (i = 0; i < MAX_TOKENS; i++)
     {
-        tmp[i] = smalloc( sizeof(char) * MAX_TOKEN_LEN, "Read_Force_Field::tmp[i]" );
+        tmp[i] = smalloc( sizeof(char) * MAX_TOKEN_LEN, __FILE__, __LINE__ );
     }
 
     /* reading first header comment */
@@ -82,7 +82,7 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
     }
 
     reax->gp.n_global = n;
-    reax->gp.l = smalloc( sizeof(real) * n, "Read_Force_Field::reax->gp.l" );
+    reax->gp.l = smalloc( sizeof(real) * n, __FILE__, __LINE__ );
 
     /* see reax_types.h for mapping between l[i] and the lambdas used in ff */
     for (i = 0; i < n; i++)
@@ -118,22 +118,22 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
     __N = reax->num_atom_types;
 
     reax->sbp = scalloc( reax->num_atom_types, sizeof(single_body_parameters),
-                "Read_Force_Field::reax->sbp" );
+            __FILE__, __LINE__ );
 
     reax->tbp = scalloc( POW(reax->num_atom_types, 2.0), sizeof(two_body_parameters),
-              "Read_Force_Field::reax->tbp" );
+            __FILE__, __LINE__ );
 
     reax->thbp = scalloc( POW(reax->num_atom_types, 3.0), sizeof(three_body_header),
-              "Read_Force_Field::reax->thbp" );
+            __FILE__, __LINE__ );
 
     reax->hbp = scalloc( POW(reax->num_atom_types, 3.0), sizeof(hbond_parameters),
-              "Read_Force_Field::reax->hbp" );
+            __FILE__, __LINE__ );
 
     reax->fbp = scalloc( POW(reax->num_atom_types, 4.0), sizeof(four_body_header),
-              "Read_Force_Field::reax->fbp" );
+            __FILE__, __LINE__ );
 
     tor_flag = scalloc( POW(reax->num_atom_types, 4.0), sizeof(char),
-           "Read_Force_Field::tor_flag" );
+           __FILE__, __LINE__ );
 
     /* vdWaals type:
      * 1: Shielded Morse, no inner-wall
@@ -762,11 +762,11 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
     /* deallocate helper storage */
     for ( i = 0; i < MAX_TOKENS; i++ )
     {
-        sfree( tmp[i], "Read_Force_Field::tmp[i]" );
+        sfree( tmp[i], __FILE__, __LINE__ );
     }
-    sfree( tmp, "Read_Force_Field::tmp" );
-    sfree( s, "Read_Force_Field::s" );
-    sfree( tor_flag, "Read_Force_Field::tor_flag" );
+    sfree( tmp, __FILE__, __LINE__ );
+    sfree( s, __FILE__, __LINE__ );
+    sfree( tor_flag, __FILE__, __LINE__ );
 
-    sfclose( fp, "Read_Force_Field::fp" );
+    sfclose( fp, __FILE__, __LINE__ );
 }

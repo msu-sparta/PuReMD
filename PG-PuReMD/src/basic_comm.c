@@ -362,7 +362,7 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
         check_srealloc( (void **) &out_bufs[2 * d].index,
                 &out_bufs[2 * d].index_size,
                 sizeof(int) * out_bufs[2 * d].cnt,
-                TRUE, SAFE_ZONE, "Dist::mpi_data->index" );
+                TRUE, SAFE_ZONE, __FILE__, __LINE__ );
 
         pack( buf, &out_bufs[2 * d] );
 
@@ -377,7 +377,7 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
         check_srealloc( (void **) &out_bufs[2 * d + 1].index,
                 &out_bufs[2 * d + 1].index_size,
                 sizeof(int) * out_bufs[2 * d + 1].cnt,
-                TRUE, SAFE_ZONE, "Dist::mpi_data->index" );
+                TRUE, SAFE_ZONE, __FILE__, __LINE__ );
 
         pack( buf, &out_bufs[2 * d + 1] );
 
@@ -470,7 +470,7 @@ void Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
         check_srealloc( (void **) &out_bufs[2 * d].index,
                 &out_bufs[2 * d].index_size,
                 sizeof(int) * out_bufs[2 * d].cnt,
-                TRUE, SAFE_ZONE, "Dist_FS::mpi_data->index" );
+                TRUE, SAFE_ZONE, __FILE__, __LINE__ );
 
         pack( buf, &out_bufs[2 * d] );
 
@@ -485,7 +485,7 @@ void Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
         check_srealloc( (void **) &out_bufs[2 * d + 1].index,
                 &out_bufs[2 * d + 1].index_size,
                 sizeof(int) * out_bufs[2 * d + 1].cnt,
-                TRUE, SAFE_ZONE, "Dist_FS::mpi_data->index" );
+                TRUE, SAFE_ZONE, __FILE__, __LINE__ );
 
         pack( buf, &out_bufs[2 * d + 1] );
 
@@ -793,7 +793,7 @@ void Coll_ids_at_Master( reax_system *system, storage *workspace,
         }
     }
 
-    id_list = (int*) smalloc( system->n * sizeof(int), "Coll_ids_at_Master::id_list" );
+    id_list = smalloc( system->n * sizeof(int), __FILE__, __LINE__ );
     for ( i = 0; i < system->n; ++i )
     {
         id_list[i] = system->my_atoms[i].orig_id;
@@ -804,7 +804,7 @@ void Coll_ids_at_Master( reax_system *system, storage *workspace,
             MASTER_NODE, MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-    sfree( id_list, "Coll_ids_at_Master::id_list" );
+    sfree( id_list, __FILE__, __LINE__ );
 
 #if defined(DEBUG_FOCUS)
     if ( system->my_rank == MASTER_NODE )

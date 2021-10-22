@@ -32,16 +32,16 @@ extern "C" {
 /* from comm_tools.h */
 int SumScan( int, int, int, MPI_Comm );
 
-void SumScanB( int, int, int, int, MPI_Comm, int* );
+void SumScanB( int, int, int, int, MPI_Comm, int * );
 
-void Fit_to_Periodic_Box( simulation_box*, rvec* );
+void Fit_to_Periodic_Box( simulation_box *, rvec * );
 
 /* from geo_tools.h */
-void Make_Point( real, real, real, rvec* );
+void Make_Point( real, real, real, rvec * );
 
-int is_Valid_Serial( storage*, int );
+int is_Valid_Serial( storage *, int );
 
-int Check_Input_Range( int, int, int, char* );
+int Check_Input_Range( int, int, int, char * );
 
 void Trim_Spaces( char * const, const size_t );
 
@@ -50,38 +50,42 @@ real Get_Time( );
 
 real Get_Elapsed_Time( real );
 
-void Update_Timing_Info( real*, real* );
+void Update_Timing_Info( real *, real * );
 
 /* from io_tools.h */
-int Get_Atom_Type( reax_interaction*, char*, size_t );
+int Get_Atom_Type( reax_interaction *, char *, size_t );
 
-char *Get_Element( reax_system*, int );
+char * Get_Element( reax_system *, int );
 
-char *Get_Atom_Name( reax_system*, int );
+char * Get_Atom_Name( reax_system *, int );
 
-void Allocate_Tokenizer_Space( char**, size_t, char**, size_t, char***,
+void Allocate_Tokenizer_Space( char **, size_t, char **, size_t, char ***,
         size_t, size_t );
 
 void Deallocate_Tokenizer_Space( char **, char **, char ***,
         size_t );
 
-int Tokenize( char*, char***, size_t );
+int Tokenize( char *, char ***, size_t );
 
-void *smalloc( size_t, const char * );
+void * smalloc( size_t, const char * const, int );
 
-void* srealloc( void *, size_t, const char * );
+void * srealloc( void *, size_t, const char * const, int );
 
-void *scalloc( size_t, size_t, const char* );
+void * scalloc( size_t, size_t, const char * const, int );
 
 void smalloc_check( void **, size_t *, size_t, int, real, const char * const, int );
 
-void check_srealloc( void **, size_t *, size_t, int, real, const char * );
+void check_srealloc( void **, size_t *, size_t, int, real, const char * const, int );
 
-void sfree( void*, const char* );
+void sfree( void *, const char * const, int );
 
-FILE * sfopen( const char *, const char *, const char * );
+FILE * sfopen( const char *, const char *, const char * const, int );
 
-void sfclose( FILE *, const char * );
+void sfclose( FILE *, const char * const, int );
+
+int sstrtol( const char * const, const char * const, int );
+
+double sstrtod( const char * const, const char * const, int );
 
 #ifdef __cplusplus
 }

@@ -177,33 +177,24 @@ void* setup( const char * const geo_file, const char * const ffield_file,
 
     /* top-level allocation */
     pmd_handle = (puremd_handle*) smalloc( sizeof(puremd_handle),
-            "setup::pmd_handle" );
+            __FILE__, __LINE__ );
 
     /* second-level allocations */
-    pmd_handle->system = smalloc( sizeof(reax_system),
-           "Setup::pmd_handle->system" );
-    pmd_handle->control = smalloc( sizeof(control_params),
-           "Setup::pmd_handle->control" );
-    pmd_handle->data = smalloc( sizeof(simulation_data),
-           "Setup::pmd_handle->data" );
-    pmd_handle->workspace = smalloc( sizeof(storage),
-           "Setup::pmd_handle->workspace" );
+    pmd_handle->system = smalloc( sizeof(reax_system), __FILE__, __LINE__ );
+    pmd_handle->control = smalloc( sizeof(control_params), __FILE__, __LINE__ );
+    pmd_handle->data = smalloc( sizeof(simulation_data), __FILE__, __LINE__ );
+    pmd_handle->workspace = smalloc( sizeof(storage), __FILE__, __LINE__ );
 #if defined(HAVE_CUDA)
-    pmd_handle->workspace->d_workspace = smalloc( sizeof(storage),
-            "Setup::pmd_handle->workspace->d_workspace" );
+    pmd_handle->workspace->d_workspace = smalloc( sizeof(storage), __FILE__, __LINE__ );
 #endif
-    pmd_handle->lists = smalloc( sizeof(reax_list *) * LIST_N,
-           "Setup::pmd_handle->lists" );
+    pmd_handle->lists = smalloc( sizeof(reax_list *) * LIST_N, __FILE__, __LINE__ );
     for ( i = 0; i < LIST_N; ++i )
     {
-        pmd_handle->lists[i] = smalloc( sizeof(reax_list),
-                "Setup::pmd_handle->lists[i]" );
+        pmd_handle->lists[i] = smalloc( sizeof(reax_list), __FILE__, __LINE__ );
         pmd_handle->lists[i]->allocated = FALSE;
     }
-    pmd_handle->out_control = smalloc( sizeof(output_controls),
-           "Setup::pmd_handle->out_control" );
-    pmd_handle->mpi_data = smalloc( sizeof(mpi_datatypes),
-           "Setup::pmd_handle->mpi_data" );
+    pmd_handle->out_control = smalloc( sizeof(output_controls), __FILE__, __LINE__ );
+    pmd_handle->mpi_data = smalloc( sizeof(mpi_datatypes), __FILE__, __LINE__ );
 
     pmd_handle->output_enabled = TRUE;
     pmd_handle->callback = NULL;
@@ -516,17 +507,17 @@ int cleanup( const void * const handle )
 #endif
 
 #if defined(HAVE_CUDA)
-        sfree( pmd_handle->workspace->d_workspace, "cleanup::workspace->d_workspace" );
+        sfree( pmd_handle->workspace->d_workspace, __FILE__, __LINE__ );
 #endif
-        sfree( pmd_handle->mpi_data, "cleanup::pmd_handle->mpi_data" );
-        sfree( pmd_handle->out_control, "cleanup::pmd_handle->out_control" );
-        sfree( pmd_handle->lists, "cleanup::pmd_handle->lists" );
-        sfree( pmd_handle->workspace, "cleanup::pmd_handle->workspace" );
-        sfree( pmd_handle->data, "cleanup::pmd_handle->data" );
-        sfree( pmd_handle->control, "cleanup::pmd_handle->control" );
-        sfree( pmd_handle->system, "cleanup::pmd_handle->system" );
+        sfree( pmd_handle->mpi_data, __FILE__, __LINE__ );
+        sfree( pmd_handle->out_control, __FILE__, __LINE__ );
+        sfree( pmd_handle->lists, __FILE__, __LINE__ );
+        sfree( pmd_handle->workspace, __FILE__, __LINE__ );
+        sfree( pmd_handle->data, __FILE__, __LINE__ );
+        sfree( pmd_handle->control, __FILE__, __LINE__ );
+        sfree( pmd_handle->system, __FILE__, __LINE__ );
 
-        sfree( pmd_handle, "cleanup::pmd_handle" );
+        sfree( pmd_handle, __FILE__, __LINE__ );
 
         ret_pmd = PUREMD_SUCCESS;
     }

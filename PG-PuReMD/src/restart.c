@@ -48,7 +48,7 @@ void Write_Binary_Restart_File( reax_system *system, control_params *control,
     {
         /* master handles the restart file */
         sprintf( fname, "%s.res%d", control->sim_name, data->step );
-        fres = sfopen( fname, "wb", "Write_Binary_Restart_File::fres" );
+        fres = sfopen( fname, "wb", __FILE__, __LINE__ );
 
         /* master can write the header by itself */
         res_header.step = data->step;
@@ -62,13 +62,11 @@ void Write_Binary_Restart_File( reax_system *system, control_params *control,
         fwrite( &res_header, sizeof(restart_header), 1, fres );
 
         /* master needs to allocate space for all atoms */
-        buffer = scalloc( system->bigN, sizeof(restart_atom),
-                "Write_Binary_Restart_File::buffer" );
+        buffer = scalloc( system->bigN, sizeof(restart_atom), __FILE__, __LINE__ );
     }
     else
     {
-        buffer = scalloc( system->n, sizeof(restart_atom),
-                "Write_Binary_Restart_File::buffer" );
+        buffer = scalloc( system->n, sizeof(restart_atom), __FILE__, __LINE__ );
     }
 
     /* fill in the buffers */
@@ -110,10 +108,10 @@ void Write_Binary_Restart_File( reax_system *system, control_params *control,
     if ( me == MASTER_NODE )
     {
         fwrite( buffer, system->bigN, sizeof(restart_atom), fres );
-        sfclose( fres, "Write_Binary_Restart_File::fres" );
+        sfclose( fres, __FILE__, __LINE__ );
     }
 
-    sfree( buffer, "Write_Binary_Restart_File::buffer" );
+    sfree( buffer, __FILE__, __LINE__ );
 }
 
 
@@ -128,14 +126,14 @@ void Write_Restart_File( reax_system *system, control_params *control,
     MPI_Status status;
 
     fres = NULL;
-    line = smalloc( sizeof(char) * RESTART_LINE_LEN, "restart:line" );
+    line = smalloc( sizeof(char) * RESTART_LINE_LEN, __FILE__, __LINE__ );
     me = system->my_rank;
     np = control->nprocs;
 
     if ( me == MASTER_NODE )
     {
         sprintf( fname, "%s.res%d", control->sim_name, data->step );
-        fres = sfopen( fname, "w", "Write_Restart_File::fres" );
+        fres = sfopen( fname, "w", __FILE__, __LINE__ );
 
         /* write the header - only master writes it */
         fprintf( fres, RESTART_HEADER,
@@ -158,7 +156,7 @@ void Write_Restart_File( reax_system *system, control_params *control,
         buffer_req = system->n * RESTART_LINE_LEN + 1;
     }
 
-    buffer = smalloc( sizeof(char) * buffer_req, "Write_Restart_File::buffer" );
+    buffer = smalloc( sizeof(char) * buffer_req, __FILE__, __LINE__ );
     line[0] = '\0';
     buffer[0] = '\0';
 
@@ -203,10 +201,10 @@ void Write_Restart_File( reax_system *system, control_params *control,
     if ( me == MASTER_NODE )
     {
         fprintf( fres, "%s", buffer );
-        sfclose( fres, "Write_Restart_File::fres" );
+        sfclose( fres, __FILE__, __LINE__ );
     }
-    sfree( buffer, "Write_Restart_File::buffer" );
-    sfree( line, "Write_Restart_File::line" );
+    sfree( buffer, __FILE__, __LINE__ );
+    sfree( line, __FILE__, __LINE__ );
 }
 
 
@@ -252,7 +250,7 @@ void Read_Binary_Restart_File( const char * const res_file, reax_system *system,
     restart_atom res_atom;
     reax_atom *p_atom;
 
-    fres = sfopen( res_file, "rb", "Read_Binary_Restart_File::fres" );
+    fres = sfopen( res_file, "rb", __FILE__, __LINE__ );
 
     /* first read the header lines */
     fread( &res_header, sizeof(restart_header), 1, fres );
@@ -322,7 +320,7 @@ void Read_Binary_Restart_File( const char * const res_file, reax_system *system,
         }
     }
 
-    sfclose( fres, "Read_Binary_Restart_File::fres" );
+    sfclose( fres, __FILE__, __LINE__ );
 
     data->step = data->prev_steps;
     /* nsteps is updated based on the number of steps in the previous run */
@@ -378,13 +376,13 @@ void Read_Restart_File( const char * const res_file, reax_system *system,
     rvec x_temp, v_temp;
     rtensor box;
 
-    fres = sfopen( res_file, "r", "Read_Restart_File::fres" );
+    fres = sfopen( res_file, "r", __FILE__, __LINE__ );
 
-    s = smalloc( sizeof(char) * MAX_LINE, "Read_Restart_File::s" );
-    tmp = smalloc( sizeof(char*) * MAX_TOKENS, "Read_Restart_File::tmp" );
+    s = smalloc( sizeof(char) * MAX_LINE, __FILE__, __LINE__ );
+    tmp = smalloc( sizeof(char*) * MAX_TOKENS, __FILE__, __LINE__ );
     for ( i = 0; i < MAX_TOKENS; i++ )
     {
-        tmp[i] = smalloc( sizeof(char) * MAX_LINE, "Read_Restart_File::tmp[i]" );
+        tmp[i] = smalloc( sizeof(char) * MAX_LINE, __FILE__, __LINE__ );
     }
 
     /* read first header lines */
@@ -504,15 +502,15 @@ void Read_Restart_File( const char * const res_file, reax_system *system,
             top++;
         }
     }
-    sfclose( fres, "Read_Restart_File::fres" );
+    sfclose( fres, __FILE__, __LINE__ );
 
     /* free memory allocations at the top */
     for ( i = 0; i < MAX_TOKENS; i++ )
     {
-        sfree( tmp[i], "Read_Restart_File::tmp[i]" );
+        sfree( tmp[i], __FILE__, __LINE__ );
     }
-    sfree( tmp, "Read_Restart_File::tmp" );
-    sfree( s, "Read_Restart_File::s" );
+    sfree( tmp, __FILE__, __LINE__ );
+    sfree( s, __FILE__, __LINE__ );
 
     data->step = data->prev_steps;
     /* nsteps is updated based on the number of steps in the previous run */
