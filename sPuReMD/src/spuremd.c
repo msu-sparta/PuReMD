@@ -186,9 +186,11 @@ static void Initialize_Top_Level_Structs( spuremd_handle * handle )
 
     /* second-level initializations */
     handle->system->prealloc_allocated = FALSE;
+    handle->system->allocated = FALSE;
     handle->system->ffield_params_allocated = FALSE;
     handle->system->g.allocated = FALSE;
 
+    handle->workspace->allocated = FALSE;
     handle->workspace->H.allocated = FALSE;
     handle->workspace->H_full.allocated = FALSE;
     handle->workspace->H_sp.allocated = FALSE;
@@ -203,6 +205,8 @@ static void Initialize_Top_Level_Structs( spuremd_handle * handle )
     {
         handle->lists[i]->allocated = FALSE;
     }
+
+    handle->out_control->allocated = FALSE;
 }
 
 

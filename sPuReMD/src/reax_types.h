@@ -868,10 +868,12 @@ struct grid
 
 struct reax_system
 {
-    /* 0 if struct members are NOT allocated, 1 otherwise */
+    /* 0 if struct members for first phase (file I/O) are NOT allocated, 1 otherwise */
     int prealloc_allocated;
     /* 0 if struct members are NOT allocated, 1 otherwise */
     int ffield_params_allocated;
+    /* FALSE if struct members are NOT allocated, TRUE otherwise */
+    int allocated;
     /* number of local (non-periodic image) atoms for the current simulation */
     int N;
 #if defined(QMMM)
@@ -1525,6 +1527,8 @@ struct LR_lookup_table
 
 struct static_storage
 {
+    /* FALSE if struct members are NOT allocated, TRUE otherwise */
+    int allocated;
     /* bond order related storage */
     real *total_bond_order;
     real *Deltap;
@@ -1748,15 +1752,27 @@ struct reax_list
 
 struct output_controls
 {
+    /* FALSE if struct members are NOT allocated, TRUE otherwise */
+    int allocated;
+    /* trajectory file */
     FILE *trj;
+    /* system-wide info file */
     FILE *out;
+    /* potential file */
     FILE *pot;
+    /* log file */
     FILE *log;
+    /**/
     FILE *mol;
+    /**/
     FILE *ign;
+    /**/
     FILE *dpl;
+    /**/
     FILE *drft;
+    /**/
     FILE *pdb;
+    /**/
     FILE *prs;
 
     int write_steps;
@@ -1773,7 +1789,7 @@ struct output_controls
      * (excluding trajectory and restart files) */
     int log_update_freq;
 
-    /* trajectory file pointer pointers */
+    /* trajectory-related function pointers */
     write_header_function write_header;
     append_traj_frame_function append_traj_frame;
     write_function write;
