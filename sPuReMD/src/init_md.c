@@ -104,6 +104,8 @@ static void Init_System( reax_system * const system, control_params * const cont
     int i;
     rvec dx;
 
+    system->allocated = TRUE;
+
     if ( control->restart == FALSE )
     {
         Reset_Atomic_Forces( system );
@@ -342,6 +344,8 @@ static void Init_Workspace( reax_system * const system,
         int realloc )
 {
     int i;
+
+    workspace->allocated = TRUE;
 
     if ( realloc == TRUE )
     {
@@ -1001,6 +1005,8 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
 #define TEMP_SIZE (1000)
     char temp[TEMP_SIZE];
 
+    out_control->allocated = TRUE;
+
     if ( output_enabled == TRUE && out_control->write_steps > 0 )
     {
         strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
@@ -1361,8 +1367,13 @@ static void Finalize_System( reax_system *system, control_params *control,
         sfree( system->atoms, __FILE__, __LINE__ );
     }
 
-    sfree( system->bonds, __FILE__, __LINE__ );
-    sfree( system->hbonds, __FILE__, __LINE__ );
+    if ( system->allocated == TRUE )
+    {
+        sfree( system->bonds, __FILE__, __LINE__ );
+        sfree( system->hbonds, __FILE__, __LINE__ );
+    }
+
+    system->allocated = FALSE;
 }
 
 
@@ -1384,222 +1395,225 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
 {
     int i;
 
-    sfree( workspace->total_bond_order, __FILE__, __LINE__ );
-    sfree( workspace->Deltap, __FILE__, __LINE__ );
-    sfree( workspace->Deltap_boc, __FILE__, __LINE__ );
-    sfree( workspace->dDeltap_self, __FILE__, __LINE__ );
-    sfree( workspace->Delta, __FILE__, __LINE__ );
-    sfree( workspace->Delta_lp, __FILE__, __LINE__ );
-    sfree( workspace->Delta_lp_temp, __FILE__, __LINE__ );
-    sfree( workspace->dDelta_lp, __FILE__, __LINE__ );
-    sfree( workspace->dDelta_lp_temp, __FILE__, __LINE__ );
-    sfree( workspace->Delta_e, __FILE__, __LINE__ );
-    sfree( workspace->Delta_boc, __FILE__, __LINE__ );
-    sfree( workspace->nlp, __FILE__, __LINE__ );
-    sfree( workspace->nlp_temp, __FILE__, __LINE__ );
-    sfree( workspace->Clp, __FILE__, __LINE__ );
-    sfree( workspace->CdDelta, __FILE__, __LINE__ );
-    sfree( workspace->vlpex, __FILE__, __LINE__ );
+    if ( workspace->allocated == TRUE )
+    {
+        sfree( workspace->total_bond_order, __FILE__, __LINE__ );
+        sfree( workspace->Deltap, __FILE__, __LINE__ );
+        sfree( workspace->Deltap_boc, __FILE__, __LINE__ );
+        sfree( workspace->dDeltap_self, __FILE__, __LINE__ );
+        sfree( workspace->Delta, __FILE__, __LINE__ );
+        sfree( workspace->Delta_lp, __FILE__, __LINE__ );
+        sfree( workspace->Delta_lp_temp, __FILE__, __LINE__ );
+        sfree( workspace->dDelta_lp, __FILE__, __LINE__ );
+        sfree( workspace->dDelta_lp_temp, __FILE__, __LINE__ );
+        sfree( workspace->Delta_e, __FILE__, __LINE__ );
+        sfree( workspace->Delta_boc, __FILE__, __LINE__ );
+        sfree( workspace->nlp, __FILE__, __LINE__ );
+        sfree( workspace->nlp_temp, __FILE__, __LINE__ );
+        sfree( workspace->Clp, __FILE__, __LINE__ );
+        sfree( workspace->CdDelta, __FILE__, __LINE__ );
+        sfree( workspace->vlpex, __FILE__, __LINE__ );
+
+        if ( workspace->H.allocated == TRUE )
+        {
+            Deallocate_Matrix( &workspace->H );
+        }
+        if ( workspace->H_full.allocated == TRUE )
+        {
+            Deallocate_Matrix( &workspace->H_full );
+        }
+        if ( workspace->H_sp.allocated == TRUE )
+        {
+            Deallocate_Matrix( &workspace->H_sp );
+        }
+        if ( workspace->H_p.allocated == TRUE )
+        {
+            Deallocate_Matrix( &workspace->H_p );
+        }
+        if ( workspace->H_spar_patt.allocated == TRUE )
+        {
+            Deallocate_Matrix( &workspace->H_spar_patt );
+        }
+        if ( workspace->H_spar_patt_full.allocated == TRUE )
+        {
+            Deallocate_Matrix( &workspace->H_spar_patt_full );
+        }
+        if ( workspace->H_app_inv.allocated == TRUE )
+        {
+            Deallocate_Matrix( &workspace->H_app_inv );
+        }
+        if ( workspace->L.allocated == TRUE )
+        {
+            Deallocate_Matrix( &workspace->L );
+        }
+        if ( workspace->U.allocated == TRUE )
+        {
+            Deallocate_Matrix( &workspace->U );
+        }
+
+        for ( i = 0; i < 5; ++i )
+        {
+            sfree( workspace->s[i], __FILE__, __LINE__ );
+            sfree( workspace->t[i], __FILE__, __LINE__ );
+        }
+
+        if ( control->cm_solver_pre_comp_type == JACOBI_PC )
+        {
+            sfree( workspace->Hdia_inv, __FILE__, __LINE__ );
+        }
+        if ( control->cm_solver_pre_comp_type == ICHOLT_PC
+                || (control->cm_solver_pre_comp_type == ILUT_PC && control->cm_solver_pre_comp_droptol > 0.0 )
+                || control->cm_solver_pre_comp_type == ILUTP_PC
+                || control->cm_solver_pre_comp_type == FG_ILUT_PC )
+        {
+            sfree( workspace->droptol, __FILE__, __LINE__ );
+        }
+        sfree( workspace->b_s, __FILE__, __LINE__ );
+        sfree( workspace->b_t, __FILE__, __LINE__ );
+        sfree( workspace->b_prc, __FILE__, __LINE__ );
+        sfree( workspace->b_prm, __FILE__, __LINE__ );
+        sfree( workspace->s, __FILE__, __LINE__ );
+        sfree( workspace->t, __FILE__, __LINE__ );
+
+        switch ( control->cm_solver_type )
+        {
+            case GMRES_S:
+            case GMRES_H_S:
+                for ( i = 0; i < control->cm_solver_restart + 1; ++i )
+                {
+                    sfree( workspace->h[i], __FILE__, __LINE__ );
+                    sfree( workspace->rn[i], __FILE__, __LINE__ );
+                    sfree( workspace->v[i], __FILE__, __LINE__ );
+                }
+
+                sfree( workspace->y, __FILE__, __LINE__ );
+                sfree( workspace->z, __FILE__, __LINE__ );
+                sfree( workspace->g, __FILE__, __LINE__ );
+                sfree( workspace->h, __FILE__, __LINE__ );
+                sfree( workspace->hs, __FILE__, __LINE__ );
+                sfree( workspace->hc, __FILE__, __LINE__ );
+                sfree( workspace->rn, __FILE__, __LINE__ );
+                sfree( workspace->v, __FILE__, __LINE__ );
+
+                sfree( workspace->r, __FILE__, __LINE__ );
+                sfree( workspace->d, __FILE__, __LINE__ );
+                sfree( workspace->q, __FILE__, __LINE__ );
+                sfree( workspace->p, __FILE__, __LINE__ );
+                break;
+
+            case CG_S:
+                sfree( workspace->r, __FILE__, __LINE__ );
+                sfree( workspace->d, __FILE__, __LINE__ );
+                sfree( workspace->q, __FILE__, __LINE__ );
+                sfree( workspace->p, __FILE__, __LINE__ );
+                break;
+
+            case SDM_S:
+                sfree( workspace->r, __FILE__, __LINE__ );
+                sfree( workspace->d, __FILE__, __LINE__ );
+                sfree( workspace->q, __FILE__, __LINE__ );
+                break;
+
+            case BiCGStab_S:
+                sfree( workspace->r, __FILE__, __LINE__ );
+                sfree( workspace->r_hat, __FILE__, __LINE__ );
+                sfree( workspace->d, __FILE__, __LINE__ );
+                sfree( workspace->q, __FILE__, __LINE__ );
+                sfree( workspace->q_hat, __FILE__, __LINE__ );
+                sfree( workspace->p, __FILE__, __LINE__ );
+                sfree( workspace->y, __FILE__, __LINE__ );
+                sfree( workspace->z, __FILE__, __LINE__ );
+                sfree( workspace->g, __FILE__, __LINE__ );
+                break;
+
+            default:
+                fprintf( stderr, "[ERROR] Unknown charge method linear solver type. Terminating...\n" );
+                exit( INVALID_INPUT );
+                break;
+        }
+
+        /* SpMV related */
+#if defined(_OPENMP)
+        sfree( workspace->b_local, __FILE__, __LINE__ );
+#endif
+
+        /* level scheduling related */
+        if ( control->cm_solver_pre_app_type == TRI_SOLVE_LEVEL_SCHED_PA ||
+                control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
+        {
+            sfree( workspace->row_levels_L, __FILE__, __LINE__ );
+            sfree( workspace->level_rows_L, __FILE__, __LINE__ );
+            sfree( workspace->level_rows_cnt_L, __FILE__, __LINE__ );
+            sfree( workspace->row_levels_U, __FILE__, __LINE__ );
+            sfree( workspace->level_rows_U, __FILE__, __LINE__ );
+            sfree( workspace->level_rows_cnt_U, __FILE__, __LINE__ );
+            sfree( workspace->top, __FILE__, __LINE__ );
+        }
+
+        /* graph coloring related */
+        if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
+        {
+            sfree( workspace->color, __FILE__, __LINE__ );
+            sfree( workspace->to_color, __FILE__, __LINE__ );
+            sfree( workspace->conflict, __FILE__, __LINE__ );
+            sfree( workspace->conflict_cnt, __FILE__, __LINE__ );
+            sfree( workspace->recolor, __FILE__, __LINE__ );
+            sfree( workspace->color_top, __FILE__, __LINE__ );
+            sfree( workspace->permuted_row_col, __FILE__, __LINE__ );
+            sfree( workspace->permuted_row_col_inv, __FILE__, __LINE__ );
+        }
+
+        /* graph coloring related OR ILUTP preconditioner */
+        if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA 
+                || control->cm_solver_pre_comp_type == ILUTP_PC )
+        {
+            sfree( workspace->y_p, __FILE__, __LINE__ );
+            sfree( workspace->x_p, __FILE__, __LINE__ );
+        }
+
+        /* Jacobi iteration related */
+        if ( control->cm_solver_pre_app_type == JACOBI_ITER_PA )
+        {
+            sfree( workspace->Dinv_L, __FILE__, __LINE__ );
+            sfree( workspace->Dinv_U, __FILE__, __LINE__ );
+            sfree( workspace->Dinv_b, __FILE__, __LINE__ );
+            sfree( workspace->rp, __FILE__, __LINE__ );
+            sfree( workspace->rp2, __FILE__, __LINE__ );
+        }
+
+        /* ILUTP preconditioner related */
+        if ( control->cm_solver_pre_comp_type == ILUTP_PC )
+        {
+            sfree( workspace->perm_ilutp, __FILE__, __LINE__ );
+        }
+
+        /* integrator storage */
+        sfree( workspace->a, __FILE__, __LINE__ );
+        sfree( workspace->f_old, __FILE__, __LINE__ );
+        sfree( workspace->v_const, __FILE__, __LINE__ );
+
+#if defined(_OPENMP)
+        sfree( workspace->f_local, __FILE__, __LINE__ );
+#endif
+
+        /* storage for analysis */
+        if ( control->molec_anal || control->diffusion_coef )
+        {
+            sfree( workspace->mark, __FILE__, __LINE__ );
+            sfree( workspace->old_mark, __FILE__, __LINE__ );
+        }
+
+        if ( control->diffusion_coef )
+        {
+            sfree( workspace->x_old, __FILE__, __LINE__ );
+        }
+    }
 
     if ( reset == FALSE && (control->geo_format == BGF
             || control->geo_format == ASCII_RESTART
             || control->geo_format == BINARY_RESTART) )
     {
         sfree( workspace->map_serials, __FILE__, __LINE__ );
-    }
-
-    if ( workspace->H.allocated == TRUE )
-    {
-        Deallocate_Matrix( &workspace->H );
-    }
-    if ( workspace->H_full.allocated == TRUE )
-    {
-        Deallocate_Matrix( &workspace->H_full );
-    }
-    if ( workspace->H_sp.allocated == TRUE )
-    {
-        Deallocate_Matrix( &workspace->H_sp );
-    }
-    if ( workspace->H_p.allocated == TRUE )
-    {
-        Deallocate_Matrix( &workspace->H_p );
-    }
-    if ( workspace->H_spar_patt.allocated == TRUE )
-    {
-        Deallocate_Matrix( &workspace->H_spar_patt );
-    }
-    if ( workspace->H_spar_patt_full.allocated == TRUE )
-    {
-        Deallocate_Matrix( &workspace->H_spar_patt_full );
-    }
-    if ( workspace->H_app_inv.allocated == TRUE )
-    {
-        Deallocate_Matrix( &workspace->H_app_inv );
-    }
-    if ( workspace->L.allocated == TRUE )
-    {
-        Deallocate_Matrix( &workspace->L );
-    }
-    if ( workspace->U.allocated == TRUE )
-    {
-        Deallocate_Matrix( &workspace->U );
-    }
-
-    for ( i = 0; i < 5; ++i )
-    {
-        sfree( workspace->s[i], __FILE__, __LINE__ );
-        sfree( workspace->t[i], __FILE__, __LINE__ );
-    }
-
-    if ( control->cm_solver_pre_comp_type == JACOBI_PC )
-    {
-        sfree( workspace->Hdia_inv, __FILE__, __LINE__ );
-    }
-    if ( control->cm_solver_pre_comp_type == ICHOLT_PC
-            || (control->cm_solver_pre_comp_type == ILUT_PC && control->cm_solver_pre_comp_droptol > 0.0 )
-            || control->cm_solver_pre_comp_type == ILUTP_PC
-            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
-    {
-        sfree( workspace->droptol, __FILE__, __LINE__ );
-    }
-    sfree( workspace->b_s, __FILE__, __LINE__ );
-    sfree( workspace->b_t, __FILE__, __LINE__ );
-    sfree( workspace->b_prc, __FILE__, __LINE__ );
-    sfree( workspace->b_prm, __FILE__, __LINE__ );
-    sfree( workspace->s, __FILE__, __LINE__ );
-    sfree( workspace->t, __FILE__, __LINE__ );
-
-    switch ( control->cm_solver_type )
-    {
-        case GMRES_S:
-        case GMRES_H_S:
-            for ( i = 0; i < control->cm_solver_restart + 1; ++i )
-            {
-                sfree( workspace->h[i], __FILE__, __LINE__ );
-                sfree( workspace->rn[i], __FILE__, __LINE__ );
-                sfree( workspace->v[i], __FILE__, __LINE__ );
-            }
-
-            sfree( workspace->y, __FILE__, __LINE__ );
-            sfree( workspace->z, __FILE__, __LINE__ );
-            sfree( workspace->g, __FILE__, __LINE__ );
-            sfree( workspace->h, __FILE__, __LINE__ );
-            sfree( workspace->hs, __FILE__, __LINE__ );
-            sfree( workspace->hc, __FILE__, __LINE__ );
-            sfree( workspace->rn, __FILE__, __LINE__ );
-            sfree( workspace->v, __FILE__, __LINE__ );
-
-            sfree( workspace->r, __FILE__, __LINE__ );
-            sfree( workspace->d, __FILE__, __LINE__ );
-            sfree( workspace->q, __FILE__, __LINE__ );
-            sfree( workspace->p, __FILE__, __LINE__ );
-            break;
-
-        case CG_S:
-            sfree( workspace->r, __FILE__, __LINE__ );
-            sfree( workspace->d, __FILE__, __LINE__ );
-            sfree( workspace->q, __FILE__, __LINE__ );
-            sfree( workspace->p, __FILE__, __LINE__ );
-            break;
-
-        case SDM_S:
-            sfree( workspace->r, __FILE__, __LINE__ );
-            sfree( workspace->d, __FILE__, __LINE__ );
-            sfree( workspace->q, __FILE__, __LINE__ );
-            break;
-
-        case BiCGStab_S:
-            sfree( workspace->r, __FILE__, __LINE__ );
-            sfree( workspace->r_hat, __FILE__, __LINE__ );
-            sfree( workspace->d, __FILE__, __LINE__ );
-            sfree( workspace->q, __FILE__, __LINE__ );
-            sfree( workspace->q_hat, __FILE__, __LINE__ );
-            sfree( workspace->p, __FILE__, __LINE__ );
-            sfree( workspace->y, __FILE__, __LINE__ );
-            sfree( workspace->z, __FILE__, __LINE__ );
-            sfree( workspace->g, __FILE__, __LINE__ );
-            break;
-
-        default:
-            fprintf( stderr, "[ERROR] Unknown charge method linear solver type. Terminating...\n" );
-            exit( INVALID_INPUT );
-            break;
-    }
-
-    /* SpMV related */
-#if defined(_OPENMP)
-    sfree( workspace->b_local, __FILE__, __LINE__ );
-#endif
-
-    /* level scheduling related */
-    if ( control->cm_solver_pre_app_type == TRI_SOLVE_LEVEL_SCHED_PA ||
-            control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
-    {
-        sfree( workspace->row_levels_L, __FILE__, __LINE__ );
-        sfree( workspace->level_rows_L, __FILE__, __LINE__ );
-        sfree( workspace->level_rows_cnt_L, __FILE__, __LINE__ );
-        sfree( workspace->row_levels_U, __FILE__, __LINE__ );
-        sfree( workspace->level_rows_U, __FILE__, __LINE__ );
-        sfree( workspace->level_rows_cnt_U, __FILE__, __LINE__ );
-        sfree( workspace->top, __FILE__, __LINE__ );
-    }
-
-    /* graph coloring related */
-    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
-    {
-        sfree( workspace->color, __FILE__, __LINE__ );
-        sfree( workspace->to_color, __FILE__, __LINE__ );
-        sfree( workspace->conflict, __FILE__, __LINE__ );
-        sfree( workspace->conflict_cnt, __FILE__, __LINE__ );
-        sfree( workspace->recolor, __FILE__, __LINE__ );
-        sfree( workspace->color_top, __FILE__, __LINE__ );
-        sfree( workspace->permuted_row_col, __FILE__, __LINE__ );
-        sfree( workspace->permuted_row_col_inv, __FILE__, __LINE__ );
-    }
-
-    /* graph coloring related OR ILUTP preconditioner */
-    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA 
-            || control->cm_solver_pre_comp_type == ILUTP_PC )
-    {
-        sfree( workspace->y_p, __FILE__, __LINE__ );
-        sfree( workspace->x_p, __FILE__, __LINE__ );
-    }
-
-    /* Jacobi iteration related */
-    if ( control->cm_solver_pre_app_type == JACOBI_ITER_PA )
-    {
-        sfree( workspace->Dinv_L, __FILE__, __LINE__ );
-        sfree( workspace->Dinv_U, __FILE__, __LINE__ );
-        sfree( workspace->Dinv_b, __FILE__, __LINE__ );
-        sfree( workspace->rp, __FILE__, __LINE__ );
-        sfree( workspace->rp2, __FILE__, __LINE__ );
-    }
-
-    /* ILUTP preconditioner related */
-    if ( control->cm_solver_pre_comp_type == ILUTP_PC )
-    {
-        sfree( workspace->perm_ilutp, __FILE__, __LINE__ );
-    }
-
-    /* integrator storage */
-    sfree( workspace->a, __FILE__, __LINE__ );
-    sfree( workspace->f_old, __FILE__, __LINE__ );
-    sfree( workspace->v_const, __FILE__, __LINE__ );
-
-#if defined(_OPENMP)
-    sfree( workspace->f_local, __FILE__, __LINE__ );
-#endif
-
-    /* storage for analysis */
-    if ( control->molec_anal || control->diffusion_coef )
-    {
-        sfree( workspace->mark, __FILE__, __LINE__ );
-        sfree( workspace->old_mark, __FILE__, __LINE__ );
-    }
-
-    if ( control->diffusion_coef )
-    {
-        sfree( workspace->x_old, __FILE__, __LINE__ );
     }
 
     if ( reset == FALSE )
@@ -1635,6 +1649,8 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
     sfree( workspace->f_tor, __FILE__, __LINE__ );
     sfree( workspace->f_con, __FILE__, __LINE__ );
 #endif
+
+    workspace->allocated = FALSE;
 }
 
 
@@ -1677,73 +1693,77 @@ static void Finalize_Lists( reax_list **lists )
 void Finalize_Out_Controls( reax_system *system, control_params *control,
         static_storage *workspace, output_controls *out_control )
 {
-    if ( out_control->write_steps > 0 )
+    if ( out_control->allocated == TRUE )
     {
-        sfclose( out_control->trj, __FILE__, __LINE__ );
-    }
-
-    if ( out_control->log_update_freq > 0 )
-    {
-        sfclose( out_control->out, __FILE__, __LINE__ );
-        sfclose( out_control->pot, __FILE__, __LINE__ );
-        sfclose( out_control->log, __FILE__, __LINE__ );
-    }
-
-    if ( control->ensemble == sNPT || control->ensemble == iNPT
-            || control->ensemble == aNPT || control->compute_pressure == TRUE )
-    {
-        sfclose( out_control->prs, __FILE__, __LINE__ );
-    }
-
-    if ( control->molec_anal )
-    {
-        sfclose( out_control->mol, __FILE__, __LINE__ );
-
-        if ( control->num_ignored )
+        if ( out_control->write_steps > 0 )
         {
-            sfclose( out_control->ign, __FILE__, __LINE__ );
+            sfclose( out_control->trj, __FILE__, __LINE__ );
         }
-    }
 
-    if ( control->dipole_anal )
-    {
-        sfclose( out_control->dpl, __FILE__, __LINE__ );
-    }
+        if ( out_control->log_update_freq > 0 )
+        {
+            sfclose( out_control->out, __FILE__, __LINE__ );
+            sfclose( out_control->pot, __FILE__, __LINE__ );
+            sfclose( out_control->log, __FILE__, __LINE__ );
+        }
 
-    if ( control->diffusion_coef )
-    {
-        sfclose( out_control->drft, __FILE__, __LINE__ );
-    }
+        if ( control->ensemble == sNPT || control->ensemble == iNPT
+                || control->ensemble == aNPT || control->compute_pressure == TRUE )
+        {
+            sfclose( out_control->prs, __FILE__, __LINE__ );
+        }
 
+        if ( control->molec_anal )
+        {
+            sfclose( out_control->mol, __FILE__, __LINE__ );
+
+            if ( control->num_ignored )
+            {
+                sfclose( out_control->ign, __FILE__, __LINE__ );
+            }
+        }
+
+        if ( control->dipole_anal )
+        {
+            sfclose( out_control->dpl, __FILE__, __LINE__ );
+        }
+
+        if ( control->diffusion_coef )
+        {
+            sfclose( out_control->drft, __FILE__, __LINE__ );
+        }
 
 #if defined(TEST_ENERGY)
-    sfclose( out_control->ebond, __FILE__, __LINE__ );
-    sfclose( out_control->elp, __FILE__, __LINE__ );
-    sfclose( out_control->eov, __FILE__, __LINE__ );
-    sfclose( out_control->eun, __FILE__, __LINE__ );
-    sfclose( out_control->eval, __FILE__, __LINE__ );
-    sfclose( out_control->epen, __FILE__, __LINE__ );
-    sfclose( out_control->ecoa, __FILE__, __LINE__ );
-    sfclose( out_control->ehb, __FILE__, __LINE__ );
-    sfclose( out_control->etor, __FILE__, __LINE__ );
-    sfclose( out_control->econ, __FILE__, __LINE__ );
-    sfclose( out_control->evdw, __FILE__, __LINE__ );
-    sfclose( out_control->ecou, __FILE__, __LINE__ );
+        sfclose( out_control->ebond, __FILE__, __LINE__ );
+        sfclose( out_control->elp, __FILE__, __LINE__ );
+        sfclose( out_control->eov, __FILE__, __LINE__ );
+        sfclose( out_control->eun, __FILE__, __LINE__ );
+        sfclose( out_control->eval, __FILE__, __LINE__ );
+        sfclose( out_control->epen, __FILE__, __LINE__ );
+        sfclose( out_control->ecoa, __FILE__, __LINE__ );
+        sfclose( out_control->ehb, __FILE__, __LINE__ );
+        sfclose( out_control->etor, __FILE__, __LINE__ );
+        sfclose( out_control->econ, __FILE__, __LINE__ );
+        sfclose( out_control->evdw, __FILE__, __LINE__ );
+        sfclose( out_control->ecou, __FILE__, __LINE__ );
 #endif
 
 #if defined(TEST_FORCES)
-    sfclose( out_control->fbo, __FILE__, __LINE__ );
-    sfclose( out_control->fdbo, __FILE__, __LINE__ );
-    sfclose( out_control->fbond, __FILE__, __LINE__ );
-    sfclose( out_control->flp, __FILE__, __LINE__ );
-    sfclose( out_control->fatom, __FILE__, __LINE__ );
-    sfclose( out_control->f3body, __FILE__, __LINE__ );
-    sfclose( out_control->fhb, __FILE__, __LINE__ );
-    sfclose( out_control->f4body, __FILE__, __LINE__ );
-    sfclose( out_control->fnonb, __FILE__, __LINE__ );
-    sfclose( out_control->ftot, __FILE__, __LINE__ );
-    sfclose( out_control->ftot2, __FILE__, __LINE__ );
+        sfclose( out_control->fbo, __FILE__, __LINE__ );
+        sfclose( out_control->fdbo, __FILE__, __LINE__ );
+        sfclose( out_control->fbond, __FILE__, __LINE__ );
+        sfclose( out_control->flp, __FILE__, __LINE__ );
+        sfclose( out_control->fatom, __FILE__, __LINE__ );
+        sfclose( out_control->f3body, __FILE__, __LINE__ );
+        sfclose( out_control->fhb, __FILE__, __LINE__ );
+        sfclose( out_control->f4body, __FILE__, __LINE__ );
+        sfclose( out_control->fnonb, __FILE__, __LINE__ );
+        sfclose( out_control->ftot, __FILE__, __LINE__ );
+        sfclose( out_control->ftot2, __FILE__, __LINE__ );
 #endif
+    }
+
+    out_control->allocated = FALSE;
 }
 
 

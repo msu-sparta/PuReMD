@@ -375,8 +375,7 @@ if __name__ == '__main__':
     reset.restype = c_int
 
     get_atom_positions = lib.get_atom_positions
-    get_atom_positions.argtypes = [c_void_p, POINTER(c_double),
-            POINTER(c_double), POINTER(c_double)]
+    get_atom_positions.argtypes = [c_void_p, POINTER(c_double)]
     get_atom_positions.restype = c_int
 
     get_atom_charges = lib.get_atom_charges
@@ -456,10 +455,8 @@ if __name__ == '__main__':
     print("{0:24}|{1:24}|{2:24}".format("Total Energy", "Kinetic Energy", "Potential Energy"))
     ret = simulate(handle)
 
-    x = (c_double * 6540)()
-    y = (c_double * 6540)()
-    z = (c_double * 6540)()
-    atoms = get_atom_positions(handle, x, y, z)
+    x = (c_double * (3 * 6540))()
+    atoms = get_atom_positions(handle, x)
 
     q = (c_double * 6540)()
     atoms = get_atom_charges(handle, q)
@@ -468,7 +465,7 @@ if __name__ == '__main__':
     print("{0:9}|{1:24}|{2:24}|{3:24}|{4:24}".format("Atom Num", "x-Position", "y-Position", "z-Position", "Charge"))
     for i in range(10):
         print("{0:9d} {1:24.15f} {2:24.15f} {3:24.15f} {4:24.15f}".format(
-            i + 1, x[i], y[i], z[i], q[i]))
+            i + 1, x[3*i], x[3*i+1], x[3*i+2], q[i]))
 
     ret = reset(handle, b"data/benchmarks/silica/silica_6000.pdb",
             b"data/benchmarks/silica/ffield-bio",
@@ -478,10 +475,8 @@ if __name__ == '__main__':
     print("{0:24}|{1:24}|{2:24}".format("Total Energy", "Kinetic Energy", "Potential Energy"))
     ret = simulate(handle)
 
-    x = (c_double * 6000)()
-    y = (c_double * 6000)()
-    z = (c_double * 6000)()
-    atoms = get_atom_positions(handle, x, y, z)
+    x = (c_double * (3 * 6000))()
+    atoms = get_atom_positions(handle, x)
 
     q = (c_double * 6000)()
     atoms = get_atom_charges(handle, q)
@@ -490,7 +485,7 @@ if __name__ == '__main__':
     print("{0:9}|{1:24}|{2:24}|{3:24}|{4:24}".format("Atom Num", "x-Position", "y-Position", "z-Position", "Charge"))
     for i in range(10):
         print("{0:9d} {1:24.15f} {2:24.15f} {3:24.15f} {4:24.15f}".format(
-            i + 1, x[i], y[i], z[i], q[i]))
+            i + 1, x[3*i], x[3*i+1], x[3*i+2], q[i]))
 
     conn.close()
     cleanup(handle)
