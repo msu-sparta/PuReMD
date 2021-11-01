@@ -36,6 +36,8 @@
   #include "lapacke.h"
 #endif
 
+#define MIN_QUEUE_SIZE (1024)
+
 
 typedef struct
 {
@@ -879,7 +881,7 @@ void setup_sparse_approx_inverse( reax_system const * const system,
         turn = 0;
         while ( k )
         {
-            p  = left;
+            p = left;
             turn = 1 - turn;
 
             /* alternating pivots in order to handle corner cases */
@@ -914,7 +916,7 @@ void setup_sparse_approx_inverse( reax_system const * const system,
                 bucketlist[left] = tmp;
             }
 
-            if ( p == k - 1)
+            if ( p == k - 1 )
             {
                 threshold = bucketlist[p];
                 break;
@@ -941,11 +943,7 @@ void setup_sparse_approx_inverse( reax_system const * const system,
     Check_MPI_Error( ret, __FILE__, __LINE__ );
     t_comm += Get_Time( ) - t_start;
 
-#if defined(DEBUG_FOCUS)
-    int nnz = 0;
-#endif
-
-    /* build entries of that pattern*/
+    /* select entries based on filter value */
     for ( i = 0; i < num_rows; ++i )
     {
         A_spar_patt->start[i] = A->start[i];
@@ -958,26 +956,10 @@ void setup_sparse_approx_inverse( reax_system const * const system,
                 A_spar_patt->val[size] = A->val[pj];
                 A_spar_patt->j[size] = A->j[pj];
                 size++;
-
-#if defined(DEBUG_FOCUS)
-                nnz++;
-#endif
             }
         }
         A_spar_patt->end[i] = size;
     }
-
-#if defined(DEBUG_FOCUS)
-    ret = MPI_Allreduce( MPI_IN_PLACE, &nnz, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD );
-    Check_MPI_Error( ret, __FILE__, __LINE__ );
-
-    if ( system->my_rank == MASTER_NODE )
-    {
-        fprintf( stdout, "    [INFO] \ntotal nnz in all charge matrices = %d\ntotal nnz in all sparsity patterns = %d\nthreshold = %.15lf\n",
-                n, nnz, threshold );
-        fflush( stdout );
-    }
-#endif
  
     ret = MPI_Reduce( &t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM,
             MASTER_NODE, MPI_COMM_WORLD );
@@ -1419,6 +1401,7 @@ real sparse_approx_inverse( reax_system const * const system,
     int N, M, d_i, d_j, mark;
     int local_pos, atom_pos, identity_pos;
     int *X, *q;
+    size_t q_size;
     int size_e, size_dense;
     int cnt;
     int *row_nnz;
@@ -1496,7 +1479,7 @@ real sparse_approx_inverse( reax_system const * const system,
         row_nnz[i] = A->end[i] - A->start[i];
     }
 
-    /* Announce the nnz's in each row that will be communicated later */
+    /* announce nnz's in each row that will be communicated later */
     t_start = Get_Time( );
     Dist( system, mpi_data, row_nnz, INT_PTR_TYPE, MPI_INT );
     t_comm += Get_Time( ) - t_start;
@@ -1768,12 +1751,8 @@ real sparse_approx_inverse( reax_system const * const system,
     sfree( val_recv2, __FILE__, __LINE__ );
 
     X = smalloc( sizeof(int) * (system->bigN + 1), __FILE__, __LINE__ );
-    //size of q should be equal to the maximum possible cardinalty 
-    //of the set formed by neighbors of neighbors of an atom
-    //i.e, maximum number of rows of dense matrix
-    //for water systems, this number is 34000
-    //for silica systems, it is 12000
-    q = smalloc( sizeof(int) * 50000, __FILE__, __LINE__ );
+    q_size = MIN_QUEUE_SIZE;
+    q = smalloc( sizeof(int) * q_size, __FILE__, __LINE__ );
 
     for ( i = 0; i <= system->bigN; ++i )
     {
@@ -1800,12 +1779,18 @@ real sparse_approx_inverse( reax_system const * const system,
             /* the case where the local matrix has that index's row */
             if ( j_temp < A->n )
             {
-                for ( k = A->start[ j_temp ]; k < A->end[ j_temp ]; ++k )
+                for ( k = A->start[j_temp]; k < A->end[j_temp]; ++k )
                 {
                     /* and accumulate the nonzero column indices to serve as the row indices of the dense matrix */
-                    atom = &system->my_atoms[ A->j[k] ];
+                    atom = &system->my_atoms[A->j[k]];
                     X[atom->orig_id] = mark;
-                    q[push++] = atom->orig_id;
+                    if ( (size_t) (push + 1) >= q_size )
+                    {
+                        q_size = (size_t) CEIL( q_size * SAFE_ZONE );
+                        q = srealloc( q, sizeof(int) * q_size, __FILE__, __LINE__ );
+                    }
+                    q[push] = atom->orig_id;
+                    ++push;
                 }
             }
             /* the case where we communicated that index's row */
@@ -1814,8 +1799,14 @@ real sparse_approx_inverse( reax_system const * const system,
                 for ( k = 0; k < row_nnz[j_temp]; ++k )
                 {
                     /* and accumulate the nonzero column indices to serve as the row indices of the dense matrix */
-                    X[ j_list[j_temp][k] ] = mark;
-                    q[push++] = j_list[j_temp][k];
+                    X[j_list[j_temp][k]] = mark;
+                    if ( (size_t) (push + 1) >= q_size )
+                    {
+                        q_size = (size_t) CEIL( q_size * SAFE_ZONE );
+                        q = srealloc( q, sizeof(int) * q_size, __FILE__, __LINE__ );
+                    }
+                    q[push] = j_list[j_temp][k];
+                    ++push;
                 }
             }
         }
@@ -1825,17 +1816,17 @@ real sparse_approx_inverse( reax_system const * const system,
         atom = &system->my_atoms[ i ];
         atom_pos = atom->orig_id;
 
-        for ( k = 0; k < push; k++)
+        for ( k = 0; k < push; k++ )
         {
-            if ( X[ q[k] ] == mark )
+            if ( X[q[k]] == mark )
             {
-                X[ q[k] ] = M;
+                X[q[k]] = M;
                 ++M;
             }
         }
         identity_pos = X[atom_pos];
 
-        /* allocate memory for NxM dense matrix */
+        /* allocate memory for N x M dense matrix */
         if ( size_dense < N * M )
         {
             if ( size_dense > 0 )
@@ -1859,21 +1850,21 @@ real sparse_approx_inverse( reax_system const * const system,
             /* change the value if any of the column indices is seen */
 
             /* it is in the original list */
-            local_pos = A_spar_patt->j[ A_spar_patt->start[i] + d_j ];
+            local_pos = A_spar_patt->j[A_spar_patt->start[i] + d_j];
 
             if ( local_pos < A->n )
             {
                 for ( d_i = A->start[local_pos]; d_i < A->end[local_pos]; ++d_i )
                 {
-                    atom = &system->my_atoms[ A->j[d_i] ];
-                    dense_matrix[ X[ atom->orig_id ] * N + d_j ] = A->val[d_i];
+                    atom = &system->my_atoms[A->j[d_i]];
+                    dense_matrix[X[atom->orig_id] * N + d_j] = A->val[d_i];
                 }
             }
             else
             {
-                for ( d_i = 0; d_i < row_nnz[ local_pos ]; ++d_i )
+                for ( d_i = 0; d_i < row_nnz[local_pos]; ++d_i )
                 {
-                    dense_matrix[ X[ j_list[local_pos][d_i] ] * N + d_j ] = val_list[local_pos][d_i];
+                    dense_matrix[X[j_list[local_pos][d_i]] * N + d_j] = val_list[local_pos][d_i];
                 }
             }
         }
@@ -1928,6 +1919,7 @@ real sparse_approx_inverse( reax_system const * const system,
         }
     }
 
+    sfree( q, __FILE__, __LINE__ );
     sfree( dense_matrix, __FILE__, __LINE__ );
     sfree( e_j, __FILE__, __LINE__ );
     sfree( X, __FILE__, __LINE__ );
