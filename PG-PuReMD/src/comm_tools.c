@@ -654,11 +654,11 @@ int SendRecv( reax_system * const system, mpi_datatypes * const mpi_data,
 
         for ( i = 2 * d; i < 6; ++i )
         {
-            check_srealloc( &out_bufs[i].out_atoms,
+            srealloc_check( &out_bufs[i].out_atoms,
                     &out_bufs[i].out_atoms_size,
                     type_size * (out_bufs[i].cnt + cnt[i]),
                     TRUE, SAFE_ZONE, __FILE__, __LINE__ );
-            check_srealloc( (void **) &out_bufs[i].index,
+            srealloc_check( (void **) &out_bufs[i].index,
                     &out_bufs[i].index_size,
                     sizeof(int) * (out_bufs[i].cnt + cnt[i]),
                     TRUE, SAFE_ZONE, __FILE__, __LINE__ );

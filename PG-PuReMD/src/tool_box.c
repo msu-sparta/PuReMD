@@ -526,7 +526,7 @@ void smalloc_check( void **ptr, size_t *cur_size, size_t new_size,
  * filename: NULL-terminated source filename where function call originated
  * line: line of source file where function call originated
  * */
-void check_srealloc( void **ptr, size_t *cur_size, size_t new_size,
+void srealloc_check( void **ptr, size_t *cur_size, size_t new_size,
         int over_alloc, real over_alloc_factor, const char * const filename,
         int line )
 {

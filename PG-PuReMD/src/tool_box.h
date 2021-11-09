@@ -75,7 +75,7 @@ void * scalloc( size_t, size_t, const char * const, int );
 
 void smalloc_check( void **, size_t *, size_t, int, real, const char * const, int );
 
-void check_srealloc( void **, size_t *, size_t, int, real, const char * const, int );
+void srealloc_check( void **, size_t *, size_t, int, real, const char * const, int );
 
 void sfree( void *, const char * const, int );
 

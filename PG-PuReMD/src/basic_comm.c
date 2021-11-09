@@ -359,7 +359,7 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
                 &out_bufs[2 * d].out_atoms_size,
                 type_size * out_bufs[2 * d].cnt,
                 TRUE, SAFE_ZONE, __FILE__, __LINE__ );
-        check_srealloc( (void **) &out_bufs[2 * d].index,
+        srealloc_check( (void **) &out_bufs[2 * d].index,
                 &out_bufs[2 * d].index_size,
                 sizeof(int) * out_bufs[2 * d].cnt,
                 TRUE, SAFE_ZONE, __FILE__, __LINE__ );
@@ -374,7 +374,7 @@ void Dist( reax_system const * const system, mpi_datatypes * const mpi_data,
                 &out_bufs[2 * d + 1].out_atoms_size,
                 type_size * out_bufs[2 * d + 1].cnt,
                 TRUE, SAFE_ZONE, __FILE__, __LINE__ );
-        check_srealloc( (void **) &out_bufs[2 * d + 1].index,
+        srealloc_check( (void **) &out_bufs[2 * d + 1].index,
                 &out_bufs[2 * d + 1].index_size,
                 sizeof(int) * out_bufs[2 * d + 1].cnt,
                 TRUE, SAFE_ZONE, __FILE__, __LINE__ );
@@ -467,7 +467,7 @@ void Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
                 &out_bufs[2 * d].out_atoms_size,
                 type_size * out_bufs[2 * d].cnt,
                 TRUE, SAFE_ZONE, __FILE__, __LINE__ );
-        check_srealloc( (void **) &out_bufs[2 * d].index,
+        srealloc_check( (void **) &out_bufs[2 * d].index,
                 &out_bufs[2 * d].index_size,
                 sizeof(int) * out_bufs[2 * d].cnt,
                 TRUE, SAFE_ZONE, __FILE__, __LINE__ );
@@ -482,7 +482,7 @@ void Dist_FS( reax_system const * const system, mpi_datatypes * const mpi_data,
                 &out_bufs[2 * d + 1].out_atoms_size,
                 type_size * out_bufs[2 * d + 1].cnt,
                 TRUE, SAFE_ZONE, __FILE__, __LINE__ );
-        check_srealloc( (void **) &out_bufs[2 * d + 1].index,
+        srealloc_check( (void **) &out_bufs[2 * d + 1].index,
                 &out_bufs[2 * d + 1].index_size,
                 sizeof(int) * out_bufs[2 * d + 1].cnt,
                 TRUE, SAFE_ZONE, __FILE__, __LINE__ );
