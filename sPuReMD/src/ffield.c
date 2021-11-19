@@ -50,10 +50,20 @@ void Read_Force_Field( const char * const ffield_file,
         }
 
         /* reading first header comment */
-        fgets( s, MAX_LINE, fp );
+        if ( fgets( s, MAX_LINE, fp ) == NULL )
+        {
+            fprintf( stderr, "[ERROR] reading force field failed\n" \
+                     "  [INFO] reading first header comment\n" );
+            exit( INVALID_INPUT );
+        }
 
         /* line 2 is number of global parameters */
-        fgets( s, MAX_LINE, fp );
+        if ( fgets( s, MAX_LINE, fp ) == NULL )
+        {
+            fprintf( stderr, "[ERROR] reading force field failed\n" \
+                     "  [INFO] reading number of global parameters\n" );
+            exit( INVALID_INPUT );
+        }
         Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         /* reading the number of global parameters */
@@ -81,7 +91,12 @@ void Read_Force_Field( const char * const ffield_file,
         /* see reax_types.h for mapping between l[i] and the lambdas used in ff */
         for ( i = 0; i < n; i++ )
         {
-            fgets( s, MAX_LINE, fp );
+            if ( fgets( s, MAX_LINE, fp ) == NULL )
+            {
+                fprintf( stderr, "[ERROR] reading force field failed\n" \
+                         "  [INFO] reading global parameters (entry %d)\n", i );
+                exit( INVALID_INPUT );
+            }
             Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
             val = (real) sstrtod( tmp[0], __FILE__, __LINE__ );
@@ -90,14 +105,24 @@ void Read_Force_Field( const char * const ffield_file,
         }
 
         /* next line is number of atom types and some comments */
-        fgets( s, MAX_LINE, fp );
+        if ( fgets( s, MAX_LINE, fp ) == NULL )
+        {
+            fprintf( stderr, "[ERROR] reading force field failed\n" \
+                     "  [INFO] reading number of single body parameters\n" );
+            exit( INVALID_INPUT );
+        }
         Tokenize( s, &tmp, MAX_TOKEN_LEN );
         n = sstrtol( tmp[0], __FILE__, __LINE__ );
 
         /* 3 lines of comments */
-        fgets( s, MAX_LINE, fp );
-        fgets( s, MAX_LINE, fp );
-        fgets( s, MAX_LINE, fp );
+        if ( fgets( s, MAX_LINE, fp ) == NULL
+                || fgets( s, MAX_LINE, fp ) == NULL
+                || fgets( s, MAX_LINE, fp ) == NULL )
+        {
+            fprintf( stderr, "[ERROR] reading force field failed\n" \
+                     "  [INFO] reading single body comments\n" );
+            exit( INVALID_INPUT );
+        }
 
         if ( system->ffield_params_allocated == FALSE )
         {
@@ -222,7 +247,12 @@ void Read_Force_Field( const char * const ffield_file,
         for ( i = 0; i < reax->num_atom_types; i++ )
         {
             /* line one */
-            fgets( s, MAX_LINE, fp );
+            if ( fgets( s, MAX_LINE, fp ) == NULL )
+            {
+                fprintf( stderr, "[ERROR] reading force field failed\n" \
+                         "  [INFO] reading single body parameters (entry %d, line 1)\n", i );
+                exit( INVALID_INPUT );
+            }
             Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
             strncpy( reax->sbp[i].name, tmp[0], sizeof(reax->sbp[i].name) - 1 );
@@ -251,7 +281,12 @@ void Read_Force_Field( const char * const ffield_file,
             reax->sbp[i].nlp_opt = 0.5 * (reax->sbp[i].valency_e - reax->sbp[i].valency);
 
             /* line two */
-            fgets( s, MAX_LINE, fp );
+            if ( fgets( s, MAX_LINE, fp ) == NULL )
+            {
+                fprintf( stderr, "[ERROR] reading force field failed\n" \
+                         "  [INFO] reading single body parameters (entry %d, line 2)\n", i );
+                exit( INVALID_INPUT );
+            }
             Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
             val = sstrtod( tmp[0], __FILE__, __LINE__ );
@@ -275,7 +310,12 @@ void Read_Force_Field( const char * const ffield_file,
             //0.1 is to avoid from truncating down!
 
             /* line 3 */
-            fgets( s, MAX_LINE, fp );
+            if ( fgets( s, MAX_LINE, fp ) == NULL )
+            {
+                fprintf( stderr, "[ERROR] reading force field failed\n" \
+                         "  [INFO] reading single body parameters (entry %d, line 3)\n", i );
+                exit( INVALID_INPUT );
+            }
             Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
             val = sstrtod( tmp[0], __FILE__, __LINE__ );
@@ -294,7 +334,12 @@ void Read_Force_Field( const char * const ffield_file,
             val = sstrtod( tmp[7], __FILE__, __LINE__ );
 
             /* line 4  */
-            fgets( s, MAX_LINE, fp );
+            if ( fgets( s, MAX_LINE, fp ) == NULL )
+            {
+                fprintf( stderr, "[ERROR] reading force field failed\n" \
+                         "  [INFO] reading single body parameters (entry %d, line 4)\n", i );
+                exit( INVALID_INPUT );
+            }
             Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
             val = sstrtod( tmp[0], __FILE__, __LINE__ );
@@ -412,17 +457,32 @@ void Read_Force_Field( const char * const ffield_file,
         }
 
         /* next line is number of two body combination and some comments */
-        fgets( s, MAX_LINE, fp );
+        if ( fgets( s, MAX_LINE, fp ) == NULL )
+        {
+            fprintf( stderr, "[ERROR] reading force field failed\n" \
+                     "  [INFO] reading number of two body parameters\n" );
+            exit( INVALID_INPUT );
+        }
         Tokenize( s, &tmp, MAX_TOKEN_LEN );
         l = sstrtol( tmp[0], __FILE__, __LINE__ );
 
         /* a line of comments */
-        fgets(s, MAX_LINE, fp);
+        if ( fgets( s, MAX_LINE, fp ) == NULL )
+        {
+            fprintf( stderr, "[ERROR] reading force field failed\n" \
+                     "  [INFO] reading two body comments\n" );
+            exit( INVALID_INPUT );
+        }
 
         for ( i = 0; i < l; i++ )
         {
             /* line 1 */
-            fgets( s, MAX_LINE, fp );
+            if ( fgets( s, MAX_LINE, fp ) == NULL )
+            {
+                fprintf( stderr, "[ERROR] reading force field failed\n" \
+                         "  [INFO] reading two body parameters (entry %d, line 1)\n", i );
+                exit( INVALID_INPUT );
+            }
             Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
             j = sstrtol( tmp[0], __FILE__, __LINE__ ) - 1;
@@ -458,7 +518,12 @@ void Read_Force_Field( const char * const ffield_file,
                 reax->tbp[k][j].p_ovun1 = val;
 
                 /* line 2 */
-                fgets( s, MAX_LINE, fp );
+                if ( fgets( s, MAX_LINE, fp ) == NULL )
+                {
+                    fprintf( stderr, "[ERROR] reading force field failed\n" \
+                             "  [INFO] reading two body parameters (entry %d, line 2)\n", i );
+                    exit( INVALID_INPUT );
+                }
                 Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
                 val = sstrtod( tmp[0], __FILE__, __LINE__ );
@@ -538,13 +603,23 @@ void Read_Force_Field( const char * const ffield_file,
         /* next line is number of 2-body offdiagonal combinations and some comments */
         /* these are two body off-diagonal terms that are different from the
          * combination rules defined above */
-        fgets( s, MAX_LINE, fp );
+        if ( fgets( s, MAX_LINE, fp ) == NULL )
+        {
+            fprintf( stderr, "[ERROR] reading force field failed\n" \
+                     "  [INFO] reading number of two body off-diagonal parameters\n" );
+            exit( INVALID_INPUT );
+        }
         Tokenize( s, &tmp, MAX_TOKEN_LEN );
         l = sstrtol( tmp[0], __FILE__, __LINE__ );
 
         for ( i = 0; i < l; i++ )
         {
-            fgets( s, MAX_LINE, fp );
+            if ( fgets( s, MAX_LINE, fp ) == NULL )
+            {
+                fprintf( stderr, "[ERROR] reading force field failed\n" \
+                         "  [INFO] reading two body off-diagonal parameters (entry %d)\n", i );
+                exit( INVALID_INPUT );
+            }
             Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
             j = sstrtol( tmp[0], __FILE__, __LINE__ ) - 1;
@@ -611,13 +686,23 @@ void Read_Force_Field( const char * const ffield_file,
         }
 
         /* next line is number of 3-body params and some comments */
-        fgets( s, MAX_LINE, fp );
+        if ( fgets( s, MAX_LINE, fp ) == NULL )
+        {
+            fprintf( stderr, "[ERROR] reading force field failed\n" \
+                     "  [INFO] reading number of three body parameters\n" );
+            exit( INVALID_INPUT );
+        }
         Tokenize( s, &tmp, MAX_TOKEN_LEN );
         l = sstrtol( tmp[0], __FILE__, __LINE__ );
 
         for ( i = 0; i < l; i++ )
         {
-            fgets( s, MAX_LINE, fp );
+            if ( fgets( s, MAX_LINE, fp ) == NULL )
+            {
+                fprintf( stderr, "[ERROR] reading force field failed\n" \
+                         "  [INFO] reading three body parameters (entry %d)\n", i );
+                exit( INVALID_INPUT );
+            }
             Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
             j = sstrtol( tmp[0], __FILE__, __LINE__ ) - 1;
@@ -687,13 +772,23 @@ void Read_Force_Field( const char * const ffield_file,
         }
 
         /* next line is number of 4-body params and some comments */
-        fgets( s, MAX_LINE, fp );
+        if ( fgets( s, MAX_LINE, fp ) == NULL )
+        {
+            fprintf( stderr, "[ERROR] reading force field failed\n" \
+                     "  [INFO] reading number of four body parameters\n" );
+            exit( INVALID_INPUT );
+        }
         Tokenize( s, &tmp, MAX_TOKEN_LEN );
         l = sstrtol( tmp[0], __FILE__, __LINE__ );
 
         for ( i = 0; i < l; i++ )
         {
-            fgets( s, MAX_LINE, fp );
+            if ( fgets( s, MAX_LINE, fp ) == NULL )
+            {
+                fprintf( stderr, "[ERROR] reading force field failed\n" \
+                         "  [INFO] reading four body parameters (entry %d)\n", i );
+                exit( INVALID_INPUT );
+            }
             Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
             j = sstrtol( tmp[0], __FILE__, __LINE__ ) - 1;
@@ -782,13 +877,23 @@ void Read_Force_Field( const char * const ffield_file,
         }
 
         /* next line is number of hydrogen bond params and some comments */
-        fgets( s, MAX_LINE, fp );
+        if ( fgets( s, MAX_LINE, fp ) == NULL )
+        {
+            fprintf( stderr, "[ERROR] reading force field failed\n" \
+                     "  [INFO] reading number of hydrogen bond parameters\n" );
+            exit( INVALID_INPUT );
+        }
         Tokenize( s, &tmp, MAX_TOKEN_LEN );
         l = sstrtol( tmp[0], __FILE__, __LINE__ );
 
         for ( i = 0; i < l; i++ )
         {
-            fgets( s, MAX_LINE, fp );
+            if ( fgets( s, MAX_LINE, fp ) == NULL )
+            {
+                fprintf( stderr, "[ERROR] reading force field failed\n" \
+                         "  [INFO] reading hydrogen bond parameters (entry %d)\n", i );
+                exit( INVALID_INPUT );
+            }
             Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
             j = sstrtol( tmp[0], __FILE__, __LINE__ ) - 1;

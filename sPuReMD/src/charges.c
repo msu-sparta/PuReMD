@@ -135,7 +135,11 @@ static TF_Buffer* read_file_to_TF_Buffer( const char* file )
     fseek( f, 0, SEEK_SET );  //same as rewind(f);
 
     data = malloc( fsize );
-    fread( data, fsize, 1, f );
+    if ( fread( data, fsize, 1, f ) != 1 )
+    {
+        fprintf( stderr, "[ERROR] reading Tensorflow model file failed\n" );
+        exit( INVALID_INPUT );
+    }
     fclose( f );
 
     buf = TF_NewBuffer();

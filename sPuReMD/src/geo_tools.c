@@ -200,9 +200,14 @@ static int Read_Box_Info( reax_system *system, FILE *fp, int geo_format )
             break;
 
         case CUSTOM:
-            fscanf( fp, CUSTOM_BOXGEO_FORMAT,
-                    descriptor, &box_x, &box_y, &box_z,
-                    &alpha, &beta, &gamma );
+            if ( fscanf( fp, CUSTOM_BOXGEO_FORMAT,
+                        descriptor, &box_x, &box_y, &box_z,
+                        &alpha, &beta, &gamma ) != 7 )
+            {
+                fprintf( stderr, "[ERROR] reading geometry file failed\n" \
+                         "  [INFO] reading simulation box info\n" );
+                exit( INVALID_INPUT );
+            }
 
             Setup_Box( box_x, box_y, box_z,
                     alpha, beta, gamma,
@@ -259,11 +264,21 @@ static int Count_Atoms( reax_system *system, FILE *fp, int geo_format )
 
         case CUSTOM:
             /* skip box info */
-            fgets( line, MAX_LINE, fp );
+            if ( fgets( line, MAX_LINE, fp ) == NULL )
+            {
+                fprintf( stderr, "[ERROR] reading geometry file failed\n" \
+                         "  [INFO] reading simulation box info\n" );
+                exit( INVALID_INPUT );
+            }
 
             /* second line contains integer count
              * of the number of atoms */
-            fscanf( fp, " %d", &n );
+            if ( fscanf( fp, " %d", &n ) != 1 )
+            {
+                fprintf( stderr, "[ERROR] reading geometry file failed\n" \
+                         "  [INFO] reading number of atoms\n" );
+                exit( INVALID_INPUT );
+            }
 
             break;
 
@@ -322,8 +337,13 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
     top = 0;
     for ( i = 0; i < system->N; ++i )
     {
-        fscanf( geo, CUSTOM_ATOM_FORMAT,
-                &serial, element, name, &x[0], &x[1], &x[2] );
+        if ( fscanf( geo, CUSTOM_ATOM_FORMAT,
+                    &serial, element, name, &x[0], &x[1], &x[2] ) != 6 )
+        {
+            fprintf( stderr, "[ERROR] reading geometry file failed\n" \
+                     "  [INFO] reading atom info (entry %d)\n", i );
+            exit( INVALID_INPUT );
+        }
 
         for ( j = 0; j < sizeof(element) - 1; ++j )
         {
@@ -781,8 +801,13 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
 
         if ( strncmp( tokens[0], "CRYSTX", 6 ) == 0 )
         {
-            sscanf( backup, BGF_CRYSTX_FORMAT, descriptor,
-                    s_a, s_b, s_c, s_alpha, s_beta, s_gamma );
+            if ( sscanf( backup, BGF_CRYSTX_FORMAT, descriptor,
+                        s_a, s_b, s_c, s_alpha, s_beta, s_gamma ) != 7 )
+            {
+                fprintf( stderr, "[ERROR] reading geometry file failed\n" \
+                         "  [INFO] reading simulation box info\n" );
+                exit( INVALID_INPUT );
+            }
 
             /* compute full volume tensor from the angles */
             Setup_Box( sstrtod( s_a, __FILE__, __LINE__ ),
@@ -849,9 +874,14 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             strncpy( charge, backup + 72, sizeof(charge) - 1 );
             charge[sizeof(charge) - 1] = '\0';
 
-//            sscanf( backup, BGF_ATOM_FORMAT, descriptor, serial, atom_name,
+//            if ( sscanf( backup, BGF_ATOM_FORMAT, descriptor, serial, atom_name,
 //                    res_name, &chain_id, res_seq, s_x, s_y, s_z, element,
-//                    occupancy, temp_factor, charge );
+//                    occupancy, temp_factor, charge ) != 13 )
+//            {
+//                fprintf( stderr, "[ERROR] reading geometry file failed\n" );
+//                fprintf( stderr, "  [INFO] reading atom info (entry %d)\n", i );
+//                exit( INVALID_INPUT );
+//            }
 
             /* add to mapping */
             bgf_serial = sstrtod( serial, __FILE__, __LINE__ );

@@ -84,7 +84,12 @@ void Read_Binary_Restart( const char * const fname, reax_system *system,
     fres = sfopen( fname, "rb", __FILE__, __LINE__ );
 
     /* parse header of restart file */
-    fread( &res_header, sizeof(restart_header), 1, fres );
+    if ( fread( &res_header, sizeof(restart_header), 1, fres ) != 1 )
+    {
+        fprintf( stderr, "[ERROR] reading restart file failed\n" \
+                "  [INFO] reading header info\n" );
+        exit( INVALID_INPUT );
+    }
 
     data->prev_steps = res_header.step;
     data->therm.T = res_header.T;
@@ -122,7 +127,12 @@ void Read_Binary_Restart( const char * const fname, reax_system *system,
 
     for ( i = 0; i < system->N; ++i )
     {
-        fread( &res_data, sizeof(restart_atom), 1, fres);
+        if ( fread( &res_data, sizeof(restart_atom), 1, fres ) != 1 )
+        {
+            fprintf( stderr, "[ERROR] reading restart file failed\n" \
+                    "  [INFO] reading atom info (%d entry)\n", i );
+            exit( INVALID_INPUT );
+        }
 
         workspace->orig_id[i] = res_data.orig_id;
         workspace->map_serials[res_data.orig_id] = i;
@@ -195,12 +205,17 @@ void Read_ASCII_Restart( const char * const fname, reax_system *system,
     fres = sfopen( fname, "r", __FILE__, __LINE__ );
 
     /* parse header of restart file */
-    fscanf( fres, READ_RESTART_HEADER,
-            &data->prev_steps, &n, &data->therm.T, &data->therm.xi,
-            &data->therm.v_xi, &data->therm.v_xi_old, &data->therm.G_xi,
-            &system->box.box[0][0], &system->box.box[0][1], &system->box.box[0][2],
-            &system->box.box[1][0], &system->box.box[1][1], &system->box.box[1][2],
-            &system->box.box[2][0], &system->box.box[2][1], &system->box.box[2][2]);
+    if ( fscanf( fres, READ_RESTART_HEADER,
+                &data->prev_steps, &n, &data->therm.T, &data->therm.xi,
+                &data->therm.v_xi, &data->therm.v_xi_old, &data->therm.G_xi,
+                &system->box.box[0][0], &system->box.box[0][1], &system->box.box[0][2],
+                &system->box.box[1][0], &system->box.box[1][1], &system->box.box[1][2],
+                &system->box.box[2][0], &system->box.box[2][1], &system->box.box[2][2] ) != 16 )
+    {
+        fprintf( stderr, "[ERROR] reading restart file failed\n" \
+                 "  [INFO] reading header info\n" );
+        exit( INVALID_INPUT );
+    }
 
     rvec_MakeZero( system->box.min );
     Make_Consistent( &system->box );
@@ -231,10 +246,15 @@ void Read_ASCII_Restart( const char * const fname, reax_system *system,
     for ( i = 0; i < system->N; ++i )
     {
         p_atom = &system->atoms[i];
-        fscanf( fres, READ_RESTART_LINE,
-                &workspace->orig_id[i], &p_atom->type, p_atom->name,
-                &p_atom->x[0], &p_atom->x[1], &p_atom->x[2],
-                &p_atom->v[0], &p_atom->v[1], &p_atom->v[2] );
+        if ( fscanf( fres, READ_RESTART_LINE,
+                    &workspace->orig_id[i], &p_atom->type, p_atom->name,
+                    &p_atom->x[0], &p_atom->x[1], &p_atom->x[2],
+                    &p_atom->v[0], &p_atom->v[1], &p_atom->v[2] ) != 9 )
+        {
+            fprintf( stderr, "[ERROR] reading restart file failed\n" \
+                    "  [INFO] reading atom info (%d entry)\n", i );
+            exit( INVALID_INPUT );
+        }
         workspace->map_serials[workspace->orig_id[i]] = i;
     }
 

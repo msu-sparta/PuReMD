@@ -581,11 +581,21 @@ void Read_Traj_Compressed( output_controls *out_control, char *traj_name )
 
         if ( strnlen( size_buffer, 50 ) >= SIZE_INFO_LEN3 )
         {
-            sscanf( size_buffer, "%d %d %d", &skip_all, &skip_part, &n );
+            if ( sscanf( size_buffer, "%d %d %d", &skip_all, &skip_part, &n ) != 3 )
+            {
+                fprintf( stderr, "[ERROR] reading trajectory file failed\n" \
+                         "  [INFO] reading skip info\n" );
+                exit( INVALID_INPUT );
+            }
         }
         else
         {
-            sscanf( size_buffer, "%d %d", &skip_all, &skip_part );
+            if ( sscanf( size_buffer, "%d %d", &skip_all, &skip_part ) != 2 )
+            {
+                fprintf( stderr, "[ERROR] reading trajectory file failed\n" \
+                         "  [INFO] reading skip info\n" );
+                exit( INVALID_INPUT );
+            }
         }
 
         fprintf( stderr, "%d %d\n", skip_all, skip_part );
