@@ -137,6 +137,10 @@ int Set_Control_Parameter( const char * const keyword,
     {
         control->charge_method = sstrtol( values[0], __FILE__, __LINE__ );
     }
+    else if ( strncmp(keyword, "charge_freq", MAX_LINE) == 0 )
+    {
+        control->charge_freq = sstrtol( values[0], __FILE__, __LINE__ );
+    }
     else if ( strncmp(keyword, "cm_q_net", MAX_LINE) == 0 )
     {
         val = sstrtod( values[0], __FILE__, __LINE__ );
@@ -512,6 +516,7 @@ void Set_Control_Defaults( reax_system * const system,
     control->restrict_type = 0;
 
     control->charge_method = QEQ_CM;
+    control->charge_freq = 1;
     control->cm_q_net = 0.0;
     control->cm_solver_type = GMRES_S;
     control->cm_solver_max_iters = 100;

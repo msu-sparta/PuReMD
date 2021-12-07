@@ -140,46 +140,12 @@ static void Compute_NonBonded_Forces( reax_system *system, control_params *contr
         simulation_data *data, static_storage *workspace,
         reax_list** lists, output_controls *out_control, int realloc )
 {
-    real t_start, t_elapsed;
-
 #if defined(TEST_ENERGY)
     fprintf( out_control->evdw, "step: %d\n%6s%6s%12s%12s%12s\n",
              data->step, "atom1", "atom2", "r12", "evdw", "total" );
     fprintf( out_control->ecou, "step: %d\n%6s%6s%12s%12s%12s%12s%12s\n",
              data->step, "atom1", "atom2", "r12", "q1", "q2", "ecou", "total" );
 #endif
-
-    t_start = Get_Time( );
-    Compute_Charges( system, control, data, workspace, out_control, realloc );
-    t_elapsed = Get_Timing_Info( t_start );
-    data->timing.cm += t_elapsed;
-    
-    if ( control->cm_solver_pre_comp_refactor == -1 )
-    {
-        if ( data->step <= 4 || is_refactoring_step( control, data ) )
-        {
-            if ( is_refactoring_step( control, data ) )
-            {
-                data->timing.cm_last_pre_comp = data->timing.cm_solver_pre_comp;
-            }
-
-            data->timing.cm_optimum = data->timing.cm_solver_pre_app
-                + data->timing.cm_solver_spmv
-                + data->timing.cm_solver_vector_ops
-                + data->timing.cm_solver_orthog
-                + data->timing.cm_solver_tri_solve;
-            data->timing.cm_total_loss = 0.0;
-        }
-        else
-        {
-            data->timing.cm_total_loss += data->timing.cm_solver_pre_app
-                + data->timing.cm_solver_spmv
-                + data->timing.cm_solver_vector_ops
-                + data->timing.cm_solver_orthog
-                + data->timing.cm_solver_tri_solve
-                - data->timing.cm_optimum;
-        }
-    }
 
     if ( control->tabulate <= 0 )
     {
@@ -1274,7 +1240,9 @@ static int Init_Forces( reax_system * const system,
         dist_done = TRUE;
     }
 
-    if ( cm_done == FALSE )
+    if ( (control->charge_freq > 0
+            && (data->step - data->prev_steps) % control->charge_freq == 0)
+            && cm_done == FALSE )
     {
         if ( control->tabulate <= 0 )
         {
@@ -1597,8 +1565,18 @@ int Compute_Forces( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
         reax_list ** const lists, output_controls * const out_control, int realloc )
 {
-    int ret;
+    int charge_flag, ret;
     real t_start, t_elapsed;
+
+    if ( control->charge_freq > 0
+            && (data->step - data->prev_steps) % control->charge_freq == 0 )
+    {
+        charge_flag = TRUE;
+    }
+    else
+    {
+        charge_flag = FALSE;
+    }
 
     t_start = Get_Time( );
     ret = Init_Forces( system, control, data, workspace, lists, out_control );
@@ -1617,6 +1595,41 @@ int Compute_Forces( reax_system * const system, control_params * const control,
         Compute_Bonded_Forces( system, control, data, workspace, lists, out_control );
         t_elapsed = Get_Timing_Info( t_start );
         data->timing.bonded += t_elapsed;
+
+        if ( charge_flag == TRUE )
+        {
+            t_start = Get_Time( );
+            Compute_Charges( system, control, data, workspace, out_control, realloc );
+            t_elapsed = Get_Timing_Info( t_start );
+            data->timing.cm += t_elapsed;
+        }
+            
+        if ( control->cm_solver_pre_comp_refactor == -1 )
+        {
+            if ( data->step <= 4 || is_refactoring_step( control, data ) )
+            {
+                if ( is_refactoring_step( control, data ) )
+                {
+                    data->timing.cm_last_pre_comp = data->timing.cm_solver_pre_comp;
+                }
+
+                data->timing.cm_optimum = data->timing.cm_solver_pre_app
+                    + data->timing.cm_solver_spmv
+                    + data->timing.cm_solver_vector_ops
+                    + data->timing.cm_solver_orthog
+                    + data->timing.cm_solver_tri_solve;
+                data->timing.cm_total_loss = 0.0;
+            }
+            else
+            {
+                data->timing.cm_total_loss += data->timing.cm_solver_pre_app
+                    + data->timing.cm_solver_spmv
+                    + data->timing.cm_solver_vector_ops
+                    + data->timing.cm_solver_orthog
+                    + data->timing.cm_solver_tri_solve
+                    - data->timing.cm_optimum;
+            }
+        }
 
         t_start = Get_Time( );
         Compute_NonBonded_Forces( system, control, data, workspace,
