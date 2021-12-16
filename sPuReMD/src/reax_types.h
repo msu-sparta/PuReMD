@@ -898,6 +898,24 @@ struct reax_system
     unsigned int num_molec_charge_constraints;
     /* max. num. of charge constraints on groups of atoms (i.e., molecules) */
     unsigned int max_num_molec_charge_constraints;
+    /* num. of custom charge constraints */
+    unsigned int num_custom_charge_constraints;
+    /* max. num. of custom charge constraints */
+    unsigned int max_num_custom_charge_constraints;
+    /* num. of custom charge constraint entries (atom indices, coefficients) */
+    unsigned int num_custom_charge_constraint_entries;
+    /* max. num. of custom charge constraint entries (atom indices, coefficients) */
+    unsigned int max_num_custom_charge_constraint_entries;
+    /* entry counts for each custom charge constraint */
+    int *custom_charge_constraint_count;
+    /* indices for custom charge constraint info (atom indices, coefficients) */
+    int *custom_charge_constraint_start;
+    /* 1-based atom numbers used to identify entries for each custom charge constraint */
+    int *custom_charge_constraint_atom_index;
+    /* coefficients of entries for each custom charge constraint */
+    real *custom_charge_constraint_coeff;
+    /* right-hand side (RHS) constant values for each custom charge constraint */
+    real *custom_charge_constraint_rhs;
     /* atomic interaction parameters */
     reax_interaction reax_param;
     /* grid specifying domain (i.e., spatial) decompisition

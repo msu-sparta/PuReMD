@@ -227,6 +227,9 @@ void * setup( const char * const geo_file, const char * const ffield_file,
 
     spmd_handle->system->N_max = 0;
     spmd_handle->system->max_num_molec_charge_constraints = 0;
+    spmd_handle->system->num_molec_charge_constraints = 0;
+    spmd_handle->system->max_num_custom_charge_constraints = 0;
+    spmd_handle->system->num_custom_charge_constraints = 0;
 
     Read_Input_Files( geo_file, ffield_file, control_file,
             spmd_handle->system, spmd_handle->control,
@@ -1021,18 +1024,27 @@ int set_control_parameter( const void * const handle, const char * const keyword
  * sim_box_info: simulation box information, where the entries are
  *  - box length per dimension (3 entries)
  *  - angles per dimension (3 entries)
- * num_charge_constraints: num. of charge constraints for charge model
- * charge_constraint_start: starting atom num. (1-based) of atom group for a charge constraint
- * charge_constraint_end: ending atom num. (1-based) of atom group for a charge constraint
- * charge_constraint_value: charge constraint value for atom group
+ * num_charge_constraint_contig: num. of contiguous charge constraints for charge model
+ * charge_constraint_contig_start: starting atom num. (1-based) of atom group for a charge constraint
+ * charge_constraint_contig_end: ending atom num. (1-based) of atom group for a charge constraint
+ * charge_constraint_contig_value: charge constraint value for atom group
+ * num_charge_constraint_custom: num. of custom charge constraints for charge model
+ * charge_constraint_custom_count: counts for each custom charge constraint
+ * charge_constraint_custom_atom_index: atom indices (1-based) for custom charge constraints
+ * charge_constraint_custom_coeff: coefficients for custom charge constraints
+ * charge_constraint_custom_rhs: right-hand side (RHS) constants for custom charge constraints
  * ffield_file: file containing force field parameters
  * control_file: file containing simulation parameters
  */
 void * setup_qmmm( int qm_num_atoms, const char * const qm_symbols,
         const double * const qm_pos, int mm_num_atoms, const char * const mm_symbols,
         const double * const mm_pos_q, const double * const sim_box_info,
-        int num_charge_constraints, const int * const charge_constraint_start,
-        const int * const charge_constraint_end, const double * const charge_constraint_value,
+        int num_charge_constraint_contig, const int * const charge_constraint_contig_start,
+        const int * const charge_constraint_contig_end, const double * const charge_constraint_contig_value,
+        int num_charge_constraint_custom, const int * const charge_constraint_custom_count,
+        const int * const charge_constraint_custom_atom_index,
+        const double * const charge_constraint_custom_coeff,
+        const double * const charge_constraint_custom_rhs,
         const char * const ffield_file, const char * const control_file )
 {
     int i;
@@ -1051,8 +1063,8 @@ void * setup_qmmm( int qm_num_atoms, const char * const qm_symbols,
             spmd_handle->data, spmd_handle->workspace,
             spmd_handle->out_control, FALSE );
 
-    spmd_handle->system->max_num_molec_charge_constraints = num_charge_constraints;
-    spmd_handle->system->num_molec_charge_constraints = num_charge_constraints;
+    spmd_handle->system->max_num_molec_charge_constraints = num_charge_constraint_contig;
+    spmd_handle->system->num_molec_charge_constraints = num_charge_constraint_contig;
 
     if ( spmd_handle->system->num_molec_charge_constraints > 0 )
     {
@@ -1065,9 +1077,54 @@ void * setup_qmmm( int qm_num_atoms, const char * const qm_symbols,
 
         for ( i = 0; i < spmd_handle->system->num_molec_charge_constraints; ++i )
         {
-            spmd_handle->system->molec_charge_constraint_ranges[2 * i] = charge_constraint_start[i];
-            spmd_handle->system->molec_charge_constraint_ranges[2 * i + 1] = charge_constraint_end[i];
-            spmd_handle->system->molec_charge_constraints[i] = charge_constraint_value[i];
+            spmd_handle->system->molec_charge_constraint_ranges[2 * i] = charge_constraint_contig_start[i];
+            spmd_handle->system->molec_charge_constraint_ranges[2 * i + 1] = charge_constraint_contig_end[i];
+            spmd_handle->system->molec_charge_constraints[i] = charge_constraint_contig_value[i];
+        }
+    }
+
+    spmd_handle->system->max_num_custom_charge_constraints = num_charge_constraint_custom;
+    spmd_handle->system->num_custom_charge_constraints = num_charge_constraint_custom;
+    spmd_handle->system->num_custom_charge_constraint_entries = 0;
+
+    if ( spmd_handle->system->num_custom_charge_constraints > 0 )
+    {
+        spmd_handle->system->custom_charge_constraint_count = smalloc(
+                sizeof(int) * spmd_handle->system->num_custom_charge_constraints,
+                __FILE__, __LINE__ );
+        spmd_handle->system->custom_charge_constraint_start = smalloc(
+                sizeof(int) * (spmd_handle->system->num_custom_charge_constraints + 1),
+                __FILE__, __LINE__ );
+        spmd_handle->system->custom_charge_constraint_rhs = smalloc(
+                sizeof(real) * spmd_handle->system->num_custom_charge_constraints,
+                __FILE__, __LINE__ );
+
+        for ( i = 0; i < spmd_handle->system->num_custom_charge_constraints; ++i )
+        {
+            spmd_handle->system->custom_charge_constraint_count[i] = charge_constraint_custom_count[i];
+            spmd_handle->system->custom_charge_constraint_start[i] = (i == 0 ? 0 :
+                    charge_constraint_custom_count[i - 1] + charge_constraint_custom_count[i - 1]);
+            spmd_handle->system->num_custom_charge_constraint_entries += charge_constraint_custom_count[i];
+            spmd_handle->system->custom_charge_constraint_rhs[i] = charge_constraint_custom_rhs[i];
+        }
+    }
+
+    spmd_handle->system->max_num_custom_charge_constraint_entries
+        = spmd_handle->system->num_custom_charge_constraint_entries;
+
+    if ( spmd_handle->system->num_custom_charge_constraint_entries > 0 )
+    {
+        spmd_handle->system->custom_charge_constraint_atom_index = smalloc(
+                sizeof(int) * spmd_handle->system->num_custom_charge_constraint_entries,
+                __FILE__, __LINE__ );
+        spmd_handle->system->custom_charge_constraint_coeff = smalloc(
+                sizeof(real) * spmd_handle->system->num_custom_charge_constraint_entries,
+                __FILE__, __LINE__ );
+
+        for ( i = 0; i < spmd_handle->system->num_custom_charge_constraint_entries; ++i )
+        {
+            spmd_handle->system->custom_charge_constraint_atom_index[i] = charge_constraint_custom_atom_index[i];
+            spmd_handle->system->custom_charge_constraint_coeff[i] = charge_constraint_custom_coeff[i];
         }
     }
 
@@ -1176,10 +1233,15 @@ void * setup_qmmm( int qm_num_atoms, const char * const qm_symbols,
  * sim_box_info: simulation box information, where the entries are
  *  - box length per dimension (3 entries)
  *  - angles per dimension (3 entries)
- * num_charge_constraints: num. of charge constraints for charge model
- * charge_constraint_start: starting atom num. (1-based) of atom group for a charge constraint
- * charge_constraint_end: ending atom num. (1-based) of atom group for a charge constraint
- * charge_constraint_value: charge constraint value for atom group
+ * num_charge_constraint_contig: num. of contiguous charge constraints for charge model
+ * charge_constraint_contig_start: starting atom num. (1-based) of atom group for a charge constraint
+ * charge_constraint_contig_end: ending atom num. (1-based) of atom group for a charge constraint
+ * charge_constraint_contig_value: charge constraint value for atom group
+ * num_charge_constraint_custom: num. of custom charge constraints for charge model
+ * charge_constraint_custom_count: counts for each custom charge constraint
+ * charge_constraint_custom_atom_index: atom indices (1-based) for custom charge constraints
+ * charge_constraint_custom_coeff: coefficients for custom charge constraints
+ * charge_constraint_custom_rhs: right-hand side (RHS) constants for custom charge constraints
  * ffield_file: file containing force field parameters
  * control_file: file containing simulation parameters
  *
@@ -1189,8 +1251,12 @@ int reset_qmmm( const void * const handle, int qm_num_atoms,
         const char * const qm_symbols, const double * const qm_pos,
         int mm_num_atoms, const char * const mm_symbols,
         const double * const mm_pos_q, const double * const sim_box_info,
-        int num_charge_constraints, const int * const charge_constraint_start,
-        const int * const charge_constraint_end, const double * const charge_constraint_value,
+        int num_charge_constraint_contig, const int * const charge_constraint_contig_start,
+        const int * const charge_constraint_contig_end, const double * const charge_constraint_contig_value,
+        int num_charge_constraint_custom, const int * const charge_constraint_custom_count,
+        const int * const charge_constraint_custom_atom_index,
+        const double * const charge_constraint_custom_coeff,
+        const double * const charge_constraint_custom_rhs,
         const char * const ffield_file, const char * const control_file )
 {
     int i, ret;
@@ -1219,7 +1285,7 @@ int reset_qmmm( const void * const handle, int qm_num_atoms,
                 spmd_handle->data, spmd_handle->workspace,
                 spmd_handle->out_control, TRUE );
 
-        spmd_handle->system->num_molec_charge_constraints = num_charge_constraints;
+        spmd_handle->system->num_molec_charge_constraints = num_charge_constraint_contig;
 
         if ( spmd_handle->system->num_molec_charge_constraints
                 > spmd_handle->system->max_num_molec_charge_constraints )
@@ -1247,9 +1313,82 @@ int reset_qmmm( const void * const handle, int qm_num_atoms,
         {
             for ( i = 0; i < spmd_handle->system->num_molec_charge_constraints; ++i )
             {
-                spmd_handle->system->molec_charge_constraint_ranges[2 * i] = charge_constraint_start[i];
-                spmd_handle->system->molec_charge_constraint_ranges[2 * i + 1] = charge_constraint_end[i];
-                spmd_handle->system->molec_charge_constraints[i] = charge_constraint_value[i];
+                spmd_handle->system->molec_charge_constraint_ranges[2 * i] = charge_constraint_contig_start[i];
+                spmd_handle->system->molec_charge_constraint_ranges[2 * i + 1] = charge_constraint_contig_end[i];
+                spmd_handle->system->molec_charge_constraints[i] = charge_constraint_contig_value[i];
+            }
+        }
+
+        spmd_handle->system->num_custom_charge_constraints = num_charge_constraint_custom;
+
+        if ( spmd_handle->system->num_custom_charge_constraints
+                > spmd_handle->system->max_num_custom_charge_constraints )
+        {
+            if ( spmd_handle->system->max_num_custom_charge_constraints > 0 )
+            {
+                sfree( spmd_handle->system->custom_charge_constraint_count,
+                        __FILE__, __LINE__ );
+                sfree( spmd_handle->system->custom_charge_constraint_start,
+                        __FILE__, __LINE__ );
+                sfree( spmd_handle->system->custom_charge_constraint_rhs,
+                        __FILE__, __LINE__ );
+            }
+
+            spmd_handle->system->custom_charge_constraint_count = smalloc(
+                    sizeof(int) * spmd_handle->system->num_custom_charge_constraints,
+                    __FILE__, __LINE__ );
+            spmd_handle->system->custom_charge_constraint_start = smalloc(
+                    sizeof(int) * (spmd_handle->system->num_custom_charge_constraints + 1),
+                    __FILE__, __LINE__ );
+            spmd_handle->system->custom_charge_constraint_rhs = smalloc(
+                    sizeof(real) * spmd_handle->system->num_custom_charge_constraints,
+                    __FILE__, __LINE__ );
+
+            spmd_handle->system->max_num_custom_charge_constraints
+                = spmd_handle->system->num_custom_charge_constraints;
+        }
+
+        spmd_handle->system->num_custom_charge_constraint_entries = 0;
+        if ( spmd_handle->system->num_custom_charge_constraints > 0 )
+        {
+            for ( i = 0; i < spmd_handle->system->num_custom_charge_constraints; ++i )
+            {
+                spmd_handle->system->custom_charge_constraint_count[i] = charge_constraint_custom_count[i];
+                spmd_handle->system->custom_charge_constraint_start[i] = (i == 0 ? 0 :
+                        charge_constraint_custom_count[i - 1] + charge_constraint_custom_count[i - 1]);
+                spmd_handle->system->num_custom_charge_constraint_entries += charge_constraint_custom_count[i];
+                spmd_handle->system->custom_charge_constraint_rhs[i] = charge_constraint_custom_rhs[i];
+            }
+        }
+
+        if ( spmd_handle->system->num_custom_charge_constraint_entries
+                > spmd_handle->system->max_num_custom_charge_constraint_entries )
+        {
+            if ( spmd_handle->system->max_num_custom_charge_constraint_entries > 0 )
+            {
+                sfree( spmd_handle->system->custom_charge_constraint_atom_index,
+                        __FILE__, __LINE__ );
+                sfree( spmd_handle->system->custom_charge_constraint_coeff,
+                        __FILE__, __LINE__ );
+            }
+
+            spmd_handle->system->custom_charge_constraint_atom_index = smalloc(
+                    sizeof(int) * spmd_handle->system->num_custom_charge_constraint_entries,
+                    __FILE__, __LINE__ );
+            spmd_handle->system->custom_charge_constraint_coeff = smalloc(
+                    sizeof(real) * spmd_handle->system->num_custom_charge_constraint_entries,
+                    __FILE__, __LINE__ );
+
+            spmd_handle->system->max_num_custom_charge_constraint_entries
+                = spmd_handle->system->num_custom_charge_constraint_entries;
+        }
+
+        if ( spmd_handle->system->num_custom_charge_constraint_entries > 0 )
+        {
+            for ( i = 0; i < spmd_handle->system->num_custom_charge_constraint_entries; ++i )
+            {
+                spmd_handle->system->custom_charge_constraint_atom_index[i] = charge_constraint_custom_atom_index[i];
+                spmd_handle->system->custom_charge_constraint_coeff[i] = charge_constraint_custom_coeff[i];
             }
         }
 

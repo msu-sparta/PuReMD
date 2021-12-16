@@ -397,11 +397,13 @@ static void Init_Workspace( reax_system * const system,
             break;
         case EE_CM:
             system->N_cm = system->N
-                + (system->num_molec_charge_constraints == 0 ? 1 : system->num_molec_charge_constraints);
+                + (system->num_molec_charge_constraints == 0 ? 1 : system->num_molec_charge_constraints)
+                + (system->num_custom_charge_constraints == 0 ? 1 : system->num_custom_charge_constraints);
             if ( realloc == TRUE || system->N_cm > system->N_cm_max )
             {
                 system->N_cm_max = system->N_max
-                    + (system->num_molec_charge_constraints == 0 ? 1 : system->num_molec_charge_constraints);
+                    + (system->num_molec_charge_constraints == 0 ? 1 : system->num_molec_charge_constraints)
+                    + (system->num_custom_charge_constraints == 0 ? 1 : system->num_custom_charge_constraints);
             }
             break;
         case ACKS2_CM:
@@ -467,15 +469,27 @@ static void Init_Workspace( reax_system * const system,
                 workspace->b_s[i] = -system->reax_param.sbp[ system->atoms[i].type ].chi;
             }
 
-            if ( system->num_molec_charge_constraints == 0 )
+            if ( system->num_molec_charge_constraints == 0
+              && system->num_custom_charge_constraints == 0 )
             {
                 workspace->b_s[system->N] = control->cm_q_net;
             }
             else
             {
-                for ( i = 0; i < system->num_molec_charge_constraints; ++i )
+                if ( system->num_molec_charge_constraints > 0 )
                 {
-                    workspace->b_s[system->N + i] = system->molec_charge_constraints[i];
+                    for ( i = 0; i < system->num_molec_charge_constraints; ++i )
+                    {
+                        workspace->b_s[system->N + i] = system->molec_charge_constraints[i];
+                    }
+                }
+                if ( system->num_custom_charge_constraints > 0 )
+                {
+                    for ( i = 0; i < system->num_custom_charge_constraints; ++i )
+                    {
+                        workspace->b_s[system->N + system->num_molec_charge_constraints + i]
+                            = system->custom_charge_constraint_rhs[i];
+                    }
                 }
             }
             break;
@@ -1329,6 +1343,8 @@ static void Finalize_System( reax_system *system, control_params *control,
 
     system->max_num_molec_charge_constraints = 0;
     system->num_molec_charge_constraints = 0;
+    system->max_num_custom_charge_constraints = 0;
+    system->num_custom_charge_constraints = 0;
 
     reax = &system->reax_param;
 

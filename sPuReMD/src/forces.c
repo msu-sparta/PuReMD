@@ -361,7 +361,8 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system const * const syst
             break;
 
         case EE_CM:
-            if ( system->num_molec_charge_constraints == 0 )
+            if ( system->num_molec_charge_constraints == 0
+                    && system->num_custom_charge_constraints == 0 )
             {
                 H->start[system->N] = *Htop;
                 H_sp->start[system->N] = *H_sp_top;
@@ -420,6 +421,47 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system const * const syst
                         {
                             H_sp->j[*H_sp_top] = j - 1;
                             H_sp->val[*H_sp_top] = 1.0;
+                        }
+                        ++(*H_sp_top);
+                    }
+
+                    /* explicit zeros on diagonals */
+                    if ( *Htop < H->m )
+                    {
+                        H->j[*Htop] = system->N + i;
+                        H->val[*Htop] = 0.0; 
+                    }
+                    ++(*Htop);
+
+                    if ( *H_sp_top < H_sp->m )
+                    {
+                        H_sp->j[*H_sp_top] = system->N + i;
+                        H_sp->val[*H_sp_top] = 0.0;
+                    }
+                    ++(*H_sp_top);
+                }
+
+                for ( i = system->num_molec_charge_constraints;
+                        i < system->num_molec_charge_constraints + system->num_custom_charge_constraints; ++i )
+                {
+                    H->start[system->N + i] = *Htop;
+                    H_sp->start[system->N + i] = *H_sp_top;
+
+                    for ( j = system->custom_charge_constraint_start[i - system->num_molec_charge_constraints];
+                            j <= system->custom_charge_constraint_start[i - system->num_molec_charge_constraints + 1]; ++j )
+                    {
+                        /* custom charge constraint on atoms */
+                        if ( *Htop < H->m )
+                        {
+                            H->j[*Htop] = system->custom_charge_constraint_atom_index[j] - 1;
+                            H->val[*Htop] = system->custom_charge_constraint_coeff[j];
+                        }
+                        ++(*Htop);
+
+                        if ( *H_sp_top < H_sp->m )
+                        {
+                            H_sp->j[*H_sp_top] = system->custom_charge_constraint_atom_index[j] - 1;
+                            H_sp->val[*H_sp_top] = system->custom_charge_constraint_coeff[j];
                         }
                         ++(*H_sp_top);
                     }
@@ -1367,7 +1409,8 @@ static void Estimate_Storages_CM( reax_system const * const system,
             break;
 
         case EE_CM:
-            if ( system->num_molec_charge_constraints == 0 )
+            if ( system->num_molec_charge_constraints == 0
+                    && system->num_custom_charge_constraints == 0 )
             {
                 Htop += system->N_cm;
             }
@@ -1377,6 +1420,10 @@ static void Estimate_Storages_CM( reax_system const * const system,
                 {
                     Htop += system->molec_charge_constraint_ranges[2 * i + 1]
                         - system->molec_charge_constraint_ranges[2 * i] + 1;
+                }
+                for ( i = 0; i < system->num_custom_charge_constraints; ++i )
+                {
+                    Htop += system->custom_charge_constraint_count[i];
                 }
             }
             break;
