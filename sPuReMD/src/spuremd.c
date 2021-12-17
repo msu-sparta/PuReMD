@@ -267,6 +267,11 @@ void * setup2( int num_atoms, const int * const atom_type,
     Allocate_Top_Level_Structs( &spmd_handle );
     Initialize_Top_Level_Structs( spmd_handle );
 
+    spmd_handle->system->max_num_molec_charge_constraints = 0;
+    spmd_handle->system->num_molec_charge_constraints = 0;
+    spmd_handle->system->max_num_custom_charge_constraints = 0;
+    spmd_handle->system->num_custom_charge_constraints = 0;
+
     /* override default */
     spmd_handle->output_enabled = FALSE;
 
