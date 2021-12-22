@@ -854,7 +854,13 @@ static void Init_Lists( reax_system * const system,
                 MAX( workspace->realloc.total_far_nbrs, lists[FAR_NBRS]->total_intrs ),
                 TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
 
-        Generate_Neighbor_Lists( system, control, data, workspace, lists );
+        ret = Generate_Neighbor_Lists( system, control, data, workspace, lists );
+
+        if ( ret != SUCCESS )
+        {
+            fprintf( stderr, "[ERROR] Unrecoverable memory allocation issue (Generate_Neighbor_Lists). Terminating...\n" );
+            exit( INVALID_INPUT );
+        }
     }
 
     if ( realloc == TRUE )
@@ -917,7 +923,7 @@ static void Init_Lists( reax_system * const system,
         {
             if ( system->reax_param.sbp[ system->atoms[i].type ].p_hbond == H_ATOM )
             {
-                workspace->num_H++;
+                ++(workspace->num_H);
             }
         }
     }

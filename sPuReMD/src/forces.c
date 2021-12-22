@@ -347,13 +347,15 @@ static inline real Init_Charge_Matrix_Entry( reax_system const * const system,
 }
 
 
-static void Init_Charge_Matrix_Remaining_Entries( reax_system const * const system,
+static int Init_Charge_Matrix_Remaining_Entries( reax_system const * const system,
         control_params const * const control, reax_list const * const far_nbr_list,
         sparse_matrix * const H, sparse_matrix * const H_sp,
         int * const Htop, int * const H_sp_top )
 {
-    int i, j, pj, target, val_flag;
+    int i, j, pj, target, val_flag, flag_oom;
     real d, xcut, bond_softness, * X_diag;
+
+    flag_oom = FALSE;
 
     switch ( control->charge_method )
     {
@@ -374,30 +376,48 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system const * const syst
                     {
                         H->j[*Htop] = i;
                         H->val[*Htop] = 1.0;
+                        ++(*Htop);
                     }
-                    ++(*Htop);
+                    else
+                    {
+                        flag_oom = TRUE;
+                        break;
+                    }
 
                     if ( *H_sp_top < H_sp->m )
                     {
                         H_sp->j[*H_sp_top] = i;
                         H_sp->val[*H_sp_top] = 1.0;
+                        ++(*H_sp_top);
                     }
-                    ++(*H_sp_top);
+                    else
+                    {
+                        flag_oom = TRUE;
+                        break;
+                    }
                 }
 
                 if ( *Htop < H->m )
                 {
                     H->j[*Htop] = system->N;
                     H->val[*Htop] = 0.0;
+                    ++(*Htop);
                 }
-                ++(*Htop);
+                else
+                {
+                    flag_oom = TRUE;
+                }
 
                 if ( *H_sp_top < H_sp->m )
                 {
                     H_sp->j[*H_sp_top] = system->N;
                     H_sp->val[*H_sp_top] = 0.0;
+                    ++(*H_sp_top);
                 }
-                ++(*H_sp_top);
+                else
+                {
+                    flag_oom = TRUE;
+                }
             }
             else
             {
@@ -414,15 +434,25 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system const * const syst
                         {
                             H->j[*Htop] = j - 1;
                             H->val[*Htop] = 1.0;
+                            ++(*Htop);
                         }
-                        ++(*Htop);
+                        else
+                        {
+                            flag_oom = TRUE;
+                            break;
+                        }
 
                         if ( *H_sp_top < H_sp->m )
                         {
                             H_sp->j[*H_sp_top] = j - 1;
                             H_sp->val[*H_sp_top] = 1.0;
+                            ++(*H_sp_top);
                         }
-                        ++(*H_sp_top);
+                        else
+                        {
+                            flag_oom = TRUE;
+                            break;
+                        }
                     }
 
                     /* explicit zeros on diagonals */
@@ -430,56 +460,85 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system const * const syst
                     {
                         H->j[*Htop] = system->N + i;
                         H->val[*Htop] = 0.0; 
+                        ++(*Htop);
                     }
-                    ++(*Htop);
+                    else
+                    {
+                        flag_oom = TRUE;
+                    }
 
                     if ( *H_sp_top < H_sp->m )
                     {
                         H_sp->j[*H_sp_top] = system->N + i;
                         H_sp->val[*H_sp_top] = 0.0;
+                        ++(*H_sp_top);
                     }
-                    ++(*H_sp_top);
+                    else
+                    {
+                        flag_oom = TRUE;
+                    }
                 }
 
                 for ( i = system->num_molec_charge_constraints;
                         i < system->num_molec_charge_constraints + system->num_custom_charge_constraints; ++i )
                 {
-                    H->start[system->N + i] = *Htop;
-                    H_sp->start[system->N + i] = *H_sp_top;
-
-                    for ( j = system->custom_charge_constraint_start[i - system->num_molec_charge_constraints];
-                            j <= system->custom_charge_constraint_start[i - system->num_molec_charge_constraints + 1]; ++j )
+                    if ( flag_oom == FALSE )
                     {
-                        /* custom charge constraint on atoms */
+                        H->start[system->N + i] = *Htop;
+                        H_sp->start[system->N + i] = *H_sp_top;
+
+                        for ( j = system->custom_charge_constraint_start[i - system->num_molec_charge_constraints];
+                                j <= system->custom_charge_constraint_start[i - system->num_molec_charge_constraints + 1]; ++j )
+                        {
+                            /* custom charge constraint on atoms */
+                            if ( *Htop < H->m )
+                            {
+                                H->j[*Htop] = system->custom_charge_constraint_atom_index[j] - 1;
+                                H->val[*Htop] = system->custom_charge_constraint_coeff[j];
+                                ++(*Htop);
+                            }
+                            else
+                            {
+                                flag_oom = TRUE;
+                                break;
+                            }
+
+                            if ( *H_sp_top < H_sp->m )
+                            {
+                                H_sp->j[*H_sp_top] = system->custom_charge_constraint_atom_index[j] - 1;
+                                H_sp->val[*H_sp_top] = system->custom_charge_constraint_coeff[j];
+                                ++(*H_sp_top);
+                            }
+                            else
+                            {
+                                flag_oom = TRUE;
+                                break;
+                            }
+                        }
+
+                        /* explicit zeros on diagonals */
                         if ( *Htop < H->m )
                         {
-                            H->j[*Htop] = system->custom_charge_constraint_atom_index[j] - 1;
-                            H->val[*Htop] = system->custom_charge_constraint_coeff[j];
+                            H->j[*Htop] = system->N + i;
+                            H->val[*Htop] = 0.0; 
+                            ++(*Htop);
                         }
-                        ++(*Htop);
+                        else
+                        {
+                            flag_oom = TRUE;
+                        }
 
                         if ( *H_sp_top < H_sp->m )
                         {
-                            H_sp->j[*H_sp_top] = system->custom_charge_constraint_atom_index[j] - 1;
-                            H_sp->val[*H_sp_top] = system->custom_charge_constraint_coeff[j];
+                            H_sp->j[*H_sp_top] = system->N + i;
+                            H_sp->val[*H_sp_top] = 0.0;
+                            ++(*H_sp_top);
                         }
-                        ++(*H_sp_top);
+                        else
+                        {
+                            flag_oom = TRUE;
+                        }
                     }
-
-                    /* explicit zeros on diagonals */
-                    if ( *Htop < H->m )
-                    {
-                        H->j[*Htop] = system->N + i;
-                        H->val[*Htop] = 0.0; 
-                    }
-                    ++(*Htop);
-
-                    if ( *H_sp_top < H_sp->m )
-                    {
-                        H_sp->j[*H_sp_top] = system->N + i;
-                        H_sp->val[*H_sp_top] = 0.0;
-                    }
-                    ++(*H_sp_top);
                 }
             }
             break;
@@ -494,110 +553,139 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system const * const syst
 
             for ( i = 0; i < system->N; ++i )
             {
-                H->start[system->N + i] = *Htop;
-                H_sp->start[system->N + i] = *H_sp_top;
-
-                /* constraint on ref. value for kinetic energy potential */
-                if ( *Htop < H->m )
+                if ( flag_oom == FALSE )
                 {
-                    H->j[*Htop] = i;
-                    H->val[*Htop] = 1.0;
-                }
-                ++(*Htop);
+                    H->start[system->N + i] = *Htop;
+                    H_sp->start[system->N + i] = *H_sp_top;
 
-                if ( *H_sp_top < H_sp->m )
-                {
-                    H_sp->j[*H_sp_top] = i;
-                    H_sp->val[*H_sp_top] = 1.0;
-                }
-                ++(*H_sp_top);
-
-                /* kinetic energy terms */
-                for ( pj = Start_Index(i, far_nbr_list); pj < End_Index(i, far_nbr_list); ++pj )
-                {
-                    /* exclude self-periodic images of atoms for
-                     * kinetic energy term because the effective
-                     * potential is the same on an atom and its periodic image */
-                    if ( far_nbr_list->far_nbr_list[pj].d <= control->nonb_cut )
+                    /* constraint on ref. value for kinetic energy potential */
+                    if ( *Htop < H->m )
                     {
-                        j = far_nbr_list->far_nbr_list[pj].nbr;
+                        H->j[*Htop] = i;
+                        H->val[*Htop] = 1.0;
+                        ++(*Htop);
+                    }
+                    else
+                    {
+                        flag_oom = TRUE;
+                    }
 
-                        xcut = 0.5 * ( system->reax_param.sbp[ system->atoms[i].type ].b_s_acks2
-                                + system->reax_param.sbp[ system->atoms[j].type ].b_s_acks2 );
+                    if ( *H_sp_top < H_sp->m )
+                    {
+                        H_sp->j[*H_sp_top] = i;
+                        H_sp->val[*H_sp_top] = 1.0;
+                        ++(*H_sp_top);
+                    }
+                    else
+                    {
+                        flag_oom = TRUE;
+                    }
 
-                        if ( far_nbr_list->far_nbr_list[pj].d < xcut )
+                    /* kinetic energy terms */
+                    for ( pj = Start_Index(i, far_nbr_list); pj < End_Index(i, far_nbr_list); ++pj )
+                    {
+                        /* exclude self-periodic images of atoms for
+                         * kinetic energy term because the effective
+                         * potential is the same on an atom and its periodic image */
+                        if ( far_nbr_list->far_nbr_list[pj].d <= control->nonb_cut )
                         {
-                            d = far_nbr_list->far_nbr_list[pj].d / xcut;
-                            bond_softness = system->reax_param.gp.l[34] * POW( d, 3.0 )
-                                * POW( 1.0 - d, 6.0 );
+                            j = far_nbr_list->far_nbr_list[pj].nbr;
 
-                            if ( bond_softness > 0.0 )
+                            xcut = 0.5 * ( system->reax_param.sbp[ system->atoms[i].type ].b_s_acks2
+                                    + system->reax_param.sbp[ system->atoms[j].type ].b_s_acks2 );
+
+                            if ( far_nbr_list->far_nbr_list[pj].d < xcut )
                             {
-                                val_flag = FALSE;
+                                d = far_nbr_list->far_nbr_list[pj].d / xcut;
+                                bond_softness = system->reax_param.gp.l[34] * POW( d, 3.0 )
+                                    * POW( 1.0 - d, 6.0 );
 
-                                for ( target = H->start[system->N + i]; target < *Htop; ++target )
+                                if ( bond_softness > 0.0 )
                                 {
-                                    if ( H->j[target] == system->N + j )
+                                    val_flag = FALSE;
+
+                                    for ( target = H->start[system->N + i]; target < *Htop; ++target )
                                     {
-                                        H->val[target] += bond_softness;
-                                        val_flag = TRUE;
-                                        break;
+                                        if ( H->j[target] == system->N + j )
+                                        {
+                                            H->val[target] += bond_softness;
+                                            val_flag = TRUE;
+                                            break;
+                                        }
                                     }
-                                }
 
-                                if ( val_flag == FALSE )
-                                {
-                                    if ( *Htop < H->m )
+                                    if ( val_flag == FALSE )
                                     {
-                                        H->j[*Htop] = system->N + j;
-                                        H->val[*Htop] = bond_softness;
+                                        if ( *Htop < H->m )
+                                        {
+                                            H->j[*Htop] = system->N + j;
+                                            H->val[*Htop] = bond_softness;
+                                            ++(*Htop);
+                                        }
+                                        else
+                                        {
+                                            flag_oom = TRUE;
+                                            break;
+                                        }
                                     }
-                                    ++(*Htop);
-                                }
 
-                                val_flag = FALSE;
+                                    val_flag = FALSE;
 
-                                for ( target = H_sp->start[system->N + i]; target < *H_sp_top; ++target )
-                                {
-                                    if ( H_sp->j[target] == system->N + j )
+                                    for ( target = H_sp->start[system->N + i]; target < *H_sp_top; ++target )
                                     {
-                                        H_sp->val[target] += bond_softness;
-                                        val_flag = TRUE;
-                                        break;
+                                        if ( H_sp->j[target] == system->N + j )
+                                        {
+                                            H_sp->val[target] += bond_softness;
+                                            val_flag = TRUE;
+                                            break;
+                                        }
                                     }
-                                }
 
-                                if ( val_flag == FALSE )
-                                {
-                                    if ( *H_sp_top < H_sp->m )
+                                    if ( val_flag == FALSE )
                                     {
-                                        H_sp->j[*H_sp_top] = system->N + j;
-                                        H_sp->val[*H_sp_top] = bond_softness;
+                                        if ( *H_sp_top < H_sp->m )
+                                        {
+                                            H_sp->j[*H_sp_top] = system->N + j;
+                                            H_sp->val[*H_sp_top] = bond_softness;
+                                            ++(*H_sp_top);
+                                        }
+                                        else
+                                        {
+                                            flag_oom = TRUE;
+                                            break;
+                                        }
                                     }
-                                    ++(*H_sp_top);
-                                }
 
-                                X_diag[i] -= bond_softness;
-                                X_diag[j] -= bond_softness;
+                                    X_diag[i] -= bond_softness;
+                                    X_diag[j] -= bond_softness;
+                                }
                             }
                         }
                     }
-                }
 
-                /* placeholders for diagonal entries, to be replaced below */
-                if ( *Htop < H->m )
-                {
-                    H->j[*Htop] = system->N + i;
-                    H->val[*Htop] = 0.0;
-                }
-                ++(*Htop);
+                    /* placeholders for diagonal entries, to be replaced below */
+                    if ( *Htop < H->m )
+                    {
+                        H->j[*Htop] = system->N + i;
+                        H->val[*Htop] = 0.0;
+                        ++(*Htop);
+                    }
+                    else
+                    {
+                        flag_oom = TRUE;
+                    }
 
-                if ( *H_sp_top < H_sp->m )
-                {
-                    H_sp->j[*H_sp_top] = system->N + i;
-                    H_sp->val[*H_sp_top] = 0.0;
+                    if ( *H_sp_top < H_sp->m )
+                    {
+                        H_sp->j[*H_sp_top] = system->N + i;
+                        H_sp->val[*H_sp_top] = 0.0;
+                        ++(*H_sp_top);
+                    }
+                    else
+                    {
+                        flag_oom = TRUE;
+                    }
                 }
-                ++(*H_sp_top);
             }
 
             /* second to last row */
@@ -633,15 +721,25 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system const * const syst
                 {
                     H->j[*Htop] = system->N + i;
                     H->val[*Htop] = 1.0;
+                    ++(*Htop);
                 }
-                ++(*Htop);
+                else
+                {
+                    flag_oom = TRUE;
+                    break;
+                }
 
                 if ( *H_sp_top < H_sp->m )
                 {
                     H_sp->j[*H_sp_top] = system->N + i;
                     H_sp->val[*H_sp_top] = 1.0;
+                    ++(*H_sp_top);
                 }
-                ++(*H_sp_top);
+                else
+                {
+                    flag_oom = TRUE;
+                    break;
+                }
             }
 
             /* explicitly store zero on diagonal */
@@ -649,15 +747,23 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system const * const syst
             {
                 H->j[*Htop] = system->N_cm - 2;
                 H->val[*Htop] = 0.0;
+                ++(*Htop);
             }
-            ++(*Htop);
+            else
+            {
+                flag_oom = TRUE;
+            }
 
             if ( *H_sp_top < H_sp->m )
             {
                 H_sp->j[*H_sp_top] = system->N_cm - 2;
                 H_sp->val[*H_sp_top] = 0.0;
+                ++(*H_sp_top);
             }
-            ++(*H_sp_top);
+            else
+            {
+                flag_oom = TRUE;
+            }
 
             /* last row */
             H->start[system->N_cm - 1] = *Htop;
@@ -669,15 +775,25 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system const * const syst
                 {
                     H->j[*Htop] = i;
                     H->val[*Htop] = 1.0;
+                    ++(*Htop);
                 }
-                ++(*Htop);
+                else
+                {
+                    flag_oom = TRUE;
+                    break;
+                }
 
                 if ( *H_sp_top < H_sp->m )
                 {
                     H_sp->j[*H_sp_top] = i;
                     H_sp->val[*H_sp_top] = 1.0;
+                    ++(*H_sp_top);
                 }
-                ++(*H_sp_top);
+                else
+                {
+                    flag_oom = TRUE;
+                    break;
+                }
             }
 
             /* explicitly store zero on diagonal */
@@ -685,15 +801,23 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system const * const syst
             {
                 H->j[*Htop] = system->N_cm - 1;
                 H->val[*Htop] = 0.0;
+                ++(*Htop);
             }
-            ++(*Htop);
+            else
+            {
+                flag_oom = TRUE;
+            }
 
             if ( *H_sp_top < H_sp->m )
             {
                 H_sp->j[*H_sp_top] = system->N_cm - 1;
                 H_sp->val[*H_sp_top] = 0.0;
+                ++(*H_sp_top);
             }
-            ++(*H_sp_top);
+            else
+            {
+                flag_oom = TRUE;
+            }
 
             sfree( X_diag, __FILE__, __LINE__ );
             break;
@@ -701,6 +825,8 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system const * const syst
         default:
             break;
     }
+
+    return flag_oom;
 }
 
 
@@ -746,7 +872,7 @@ static void Init_CM_Half( reax_system const * const system,
     int i, j, pj, target;
     int start_i, end_i;
     int Htop, H_sp_top;
-    int flag, flag_sp, val_flag;
+    int flag, flag_sp, val_flag, flag_oom;
     real val;
     sparse_matrix *H, *H_sp;
     reax_list *far_nbrs;
@@ -756,67 +882,45 @@ static void Init_CM_Half( reax_system const * const system,
     H_sp = &workspace->H_sp;
     Htop = 0;
     H_sp_top = 0;
+    flag_oom = FALSE;
 
     for ( i = 0; i < far_nbrs->n; ++i )
     {
-        start_i = Start_Index( i, far_nbrs );
-        end_i = End_Index( i, far_nbrs );
-        H->start[i] = Htop;
-        H_sp->start[i] = H_sp_top;
-
-        for ( pj = start_i; pj < end_i; ++pj )
+        if ( flag_oom == FALSE )
         {
-            j = far_nbrs->far_nbr_list[pj].nbr;
-            flag = FALSE;
-            flag_sp = FALSE;
+            start_i = Start_Index( i, far_nbrs );
+            end_i = End_Index( i, far_nbrs );
+            H->start[i] = Htop;
+            H_sp->start[i] = H_sp_top;
 
-            if ( far_nbrs->far_nbr_list[pj].d <= control->nonb_cut )
+            for ( pj = start_i; pj < end_i; ++pj )
             {
-                flag = TRUE;
+                j = far_nbrs->far_nbr_list[pj].nbr;
+                flag = FALSE;
+                flag_sp = FALSE;
 
-                if ( far_nbrs->far_nbr_list[pj].d <= control->nonb_sp_cut )
+                if ( far_nbrs->far_nbr_list[pj].d <= control->nonb_cut )
                 {
-                    flag_sp = TRUE;
-                }
-            }
+                    flag = TRUE;
 
-            if ( flag == TRUE )
-            {
-                val = Init_Charge_Matrix_Entry( system, control,
-                            workspace, i, j, far_nbrs->far_nbr_list[pj].d,
-                            OFF_DIAGONAL );
-                val_flag = FALSE;
-
-                for ( target = H->start[i]; target < Htop; ++target )
-                {
-                    if ( H->j[target] == j )
+                    if ( far_nbrs->far_nbr_list[pj].d <= control->nonb_sp_cut )
                     {
-                        H->val[target] += val;
-                        val_flag = TRUE;
-                        break;
+                        flag_sp = TRUE;
                     }
                 }
 
-                if ( val_flag == FALSE )
+                if ( flag == TRUE )
                 {
-                    if ( Htop < H->m )
-                    {
-                        H->j[Htop] = j;
-                        H->val[Htop] = val;
-                    }
-                    ++Htop;
-                }
-
-                /* H_sp matrix entry */
-                if ( flag_sp == TRUE )
-                {
+                    val = Init_Charge_Matrix_Entry( system, control,
+                                workspace, i, j, far_nbrs->far_nbr_list[pj].d,
+                                OFF_DIAGONAL );
                     val_flag = FALSE;
 
-                    for ( target = H_sp->start[i]; target < H_sp_top; ++target )
+                    for ( target = H->start[i]; target < Htop; ++target )
                     {
-                        if ( H_sp->j[target] == j )
+                        if ( H->j[target] == j )
                         {
-                            H_sp->val[target] += val;
+                            H->val[target] += val;
                             val_flag = TRUE;
                             break;
                         }
@@ -824,36 +928,88 @@ static void Init_CM_Half( reax_system const * const system,
 
                     if ( val_flag == FALSE )
                     {
-                        H_sp->j[H_sp_top] = j;
-                        H_sp->val[H_sp_top] = val;
-                        ++H_sp_top;
+                        if ( Htop < H->m )
+                        {
+                            H->j[Htop] = j;
+                            H->val[Htop] = val;
+                            ++Htop;
+                        }
+                        else
+                        {
+                            flag_oom = TRUE;
+                            break;
+                        }
+                    }
+
+                    /* H_sp matrix entry */
+                    if ( flag_sp == TRUE )
+                    {
+                        val_flag = FALSE;
+
+                        for ( target = H_sp->start[i]; target < H_sp_top; ++target )
+                        {
+                            if ( H_sp->j[target] == j )
+                            {
+                                H_sp->val[target] += val;
+                                val_flag = TRUE;
+                                break;
+                            }
+                        }
+
+                        if ( val_flag == FALSE )
+                        {
+                            if ( H_sp_top < H_sp->m )
+                            {
+                                H_sp->j[H_sp_top] = j;
+                                H_sp->val[H_sp_top] = val;
+                                ++H_sp_top;
+                            }
+                            else
+                            {
+                                flag_oom = TRUE;
+                                break;
+                            }
+                        }
                     }
                 }
             }
-        }
 
-        /* diagonal entry */
-        if ( Htop < H->m )
-        {
-            H->j[Htop] = i;
-            H->val[Htop] = Init_Charge_Matrix_Entry( system, control,
-                    workspace, i, i, 0.0, DIAGONAL );
-        }
-        ++Htop;
+            /* diagonal entry */
+            if ( Htop < H->m )
+            {
+                H->j[Htop] = i;
+                H->val[Htop] = Init_Charge_Matrix_Entry( system, control,
+                        workspace, i, i, 0.0, DIAGONAL );
+                ++Htop;
+            }
+            else
+            {
+                flag_oom = TRUE;
+            }
 
-        H_sp->j[H_sp_top] = i;
-        H_sp->val[H_sp_top] = H->val[Htop - 1];
-        ++H_sp_top;
+            if ( H_sp_top < H_sp->m )
+            {
+                H_sp->j[H_sp_top] = i;
+                H_sp->val[H_sp_top] = H->val[Htop - 1];
+                ++H_sp_top;
+            }
+            else
+            {
+                flag_oom = TRUE;
+            }
+        }
     }
 
-    Init_Charge_Matrix_Remaining_Entries( system, control, far_nbrs,
-            H, H_sp, &Htop, &H_sp_top );
+    if ( flag_oom == FALSE )
+    {
+        flag_oom = Init_Charge_Matrix_Remaining_Entries( system, control, far_nbrs,
+                H, H_sp, &Htop, &H_sp_top );
+    }
 
     H->start[system->N_cm] = Htop;
     H_sp->start[system->N_cm] = H_sp_top;
-
     
-    if ( Htop > H->m )
+    if ( flag_oom == TRUE )
     {
         workspace->realloc.cm = TRUE;
     }
@@ -870,7 +1026,7 @@ static void Init_CM_Tab_Half( reax_system const * const system,
     int i, j, pj, target;
     int start_i, end_i;
     int Htop, H_sp_top;
-    int flag, flag_sp, val_flag;
+    int flag, flag_sp, val_flag, flag_oom;
     real val;
     sparse_matrix *H, *H_sp;
     reax_list *far_nbrs;
@@ -880,67 +1036,45 @@ static void Init_CM_Tab_Half( reax_system const * const system,
     H_sp = &workspace->H_sp;
     Htop = 0;
     H_sp_top = 0;
+    flag_oom = FALSE;
 
     for ( i = 0; i < far_nbrs->n; ++i )
     {
-        start_i = Start_Index( i, far_nbrs );
-        end_i = End_Index( i, far_nbrs );
-        H->start[i] = Htop;
-        H_sp->start[i] = H_sp_top;
-
-        for ( pj = start_i; pj < end_i; ++pj )
+        if ( flag_oom == FALSE )
         {
-            j = far_nbrs->far_nbr_list[pj].nbr;
-            flag = FALSE;
-            flag_sp = FALSE;
+            start_i = Start_Index( i, far_nbrs );
+            end_i = End_Index( i, far_nbrs );
+            H->start[i] = Htop;
+            H_sp->start[i] = H_sp_top;
 
-            if ( far_nbrs->far_nbr_list[pj].d <= control->nonb_cut )
+            for ( pj = start_i; pj < end_i; ++pj )
             {
-                flag = TRUE;
+                j = far_nbrs->far_nbr_list[pj].nbr;
+                flag = FALSE;
+                flag_sp = FALSE;
 
-                if ( far_nbrs->far_nbr_list[pj].d <= control->nonb_sp_cut )
+                if ( far_nbrs->far_nbr_list[pj].d <= control->nonb_cut )
                 {
-                    flag_sp = TRUE;
-                }
-            }
+                    flag = TRUE;
 
-            if ( flag == TRUE )
-            {
-                val = Init_Charge_Matrix_Entry_Tab( system, control,
-                            workspace->LR, i, j, far_nbrs->far_nbr_list[pj].d,
-                            OFF_DIAGONAL );
-                val_flag = FALSE;
-
-                for ( target = H->start[i]; target < Htop; ++target )
-                {
-                    if ( H->j[target] == j )
+                    if ( far_nbrs->far_nbr_list[pj].d <= control->nonb_sp_cut )
                     {
-                        H->val[target] += val;
-                        val_flag = TRUE;
-                        break;
+                        flag_sp = TRUE;
                     }
                 }
 
-                if ( val_flag == FALSE )
+                if ( flag == TRUE )
                 {
-                    if ( Htop < H->m )
-                    {
-                        H->j[Htop] = j;
-                        H->val[Htop] = val;
-                    }
-                    ++Htop;
-                }
-
-                /* H_sp matrix entry */
-                if ( flag_sp == TRUE )
-                {
+                    val = Init_Charge_Matrix_Entry_Tab( system, control,
+                                workspace->LR, i, j, far_nbrs->far_nbr_list[pj].d,
+                                OFF_DIAGONAL );
                     val_flag = FALSE;
 
-                    for ( target = H_sp->start[i]; target < H_sp_top; ++target )
+                    for ( target = H->start[i]; target < Htop; ++target )
                     {
-                        if ( H_sp->j[target] == j )
+                        if ( H->j[target] == j )
                         {
-                            H_sp->val[target] += val;
+                            H->val[target] += val;
                             val_flag = TRUE;
                             break;
                         }
@@ -948,36 +1082,88 @@ static void Init_CM_Tab_Half( reax_system const * const system,
 
                     if ( val_flag == FALSE )
                     {
-                        H_sp->j[H_sp_top] = j;
-                        H_sp->val[H_sp_top] = val;
-                        ++H_sp_top;
+                        if ( Htop < H->m )
+                        {
+                            H->j[Htop] = j;
+                            H->val[Htop] = val;
+                            ++Htop;
+                        }
+                        else
+                        {
+                            flag_oom = TRUE;
+                            break;
+                        }
+                    }
+
+                    /* H_sp matrix entry */
+                    if ( flag_sp == TRUE )
+                    {
+                        val_flag = FALSE;
+
+                        for ( target = H_sp->start[i]; target < H_sp_top; ++target )
+                        {
+                            if ( H_sp->j[target] == j )
+                            {
+                                H_sp->val[target] += val;
+                                val_flag = TRUE;
+                                break;
+                            }
+                        }
+
+                        if ( val_flag == FALSE )
+                        {
+                            if ( H_sp_top < H_sp->m )
+                            {
+                                H_sp->j[H_sp_top] = j;
+                                H_sp->val[H_sp_top] = val;
+                                ++H_sp_top;
+                            }
+                            else
+                            {
+                                flag_oom = TRUE;
+                                break;
+                            }
+                        }
                     }
                 }
             }
-        }
 
-        /* diagonal entry */
-        if ( Htop < H->m )
-        {
-            H->j[Htop] = i;
-            H->val[Htop] = Init_Charge_Matrix_Entry_Tab( system, control,
-                    workspace->LR, i, i, 0.0, DIAGONAL );
-        }
-        ++Htop;
+            /* diagonal entry */
+            if ( Htop < H->m )
+            {
+                H->j[Htop] = i;
+                H->val[Htop] = Init_Charge_Matrix_Entry_Tab( system, control,
+                        workspace->LR, i, i, 0.0, DIAGONAL );
+                ++Htop;
+            }
+            else
+            {
+                flag_oom = TRUE;
+            }
 
-        H_sp->j[H_sp_top] = i;
-        H_sp->val[H_sp_top] = H->val[Htop - 1];
-        ++H_sp_top;
+            if ( H_sp_top < H_sp->m )
+            {
+                H_sp->j[H_sp_top] = i;
+                H_sp->val[H_sp_top] = H->val[Htop - 1];
+                ++H_sp_top;
+            }
+            else
+            {
+                flag_oom = TRUE;
+            }
+        }
     }
 
-    Init_Charge_Matrix_Remaining_Entries( system, control, far_nbrs,
-            H, H_sp, &Htop, &H_sp_top );
+    if ( flag_oom == FALSE )
+    {
+        flag_oom = Init_Charge_Matrix_Remaining_Entries( system, control, far_nbrs,
+                H, H_sp, &Htop, &H_sp_top );
 
-    H->start[system->N_cm] = Htop;
-    H_sp->start[system->N_cm] = H_sp_top;
-
+        H->start[system->N_cm] = Htop;
+        H_sp->start[system->N_cm] = H_sp_top;
+    }
     
-    if ( Htop > H->m )
+    if ( flag_oom == TRUE )
     {
         workspace->realloc.cm = TRUE;
     }
@@ -995,7 +1181,7 @@ static void Init_Bond_Full( reax_system const * const system,
     int type_i, type_j;
     int btop_i, btop_j;
     int ihb, jhb, ihb_top, jhb_top;
-    int num_bonds, num_hbonds;
+    int num_bonds, num_hbonds, flag_oom_bonds, flag_oom_hbonds;
     real r_ij, r2;
     real C12, C34, C56;
     real Cln_BOp_s, Cln_BOp_pi, Cln_BOp_pi2;
@@ -1014,6 +1200,8 @@ static void Init_Bond_Full( reax_system const * const system,
     num_hbonds = 0;
     btop_i = 0;
     btop_j = 0;
+    flag_oom_bonds = FALSE;
+    flag_oom_hbonds = FALSE;
 
     for ( i = 0; i < far_nbrs->n; ++i )
     {
@@ -1052,7 +1240,7 @@ static void Init_Bond_Full( reax_system const * const system,
                     || system->atoms[j].qmmm_mask == TRUE )
             {
 #endif	
-            if ( nbr_pj->d <= control->nonb_cut  )
+            if ( nbr_pj->d <= control->nonb_cut )
             {
                 type_j = system->atoms[j].type;
                 sbp_j = &system->reax_param.sbp[type_j];
@@ -1083,8 +1271,12 @@ static void Init_Bond_Full( reax_system const * const system,
                                 hbonds->hbond_list[ihb_top].scl = 1;
                                 hbonds->hbond_list[ihb_top].ptr = nbr_pj;
                                 ++ihb_top;
+                                ++num_hbonds;
                             }
-                            ++num_hbonds;
+                            else
+                            {
+                                flag_oom_hbonds = TRUE;
+                            }
                         }
                         else if ( ihb == H_BONDING_ATOM && jhb == H_ATOM )
                         {
@@ -1095,8 +1287,12 @@ static void Init_Bond_Full( reax_system const * const system,
                                 hbonds->hbond_list[jhb_top].scl = -1;
                                 hbonds->hbond_list[jhb_top].ptr = nbr_pj;
                                 Set_End_Index( j, jhb_top + 1, hbonds );
+                                ++num_hbonds;
                             }
-                            ++num_hbonds;
+                            else
+                            {
+                                flag_oom_hbonds = TRUE;
+                            }
                         }
                     }
 
@@ -1215,8 +1411,12 @@ static void Init_Bond_Full( reax_system const * const system,
                                 bo_ji->Cdbopi2 = 0.0;
 
                                 Set_End_Index( j, btop_j + 1, bonds );
+                                num_bonds += 2;
                             }
-                            num_bonds += 2;
+                            else
+                            {
+                                flag_oom_bonds = TRUE;
+                            }
                         }
                     }
                 }
@@ -1236,27 +1436,15 @@ static void Init_Bond_Full( reax_system const * const system,
         }
     }
 
-    for ( i = 0; i < bonds->n; ++i )
+    if ( flag_oom_bonds == TRUE )
     {
-        if ( Num_Entries( i, bonds ) > system->bonds[i] )
-        {
-            workspace->realloc.bonds = TRUE;
-            break;
-        }
-
+        workspace->realloc.bonds = TRUE;
     }
 
-    if ( control->hbond_cut > 0.0 && workspace->num_H > 0 )
+    if ( control->hbond_cut > 0.0 && workspace->num_H > 0
+            && flag_oom_hbonds == TRUE )
     {
-        for ( i = 0; i < hbonds->n; ++i )
-        {
-            if ( Num_Entries( i, hbonds ) > system->hbonds[i] )
-            {
-                workspace->realloc.hbonds = TRUE;
-                break;
-            }
-
-        }
+        workspace->realloc.hbonds = TRUE;
     }
 }
 

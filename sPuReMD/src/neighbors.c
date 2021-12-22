@@ -220,7 +220,7 @@ int Generate_Neighbor_Lists( reax_system * const system,
     int i, j, k, l, m, itr;
     int x, y, z;
     int atom1, atom2, max;
-    int num_far, count, ret;
+    int num_far, count, flag_oom, ret;
     int *nbr_atoms;
     ivec *nbrs;
     rvec *nbrs_cp;
@@ -232,6 +232,7 @@ int Generate_Neighbor_Lists( reax_system * const system,
     t_start = Get_Time( );
     num_far = 0;
     far_nbrs = lists[FAR_NBRS];
+    flag_oom = FALSE;
     ret = SUCCESS;
 
     Choose_Neighbor_Finder( system, control, &Find_Far_Neighbors );
@@ -292,6 +293,11 @@ int Generate_Neighbor_Lists( reax_system * const system,
                                             far_nbrs->total_intrs - num_far );
 
                                     num_far += count;
+
+                                    if ( num_far >= far_nbrs->total_intrs )
+                                    {
+                                        goto OUT_OF_MEMORY;
+                                    }
                                 }
                             }
                         }
@@ -311,9 +317,10 @@ int Generate_Neighbor_Lists( reax_system * const system,
         ivec_MakeZero( system->atoms[i].rel_map );
     }
 
-    if ( num_far > far_nbrs->total_intrs )
+    if ( flag_oom == TRUE )
     {
-        ret = FAILURE;
+        OUT_OF_MEMORY:
+            ret = FAILURE;
     }
 
 #if defined(DEBUG_FOCUS)

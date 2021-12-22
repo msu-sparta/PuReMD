@@ -709,8 +709,8 @@ static void reax_atom_Copy( reax_atom * const dest, reax_atom * const src )
 
 static void Copy_Storage( reax_system const * const system,static_storage * const workspace,
         control_params const * const control, int top, int old_id, int old_type,
-        int * const num_H, real ** const v, real ** const s, real ** const t,
-        int * const orig_id, rvec * const f_old )
+        real ** const v, real ** const s, real ** const t, int * const orig_id,
+        rvec * const f_old )
 {
     int i;
 
@@ -772,7 +772,7 @@ static void Assign_New_Storage( static_storage *workspace,
 void Reorder_Atoms( reax_system * const system, static_storage * const workspace,
         control_params const * const control )
 {
-    int i, j, k, l, top, old_id, num_H;
+    int i, j, k, l, top, old_id;
     reax_atom *old_atom, *new_atoms;
     grid *g;
     int *orig_id;
@@ -780,7 +780,6 @@ void Reorder_Atoms( reax_system * const system, static_storage * const workspace
     real **s, **t;
     rvec *f_old;
 
-    num_H = 0;
     top = 0;
     g = &system->g;
 
@@ -818,7 +817,7 @@ void Reorder_Atoms( reax_system * const system, static_storage * const workspace
 
                     reax_atom_Copy( &new_atoms[top], old_atom );
                     Copy_Storage( system, workspace, control, top, old_id, old_atom->type,
-                            &num_H, v, s, t, orig_id, f_old );
+                            v, s, t, orig_id, f_old );
 
                     ++top;
                 }
