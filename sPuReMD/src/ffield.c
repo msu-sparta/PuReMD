@@ -886,6 +886,17 @@ void Read_Force_Field( const char * const ffield_file,
         Tokenize( s, &tmp, MAX_TOKEN_LEN );
         l = sstrtol( tmp[0], __FILE__, __LINE__ );
 
+        for ( i = 0; i < reax->max_num_atom_types; ++i )
+        {
+            for ( j = 0; j < reax->max_num_atom_types; ++j )
+            {
+                for ( k = 0; k < reax->max_num_atom_types; ++k )
+                {
+                    reax->hbp[i][j][k].is_valid = FALSE;
+                }
+            }
+        }
+
         for ( i = 0; i < l; i++ )
         {
             if ( fgets( s, MAX_LINE, fp ) == NULL )
@@ -914,6 +925,7 @@ void Read_Force_Field( const char * const ffield_file,
                 val = sstrtod( tmp[6], __FILE__, __LINE__ );
                 reax->hbp[j][k][m].p_hb3 = val;
 
+                reax->hbp[j][k][m].is_valid = TRUE;
             }
         }
 

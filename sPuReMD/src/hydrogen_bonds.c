@@ -51,7 +51,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
         int i, j, k, pi, pk, itr, top;
         int type_i, type_j, type_k;
         int start_j, end_j, hb_start_j, hb_end_j;
-        int hblist[MAX_BONDS];
+        int *hblist, hblist_size;
         real r_ij, r_jk, theta, cos_theta, sin_xhz4, cos_xhz1, sin_theta2;
         real e_hb, exp_hb2, exp_hb3, CEhb1, CEhb2, CEhb3;
         rvec dcos_theta_di, dcos_theta_dj, dcos_theta_dk;
@@ -70,6 +70,8 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
         int tid = omp_get_thread_num( );
 #endif
 
+        hblist = NULL;
+        hblist_size = 0;
         bonds = lists[BONDS];
         bond_list = bonds->bond_list;
         hbonds = lists[HBONDS];
@@ -110,6 +112,13 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                 }
 
                 top = 0;
+                if ( Num_Entries( j, bonds ) > hblist_size )
+                {
+                    hblist_size = Num_Entries( j, bonds );
+                    hblist = srealloc( hblist, sizeof(int) * hblist_size,
+                            __FILE__, __LINE__ );
+                }
+
                 for ( pi = start_j; pi < end_j; ++pi )
                 {
                     pbond_ij = &bond_list[pi];
@@ -149,12 +158,13 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                         pbond_ij = &bond_list[pi];
                         i = pbond_ij->nbr;
 
-                        if ( i != k )
+                        if ( i != k
+                                && system->reax_param.hbp[type_i][type_j][type_k].is_valid == TRUE )
                         {
                             bo_ij = &pbond_ij->bo_data;
                             type_i = system->atoms[i].type;
                             r_ij = pbond_ij->d;
-                            hbp = &system->reax_param.hbp[ type_i ][ type_j ][ type_k ];
+                            hbp = &system->reax_param.hbp[type_i][type_j][type_k];
 #if defined(_OPENMP)
                             f_i = &workspace->f_local[tid * system->N + i];
 #else
@@ -319,6 +329,11 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
 #endif
                 }
             }
+        }
+
+        if ( hblist != NULL )
+        {
+            sfree( hblist, __FILE__, __LINE__ );
         }
     }
 
