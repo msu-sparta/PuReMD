@@ -159,7 +159,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                         i = pbond_ij->nbr;
 
                         if ( i != k
-                                && system->reax_param.hbp[type_i][type_j][type_k].is_valid == TRUE )
+                                && system->reax_param.hbp[system->atoms[i].type][type_j][type_k].is_valid == TRUE )
                         {
                             bo_ij = &pbond_ij->bo_data;
                             type_i = system->atoms[i].type;
