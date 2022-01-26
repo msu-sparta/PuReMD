@@ -397,13 +397,15 @@ static void Init_Workspace( reax_system * const system,
             break;
         case EE_CM:
             system->N_cm = system->N
-                + (system->num_molec_charge_constraints == 0 ? 1 : system->num_molec_charge_constraints)
-                + (system->num_custom_charge_constraints == 0 ? 1 : system->num_custom_charge_constraints);
+                + system->num_molec_charge_constraints
+                + system->num_custom_charge_constraints
+                + (system->num_molec_charge_constraints == 0 && system->num_custom_charge_constraints == 0 ? 1 : 0);
             if ( realloc == TRUE || system->N_cm > system->N_cm_max )
             {
                 system->N_cm_max = system->N_max
-                    + (system->num_molec_charge_constraints == 0 ? 1 : system->num_molec_charge_constraints)
-                    + (system->num_custom_charge_constraints == 0 ? 1 : system->num_custom_charge_constraints);
+                    + system->num_molec_charge_constraints
+                    + system->num_custom_charge_constraints
+                    + (system->num_molec_charge_constraints == 0 && system->num_custom_charge_constraints == 0 ? 1 : 0);
             }
             break;
         case ACKS2_CM:
@@ -470,7 +472,7 @@ static void Init_Workspace( reax_system * const system,
             }
 
             if ( system->num_molec_charge_constraints == 0
-              && system->num_custom_charge_constraints == 0 )
+                    && system->num_custom_charge_constraints == 0 )
             {
                 workspace->b_s[system->N] = control->cm_q_net;
             }
@@ -1347,10 +1349,25 @@ static void Finalize_System( reax_system *system, control_params *control,
         sfree( system->molec_charge_constraint_ranges, __FILE__, __LINE__ );
     }
 
+    if ( system->max_num_custom_charge_constraints > 0 )
+    {
+        sfree( system->custom_charge_constraint_count, __FILE__, __LINE__ );
+        sfree( system->custom_charge_constraint_start, __FILE__, __LINE__ );
+        sfree( system->custom_charge_constraint_rhs, __FILE__, __LINE__ );
+    }
+
+    if ( system->max_num_custom_charge_constraint_entries > 0 )
+    {
+        sfree( system->custom_charge_constraint_atom_index, __FILE__, __LINE__ );
+        sfree( system->custom_charge_constraint_coeff, __FILE__, __LINE__ );
+    }
+
     system->max_num_molec_charge_constraints = 0;
     system->num_molec_charge_constraints = 0;
     system->max_num_custom_charge_constraints = 0;
     system->num_custom_charge_constraints = 0;
+    system->max_num_custom_charge_constraint_entries = 0;
+    system->num_custom_charge_constraint_entries = 0;
 
     reax = &system->reax_param;
 

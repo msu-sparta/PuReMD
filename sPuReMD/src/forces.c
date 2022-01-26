@@ -488,7 +488,7 @@ static int Init_Charge_Matrix_Remaining_Entries( reax_system const * const syste
                         H_sp->start[system->N + i] = *H_sp_top;
 
                         for ( j = system->custom_charge_constraint_start[i - system->num_molec_charge_constraints];
-                                j <= system->custom_charge_constraint_start[i - system->num_molec_charge_constraints + 1]; ++j )
+                                j < system->custom_charge_constraint_start[i - system->num_molec_charge_constraints + 1]; ++j )
                         {
                             /* custom charge constraint on atoms */
                             if ( *Htop < H->m )
@@ -1611,7 +1611,7 @@ static void Estimate_Storages_CM( reax_system const * const system,
                 }
                 for ( i = 0; i < system->num_custom_charge_constraints; ++i )
                 {
-                    Htop += system->custom_charge_constraint_count[i];
+                    Htop += system->custom_charge_constraint_count[i] + 1;
                 }
             }
             break;

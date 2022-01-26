@@ -1108,10 +1108,13 @@ void * setup_qmmm( int qm_num_atoms, const char * const qm_symbols,
         {
             spmd_handle->system->custom_charge_constraint_count[i] = charge_constraint_custom_count[i];
             spmd_handle->system->custom_charge_constraint_start[i] = (i == 0 ? 0 :
-                    charge_constraint_custom_count[i - 1] + charge_constraint_custom_count[i - 1]);
+                    spmd_handle->system->custom_charge_constraint_start[i - 1] + charge_constraint_custom_count[i - 1]);
             spmd_handle->system->num_custom_charge_constraint_entries += charge_constraint_custom_count[i];
             spmd_handle->system->custom_charge_constraint_rhs[i] = charge_constraint_custom_rhs[i];
         }
+        spmd_handle->system->custom_charge_constraint_start[spmd_handle->system->num_custom_charge_constraints]
+            = spmd_handle->system->custom_charge_constraint_start[spmd_handle->system->num_custom_charge_constraints - 1]
+            + charge_constraint_custom_count[spmd_handle->system->num_custom_charge_constraints - 1];
     }
 
     spmd_handle->system->max_num_custom_charge_constraint_entries
@@ -1360,10 +1363,13 @@ int reset_qmmm( const void * const handle, int qm_num_atoms,
             {
                 spmd_handle->system->custom_charge_constraint_count[i] = charge_constraint_custom_count[i];
                 spmd_handle->system->custom_charge_constraint_start[i] = (i == 0 ? 0 :
-                        charge_constraint_custom_count[i - 1] + charge_constraint_custom_count[i - 1]);
+                        spmd_handle->system->custom_charge_constraint_start[i - 1] + charge_constraint_custom_count[i - 1]);
                 spmd_handle->system->num_custom_charge_constraint_entries += charge_constraint_custom_count[i];
                 spmd_handle->system->custom_charge_constraint_rhs[i] = charge_constraint_custom_rhs[i];
             }
+            spmd_handle->system->custom_charge_constraint_start[spmd_handle->system->num_custom_charge_constraints]
+                = spmd_handle->system->custom_charge_constraint_start[spmd_handle->system->num_custom_charge_constraints - 1]
+                + charge_constraint_custom_count[spmd_handle->system->num_custom_charge_constraints - 1];
         }
 
         if ( spmd_handle->system->num_custom_charge_constraint_entries
