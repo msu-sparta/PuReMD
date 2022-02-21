@@ -1693,7 +1693,7 @@ void Compute_Charges( reax_system * const system, control_params * const control
     if ( data->step % 10 == 0 )
     {
         snprintf( fname, SIZE, "H_%d_%s.out", data->step, control->sim_name );
-        Print_Sparse_Matrix2( workspace->H, fname, NULL );
+        Print_Sparse_Matrix2( &workspace->H, fname, NULL );
 //        Print_Sparse_Matrix_Binary( workspace->H, fname );
 
         snprintf( fname, SIZE, "b_s_%d_%s.out", data->step, control->sim_name );

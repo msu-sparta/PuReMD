@@ -284,6 +284,10 @@ void * setup2( int num_atoms, const int * const atom_type,
     /* note: assign here to avoid compiler warning
      * of uninitialized usage in PreAllocate_Space */
     spmd_handle->system->N_max = 0;
+    spmd_handle->system->max_num_molec_charge_constraints = 0;
+    spmd_handle->system->num_molec_charge_constraints = 0;
+    spmd_handle->system->max_num_custom_charge_constraints = 0;
+    spmd_handle->system->num_custom_charge_constraints = 0;
 
     PreAllocate_Space( spmd_handle->system, spmd_handle->control,
             spmd_handle->workspace, (int) CEIL( SAFE_ZONE * spmd_handle->system->N ) );
