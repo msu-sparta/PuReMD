@@ -200,9 +200,10 @@ class SimulationData(Structure):
             ("iso_bar", IsotropicBarostat),
             ("flex_bar", FlexibleBarostat),
             ("inv_W", c_double),
-            ("int_press", c_double * 3),
-            ("ext_press", c_double * 3),
-            ("kin_press", c_double),
+            # requires OpenMP enabled
+            ("press_local", c_double * 9),
+            ("press", c_double * 9),
+            ("kin_press", c_double * 9),
             ("tot_press", c_double * 3),
             ("timing", ReaxTiming),
             ]
@@ -211,12 +212,17 @@ class SimulationData(Structure):
 class ReaxAtom(Structure):
     _fields_ = [
             ("type", c_int),
+            ("is_dummy", c_int),
             ("rel_map", c_int * 3),
             ("name", c_char * 9),
             ("x", c_double * 3),
             ("v", c_double * 3),
             ("f", c_double * 3),
             ("q", c_double),
+            # requires QM/MM support enabled
+            #("qmmm_mask", c_int),
+            # requires QM/MM support enabled
+            #("q_init", c_double),
             ]
 
 

@@ -200,9 +200,10 @@ class SimulationData(Structure):
             ("iso_bar", IsotropicBarostat),
             ("flex_bar", FlexibleBarostat),
             ("inv_W", c_double),
-            ("int_press", c_double * 3),
-            ("ext_press", c_double * 3),
-            ("kin_press", c_double),
+            # requires OpenMP enabled
+            ("press_local", c_double * 9),
+            ("press", c_double * 9),
+            ("kin_press", c_double * 9),
             ("tot_press", c_double * 3),
             ("timing", ReaxTiming),
             ]
@@ -211,12 +212,17 @@ class SimulationData(Structure):
 class ReaxAtom(Structure):
     _fields_ = [
             ("type", c_int),
+            ("is_dummy", c_int),
             ("rel_map", c_int * 3),
             ("name", c_char * 9),
             ("x", c_double * 3),
             ("v", c_double * 3),
             ("f", c_double * 3),
             ("q", c_double),
+            # requires QM/MM support enabled
+            ("qmmm_mask", c_int),
+            # requires QM/MM support enabled
+            ("q_init", c_double),
             ]
 
 
@@ -358,12 +364,10 @@ def create_db(name='spuremd.db'):
 if __name__ == '__main__':
     lib = cdll.LoadLibrary("libspuremd.so.1")
 
-    setup_qmmm = lib.setup_qmmm_
-    setup_qmmm.argtypes = [c_int, POINTER(c_int),
-            POINTER(c_double), POINTER(c_double), POINTER(c_double),
-            c_int, POINTER(c_int), POINTER(c_double), POINTER(c_double),
-            POINTER(c_double), POINTER(c_double), POINTER(c_double),
-            c_char_p, c_char_p]
+    setup_qmmm = lib.setup_qmmm
+    setup_qmmm.argtypes = [c_int, c_char_p, POINTER(c_double),
+            c_int, c_char_p, POINTER(c_double),
+            POINTER(c_double), c_char_p, c_char_p]
     setup_qmmm.restype = c_void_p
 
     simulate = lib.simulate
@@ -374,12 +378,10 @@ if __name__ == '__main__':
     cleanup.argtypes = [c_void_p]
     cleanup.restype = c_int
 
-    reset_qmmm = lib.reset_qmmm_
-    reset_qmmm.argtypes = [c_void_p, c_int, POINTER(c_int),
-            POINTER(c_double), POINTER(c_double), POINTER(c_double),
-            c_int, POINTER(c_int), POINTER(c_double), POINTER(c_double),
-            POINTER(c_double), POINTER(c_double), POINTER(c_double),
-            c_char_p, c_char_p]
+    reset_qmmm = lib.reset_qmmm
+    reset_qmmm.argtypes = [c_void_p, c_int, c_char_p, POINTER(c_double),
+            c_int, c_char_p, POINTER(c_double),
+            POINTER(c_double), c_char_p, c_char_p]
     reset_qmmm.restype = c_int
 
     CALLBACKFUNC = CFUNCTYPE(None, c_int, POINTER(ReaxAtom),
@@ -393,19 +395,15 @@ if __name__ == '__main__':
     set_control_parameter.argtypes = [c_void_p, c_char_p, POINTER(c_char_p)]
     set_control_parameter.restype = c_int
 
-    get_atom_positions_qmmm = lib.get_atom_positions_qmmm_
-    get_atom_positions_qmmm.argtypes = [c_void_p,
-            POINTER(c_double), POINTER(c_double), POINTER(c_double),
-            POINTER(c_double), POINTER(c_double), POINTER(c_double)]
+    get_atom_positions_qmmm = lib.get_atom_positions_qmmm
+    get_atom_positions_qmmm.argtypes = [c_void_p, POINTER(c_double), POINTER(c_double)]
     get_atom_positions_qmmm.restype = c_int
 
-    get_atom_forces_qmmm = lib.get_atom_forces_qmmm_
-    get_atom_forces_qmmm.argtypes = [c_void_p,
-            POINTER(c_double), POINTER(c_double), POINTER(c_double),
-            POINTER(c_double), POINTER(c_double), POINTER(c_double)]
+    get_atom_forces_qmmm = lib.get_atom_forces_qmmm
+    get_atom_forces_qmmm.argtypes = [c_void_p, POINTER(c_double), POINTER(c_double)]
     get_atom_forces_qmmm.restype = c_int
 
-    get_atom_charges_qmmm = lib.get_atom_charges_qmmm_
+    get_atom_charges_qmmm = lib.get_atom_charges_qmmm
     get_atom_charges_qmmm.argtypes = [c_void_p, POINTER(c_double), POINTER(c_double)]
     get_atom_charges_qmmm.restype = c_int
 
@@ -418,18 +416,33 @@ if __name__ == '__main__':
     num_qm_atoms = 10
     num_mm_atoms = 10
     num_atoms = num_qm_atoms + num_mm_atoms
-    qm_types = (c_int * num_qm_atoms)(2, 1, 1, 2, 1, 1, 2, 1, 1, 2)
-    qm_p_x = (c_double * num_qm_atoms)(5.690, 4.760, 5.800, 15.551, 14.981, 14.961, 17.431, 17.761, 17.941, 11.351)
-    qm_p_y = (c_double * num_qm_atoms)(12.751, 12.681, 13.641, 15.111, 14.951, 15.211, 6.180, 7.120, 5.640, 7.030)
-    qm_p_z = (c_double * num_qm_atoms)(11.651, 11.281, 12.091, 7.030, 7.840, 6.230, 8.560, 8.560, 9.220, 7.170)
-    mm_types = (c_int * num_qm_atoms)(1, 1, 2, 1, 1, 2, 1, 1, 2, 1)
-    mm_p_x = (c_double * num_mm_atoms)(11.921, 10.751, 17.551, 17.431, 17.251, 7.680, 6.900, 8.020, 8.500, 8.460)
-    mm_p_y = (c_double * num_mm_atoms)(7.810, 7.290, 6.070, 5.940, 5.260, 11.441, 11.611, 12.311, 7.980, 8.740)
-    mm_p_z = (c_double * num_mm_atoms)(6.920, 7.930, 2.310, 1.320, 2.800, 10.231, 10.831, 9.871, 18.231, 18.881)
-    mm_q = (c_double * num_mm_atoms)(-2.0, 1.0, 1.0, -2.0, 1.0, 1.0, -2.0, 1.0, 1.0, -2.0)
+    qm_types = ''.join('{0:<2}'.format(s) for s in ['H', 'O', 'O', 'H', 'O', 'O', 'H', 'O', 'O', 'H']).encode('utf-8')
+    # (x-position, y-position, z-position) atom tuples (units of Angstroms)
+    qm_p = (c_double * (3 * num_qm_atoms))(5.690, 12.751, 11.651,
+            4.760, 12.681, 11.281,
+            5.800, 13.641, 12.091,
+            15.551, 15.111, 7.030,
+            14.981, 14.951, 7.840,
+            14.961, 15.211, 6.230,
+            17.431, 6.180, 8.560,
+            17.761, 7.120, 8.560,
+            17.941, 5.640, 9.220,
+            11.351, 7.030, 7.170)
+    mm_types = ''.join('{0:<2}'.format(s) for s in ['O', 'O', 'H', 'O', 'O', 'H', 'O', 'O', 'H', 'O']).encode('utf-8')
+    # (x-position, y-position, z-position, charge) atom tuples (units of Angstroms / Coulombs)
+    mm_p_q = (c_double * (4 * num_mm_atoms))(11.921, 7.810, 6.920, -2.0,
+            10.751, 7.290, 7.930, 1.0,
+            17.551, 6.070, 2.310, 1.0,
+            17.431, 5.940, 1.320, -2.0,
+            17.251, 5.260, 2.800, 1.0,
+            7.680, 11.441, 10.231, 1.0,
+            6.900, 11.611, 10.831, -2.0,
+            8.020, 12.311, 9.871, 1.0,
+            8.500, 7.980, 18.231, 1.0,
+            8.460, 8.740, 18.881, -2.0)
 
-    handle = setup_qmmm(c_int(num_qm_atoms), qm_types, qm_p_x, qm_p_y, qm_p_z,
-            c_int(num_mm_atoms), mm_types, mm_p_x, mm_p_y, mm_p_z, mm_q, sim_box,
+    handle = setup_qmmm(c_int(num_qm_atoms), qm_types, qm_p,
+            c_int(num_mm_atoms), mm_types, mm_p_q, sim_box,
             b"data/benchmarks/water/ffield.water",
             b"environ/control_water")
 
@@ -445,6 +458,13 @@ if __name__ == '__main__':
     if ret != 0:
         print("[ERROR] set_control_parameter returned {0}".format(ret))
 
+    keyword = b"charge_method"
+    values = (c_char_p)(b"1")
+    ret = set_control_parameter(handle, keyword, values)
+
+    if ret != 0:
+        print("[ERROR] set_control_parameter returned {0}".format(ret))
+
     print("{0:24}|{1:24}|{2:24}".format("Total Energy", "Kinetic Energy", "Potential Energy"))
 
     ret = simulate(handle)
@@ -452,25 +472,16 @@ if __name__ == '__main__':
     if ret != 0:
         print("[ERROR] simulate returned {0}".format(ret))
 
-    qm_p_x = (c_double * num_qm_atoms)()
-    qm_p_y = (c_double * num_qm_atoms)()
-    qm_p_z = (c_double * num_qm_atoms)()
-    mm_p_x = (c_double * num_mm_atoms)()
-    mm_p_y = (c_double * num_mm_atoms)()
-    mm_p_z = (c_double * num_mm_atoms)()
-    ret = get_atom_positions_qmmm(handle, qm_p_x, qm_p_y, qm_p_z,
-            mm_p_x, mm_p_y, mm_p_z)
+    qm_p = (c_double * (3 * num_qm_atoms))()
+    mm_p = (c_double * (3 * num_mm_atoms))()
+    ret = get_atom_positions_qmmm(handle, qm_p, mm_p)
 
     if ret != 0:
         print("[ERROR] get_atom_positions_qmmm returned {0}".format(ret))
 
-    qm_f_x = (c_double * num_qm_atoms)()
-    qm_f_y = (c_double * num_qm_atoms)()
-    qm_f_z = (c_double * num_qm_atoms)()
-    mm_f_x = (c_double * num_mm_atoms)()
-    mm_f_y = (c_double * num_mm_atoms)()
-    mm_f_z = (c_double * num_mm_atoms)()
-    ret = get_atom_forces_qmmm(handle, qm_f_x, qm_f_y, qm_f_z, mm_f_x, mm_f_y, mm_f_z)
+    qm_f = (c_double * (3 * num_qm_atoms))()
+    mm_f = (c_double * (3 * num_mm_atoms))()
+    ret = get_atom_forces_qmmm(handle, qm_f, mm_f)
 
     if ret != 0:
         print("[ERROR] get_atom_forces_qmmm returned {0}".format(ret))
@@ -487,20 +498,62 @@ if __name__ == '__main__':
     num_qm_atoms = 15
     num_mm_atoms = 15
     num_atoms = num_qm_atoms + num_mm_atoms
-    qm_types = (c_int * num_qm_atoms)(2, 2, 2, 2, 10, 2, 10, 2, 2, 10, 2, 10, 2, 2)
-    qm_p_x = (c_double * num_qm_atoms)(56.987, 32.795, 26.543, 27.616, 26.560, 54.035, 54.425, 29.979, 38.008, 48.769, 57.113, 26.458, 52.299, 55.789, 45.752)
-    qm_p_y = (c_double * num_qm_atoms)(39.868, 24.104, 26.261, 27.534, 39.146, 39.112, 37.117, 43.558, 47.170, 42.454, 35.565, 35.477, 39.113, 41.444, 44.237)
-    qm_p_z = (c_double * num_qm_atoms)(41.795, 25.968, 36.254, 24.459, 32.281, 23.745, 32.278, 21.696, 27.275, 20.461, 31.366, 23.522, 26.519, 30.466, 10.521)
-    mm_types = (c_int * num_qm_atoms)(10, 2, 10, 2, 2, 2, 10, 2, 10, 2, 2, 10, 2, 2, 10)
-    mm_p_x = (c_double * num_mm_atoms)(49.617, 26.736, 58.166, 36.655, 55.773, 53.905, 52.254, 32.196, 53.817, 56.164, 28.678, 58.824, 24.807, 51.299, 28.950)
-    mm_p_y = (c_double * num_mm_atoms)(42.379, 37.815, 5.488, 48.615, 36.249, 1.450, 35.399, 6.595, 8.586, 1.585, 7.208, 36.067, 6.365, 25.234, 11.190)
-    mm_p_z = (c_double * num_mm_atoms)(21.790, 33.119, 0.945, 25.664, 31.954, 22.720, 33.665, 23.147, 31.684, 23.550, 30.801, 40.036, 24.849, 29.146, 24.542)
-    mm_q = (c_double * num_mm_atoms)(-1.0, -2.0, -1.0, -2.0, -2.0, -2.0, -1.0, -2.0, -1.0, -2.0, -2.0, -1.0, -2.0, -2.0, -1.0)
+    qm_types = ''.join('{0:<2}'.format(s) for s in ['O', 'O', 'O', 'O', 'Si', 'O', 'Si', 'O', 'O', 'O', 'Si', 'O', 'Si', 'O', 'O']).encode('utf-8')
+    # (x-position, y-position, z-position) atom tuples (units of Angstroms)
+    qm_p = (c_double * (3 * num_qm_atoms))(56.987, 39.868, 41.795,
+            32.795, 24.104, 25.968,
+            26.543, 26.261, 36.254,
+            27.616, 27.534, 24.459,
+            26.560, 39.146, 32.281,
+            54.035, 39.112, 23.745,
+            54.425, 37.117, 32.278,
+            29.979, 43.558, 21.696,
+            38.008, 47.170, 27.275,
+            48.769, 42.454, 20.461,
+            57.113, 35.565, 31.366,
+            26.458, 35.477, 23.522,
+            52.299, 39.113, 26.519,
+            55.789, 41.444, 30.466,
+            45.752, 44.237, 10.521)
+    mm_types = ''.join('{0:<2}'.format(s) for s in ['Si', 'O', 'Si', 'O', 'O', 'O', 'Si', 'O', 'Si', 'O', 'O', 'Si', 'O', 'O', 'Si']).encode('utf-8')
+    # (x-position, y-position, z-position, charge) atom tuples (units of Angstroms / Coulombs)
+    mm_p_q = (c_double * (4 * num_mm_atoms))(49.617, 42.379, 21.790, -1.0,
+            26.736, 37.815, 33.119, -2.0,
+            58.166, 5.488, 0.945, -1.0,
+            36.655, 48.615, 25.664, -2.0,
+            55.773, 36.249, 31.954, -2.0,
+            53.905, 1.450, 22.720, -2.0,
+            52.254, 35.399, 33.665, -1.0,
+            32.196, 6.595, 23.147, -2.0,
+            53.817, 8.586, 31.684, -1.0,
+            56.164, 1.585, 23.550, -2.0,
+            28.678, 7.208, 30.801, -2.0,
+            58.824, 36.067, 40.036, -1.0,
+            24.807, 6.365, 24.849, -2.0,
+            51.299, 25.234, 29.146, -2.0,
+            28.950, 11.190, 24.542, -1.0)
 
-    ret = reset_qmmm(handle, c_int(num_qm_atoms), qm_types, qm_p_x, qm_p_y, qm_p_z,
-            c_int(num_mm_atoms), mm_types, mm_p_x, mm_p_y, mm_p_z, mm_q, sim_box,
+    ret = reset_qmmm(handle, c_int(num_qm_atoms), qm_types, qm_p,
+            c_int(num_mm_atoms), mm_types, mm_p_q, sim_box,
             b"data/benchmarks/silica/ffield-bio",
             b"environ/control_silica")
+
+    if ret != 0:
+        print("[ERROR] reset_qmmm returned {0}".format(ret))
+
+    keyword = b"nsteps"
+    values = (c_char_p)(b"10")
+    ret = set_control_parameter(handle, keyword, values)
+
+    if ret != 0:
+        print("[ERROR] set_control_parameter returned {0}".format(ret))
+
+    keyword = b"charge_method"
+    values = (c_char_p)(b"1")
+    ret = set_control_parameter(handle, keyword, values)
+
+    if ret != 0:
+        print("[ERROR] set_control_parameter returned {0}".format(ret))
 
     print("\n{0:24}|{1:24}|{2:24}".format("Total Energy", "Kinetic Energy", "Potential Energy"))
 
@@ -509,25 +562,16 @@ if __name__ == '__main__':
     if ret != 0:
         print("[ERROR] simulate returned {0}".format(ret))
 
-    qm_p_x = (c_double * num_qm_atoms)()
-    qm_p_y = (c_double * num_qm_atoms)()
-    qm_p_z = (c_double * num_qm_atoms)()
-    mm_p_x = (c_double * num_mm_atoms)()
-    mm_p_y = (c_double * num_mm_atoms)()
-    mm_p_z = (c_double * num_mm_atoms)()
-    ret = get_atom_positions_qmmm(handle, qm_p_x, qm_p_y, qm_p_z,
-            mm_p_x, mm_p_y, mm_p_z)
+    qm_p = (c_double * (3 * num_qm_atoms))()
+    mm_p = (c_double * (3 * num_mm_atoms))()
+    ret = get_atom_positions_qmmm(handle, qm_p, mm_p)
 
     if ret != 0:
         print("[ERROR] get_atom_positions_qmmm returned {0}".format(ret))
 
-    qm_f_x = (c_double * num_qm_atoms)()
-    qm_f_y = (c_double * num_qm_atoms)()
-    qm_f_z = (c_double * num_qm_atoms)()
-    mm_f_x = (c_double * num_mm_atoms)()
-    mm_f_y = (c_double * num_mm_atoms)()
-    mm_f_z = (c_double * num_mm_atoms)()
-    ret = get_atom_forces_qmmm(handle, qm_f_x, qm_f_y, qm_f_z, mm_f_x, mm_f_y, mm_f_z)
+    qm_f = (c_double * (3 * num_qm_atoms))()
+    mm_f = (c_double * (3 * num_mm_atoms))()
+    ret = get_atom_forces_qmmm(handle, qm_f, mm_f)
 
     if ret != 0:
         print("[ERROR] get_atom_forces_qmmm returned {0}".format(ret))
