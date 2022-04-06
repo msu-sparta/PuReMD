@@ -111,10 +111,10 @@ void Init_Output_Files( reax_system *system, control_params *control,
 //                     "step", "total", "comm", "nbrs", "init", "bonded", "nonb",
 //                     "charges", "siters", "retries" );
 
-            fprintf( out_control->log, "%6s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s\n",
+            fprintf( out_control->log, "%6s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s\n",
                      "step", "total", "comm", "nbrs", "init",
-                     "init_dist", "init_cm", "init_bond",
-                     "bonded", "nonb",
+                     "init_dist", "init_cm", "init_bond", "init_hbond",
+                     "bonded", "BO", "bonds", "lpovun", "val", "tors", "hbonds", "nonb",
                      "cm", "cm_sort", "cm_iters", "cm_p_comp", "cm_p_app",
                      "cm_comm", "cm_allr", "cm_spmv", "cm_vec_ops", "cm_orthog", "cm_t_solve",
                      "retries" );
@@ -1139,7 +1139,7 @@ void Output_Results( reax_system *system, control_params *control,
 {
 #if defined(LOG_PERFORMANCE)
     int ret;
-    real my_timings[19], total_timings[19], t_elapsed, denom;
+    real my_timings[26], total_timings[26], t_elapsed, denom;
 #endif
 
     if ( (out_control->energy_update_freq > 0
@@ -1158,21 +1158,28 @@ void Output_Results( reax_system *system, control_params *control,
             my_timings[3] = data->timing.init_dist;
             my_timings[4] = data->timing.init_cm;
             my_timings[5] = data->timing.init_bond;
-            my_timings[6] = data->timing.bonded;
-            my_timings[7] = data->timing.nonb;
-            my_timings[8] = data->timing.cm;
-            my_timings[9] = data->timing.cm_sort;
-            my_timings[10] = (double) data->timing.cm_solver_iters;
-            my_timings[11] = data->timing.cm_solver_pre_comp;
-            my_timings[12] = data->timing.cm_solver_pre_app;
-            my_timings[13] = data->timing.cm_solver_comm;
-            my_timings[14] = data->timing.cm_solver_allreduce;
-            my_timings[15] = data->timing.cm_solver_spmv;
-            my_timings[16] = data->timing.cm_solver_vector_ops;
-            my_timings[17] = data->timing.cm_solver_orthog;
-            my_timings[18] = data->timing.cm_solver_tri_solve;
+            my_timings[6] = data->timing.init_hbond;
+            my_timings[7] = data->timing.bonded;
+            my_timings[8] = data->timing.bond_order;
+            my_timings[9] = data->timing.bonds;
+            my_timings[10] = data->timing.lpovun;
+            my_timings[11] = data->timing.valence;
+            my_timings[12] = data->timing.torsion;
+            my_timings[13] = data->timing.hbonds;
+            my_timings[14] = data->timing.nonb;
+            my_timings[15] = data->timing.cm;
+            my_timings[16] = data->timing.cm_sort;
+            my_timings[17] = (double) data->timing.cm_solver_iters;
+            my_timings[18] = data->timing.cm_solver_pre_comp;
+            my_timings[19] = data->timing.cm_solver_pre_app;
+            my_timings[20] = data->timing.cm_solver_comm;
+            my_timings[21] = data->timing.cm_solver_allreduce;
+            my_timings[22] = data->timing.cm_solver_spmv;
+            my_timings[23] = data->timing.cm_solver_vector_ops;
+            my_timings[24] = data->timing.cm_solver_orthog;
+            my_timings[25] = data->timing.cm_solver_tri_solve;
 
-            ret = MPI_Reduce( my_timings, total_timings, 19, MPI_DOUBLE,
+            ret = MPI_Reduce( my_timings, total_timings, 26, MPI_DOUBLE,
                     MPI_SUM, MASTER_NODE, MPI_COMM_WORLD );
             Check_MPI_Error( ret, __FILE__, __LINE__ );
 
@@ -1184,19 +1191,26 @@ void Output_Results( reax_system *system, control_params *control,
                 data->timing.init_dist = total_timings[3] / control->nprocs;
                 data->timing.init_cm = total_timings[4] / control->nprocs;
                 data->timing.init_bond = total_timings[5] / control->nprocs;
-                data->timing.bonded = total_timings[6] / control->nprocs;
-                data->timing.nonb = total_timings[7] / control->nprocs;
-                data->timing.cm = total_timings[8] / control->nprocs;
-                data->timing.cm_sort = total_timings[9] / control->nprocs;
-                data->timing.cm_solver_iters = total_timings[10] / control->nprocs;
-                data->timing.cm_solver_pre_comp = total_timings[11] / control->nprocs;
-                data->timing.cm_solver_pre_app = total_timings[12] / control->nprocs;
-                data->timing.cm_solver_comm = total_timings[13] / control->nprocs;
-                data->timing.cm_solver_allreduce = total_timings[14] / control->nprocs;
-                data->timing.cm_solver_spmv = total_timings[15] / control->nprocs;
-                data->timing.cm_solver_vector_ops = total_timings[16] / control->nprocs;
-                data->timing.cm_solver_orthog = total_timings[17] / control->nprocs;
-                data->timing.cm_solver_tri_solve = total_timings[18] / control->nprocs;
+                data->timing.init_hbond = total_timings[6] / control->nprocs;
+                data->timing.bonded = total_timings[7] / control->nprocs;
+                data->timing.bond_order = total_timings[8] / control->nprocs;
+                data->timing.bonds = total_timings[9] / control->nprocs;
+                data->timing.lpovun = total_timings[10] / control->nprocs;
+                data->timing.valence = total_timings[11] / control->nprocs;
+                data->timing.torsion = total_timings[12] / control->nprocs;
+                data->timing.hbonds = total_timings[13] / control->nprocs;
+                data->timing.nonb = total_timings[14] / control->nprocs;
+                data->timing.cm = total_timings[15] / control->nprocs;
+                data->timing.cm_sort = total_timings[16] / control->nprocs;
+                data->timing.cm_solver_iters = total_timings[17] / control->nprocs;
+                data->timing.cm_solver_pre_comp = total_timings[18] / control->nprocs;
+                data->timing.cm_solver_pre_app = total_timings[19] / control->nprocs;
+                data->timing.cm_solver_comm = total_timings[20] / control->nprocs;
+                data->timing.cm_solver_allreduce = total_timings[21] / control->nprocs;
+                data->timing.cm_solver_spmv = total_timings[22] / control->nprocs;
+                data->timing.cm_solver_vector_ops = total_timings[23] / control->nprocs;
+                data->timing.cm_solver_orthog = total_timings[24] / control->nprocs;
+                data->timing.cm_solver_tri_solve = total_timings[25] / control->nprocs;
             }
 #endif
 
@@ -1262,7 +1276,7 @@ void Output_Results( reax_system *system, control_params *control,
 //                        data->timing.num_retries );
 
                 fprintf( out_control->log,
-                        "%6d %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.2f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.2f\n",
+                        "%6d %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.2f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f %10.2f\n",
                         data->step,
                         t_elapsed * denom,
                         data->timing.comm * denom,
@@ -1271,7 +1285,14 @@ void Output_Results( reax_system *system, control_params *control,
                         data->timing.init_dist * denom,
                         data->timing.init_cm * denom,
                         data->timing.init_bond * denom,
+                        data->timing.init_hbond * denom,
                         data->timing.bonded * denom,
+                        data->timing.bond_order * denom,
+                        data->timing.bonds * denom,
+                        data->timing.lpovun * denom,
+                        data->timing.valence * denom,
+                        data->timing.torsion * denom,
+                        data->timing.hbonds * denom,
                         (data->timing.nonb + data->timing.cm) * denom,
                         data->timing.cm * denom,
                         data->timing.cm_sort * denom,

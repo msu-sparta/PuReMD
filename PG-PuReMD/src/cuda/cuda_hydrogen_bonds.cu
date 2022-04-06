@@ -30,8 +30,7 @@
 #include "../index_utils.h"
 #include "../vector.h"
 
-#include "../cub/cub/warp/warp_reduce.cuh"
-//#include <cub/warp/warp_reduce.cuh>
+#include <cub/warp/warp_reduce.cuh>
 
 
 /* one thread per atom implementation */
@@ -744,7 +743,13 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
     int update_energy;
     real *spad;
     rvec *rvec_spad;
+#endif
 
+#if defined(LOG_PERFORMANCE)
+    cudaEventRecord( control->time_events[TE_HBONDS_START], control->streams[2] );
+#endif
+
+#if !defined(CUDA_ACCUM_ATOMIC)
     sCudaCheckMalloc( &workspace->scratch[2], &workspace->scratch_size[2],
             (sizeof(real) * 3 + sizeof(rvec)) * system->N + sizeof(rvec) * control->blocks_n,
             __FILE__, __LINE__ );
@@ -761,7 +766,7 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
     }
 #endif
 
-    cudaStreamWaitEvent( control->streams[2], control->stream_events[3], 0 );
+    cudaStreamWaitEvent( control->streams[2], control->stream_events[SE_BOND_ORDER_DONE], 0 );
 
     if ( control->virial == 1 )
     {
@@ -866,5 +871,9 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
 //            sizeof(rvec) * HB_POST_PROC_BLOCK_SIZE, control->streams[2] >>>
 //        ( system->d_my_atoms, *(workspace->d_workspace), *(lists[HBONDS]), system->n );
     cudaCheckError( );
+#endif
+
+#if defined(LOG_PERFORMANCE)
+    cudaEventRecord( control->time_events[TE_HBONDS_STOP], control->streams[2] );
 #endif
 }

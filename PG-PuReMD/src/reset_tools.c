@@ -130,7 +130,14 @@ void Reset_Timing( reax_timing * const timing )
     timing->init_dist = ZERO;
     timing->init_cm = ZERO;
     timing->init_bond = ZERO;
+    timing->init_hbond = ZERO;
     timing->bonded = ZERO;
+    timing->bond_order = ZERO;
+    timing->bonds = ZERO;
+    timing->lpovun = ZERO;
+    timing->valence = ZERO;
+    timing->torsion = ZERO;
+    timing->hbonds = ZERO;
     timing->nonb = ZERO;
     timing->cm = ZERO;
     timing->cm_sort = ZERO;

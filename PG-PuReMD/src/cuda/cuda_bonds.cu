@@ -28,8 +28,7 @@
 
 #include "../index_utils.h"
 
-#include "../cub/cub/warp/warp_reduce.cuh"
-//#include <cub/warp/warp_reduce.cuh>
+#include <cub/warp/warp_reduce.cuh>
 
 
 CUDA_GLOBAL void k_bonds( reax_atom *my_atoms, global_parameters gp, 
@@ -280,7 +279,13 @@ void Cuda_Compute_Bonds( reax_system const * const system,
 #if !defined(CUDA_ACCUM_ATOMIC)
     int update_energy;
     real *spad;
+#endif
 
+#if defined(LOG_PERFORMANCE)
+    cudaEventRecord( control->time_events[TE_BONDS_START], control->streams[1] );
+#endif
+
+#if !defined(CUDA_ACCUM_ATOMIC)
     sCudaCheckMalloc( &workspace->scratch[1], &workspace->scratch_size[1],
             sizeof(real) * system->n, __FILE__, __LINE__ );
 
@@ -292,7 +297,7 @@ void Cuda_Compute_Bonds( reax_system const * const system,
             0, sizeof(real), control->streams[1], __FILE__, __LINE__ );
 #endif
 
-    cudaStreamWaitEvent( control->streams[1], control->stream_events[2], 0 );
+    cudaStreamWaitEvent( control->streams[1], control->stream_events[SE_BOND_ORDER_DONE], 0 );
 
 //    k_bonds <<< control->blocks, control->block_size, 0, control->streams[1] >>>
 //        ( system->d_my_atoms, system->reax_param.d_gp,
@@ -333,5 +338,7 @@ void Cuda_Compute_Bonds( reax_system const * const system,
     }
 #endif
 
-    cudaEventRecord( control->stream_events[3], control->streams[1] );
+#if defined(LOG_PERFORMANCE)
+    cudaEventRecord( control->time_events[TE_BONDS_STOP], control->streams[1] );
+#endif
 }

@@ -27,8 +27,7 @@
 
 #include "../index_utils.h"
 
-#include "../cub/cub/warp/warp_reduce.cuh"
-//#include <cub/warp/warp_reduce.cuh>
+#include <cub/warp/warp_reduce.cuh>
 
 
 /* Compute lone pair term */
@@ -576,7 +575,13 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
 #if !defined(CUDA_ACCUM_ATOMIC)
     int update_energy;
     real *spad;
+#endif
 
+#if defined(LOG_PERFORMANCE)
+    cudaEventRecord( control->time_events[TE_LPOVUN_START], control->streams[0] );
+#endif
+
+#if !defined(CUDA_ACCUM_ATOMIC)
     sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
             sizeof(real) * 3 * system->n, __FILE__, __LINE__ );
 
@@ -672,5 +677,9 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
                 &((simulation_data *)data->d_simulation_data)->my_en.e_un,
                 system->n, 0, control->streams[0] );
     }
+#endif
+
+#if defined(LOG_PERFORMANCE)
+    cudaEventRecord( control->time_events[TE_LPOVUN_STOP], control->streams[0] );
 #endif
 }

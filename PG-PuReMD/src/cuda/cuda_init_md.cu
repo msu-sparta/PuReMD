@@ -218,7 +218,7 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
     workspace->d_workspace->H.format = SYM_FULL_MATRIX;
 
     /* estimate storage for bonds, hbonds, and sparse matrix */
-    Cuda_Estimate_Storages( system, control, workspace, lists,
+    Cuda_Estimate_Storages( system, control, data, workspace, lists,
             TRUE, TRUE, TRUE, data->step - data->prev_steps );
 
     Cuda_Allocate_Matrix( &workspace->d_workspace->H, system->n,

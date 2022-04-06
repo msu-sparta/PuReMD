@@ -29,8 +29,7 @@
 #include "../index_utils.h"
 #include "../vector.h"
 
-#include "../cub/cub/warp/warp_reduce.cuh"
-//#include <cub/warp/warp_reduce.cuh>
+#include <cub/warp/warp_reduce.cuh>
 
 
 CUDA_GLOBAL void k_compute_polarization_energy( reax_atom const * const my_atoms, 
@@ -864,6 +863,10 @@ void Cuda_Compute_NonBonded_Forces( reax_system const * const system,
     rvec *spad_rvec;
 #endif
 
+#if defined(LOG_PERFORMANCE)
+    cudaEventRecord( control->time_events[TE_VDW_COULOMB_START], control->streams[4] );
+#endif
+
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
 
@@ -1020,4 +1023,8 @@ void Cuda_Compute_NonBonded_Forces( reax_system const * const system,
     {
         Cuda_Compute_Polarization_Energy( system, control, workspace, data );
     }
+
+#if defined(LOG_PERFORMANCE)
+    cudaEventRecord( control->time_events[TE_VDW_COULOMB_STOP], control->streams[4] );
+#endif
 }

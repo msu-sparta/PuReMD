@@ -12,8 +12,7 @@
 #include "../tool_box.h"
 #include "../vector.h"
 
-#include "../cub/cub/warp/warp_reduce.cuh"
-//#include <cub/warp/warp_reduce.cuh>
+#include <cub/warp/warp_reduce.cuh>
 
 
 /* mask used to determine which threads within a warp participate in operations */

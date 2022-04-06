@@ -39,10 +39,8 @@
   #include "cuda_basic_comm.h"
 #endif
 
-#include "../cub/cub/device/device_radix_sort.cuh"
-#include "../cub/cub/block/block_reduce.cuh"
-//#include <cub/device/device_radix_sort.cuh>
-//#include <cub/block/block_reduce.cuh>
+#include <cub/device/device_radix_sort.cuh>
+#include <cub/block/block_reduce.cuh>
 
 
 //TODO: move k_jacob and jacboi to cuda_lin_alg.cu

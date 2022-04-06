@@ -21,8 +21,8 @@ void Cuda_Total_Forces_Part2( reax_system * const, control_params const * const,
 
 
 /* Compute the bond order term between atoms i and j,
- * and if this term exceeds the cutoff bo_cut, then adds
- * BOTH atoms the bonds list (i.e., compute term once
+ * and if this term exceeds the cutoff bo_cut, then add
+ * BOTH atoms to the bonds list (i.e., compute term once
  * and copy to avoid redundant computation) */
 CUDA_DEVICE static inline void Cuda_Compute_BOp( reax_list bond_list, real bo_cut,
         int i, int btop_i, int j, real C12, real C34, real C56, real BO_s,

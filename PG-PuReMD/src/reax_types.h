@@ -358,9 +358,6 @@
   #else
     #define VDW_BLOCK_SIZE (256)
   #endif
-
-  /* max. num. of CUDA events used for synchronizing streams */
-  #define MAX_CUDA_STREAM_EVENTS (4)
 #endif
 
 /* max. num. of active CUDA streams */
@@ -578,6 +575,55 @@ enum traj_methods
     /* num. trajectory file formats */
     TF_N = 2,
 };
+
+#if defined(HAVE_CUDA)
+/* CUDA events for synchronizing kernels across different streams */
+enum cuda_stream_sync_events
+{
+    /* index of event signifying pairwise distances have been calculated */
+    SE_INIT_DIST_DONE = 0,
+    /* index of event signifying the bond list has been generated */
+    SE_INIT_BOND_DONE = 1,
+    /* index of event signifying bond orders have been calculated */
+    SE_BOND_ORDER_DONE = 2,
+    /* total num. of sync events */
+    CUDA_STREAM_SYNC_EVENT_N = 3,
+};
+
+#if defined(LOG_PERFORMANCE)
+/* CUDA events used to determine kernel runtimes */
+enum cuda_timing_events
+{
+   TE_NBRS_START = 0,
+   TE_NBRS_STOP = 1,
+   TE_INIT_DIST_START = 2,
+   TE_INIT_DIST_STOP = 3,
+   TE_INIT_CM_START = 4,
+   TE_INIT_CM_STOP = 5,
+   TE_INIT_BOND_START = 6,
+   TE_INIT_BOND_STOP = 7,
+   TE_INIT_HBOND_START = 8,
+   TE_INIT_HBOND_STOP = 9,
+   TE_BOND_ORDER_START = 10,
+   TE_BOND_ORDER_STOP = 11,
+   TE_BONDS_START = 12,
+   TE_BONDS_STOP = 13,
+   TE_LPOVUN_START = 14,
+   TE_LPOVUN_STOP = 15,
+   TE_VALENCE_START = 16,
+   TE_VALENCE_STOP = 17,
+   TE_TORSION_START = 18,
+   TE_TORSION_STOP = 19,
+   TE_HBONDS_START = 20,
+   TE_HBONDS_STOP = 21,
+   TE_CM_START = 22,
+   TE_CM_STOP = 23,
+   TE_VDW_COULOMB_START = 24,
+   TE_VDW_COULOMB_STOP = 25,
+   CUDA_TIMING_EVENT_N = 26,
+};
+#endif
+#endif
 
 
 /* 3D vector, integer values */
@@ -1670,7 +1716,11 @@ struct control_params
     /* CUDA streams */
     cudaStream_t streams[MAX_CUDA_STREAMS];
     /* CUDA events for synchronizing streams */
-    cudaEvent_t stream_events[MAX_CUDA_STREAM_EVENTS];
+    cudaEvent_t stream_events[CUDA_STREAM_SYNC_EVENT_N];
+#if defined(LOG_PERFORMANCE)
+    /* CUDA events for timing */
+    cudaEvent_t time_events[CUDA_TIMING_EVENT_N];
+#endif
 #endif
 };
 
@@ -1745,18 +1795,32 @@ struct reax_timing
     real comm;
     /* neighbor list generation time */
     real nbrs;
-    /* force initialization time */
+    /* total initialization time */
     real init_forces;
-    /* bonded force calculation time */
-    real bonded;
-    /* non-bonded force calculation time */
-    real nonb;
-    /* distance between pairs calculation time */
+    /* pairwise distance calculation time */
     real init_dist;
-    /* charge matrix calculation time */
+    /* charge matrix initialization time */
     real init_cm;
-    /* bonded interactions calculation time */
+    /* bond list initialization time */
     real init_bond;
+    /* hydrogen bond list initialization time */
+    real init_hbond;
+    /* total bonded interaction time */
+    real bonded;
+    /* bond order calculation time */
+    real bond_order;
+    /* bonds calculation time */
+    real bonds;
+    /* lone pair, over- and under-coordination calculation time */
+    real lpovun;
+    /* valence calculation time */
+    real valence;
+    /* torsion calculation time */
+    real torsion;
+    /* hydrogen bonds calculation time */
+    real hbonds;
+    /* total non-bonded interaction time */
+    real nonb;
     /* atomic charge distribution calculation time */
     real cm;
     /* charge matrix entry sorting time */

@@ -75,7 +75,7 @@ extern "C" void Cuda_Setup_Environment( reax_system const * const system,
         }
     
         /* stream assignment (default to 0 for any kernel not listed):
-         * 0: init dist, bond order (uncorrected/corrected), lone pair/over coord/under coord
+         * 0: init dist, (after init bonds) bond order (uncorrected/corrected), lone pair/over coord/under coord
          * 1: (after init dist) init bonds, (after bond order) bonds, valence angles, torsions
          * 2: (after init dist) init hbonds, (after bonds) hbonds
          * 3: (after init dist) van der Waals
@@ -83,7 +83,7 @@ extern "C" void Cuda_Setup_Environment( reax_system const * const system,
          */
         for ( i = MAX_CUDA_STREAMS - 1; i >= 0; --i )
         {
-            if ( MAX_CUDA_STREAMS - 1 + -1 * i < control->gpu_streams )
+            if ( MAX_CUDA_STREAMS - 1 - i < control->gpu_streams )
             {
                 /* all non-CM streams of equal priority */
                 if ( i != MAX_CUDA_STREAMS - 1 )
@@ -105,7 +105,7 @@ extern "C" void Cuda_Setup_Environment( reax_system const * const system,
             }
             else
             {
-                control->streams[i] = control->streams[MAX_CUDA_STREAMS - 1 - ((MAX_CUDA_STREAMS - 1 + -1 * i) % control->gpu_streams)];
+                control->streams[i] = control->streams[MAX_CUDA_STREAMS - 1 - ((MAX_CUDA_STREAMS - 1 - i) % control->gpu_streams)];
             }
         }
     }
@@ -113,14 +113,15 @@ extern "C" void Cuda_Setup_Environment( reax_system const * const system,
     {
         /* stream assignment (default to 0 for any kernel not listed):
          * 0: init dist, bond order (uncorrected/corrected), lone pair/over coord/under coord
-         * 1: (after init dist) init bonds, (after bond order) bonds, valence angles, torsions
-         * 2: (after init dist) init hbonds, (after bonds) hbonds
-         * 3: (after init dist) van der Waals
-         * 4: init CM, CM, Coulomb
+         * 1: (after init dist) init bonds, (after bond order) bonds
+         * 2: (after init dist) init hbonds, (after bond order) hbonds
+         * 3: (after bond order) valence angles, torsions
+         * 4: (after init dist) van der Waals
+         * 5: (after init dist) init CM, CM, Coulomb
          */
         for ( i = MAX_CUDA_STREAMS - 1; i >= 0; --i )
         {
-            if ( MAX_CUDA_STREAMS - 1 + -1 * i < control->gpu_streams )
+            if ( MAX_CUDA_STREAMS - 1 - i < control->gpu_streams )
             {
                 ret = cudaStreamCreateWithFlags( &control->streams[i], cudaStreamNonBlocking );
         
@@ -133,18 +134,12 @@ extern "C" void Cuda_Setup_Environment( reax_system const * const system,
             }
             else
             {
-                control->streams[i] = control->streams[MAX_CUDA_STREAMS - 1 - ((MAX_CUDA_STREAMS - 1 + -1 * i) % control->gpu_streams)];
+                control->streams[i] = control->streams[MAX_CUDA_STREAMS - 1 - ((MAX_CUDA_STREAMS - 1 - i) % control->gpu_streams)];
             }
        }
     }
 
-    /* stream event assignment:
-     * 0: init dist done (stream 0)
-     * 1: init bonds done (stream 1)
-     * 2: bond orders done (stream 0)
-     * 3: bonds done (stream 1)
-     */
-    for ( i = 0; i < MAX_CUDA_STREAM_EVENTS; ++i )
+    for ( i = 0; i < CUDA_STREAM_SYNC_EVENT_N; ++i )
     {
         ret = cudaEventCreateWithFlags( &control->stream_events[i], cudaEventDisableTiming );
 
@@ -155,6 +150,19 @@ extern "C" void Cuda_Setup_Environment( reax_system const * const system,
             exit( CANNOT_INITIALIZE );
         }
     }
+
+#if defined(LOG_PERFORMANCE)
+    for ( i = 0; i < CUDA_TIMING_EVENT_N; ++i )
+    {
+        ret = cudaEventCreate( &control->time_events[i] );
+
+        if ( ret != cudaSuccess )
+        {
+            fprintf( stderr, "[ERROR] cudaEventCreate failure (%d). Terminating...\n", i );
+            exit( CANNOT_INITIALIZE );
+        }
+    }
+#endif
 
     //TODO: revisit additional device configurations
 //    cudaDeviceSetLimit( cudaLimitStackSize, 8192 );
@@ -180,7 +188,7 @@ extern "C" void Cuda_Cleanup_Environment( control_params const * const control )
 
     for ( i = MAX_CUDA_STREAMS - 1; i >= 0; --i )
     {
-        if ( MAX_CUDA_STREAMS - 1 + -1 * i < control->gpu_streams )
+        if ( MAX_CUDA_STREAMS - 1 - i < control->gpu_streams )
         {
             ret = cudaStreamDestroy( control->streams[i] );
     
@@ -192,6 +200,31 @@ extern "C" void Cuda_Cleanup_Environment( control_params const * const control )
             }
         }
     }
+
+    for ( i = 0; i < CUDA_STREAM_SYNC_EVENT_N; ++i )
+    {
+        ret = cudaEventDestroy( control->stream_events[i] );
+
+        if ( ret != cudaSuccess )
+        {
+            fprintf( stderr, "[ERROR] CUDA event destruction failure (%d). Terminating...\n",
+                    i );
+            exit( RUNTIME_ERROR );
+        }
+    }
+
+#if defined(LOG_PERFORMANCE)
+    for ( i = 0; i < CUDA_TIMING_EVENT_N; ++i )
+    {
+        ret = cudaEventDestroy( control->time_events[i] );
+
+        if ( ret != cudaSuccess )
+        {
+            fprintf( stderr, "[ERROR] CUDA event destruction failure (%d). Terminating...\n", i );
+            exit( RUNTIME_ERROR );
+        }
+    }
+#endif
 }
 
 

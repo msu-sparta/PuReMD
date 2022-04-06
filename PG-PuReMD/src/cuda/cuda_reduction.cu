@@ -9,12 +9,9 @@
 /* mask used to determine which threads within a warp participate in operations */
 #define FULL_MASK (0xFFFFFFFF)
 
-#include "../cub/cub/device/device_reduce.cuh"
-#include "../cub/cub/device/device_scan.cuh"
-#include "../cub/cub/block/block_reduce.cuh"
-//#include <cub/device/device_reduce.cuh>
-//#include <cub/device/device_scan.cuh>
-//#include <cub/block/block_reduce.cuh>
+#include <cub/device/device_reduce.cuh>
+#include <cub/device/device_scan.cuh>
+#include <cub/block/block_reduce.cuh>
 
 
 //struct RvecSum

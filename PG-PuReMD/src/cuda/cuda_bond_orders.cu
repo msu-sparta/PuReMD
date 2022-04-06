@@ -9,8 +9,7 @@
 #include "../index_utils.h"
 #include "../bond_orders.h"
 
-#include "../cub/cub/warp/warp_reduce.cuh"
-//#include <cub/warp/warp_reduce.cuh>
+#include <cub/warp/warp_reduce.cuh>
 
 
 CUDA_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
@@ -989,7 +988,11 @@ void Cuda_Compute_Bond_Orders( reax_system const * const system,
 {
     int blocks;
 
-    cudaStreamWaitEvent( control->streams[0], control->stream_events[1], 0 );
+#if defined(LOG_PERFORMANCE)
+    cudaEventRecord( control->time_events[TE_BOND_ORDER_START], control->streams[0] );
+#endif
+
+    cudaStreamWaitEvent( control->streams[0], control->stream_events[SE_INIT_BOND_DONE], 0 );
 
     k_bond_order_part1 <<< control->blocks_n, control->block_size_n, 0,
                        control->streams[0] >>>
@@ -1025,7 +1028,11 @@ void Cuda_Compute_Bond_Orders( reax_system const * const system,
          *(workspace->d_workspace), system->N );
     cudaCheckError( );
 
-    cudaEventRecord( control->stream_events[2], control->streams[0] );
+    cudaEventRecord( control->stream_events[SE_BOND_ORDER_DONE], control->streams[0] );
+
+#if defined(LOG_PERFORMANCE)
+    cudaEventRecord( control->time_events[TE_BOND_ORDER_STOP], control->streams[0] );
+#endif
 }
 
 

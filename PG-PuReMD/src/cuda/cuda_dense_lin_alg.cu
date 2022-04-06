@@ -5,8 +5,7 @@
 
 #include "../comm_tools.h"
 
-#include "../cub/cub/block/block_reduce.cuh"
-//#include <cub/block/block_reduce.cuh>
+#include <cub/block/block_reduce.cuh>
 
 
 /* sets all entries of a dense vector to zero

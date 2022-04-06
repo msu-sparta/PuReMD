@@ -28,8 +28,7 @@
 #include "../index_utils.h"
 #include "../vector.h"
 
-#include "../cub/cub/warp/warp_reduce.cuh"
-//#include <cub/warp/warp_reduce.cuh>
+#include <cub/warp/warp_reduce.cuh>
 
 
 #define MIN_SINE (1.0e-10)
@@ -1269,7 +1268,13 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
     size_t s;
     real *spad;
     rvec *rvec_spad;
+#endif
 
+#if defined(LOG_PERFORMANCE)
+    cudaEventRecord( control->time_events[TE_TORSION_START], control->streams[3] );
+#endif
+
+#if !defined(CUDA_ACCUM_ATOMIC)
     if ( control->virial == 1 )
     {
         s = (sizeof(real) * 2 + sizeof(rvec)) * system->n + sizeof(rvec) * control->blocks;
@@ -1278,28 +1283,28 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
     {
         s = (sizeof(real) * 2 * system->n;
     }
-    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
+    sCudaCheckMalloc( &workspace->scratch[3], &workspace->scratch_size[3],
             s, __FILE__, __LINE__ );
 
-    spad = (real *) workspace->scratch[0];
+    spad = (real *) workspace->scratch[3];
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
 #else
     sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_tor,
-            0, sizeof(real), control->streams[0], __FILE__, __LINE__ );
+            0, sizeof(real), control->streams[3], __FILE__, __LINE__ );
     sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_con,
-            0, sizeof(real), control->streams[0], __FILE__, __LINE__ );
+            0, sizeof(real), control->streams[3], __FILE__, __LINE__ );
     if ( control->virial == 1 )
     {
         sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_ext_press,
-                0, sizeof(rvec), control->streams[0], __FILE__, __LINE__ );
+                0, sizeof(rvec), control->streams[3], __FILE__, __LINE__ );
     }
 #endif
 
     if ( control->virial == 1 )
     {
         k_torsion_angles_virial_part1 <<< control->blocks, control->block_size,
-                                      0, control->streams[0] >>>
+                                      0, control->streams[3] >>>
             ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_fbp,
               (control_params *) control->d_control_params, *(lists[BONDS]),
               *(lists[THREE_BODIES]), *(workspace->d_workspace), system->n,
@@ -1316,7 +1321,7 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
     else
     {
 //        k_torsion_angles_part1 <<< control->blocks, control->block_size,
-//                               0, control->streams[0] >>>
+//                               0, control->streams[3] >>>
 //            ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_fbp,
 //              (control_params *) control->d_control_params, *(lists[BONDS]),
 //              *(lists[THREE_BODIES]), *(workspace->d_workspace), system->n,
@@ -1334,7 +1339,7 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
 
         k_torsion_angles_part1_opt <<< blocks, DEF_BLOCK_SIZE,
                                    sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32),
-                                   control->streams[0] >>>
+                                   control->streams[3] >>>
             ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_fbp,
               (control_params *) control->d_control_params, *(lists[BONDS]),
               *(lists[THREE_BODIES]), *(workspace->d_workspace), system->n,
@@ -1354,11 +1359,11 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
     {
         Cuda_Reduction_Sum( spad,
                 &((simulation_data *)data->d_simulation_data)->my_en.e_tor,
-                system->n, 0, control->streams[0] );
+                system->n, 3, control->streams[3] );
 
         Cuda_Reduction_Sum( &spad[system->n],
                 &((simulation_data *)data->d_simulation_data)->my_en.e_con,
-                system->n, 0, control->streams[0] );
+                system->n, 3, control->streams[3] );
     }
 
     if ( control->virial == 1 )
@@ -1367,27 +1372,31 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
 
         k_reduction_rvec <<< control->blocks, control->block_size,
                          sizeof(rvec) * (control->block_size / 32),
-                         control->streams[0] >>>
+                         control->streams[3] >>>
             ( rvec_spad, &rvec_spad[system->n], system->n );
         cudaCheckError( );
 
         k_reduction_rvec <<< 1, control->blocks_pow_2,
                          sizeof(rvec) * (control->blocks_pow_2 / 32),
-                         control->streams[0] >>>
+                         control->streams[3] >>>
                 ( &rvec_spad[system->n],
                   &((simulation_data *)data->d_simulation_data)->my_ext_press,
                   control->blocks );
         cudaCheckError( );
 //            Cuda_Reduction_Sum( rvec_spad,
 //                    &((simulation_data *)data->d_simulation_data)->my_ext_press,
-//                    system->n, 0, control->streams[0] );
+//                    system->n, 3, control->streams[3] );
     }
 #endif
 
 #if !defined(CUDA_ACCUM_ATOMIC)
     k_torsion_angles_part2 <<< control->blocks_n, control->block_size_n, 0,
-                           control->streams[0] >>>
+                           control->streams[3] >>>
             ( *(workspace->d_workspace), *(lists[BONDS]), system->N );
     cudaCheckError( );
+#endif
+
+#if defined(LOG_PERFORMANCE)
+    cudaEventRecord( control->time_events[TE_TORSION_STOP], control->streams[3] );
 #endif
 }

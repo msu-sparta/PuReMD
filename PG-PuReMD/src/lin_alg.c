@@ -639,7 +639,7 @@ void setup_sparse_approx_inverse( reax_system const * const system,
     int k, pj, size;
     int left, right, p, turn;
     int num_rows;
-    int *srecv, *sdispls;
+    int *sample_counts, *sample_index;
     int *scounts_local, *scounts;
     int *dspls_local, *dspls;
     int *bin_elements;
@@ -651,8 +651,8 @@ void setup_sparse_approx_inverse( reax_system const * const system,
     real t_start, t_comm;
     real total_comm;
 
-    srecv = NULL;
-    sdispls = NULL;
+    sample_counts = NULL;
+    sample_index = NULL;
     samplelist_local = NULL;
     samplelist = NULL;
     pivotlist = NULL;
@@ -701,6 +701,7 @@ void setup_sparse_approx_inverse( reax_system const * const system,
     n_local = 0;
     for ( i = 0; i < num_rows; ++i )
     {
+        /* round row NNZ up to nearest factor of 10 */
         n_local += (A->end[i] - A->start[i] + 9) / 10;
     }
     s_local = (int) (12.0 * (LOG2(n_local) + LOG2(nprocs)));
@@ -728,44 +729,45 @@ void setup_sparse_approx_inverse( reax_system const * const system,
     if ( system->my_rank == MASTER_NODE )
     {
         samplelist = smalloc( sizeof(real) * s, __FILE__, __LINE__ );
-        srecv = smalloc( sizeof(int) * nprocs, __FILE__, __LINE__ );
-        sdispls = smalloc( sizeof(int) * nprocs, __FILE__, __LINE__ );
+        sample_counts = smalloc( sizeof(int) * nprocs, __FILE__, __LINE__ );
+        sample_index = smalloc( sizeof(int) * nprocs, __FILE__, __LINE__ );
     }
 
+    /* local sample for estimating threshold is every tenth nonzero value */
     n_local = 0;
     for ( i = 0; i < num_rows; ++i )
     {
         for ( pj = A->start[i]; pj < A->end[i]; pj += 10 )
         {
-            input_array[n_local++] = A->val[pj];
+            input_array[n_local] = A->val[pj];
+            ++n_local;
         }
     }
 
     for ( i = 0; i < s_local; i++)
     {
-        /* samplelist_local[i] = input_array[rand( ) % n_local]; */
-        samplelist_local[i] = input_array[ i ];
+        samplelist_local[i] = input_array[i];
     }
 
     /* gather samples at the root process */
     t_start = Get_Time( );
-    ret = MPI_Gather( &s_local, 1, MPI_INT, srecv, 1, MPI_INT,
+    ret = MPI_Gather( &s_local, 1, MPI_INT, sample_counts, 1, MPI_INT,
             MASTER_NODE, MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
     t_comm += Get_Time( ) - t_start;
 
     if ( system->my_rank == MASTER_NODE )
     {
-        sdispls[0] = 0;
-        for ( i = 0; i < nprocs - 1; ++i )
+        sample_index[0] = 0;
+        for ( i = 1; i < nprocs; ++i )
         {
-            sdispls[i + 1] = sdispls[i] + srecv[i];
+            sample_index[i] = sample_index[i - 1] + sample_counts[i - 1];
         }
     }
 
     t_start = Get_Time( );
     ret = MPI_Gatherv( samplelist_local, s_local, MPI_DOUBLE,
-            samplelist, srecv, sdispls, MPI_DOUBLE, MASTER_NODE, MPI_COMM_WORLD);
+            samplelist, sample_counts, sample_index, MPI_DOUBLE, MASTER_NODE, MPI_COMM_WORLD);
     Check_MPI_Error( ret, __FILE__, __LINE__ );
     t_comm += Get_Time( ) - t_start;
 
@@ -985,8 +987,8 @@ void setup_sparse_approx_inverse( reax_system const * const system,
     if ( system->my_rank == MASTER_NODE )
     {
         sfree( samplelist, __FILE__, __LINE__ );
-        sfree( srecv, __FILE__, __LINE__ );
-        sfree( sdispls, __FILE__, __LINE__ );
+        sfree( sample_counts, __FILE__, __LINE__ );
+        sfree( sample_index, __FILE__, __LINE__ );
     }
     if ( system->my_rank == target_proc )
     {
@@ -1434,8 +1436,8 @@ real sparse_approx_inverse( reax_system const * const system,
     {
         Deallocate_Matrix( A_app_inv );
 
-        Allocate_Matrix( A_app_inv, A_spar_patt->n, A_spar_patt->n_max,
-                A_spar_patt->m, SYM_FULL_MATRIX );
+        Allocate_Matrix( A_app_inv, A_spar_patt->n, A_spar_patt->n_max, A_spar_patt->m,
+                SYM_FULL_MATRIX );
     }
 
     A_app_inv->n = A_spar_patt->n;
@@ -1475,15 +1477,14 @@ real sparse_approx_inverse( reax_system const * const system,
         val_list[i] = NULL;
     }
 
-    for ( i = 0; i < system->total_cap; ++i )
-    {
-        row_nnz[i] = 0;
-    }
-
     /* mark the atoms that already have their row stored in the local matrix */
     for ( i = 0; i < system->n; ++i )
     {
         row_nnz[i] = A->end[i] - A->start[i];
+    }
+    for ( i = system->n; i < system->total_cap; ++i )
+    {
+        row_nnz[i] = 0;
     }
 
     /* announce nnz's in each row that will be communicated later */
@@ -1862,7 +1863,7 @@ real sparse_approx_inverse( reax_system const * const system,
         if ( info > 0 )
         {
             fprintf( stderr, "[ERROR] SAI preconditioner computation failure\n" );
-            fprintf( stderr, "  [INFO] The diagonal element %i of the triangular factor ", info );
+            fprintf( stderr, "  [INFO] The diagonal element %i of the triangular factor\n", info );
             fprintf( stderr, "         of A is zero, so that A does not have full rank;\n" );
             MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
         }
