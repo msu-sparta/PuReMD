@@ -1689,7 +1689,7 @@ void Cuda_Init_Sparse_Matrix_Indices( reax_system *system, sparse_matrix *H,
         + (H->n_max % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
     /* init indices */
-    Cuda_Scan_Excl_Sum( system->d_max_cm_entries, H->start, H->n_max, 4, s );
+    Cuda_Scan_Excl_Sum( system->d_max_cm_entries, H->start, H->n_max, 5, s );
 
     //TODO: not needed for full format (Init_Forces sets H->end)
     /* init end_indices */
@@ -1711,7 +1711,7 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
     if ( realloc_cm == TRUE )
     {
 #if defined(LOG_PERFORMANCE)
-        cudaEventRecord( control->time_events[TE_INIT_CM_START], control->streams[4] );
+        cudaEventRecord( control->time_events[TE_INIT_CM_START], control->streams[5] );
 #endif
 
         blocks = workspace->d_workspace->H.n_max / DEF_BLOCK_SIZE
@@ -1720,7 +1720,7 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
         if ( workspace->d_workspace->H.format == SYM_HALF_MATRIX )
         {
             k_estimate_storages_cm_half <<< blocks, DEF_BLOCK_SIZE, 0,
-                                        control->streams[4] >>>
+                                        control->streams[5] >>>
                 ( system->d_my_atoms, (control_params *) control->d_control_params,
                   *(lists[FAR_NBRS]), workspace->d_workspace->H.n,
                   workspace->d_workspace->H.n_max,
@@ -1729,7 +1729,7 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
         else
         {
             k_estimate_storages_cm_full <<< blocks, DEF_BLOCK_SIZE, 0,
-                                        control->streams[4] >>>
+                                        control->streams[5] >>>
                 ( (control_params *) control->d_control_params,
                   *(lists[FAR_NBRS]), workspace->d_workspace->H.n,
                   workspace->d_workspace->H.n_max,
@@ -1738,12 +1738,12 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
         cudaCheckError( );
 
         Cuda_Reduction_Sum( system->d_max_cm_entries, system->d_total_cm_entries,
-                workspace->d_workspace->H.n_max, 4, control->streams[4] );
+                workspace->d_workspace->H.n_max, 5, control->streams[5] );
         sCudaMemcpyAsync( &system->total_cm_entries, system->d_total_cm_entries,
-                sizeof(int), cudaMemcpyDeviceToHost, control->streams[4], __FILE__, __LINE__ );
+                sizeof(int), cudaMemcpyDeviceToHost, control->streams[5], __FILE__, __LINE__ );
 
 #if defined(LOG_PERFORMANCE)
-        cudaEventRecord( control->time_events[TE_INIT_CM_STOP], control->streams[4] );
+        cudaEventRecord( control->time_events[TE_INIT_CM_STOP], control->streams[5] );
 #endif
     }
 
@@ -1823,7 +1823,7 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
 
     if ( realloc_cm == TRUE )
     {
-        cudaStreamSynchronize( control->streams[4] );
+        cudaStreamSynchronize( control->streams[5] );
 
 #if defined(LOG_PERFORMANCE)
         cudaEventElapsedTime( &time_elapsed, control->time_events[TE_INIT_CM_START],
@@ -1879,7 +1879,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
     if ( cm_done == FALSE )
     {
         sCudaMemsetAsync( system->d_realloc_cm_entries, FALSE, sizeof(int), 
-                control->streams[4], __FILE__, __LINE__ );
+                control->streams[5], __FILE__, __LINE__ );
     }
     if ( bonds_done == FALSE )
     {
@@ -1920,7 +1920,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
     if ( cm_done == FALSE )
     {
 #if defined(LOG_PERFORMANCE)
-        cudaEventRecord( control->time_events[TE_INIT_CM_START], control->streams[4] );
+        cudaEventRecord( control->time_events[TE_INIT_CM_START], control->streams[5] );
 #endif
 
         blocks = workspace->d_workspace->H.n_max / DEF_BLOCK_SIZE
@@ -1930,18 +1930,18 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
         workspace->d_workspace->H.n = system->n;
 
         Cuda_Init_Sparse_Matrix_Indices( system, &workspace->d_workspace->H,
-                control->streams[4] );
+                control->streams[5] );
 
         if ( renbr == FALSE )
         {
-            cudaStreamWaitEvent( control->streams[4], control->stream_events[SE_INIT_DIST_DONE], 0 );
+            cudaStreamWaitEvent( control->streams[5], control->stream_events[SE_INIT_DIST_DONE], 0 );
         }
 
         if ( workspace->d_workspace->H.format == SYM_HALF_MATRIX )
         {
             if ( control->tabulate <= 0 )
             {
-                k_init_cm_half_fs <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[4] >>>
+                k_init_cm_half_fs <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[5] >>>
                     ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
                       *(workspace->d_workspace), (control_params *) control->d_control_params,
                       *(lists[FAR_NBRS]), system->reax_param.num_atom_types,
@@ -1949,7 +1949,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
             }
             else
             {
-                k_init_cm_half_fs_tab <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[4] >>>
+                k_init_cm_half_fs_tab <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[5] >>>
                     ( system->d_my_atoms, system->reax_param.d_sbp,
                       *(workspace->d_workspace), (control_params *) control->d_control_params,
                       *(lists[FAR_NBRS]), workspace->d_LR, system->reax_param.num_atom_types,
@@ -1960,7 +1960,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
         {
             if ( control->tabulate <= 0 )
             {
-//                k_init_cm_full_fs <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[4] >>>
+//                k_init_cm_full_fs <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[5] >>>
 //                    ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
 //                      *(workspace->d_workspace), (control_params *) control->d_control_params,
 //                      *(lists[FAR_NBRS]), system->reax_param.num_atom_types,
@@ -1971,7 +1971,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
 
                 k_init_cm_full_fs_opt <<< blocks, DEF_BLOCK_SIZE,
                                       sizeof(cub::WarpScan<int>::TempStorage) * (DEF_BLOCK_SIZE / 32),
-                                      control->streams[4] >>>
+                                      control->streams[5] >>>
                     ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
                       *(workspace->d_workspace), (control_params *) control->d_control_params,
                       *(lists[FAR_NBRS]), system->reax_param.num_atom_types,
@@ -1980,7 +1980,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
             else
             {
                 k_init_cm_full_fs_tab <<< blocks, DEF_BLOCK_SIZE, 0,
-                                      control->streams[4] >>>
+                                      control->streams[5] >>>
                     ( system->d_my_atoms, system->reax_param.d_sbp,
                       *(workspace->d_workspace), (control_params *) control->d_control_params,
                       *(lists[FAR_NBRS]), workspace->d_LR, system->reax_param.num_atom_types,
@@ -1990,7 +1990,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
         cudaCheckError( );
 
 #if defined(LOG_PERFORMANCE)
-        cudaEventRecord( control->time_events[TE_INIT_CM_STOP], control->streams[4] );
+        cudaEventRecord( control->time_events[TE_INIT_CM_STOP], control->streams[5] );
 #endif
     }
 
@@ -2083,7 +2083,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
     if ( cm_done == FALSE )
     {
         sCudaMemcpyAsync( &realloc_cm, system->d_realloc_cm_entries, sizeof(int), 
-                cudaMemcpyDeviceToHost, control->streams[4], __FILE__, __LINE__ );
+                cudaMemcpyDeviceToHost, control->streams[5], __FILE__, __LINE__ );
     }
     else
     {
@@ -2109,7 +2109,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
     }
 
     cudaStreamSynchronize( control->streams[0] );
-    cudaStreamSynchronize( control->streams[4] );
+    cudaStreamSynchronize( control->streams[5] );
     cudaStreamSynchronize( control->streams[1] );
     cudaStreamSynchronize( control->streams[2] );
 
@@ -2551,7 +2551,7 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
     int i, charge_flag, ret;
-    static int init_forces_done = FALSE;
+    static int init_forces_done = FALSE, nonbonded_forces_part1_done = FALSE;
 #if defined(LOG_PERFORMANCE)
     float time_elapsed, time_elapsed2, time_elapsed3;
     float time_elapsed4, time_elapsed5, time_elapsed6;
@@ -2589,6 +2589,14 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
         }
     }
 
+    if ( nonbonded_forces_part1_done == FALSE )
+    {
+        Cuda_Compute_NonBonded_Forces_Part1( system, control, data, workspace,
+                lists, out_control );
+
+        nonbonded_forces_part1_done = TRUE;
+    }
+
     if ( ret == SUCCESS )
     {
         ret = Cuda_Compute_Bonded_Forces( system, control, data,
@@ -2613,7 +2621,7 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
         Update_Timing_Info( &time, &data->timing.cm );
 #endif
 
-        Cuda_Compute_NonBonded_Forces( system, control, data, workspace,
+        Cuda_Compute_NonBonded_Forces_Part2( system, control, data, workspace,
                 lists, out_control );
 
         for ( i = 0; i < MAX_CUDA_STREAMS; ++i )
@@ -2742,12 +2750,19 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
                 control->time_events[TE_HBONDS_STOP] ); 
         data->timing.hbonds += (real) (time_elapsed / 1000.0);
 
-        cudaEventElapsedTime( &time_elapsed, control->time_events[TE_VDW_COULOMB_START],
-                control->time_events[TE_VDW_COULOMB_STOP] ); 
+#if !defined(USE_FUSED_VDW_COULOMB)
+        cudaEventElapsedTime( &time_elapsed, control->time_events[TE_VDW_START],
+                control->time_events[TE_VDW_STOP] ); 
+        data->timing.nonb += (real) (time_elapsed / 1000.0);
+#endif
+
+        cudaEventElapsedTime( &time_elapsed, control->time_events[TE_COULOMB_START],
+                control->time_events[TE_COULOMB_STOP] ); 
         data->timing.nonb += (real) (time_elapsed / 1000.0);
 #endif
 
         init_forces_done = FALSE;
+        nonbonded_forces_part1_done = FALSE;
     }
 
     return ret;

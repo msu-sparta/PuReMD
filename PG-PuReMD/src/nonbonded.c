@@ -188,7 +188,7 @@ void vdW_Coulomb_Energy( reax_system const * const system,
 
                 /* Coulomb Calculations */
                 dr3gamij_1 = r_ij * r_ij * r_ij + POW( twbp->gamma, -3.0 );
-                dr3gamij_3 = POW( dr3gamij_1, 1.0 / 3.0 );
+                dr3gamij_3 = CBRT( dr3gamij_1 );
                 e_clb = C_ELE * (system->my_atoms[i].q * system->my_atoms[j].q) / dr3gamij_3;
                 e_ele = self_coef * (e_clb * Tap);
                 data->my_en.e_ele += e_ele;
@@ -480,7 +480,7 @@ void LR_vdW_Coulomb( reax_system const * const system,
 
     /* Coulomb calculations */
     dr3gamij_1 = r_ij * r_ij * r_ij + POW( twbp->gamma, -3.0 );
-    dr3gamij_3 = POW( dr3gamij_1, 1.0 / 3.0 );
+    dr3gamij_3 = CBRT( dr3gamij_1 );
     tmp = Tap / dr3gamij_3;
     t->H = EV_to_KCALpMOL * tmp;
     t->e_ele = C_ELE * tmp;

@@ -70,7 +70,7 @@ static void jacobi( reax_system const * const system,
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_jacobi <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[4] >>>
+    k_jacobi <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[5] >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
           *(workspace->d_workspace), system->n );
     cudaCheckError( );
@@ -98,9 +98,9 @@ void Sort_Matrix_Rows( sparse_matrix * const A, reax_system const * const system
     start = (int *) smalloc( sizeof(int) * system->total_cap, __FILE__, __LINE__ );
     end = (int *) smalloc( sizeof(int) * system->total_cap, __FILE__, __LINE__ );
     sCudaMemcpyAsync( start, A->start, sizeof(int) * system->total_cap, 
-            cudaMemcpyDeviceToHost, control->streams[4], __FILE__, __LINE__ );
+            cudaMemcpyDeviceToHost, control->streams[5], __FILE__, __LINE__ );
     sCudaMemcpyAsync( end, A->end, sizeof(int) * system->total_cap, 
-            cudaMemcpyDeviceToHost, control->streams[4], __FILE__, __LINE__ );
+            cudaMemcpyDeviceToHost, control->streams[5], __FILE__, __LINE__ );
 
     /* make copies of column indices and non-zero values */
     sCudaMalloc( (void **) &d_j_temp, sizeof(int) * system->total_cm_entries,
@@ -108,11 +108,11 @@ void Sort_Matrix_Rows( sparse_matrix * const A, reax_system const * const system
     sCudaMalloc( (void **) &d_val_temp, sizeof(real) * system->total_cm_entries,
             __FILE__, __LINE__ );
     sCudaMemcpyAsync( d_j_temp, A->j, sizeof(int) * system->total_cm_entries,
-            cudaMemcpyDeviceToDevice, control->streams[4], __FILE__, __LINE__ );
+            cudaMemcpyDeviceToDevice, control->streams[5], __FILE__, __LINE__ );
     sCudaMemcpyAsync( d_val_temp, A->val, sizeof(real) * system->total_cm_entries,
-            cudaMemcpyDeviceToDevice, control->streams[4], __FILE__, __LINE__ );
+            cudaMemcpyDeviceToDevice, control->streams[5], __FILE__, __LINE__ );
 
-    cudaStreamSynchronize( control->streams[4] );
+    cudaStreamSynchronize( control->streams[5] );
 
     for ( i = 0; i < system->n; ++i )
     {
@@ -253,7 +253,7 @@ static void Spline_Extrapolate_Charges_QEq( reax_system const * const system,
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
     k_spline_extrapolate_charges_qeq <<< blocks, DEF_BLOCK_SIZE, 0,
-                                     control->streams[4] >>>
+                                     control->streams[5] >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
           (control_params *)control->d_control_params,
           *(workspace->d_workspace), system->n );
@@ -323,7 +323,7 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
             }
 
             Cuda_Copy_Matrix_Device_to_Host( &workspace->H, &workspace->d_workspace->H,
-                   control->streams[4] );
+                   control->streams[5] );
 
             workspace->H.n = workspace->d_workspace->H.n;
 
@@ -390,7 +390,7 @@ static void Compute_Preconditioner_QEq( reax_system const * const system,
             Cuda_Allocate_Matrix( &workspace->d_workspace->H_app_inv,
                     workspace->H_app_inv.n, workspace->H_app_inv.n_max,
                     workspace->H_app_inv.m, workspace->H_app_inv.format,
-                    control->streams[4] );
+                    control->streams[5] );
         }
         else if ( workspace->d_workspace->H_app_inv.m < workspace->H_app_inv.m
                || workspace->d_workspace->H_app_inv.n_max < workspace->H_app_inv.n_max )
@@ -399,11 +399,11 @@ static void Compute_Preconditioner_QEq( reax_system const * const system,
             Cuda_Allocate_Matrix( &workspace->d_workspace->H_app_inv,
                     workspace->H_app_inv.n, workspace->H_app_inv.n_max,
                     workspace->H_app_inv.m, workspace->H_app_inv.format,
-                    control->streams[4] );
+                    control->streams[5] );
         }
 
         Cuda_Copy_Matrix_Host_to_Device( &workspace->H_app_inv,
-                &workspace->d_workspace->H_app_inv, control->streams[4] );
+                &workspace->d_workspace->H_app_inv, control->streams[5] );
 
         workspace->d_workspace->H_app_inv.n = workspace->H_app_inv.n;
 
@@ -472,15 +472,15 @@ static void Extrapolate_Charges_QEq_Part2( reax_system const * const system,
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
-    sCudaCheckMalloc( &workspace->scratch[4], &workspace->scratch_size[4],
+    sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
             sizeof(real) * system->n, __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch[4];
+    spad = (real *) workspace->scratch[5];
     sCudaMemsetAsync( spad, 0, sizeof(real) * system->n,
-            control->streams[4], __FILE__, __LINE__ );
+            control->streams[5], __FILE__, __LINE__ );
 #endif
 
     k_extrapolate_charges_qeq_part2 <<< blocks, DEF_BLOCK_SIZE, 0,
-                                    control->streams[4] >>>
+                                    control->streams[5] >>>
         ( system->d_my_atoms, *(workspace->d_workspace), u,
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
           spad,
@@ -492,9 +492,9 @@ static void Extrapolate_Charges_QEq_Part2( reax_system const * const system,
 
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
     sCudaMemcpyAsync( q, spad, sizeof(real) * system->n, 
-            cudaMemcpyDeviceToHost, control->streams[4], __FILE__, __LINE__ );
+            cudaMemcpyDeviceToHost, control->streams[5], __FILE__, __LINE__ );
 
-    cudaStreamSynchronize( control->streams[4] );
+    cudaStreamSynchronize( control->streams[5] );
 #endif
 }
 
@@ -528,18 +528,18 @@ static void Update_Ghost_Atom_Charges( reax_system const * const system,
         + (((system->N - system->n) % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
-    sCudaCheckMalloc( &workspace->scratch[4], &workspace->scratch_size[4],
+    sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
             sizeof(real) * (system->N - system->n), __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch[4];
+    spad = (real *) workspace->scratch[5];
 
     sCudaMemcpyAsync( spad, &q[system->n], sizeof(real) * (system->N - system->n),
-            cudaMemcpyHostToDevice, control->streams[4], __FILE__, __LINE__ );
+            cudaMemcpyHostToDevice, control->streams[5], __FILE__, __LINE__ );
 
-    cudaStreamSynchronize( control->streams[4] );
+    cudaStreamSynchronize( control->streams[5] );
 #endif
 
     k_update_ghost_atom_charges <<< blocks, DEF_BLOCK_SIZE, 0,
-                                control->streams[4] >>>
+                                control->streams[5] >>>
         ( system->d_my_atoms,
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
           spad,
@@ -576,23 +576,23 @@ static void Calculate_Charges_QEq( reax_system const * const system,
     s = sizeof(rvec2);
 #endif
 
-    sCudaCheckMalloc( &workspace->scratch[4], &workspace->scratch_size[4],
+    sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
             s, __FILE__, __LINE__ );
-    spad = (rvec2 *) workspace->scratch[4];
+    spad = (rvec2 *) workspace->scratch[5];
 
-    sCudaMemsetAsync( spad, 0, s, control->streams[4], __FILE__, __LINE__ );
+    sCudaMemsetAsync( spad, 0, s, control->streams[5], __FILE__, __LINE__ );
 
     /* compute local sums of pseudo-charges in s and t on device */
     k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE,
                       sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage),
-                      control->streams[4] >>>
+                      control->streams[5] >>>
         ( workspace->d_workspace->x, spad, system->n );
     cudaCheckError( );
 
 #if !defined(CUDA_ACCUM_ATOMIC)
     k_reduction_rvec2 <<< 1, ((blocks + 31) / 32) * 32,
                       sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage),
-                      control->streams[4] >>>
+                      control->streams[5] >>>
         ( spad, &spad[blocks], blocks );
     cudaCheckError( );
 #endif
@@ -604,23 +604,23 @@ static void Calculate_Charges_QEq( reax_system const * const system,
             spad,
 #endif
             sizeof(rvec2), cudaMemcpyDeviceToHost,
-            control->streams[4], __FILE__, __LINE__ );
+            control->streams[5], __FILE__, __LINE__ );
 #else
-    sCudaCheckMalloc( &workspace->scratch[4], &workspace->scratch_size[4],
+    sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
             sizeof(real) * 2, __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch[4];
+    spad = (real *) workspace->scratch[5];
 
     /* local reductions (sums) on device */
     Cuda_Reduction_Sum( workspace->d_workspace->s, &spad[0], system->n,
-            4, control->streams[4] );
+            5, control->streams[5] );
     Cuda_Reduction_Sum( workspace->d_workspace->t, &spad[1], system->n,
-            4, control->streams[4] );
+            5, control->streams[5] );
 
     sCudaMemcpyAsync( my_sum, spad, sizeof(real) * 2,
-            cudaMemcpyDeviceToHost, control->streams[4], __FILE__, __LINE__ );
+            cudaMemcpyDeviceToHost, control->streams[5], __FILE__, __LINE__ );
 #endif
 
-    cudaStreamSynchronize( control->streams[4] );
+    cudaStreamSynchronize( control->streams[5] );
 
     /* global reduction on pseudo-charges for s and t */
     ret = MPI_Allreduce( &my_sum, &all_sum, 2, MPI_DOUBLE,
@@ -635,9 +635,9 @@ static void Calculate_Charges_QEq( reax_system const * const system,
             __FILE__, __LINE__ );
     q = (real *) workspace->host_scratch;
 #else
-    sCudaCheckMalloc( &workspace->scratch[4], &workspace->scratch_size[4],
+    sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
             sizeof(real) * system->N, __FILE__, __LINE__ );
-    q = (real *) workspace->scratch[4];
+    q = (real *) workspace->scratch[5];
 #endif
 
     /* derive atomic charges from pseudo-charges
@@ -648,7 +648,7 @@ static void Calculate_Charges_QEq( reax_system const * const system,
     Dist_FS( system, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE );
 #else
     Cuda_Dist_FS( system, workspace, mpi_data, q,
-            REAL_PTR_TYPE, MPI_DOUBLE, control->streams[4] );
+            REAL_PTR_TYPE, MPI_DOUBLE, control->streams[5] );
 #endif
 
     /* copy atomic charges to ghost atoms in case of ownership transfer */

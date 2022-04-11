@@ -35,9 +35,9 @@ CUDA_DEVICE real Cuda_DistSqr_to_Special_Point( rvec cp, rvec x )
     int  i;  
     real d_sqr = 0.0;
 
-    for( i = 0; i < 3; ++i )
+    for ( i = 0; i < 3; ++i )
     {
-        if( cp[i] > NEG_INF )
+        if ( cp[i] > NEG_INF )
         {
             d_sqr += SQR( cp[i] - x[i] );
         }

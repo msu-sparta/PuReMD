@@ -74,6 +74,8 @@
 //#define USE_REF_FORTRAN_EREAXFF_CONSTANTS
 /* constants defined in LAMMPS ReaxFF code (useful for comparisons) */
 //#define USE_LAMMPS_REAXFF_CONSTANTS
+/* use fused van der Waals and Coulomb functions/kernels for computation */
+//#define USE_FUSED_VDW_COULOMB
 /* pack/unpack MPI buffers on device and use CUDA-aware MPI for messaging */
 //TODO: rewrite this to use configure option to include
 /* OpenMPI extensions for CUDA-aware support */
@@ -101,6 +103,7 @@
 #define LOG log
 #define LOG2 log2
 #define SQRT sqrt
+#define CBRT cbrt
 #define POW pow
 #define COS cos
 #define ACOS acos
@@ -361,7 +364,7 @@
 #endif
 
 /* max. num. of active CUDA streams */
-#define MAX_CUDA_STREAMS (5)
+#define MAX_CUDA_STREAMS (6)
 
 
 /* ensemble type */
@@ -618,9 +621,11 @@ enum cuda_timing_events
    TE_HBONDS_STOP = 21,
    TE_CM_START = 22,
    TE_CM_STOP = 23,
-   TE_VDW_COULOMB_START = 24,
-   TE_VDW_COULOMB_STOP = 25,
-   CUDA_TIMING_EVENT_N = 26,
+   TE_VDW_START = 24,
+   TE_VDW_STOP = 25,
+   TE_COULOMB_START = 26,
+   TE_COULOMB_STOP = 27,
+   CUDA_TIMING_EVENT_N = 28,
 };
 #endif
 #endif

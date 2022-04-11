@@ -25,7 +25,11 @@
 #include "../reax_types.h"
 
 
-void Cuda_Compute_NonBonded_Forces( reax_system const * const,
+void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const,
+        control_params const * const, simulation_data * const, storage * const,
+        reax_list **, output_controls const * const );
+
+void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const,
         control_params const * const, simulation_data * const, storage * const,
         reax_list **, output_controls const * const );
 

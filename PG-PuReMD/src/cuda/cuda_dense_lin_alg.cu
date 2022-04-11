@@ -564,14 +564,14 @@ real Dot( storage * const workspace,
     real temp;
 #endif
 
-    sCudaCheckMalloc( &workspace->scratch[4], &workspace->scratch_size[4],
+    sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
             sizeof(real) * (k + 1), __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch[4];
+    spad = (real *) workspace->scratch[5];
 
     Vector_Mult( spad, v1, v2, k, s );
 
     /* local reduction (sum) on device */
-    Cuda_Reduction_Sum( spad, &spad[k], k, 4, s );
+    Cuda_Reduction_Sum( spad, &spad[k], k, 5, s );
 
     /* global reduction (sum) of local device sums and store on host */
 #if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
@@ -607,14 +607,14 @@ real Dot_local( storage * const workspace,
 {
     real sum, *spad;
 
-    sCudaCheckMalloc( &workspace->scratch[4], &workspace->scratch_size[4],
+    sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
             sizeof(real) * (k + 1), __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch[4];
+    spad = (real *) workspace->scratch[5];
 
     Vector_Mult( spad, v1, v2, k, s );
 
     /* local reduction (sum) on device */
-    Cuda_Reduction_Sum( spad, &spad[k], k, 4, s );
+    Cuda_Reduction_Sum( spad, &spad[k], k, 5, s );
 
     //TODO: keep result of reduction on devie and pass directly to CUDA-aware MPI
     sCudaMemcpyAsync( &sum, &spad[k], sizeof(real),
@@ -652,14 +652,14 @@ void Dot_local_rvec2( storage * const workspace,
     sz = sizeof(rvec2) * (k + 1);
 #endif
 
-    sCudaCheckMalloc( &workspace->scratch[4], &workspace->scratch_size[4],
+    sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
             sz, __FILE__, __LINE__ );
-    spad = (rvec2 *) workspace->scratch[4];
+    spad = (rvec2 *) workspace->scratch[5];
 
     Vector_Mult_rvec2( spad, v1, v2, k, s );
 
     /* local reduction (sum) on device */
-//    Cuda_Reduction_Sum( spad, &spad[k], k, 4, s );
+//    Cuda_Reduction_Sum( spad, &spad[k], k, 5, s );
 
 #if defined(CUDA_ACCUM_ATOMIC)
     sCudaMemsetAsync( &spad[k], 0, sizeof(rvec2), s, __FILE__, __LINE__ );
