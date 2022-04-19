@@ -63,14 +63,15 @@ CUDA_GLOBAL void k_jacobi( reax_atom const * const my_atoms,
 
 
 static void jacobi( reax_system const * const system,
-        control_params const * const control, storage const * const workspace )
+        control_params const * const control, storage const * const workspace,
+        cudaStream_t s )
 {
     int blocks;
 
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_jacobi <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[5] >>>
+    k_jacobi <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
           *(workspace->d_workspace), system->n );
     cudaCheckError( );
@@ -83,7 +84,7 @@ static void jacobi( reax_system const * const system,
  * A: sparse matrix for which to sort nonzeros within a row, stored in CSR format
  */
 void Sort_Matrix_Rows( sparse_matrix * const A, reax_system const * const system,
-       control_params const * const control )
+       control_params const * const control, cudaStream_t s )
 {
     int i, num_entries, *start, *end, *d_j_temp;
     real *d_val_temp;
@@ -98,9 +99,9 @@ void Sort_Matrix_Rows( sparse_matrix * const A, reax_system const * const system
     start = (int *) smalloc( sizeof(int) * system->total_cap, __FILE__, __LINE__ );
     end = (int *) smalloc( sizeof(int) * system->total_cap, __FILE__, __LINE__ );
     sCudaMemcpyAsync( start, A->start, sizeof(int) * system->total_cap, 
-            cudaMemcpyDeviceToHost, control->streams[5], __FILE__, __LINE__ );
+            cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
     sCudaMemcpyAsync( end, A->end, sizeof(int) * system->total_cap, 
-            cudaMemcpyDeviceToHost, control->streams[5], __FILE__, __LINE__ );
+            cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
 
     /* make copies of column indices and non-zero values */
     sCudaMalloc( (void **) &d_j_temp, sizeof(int) * system->total_cm_entries,
@@ -108,11 +109,11 @@ void Sort_Matrix_Rows( sparse_matrix * const A, reax_system const * const system
     sCudaMalloc( (void **) &d_val_temp, sizeof(real) * system->total_cm_entries,
             __FILE__, __LINE__ );
     sCudaMemcpyAsync( d_j_temp, A->j, sizeof(int) * system->total_cm_entries,
-            cudaMemcpyDeviceToDevice, control->streams[5], __FILE__, __LINE__ );
+            cudaMemcpyDeviceToDevice, s, __FILE__, __LINE__ );
     sCudaMemcpyAsync( d_val_temp, A->val, sizeof(real) * system->total_cm_entries,
-            cudaMemcpyDeviceToDevice, control->streams[5], __FILE__, __LINE__ );
+            cudaMemcpyDeviceToDevice, s, __FILE__, __LINE__ );
 
-    cudaStreamSynchronize( control->streams[5] );
+    cudaStreamSynchronize( s );
 
     for ( i = 0; i < system->n; ++i )
     {
@@ -245,15 +246,14 @@ static void Spline_Extrapolate_Charges_QEq( reax_system const * const system,
         control_params const * const control,
         simulation_data const * const data,
         storage const * const workspace,
-        mpi_datatypes const * const mpi_data )
+        mpi_datatypes const * const mpi_data, cudaStream_t s )
 {
     int blocks;
 
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_spline_extrapolate_charges_qeq <<< blocks, DEF_BLOCK_SIZE, 0,
-                                     control->streams[5] >>>
+    k_spline_extrapolate_charges_qeq <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
           (control_params *)control->d_control_params,
           *(workspace->d_workspace), system->n );
@@ -265,7 +265,7 @@ static void Spline_Extrapolate_Charges_EE( reax_system const * const system,
         control_params const * const control,
         simulation_data const * const data,
         storage const * const workspace,
-        mpi_datatypes const * const mpi_data )
+        mpi_datatypes const * const mpi_data, cudaStream_t s )
 {
 }
 
@@ -273,7 +273,7 @@ static void Spline_Extrapolate_Charges_EE( reax_system const * const system,
 static void Setup_Preconditioner_QEq( reax_system const * const system,
         control_params const * const control,
         simulation_data * const data, storage * const workspace,
-        mpi_datatypes * const mpi_data )
+        mpi_datatypes * const mpi_data, cudaStream_t s )
 {
 //    int ret;
 #if defined(LOG_PERFORMANCE)
@@ -283,7 +283,7 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
 #endif
 
     /* sort H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
-//    Sort_Matrix_Rows( &workspace->d_workspace->H, system, control );
+//    Sort_Matrix_Rows( &workspace->d_workspace->H, system, control, s );
     
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_sort );
@@ -322,8 +322,8 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
                         workspace->d_workspace->H.m, workspace->d_workspace->H.format );
             }
 
-            Cuda_Copy_Matrix_Device_to_Host( &workspace->H, &workspace->d_workspace->H,
-                   control->streams[5] );
+            Cuda_Copy_Matrix_Device_to_Host( &workspace->H,
+                    &workspace->d_workspace->H, s );
 
             workspace->H.n = workspace->d_workspace->H.n;
 
@@ -348,7 +348,7 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
 static void Setup_Preconditioner_EE( reax_system const * const system,
         control_params const * const control,
         simulation_data * const data, storage * const workspace,
-        mpi_datatypes const * const mpi_data )
+        mpi_datatypes const * const mpi_data, cudaStream_t s )
 {
 }
 
@@ -356,7 +356,7 @@ static void Setup_Preconditioner_EE( reax_system const * const system,
 static void Setup_Preconditioner_ACKS2( reax_system const * const system,
         control_params const * const control,
         simulation_data * const data, storage * const workspace,
-        mpi_datatypes const * const mpi_data )
+        mpi_datatypes const * const mpi_data, cudaStream_t s )
 {
 }
 
@@ -364,7 +364,7 @@ static void Setup_Preconditioner_ACKS2( reax_system const * const system,
 static void Compute_Preconditioner_QEq( reax_system const * const system,
         control_params const * const control,
         simulation_data * const data, storage * const workspace,
-        mpi_datatypes * const mpi_data )
+        mpi_datatypes * const mpi_data, cudaStream_t s )
 {
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
     int ret;
@@ -373,7 +373,7 @@ static void Compute_Preconditioner_QEq( reax_system const * const system,
 
     if ( control->cm_solver_pre_comp_type == JACOBI_PC )
     {
-        jacobi( system, control, workspace );
+        jacobi( system, control, workspace, s );
     }
     else if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
@@ -389,8 +389,7 @@ static void Compute_Preconditioner_QEq( reax_system const * const system,
         {
             Cuda_Allocate_Matrix( &workspace->d_workspace->H_app_inv,
                     workspace->H_app_inv.n, workspace->H_app_inv.n_max,
-                    workspace->H_app_inv.m, workspace->H_app_inv.format,
-                    control->streams[5] );
+                    workspace->H_app_inv.m, workspace->H_app_inv.format, s );
         }
         else if ( workspace->d_workspace->H_app_inv.m < workspace->H_app_inv.m
                || workspace->d_workspace->H_app_inv.n_max < workspace->H_app_inv.n_max )
@@ -398,12 +397,11 @@ static void Compute_Preconditioner_QEq( reax_system const * const system,
             Cuda_Deallocate_Matrix( &workspace->d_workspace->H_app_inv );
             Cuda_Allocate_Matrix( &workspace->d_workspace->H_app_inv,
                     workspace->H_app_inv.n, workspace->H_app_inv.n_max,
-                    workspace->H_app_inv.m, workspace->H_app_inv.format,
-                    control->streams[5] );
+                    workspace->H_app_inv.m, workspace->H_app_inv.format, s );
         }
 
         Cuda_Copy_Matrix_Host_to_Device( &workspace->H_app_inv,
-                &workspace->d_workspace->H_app_inv, control->streams[5] );
+                &workspace->d_workspace->H_app_inv, s );
 
         workspace->d_workspace->H_app_inv.n = workspace->H_app_inv.n;
 
@@ -461,7 +459,7 @@ CUDA_GLOBAL void k_extrapolate_charges_qeq_part2( reax_atom *my_atoms,
 
 static void Extrapolate_Charges_QEq_Part2( reax_system const * const system,
         control_params const * const control, storage * const workspace,
-        real * const q, real u )
+        real * const q, real u, cudaStream_t s )
 {
     int blocks;
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
@@ -476,11 +474,10 @@ static void Extrapolate_Charges_QEq_Part2( reax_system const * const system,
             sizeof(real) * system->n, __FILE__, __LINE__ );
     spad = (real *) workspace->scratch[5];
     sCudaMemsetAsync( spad, 0, sizeof(real) * system->n,
-            control->streams[5], __FILE__, __LINE__ );
+            s, __FILE__, __LINE__ );
 #endif
 
-    k_extrapolate_charges_qeq_part2 <<< blocks, DEF_BLOCK_SIZE, 0,
-                                    control->streams[5] >>>
+    k_extrapolate_charges_qeq_part2 <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
         ( system->d_my_atoms, *(workspace->d_workspace), u,
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
           spad,
@@ -492,9 +489,9 @@ static void Extrapolate_Charges_QEq_Part2( reax_system const * const system,
 
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
     sCudaMemcpyAsync( q, spad, sizeof(real) * system->n, 
-            cudaMemcpyDeviceToHost, control->streams[5], __FILE__, __LINE__ );
+            cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
 
-    cudaStreamSynchronize( control->streams[5] );
+    cudaStreamSynchronize( s );
 #endif
 }
 
@@ -517,7 +514,7 @@ CUDA_GLOBAL void k_update_ghost_atom_charges( reax_atom *my_atoms, real *q,
 
 static void Update_Ghost_Atom_Charges( reax_system const * const system,
         control_params const * const control, storage * const workspace,
-        real * const q )
+        real * const q, cudaStream_t s )
 {
     int blocks;
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
@@ -533,13 +530,12 @@ static void Update_Ghost_Atom_Charges( reax_system const * const system,
     spad = (real *) workspace->scratch[5];
 
     sCudaMemcpyAsync( spad, &q[system->n], sizeof(real) * (system->N - system->n),
-            cudaMemcpyHostToDevice, control->streams[5], __FILE__, __LINE__ );
+            cudaMemcpyHostToDevice, s, __FILE__, __LINE__ );
 
-    cudaStreamSynchronize( control->streams[5] );
+    cudaStreamSynchronize( s );
 #endif
 
-    k_update_ghost_atom_charges <<< blocks, DEF_BLOCK_SIZE, 0,
-                                control->streams[5] >>>
+    k_update_ghost_atom_charges <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
         ( system->d_my_atoms,
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
           spad,
@@ -553,10 +549,10 @@ static void Update_Ghost_Atom_Charges( reax_system const * const system,
 
 static void Calculate_Charges_QEq( reax_system const * const system,
         control_params const * const control, storage * const workspace,
-        mpi_datatypes * const mpi_data )
+        mpi_datatypes * const mpi_data, cudaStream_t s )
 {
     int ret;
-    size_t s;
+    size_t sz;
     real u, *q;
     rvec2 my_sum, all_sum;
 #if defined(DUAL_SOLVER)
@@ -571,28 +567,26 @@ static void Calculate_Charges_QEq( reax_system const * const system,
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
 #if !defined(CUDA_ACCUM_ATOMIC)
-    s = sizeof(rvec2) * (blocks + 1);
+    sz = sizeof(rvec2) * (blocks + 1);
 #else
-    s = sizeof(rvec2);
+    sz = sizeof(rvec2);
 #endif
 
     sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
-            s, __FILE__, __LINE__ );
+            sz, __FILE__, __LINE__ );
     spad = (rvec2 *) workspace->scratch[5];
 
-    sCudaMemsetAsync( spad, 0, s, control->streams[5], __FILE__, __LINE__ );
+    sCudaMemsetAsync( spad, 0, sz, s, __FILE__, __LINE__ );
 
     /* compute local sums of pseudo-charges in s and t on device */
     k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE,
-                      sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage),
-                      control->streams[5] >>>
+                      sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage), s >>>
         ( workspace->d_workspace->x, spad, system->n );
     cudaCheckError( );
 
 #if !defined(CUDA_ACCUM_ATOMIC)
     k_reduction_rvec2 <<< 1, ((blocks + 31) / 32) * 32,
-                      sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage),
-                      control->streams[5] >>>
+                      sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage), s >>>
         ( spad, &spad[blocks], blocks );
     cudaCheckError( );
 #endif
@@ -603,24 +597,21 @@ static void Calculate_Charges_QEq( reax_system const * const system,
 #else
             spad,
 #endif
-            sizeof(rvec2), cudaMemcpyDeviceToHost,
-            control->streams[5], __FILE__, __LINE__ );
+            sizeof(rvec2), cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
 #else
     sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
             sizeof(real) * 2, __FILE__, __LINE__ );
     spad = (real *) workspace->scratch[5];
 
     /* local reductions (sums) on device */
-    Cuda_Reduction_Sum( workspace->d_workspace->s, &spad[0], system->n,
-            5, control->streams[5] );
-    Cuda_Reduction_Sum( workspace->d_workspace->t, &spad[1], system->n,
-            5, control->streams[5] );
+    Cuda_Reduction_Sum( workspace->d_workspace->s, &spad[0], system->n, 5, s );
+    Cuda_Reduction_Sum( workspace->d_workspace->t, &spad[1], system->n, 5, s );
 
     sCudaMemcpyAsync( my_sum, spad, sizeof(real) * 2,
-            cudaMemcpyDeviceToHost, control->streams[5], __FILE__, __LINE__ );
+            cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
 #endif
 
-    cudaStreamSynchronize( control->streams[5] );
+    cudaStreamSynchronize( s );
 
     /* global reduction on pseudo-charges for s and t */
     ret = MPI_Allreduce( &my_sum, &all_sum, 2, MPI_DOUBLE,
@@ -642,24 +633,23 @@ static void Calculate_Charges_QEq( reax_system const * const system,
 
     /* derive atomic charges from pseudo-charges
      * and set up extrapolation for next time step */
-    Extrapolate_Charges_QEq_Part2( system, control, workspace, q, u );
+    Extrapolate_Charges_QEq_Part2( system, control, workspace, q, u, s );
 
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
     Dist_FS( system, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE );
 #else
-    Cuda_Dist_FS( system, workspace, mpi_data, q,
-            REAL_PTR_TYPE, MPI_DOUBLE, control->streams[5] );
+    Cuda_Dist_FS( system, workspace, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE, s );
 #endif
 
     /* copy atomic charges to ghost atoms in case of ownership transfer */
-    Update_Ghost_Atom_Charges( system, control, workspace, q );
+    Update_Ghost_Atom_Charges( system, control, workspace, q, s );
 }
 
 
 static void Calculate_Charges_EE( reax_system const * const system,
         control_params const * const control,
         storage const * const workspace,
-        mpi_datatypes * const mpi_data )
+        mpi_datatypes * const mpi_data, cudaStream_t s )
 {
 }
 
@@ -667,7 +657,7 @@ static void Calculate_Charges_EE( reax_system const * const system,
 static void Calculate_Charges_ACKS2( reax_system const * const system,
         control_params const * const control,
         storage const * const workspace,
-        mpi_datatypes * const mpi_data )
+        mpi_datatypes * const mpi_data, cudaStream_t s )
 {
 }
 
@@ -682,7 +672,7 @@ static void Calculate_Charges_ACKS2( reax_system const * const system,
 void QEq( reax_system const * const system, control_params const * const control,
         simulation_data * const data, storage * const workspace,
         output_controls const * const out_control,
-        mpi_datatypes * const mpi_data )
+        mpi_datatypes * const mpi_data, cudaStream_t s )
 {
     int iters, refactor;
 
@@ -691,22 +681,22 @@ void QEq( reax_system const * const system, control_params const * const control
 
     if ( refactor == TRUE )
     {
-        Setup_Preconditioner_QEq( system, control, data, workspace, mpi_data );
+        Setup_Preconditioner_QEq( system, control, data, workspace, mpi_data, s );
 
-        Compute_Preconditioner_QEq( system, control, data, workspace, mpi_data );
+        Compute_Preconditioner_QEq( system, control, data, workspace, mpi_data, s );
     }
 
 //    switch ( control->cm_init_guess_type )
 //    {
 //    case SPLINE:
-        Spline_Extrapolate_Charges_QEq( system, control, data, workspace, mpi_data );
+        Spline_Extrapolate_Charges_QEq( system, control, data, workspace, mpi_data, s );
 //        break;
 //
 //    case TF_FROZEN_MODEL_LSTM:
 //#if defined(HAVE_TENSORFLOW)
 //        if ( data->step < control->cm_init_guess_win_size )
 //        {
-//            Spline_Extrapolate_Charges_QEq( system, control, data, workspace, mpi_data );
+//            Spline_Extrapolate_Charges_QEq( system, control, data, workspace, mpi_data, s );
 //        }
 //        else
 //        {
@@ -737,14 +727,15 @@ void QEq( reax_system const * const system, control_params const * const control
 #if defined(DUAL_SOLVER)
         iters = Cuda_dual_CG( system, control, data, workspace,
                 &workspace->d_workspace->H, workspace->d_workspace->b,
-                control->cm_solver_q_err, workspace->d_workspace->x, mpi_data, refactor );
+                control->cm_solver_q_err, workspace->d_workspace->x, mpi_data,
+                refactor, s );
 #else
         iters = Cuda_CG( system, control, data, workspace, &workspace->d_workspace->H,
                 workspace->d_workspace->b_s, control->cm_solver_q_err, workspace->d_workspace->s,
-                mpi_data, refactor );
+                mpi_data, refactor, s );
         iters += Cuda_CG( system, control, data, workspace, &workspace->d_workspace->H,
                 workspace->d_workspace->b_t, control->cm_solver_q_err, workspace->d_workspace->t,
-                mpi_data, FALSE );
+                mpi_data, FALSE, s );
 #endif
         break;
 
@@ -752,14 +743,15 @@ void QEq( reax_system const * const system, control_params const * const control
 #if defined(DUAL_SOLVER)
         iters = Cuda_dual_SDM( system, control, data, workspace,
                 &workspace->d_workspace->H, workspace->d_workspace->b,
-                control->cm_solver_q_err, workspace->d_workspace->x, mpi_data, refactor );
+                control->cm_solver_q_err, workspace->d_workspace->x, mpi_data,
+                refactor, s );
 #else
         iters = Cuda_SDM( system, control, data, workspace, &workspace->d_workspace->H,
                 workspace->d_workspace->b_s, control->cm_solver_q_err, workspace->d_workspace->s,
-                mpi_data, refactor );
+                mpi_data, refactor, s );
         iters += Cuda_SDM( system, control, data, workspace, &workspace->d_workspace->H,
                 workspace->d_workspace->b_t, control->cm_solver_q_err, workspace->d_workspace->t,
-                mpi_data, FALSE );
+                mpi_data, FALSE, s );
 #endif
         break;
 
@@ -767,14 +759,15 @@ void QEq( reax_system const * const system, control_params const * const control
 #if defined(DUAL_SOLVER)
         iters = Cuda_dual_BiCGStab( system, control, data, workspace,
                 &workspace->d_workspace->H, workspace->d_workspace->b,
-                control->cm_solver_q_err, workspace->d_workspace->x, mpi_data, refactor );
+                control->cm_solver_q_err, workspace->d_workspace->x, mpi_data,
+                refactor, s );
 #else
         iters = Cuda_BiCGStab( system, control, data, workspace, &workspace->d_workspace->H,
                 workspace->d_workspace->b_s, control->cm_solver_q_err, workspace->d_workspace->s,
-                mpi_data, refactor );
+                mpi_data, refactor, s );
         iters += Cuda_BiCGStab( system, control, data, workspace, &workspace->d_workspace->H,
                 workspace->d_workspace->b_t, control->cm_solver_q_err, workspace->d_workspace->t,
-                mpi_data, FALSE );
+                mpi_data, FALSE, s );
 #endif
         break;
 
@@ -782,14 +775,15 @@ void QEq( reax_system const * const system, control_params const * const control
 #if defined(DUAL_SOLVER)
         iters = Cuda_dual_PIPECG( system, control, data, workspace,
                 &workspace->d_workspace->H, workspace->d_workspace->b,
-                control->cm_solver_q_err, workspace->d_workspace->x, mpi_data, refactor );
+                control->cm_solver_q_err, workspace->d_workspace->x, mpi_data,
+                refactor, s );
 #else
         iters = Cuda_PIPECG( system, control, data, workspace, &workspace->d_workspace->H,
                 workspace->d_workspace->b_s, control->cm_solver_q_err, workspace->d_workspace->s,
-                mpi_data, refactor );
+                mpi_data, refactor, s );
         iters += Cuda_PIPECG( system, control, data, workspace, &workspace->d_workspace->H,
                 workspace->d_workspace->b_t, control->cm_solver_q_err, workspace->d_workspace->t,
-                mpi_data, FALSE );
+                mpi_data, FALSE, s );
 #endif
         break;
 
@@ -797,14 +791,15 @@ void QEq( reax_system const * const system, control_params const * const control
 #if defined(DUAL_SOLVER)
         iters = Cuda_dual_PIPECR( system, control, data, workspace,
                 &workspace->d_workspace->H, workspace->d_workspace->b,
-                control->cm_solver_q_err, workspace->d_workspace->x, mpi_data, refactor );
+                control->cm_solver_q_err, workspace->d_workspace->x, mpi_data,
+                refactor, s );
 #else
         iters = Cuda_PIPECR( system, control, data, workspace, &workspace->d_workspace->H,
                 workspace->d_workspace->b_s, control->cm_solver_q_err, workspace->d_workspace->s,
-                mpi_data, refactor );
+                mpi_data, refactor, s );
         iters += Cuda_PIPECR( system, control, data, workspace, &workspace->d_workspace->H,
                 workspace->d_workspace->b_t, control->cm_solver_q_err, workspace->d_workspace->t,
-                mpi_data, FALSE );
+                mpi_data, FALSE, s );
 #endif
         break;
 
@@ -814,7 +809,7 @@ void QEq( reax_system const * const system, control_params const * const control
         break;
     }
 
-    Calculate_Charges_QEq( system, control, workspace, mpi_data );
+    Calculate_Charges_QEq( system, control, workspace, mpi_data, s );
 
 #if defined(LOG_PERFORMANCE)
     data->timing.cm_solver_iters += iters;
@@ -825,7 +820,7 @@ void QEq( reax_system const * const system, control_params const * const control
 void EE( reax_system const * const system, control_params const * const control,
         simulation_data * const data, storage * const workspace,
         output_controls const * const out_control,
-        mpi_datatypes * const mpi_data )
+        mpi_datatypes * const mpi_data, cudaStream_t s )
 {
     fprintf( stderr, "[ERROR] Unsupported charge model (EE). Terminating...\n" );
     exit( INVALID_INPUT );
@@ -835,7 +830,7 @@ void EE( reax_system const * const system, control_params const * const control,
 void ACKS2( reax_system const * const system, control_params const * const control,
         simulation_data * const data, storage * const workspace,
         output_controls const * const out_control,
-        mpi_datatypes * const mpi_data )
+        mpi_datatypes * const mpi_data, cudaStream_t s )
 {
     fprintf( stderr, "[ERROR] Unsupported charge model (ACKS2). Terminating...\n" );
     exit( INVALID_INPUT );
@@ -847,20 +842,20 @@ void Cuda_Compute_Charges( reax_system const * const system,
         simulation_data * const data,
         storage * const workspace,
         output_controls const * const out_control,
-        mpi_datatypes * const mpi_data )
+        mpi_datatypes * const mpi_data, cudaStream_t s )
 {
     switch ( control->charge_method )
     {
     case QEQ_CM:
-        QEq( system, control, data, workspace, out_control, mpi_data );
+        QEq( system, control, data, workspace, out_control, mpi_data, s );
         break;
 
     case EE_CM:
-        EE( system, control, data, workspace, out_control, mpi_data );
+        EE( system, control, data, workspace, out_control, mpi_data, s );
         break;
 
     case ACKS2_CM:
-        ACKS2( system, control, data, workspace, out_control, mpi_data );
+        ACKS2( system, control, data, workspace, out_control, mpi_data, s );
         break;
 
     default:

@@ -22,6 +22,9 @@ extern "C" void Cuda_Setup_Environment( reax_system const * const system,
     int i, least_priority, greatest_priority, is_stream_priority_supported;
     int deviceCount;
     cudaError_t ret;
+#if defined(USE_CUBLAS)
+    cublasStatus_t ret_cublas;
+#endif
     
     ret = cudaGetDeviceCount( &deviceCount );
 
@@ -164,6 +167,24 @@ extern "C" void Cuda_Setup_Environment( reax_system const * const system,
     }
 #endif
 
+#if defined(USE_CUBLAS)
+    ret_cublas = cublasCreate( &control->cublas_handle );
+
+    if ( ret_cublas != CUBLAS_STATUS_SUCCESS )
+    {
+        fprintf( stderr, "[ERROR] cuBLAS initialization failure. Terminating...\n" );
+        exit( CANNOT_INITIALIZE );
+    }
+
+    ret_cublas = cublasSetStream( control->cublas_handle, control->streams[5] );
+
+    if ( ret_cublas != CUBLAS_STATUS_SUCCESS )
+    {
+        fprintf( stderr, "[ERROR] cublasSetStream failure. Terminating...\n" );
+        exit( CANNOT_INITIALIZE );
+    }
+#endif
+
     //TODO: revisit additional device configurations
 //    cudaDeviceSetLimit( cudaLimitStackSize, 8192 );
 //    cudaDeviceSetCacheConfig( cudaFuncCachePreferL1 );
@@ -185,6 +206,9 @@ extern "C" void Cuda_Cleanup_Environment( control_params const * const control )
 {
     int i;
     cudaError_t ret;
+#if defined(USE_CUBLAS)
+    cublasStatus_t ret_cublas;
+#endif
 
     for ( i = MAX_CUDA_STREAMS - 1; i >= 0; --i )
     {
@@ -223,6 +247,16 @@ extern "C" void Cuda_Cleanup_Environment( control_params const * const control )
             fprintf( stderr, "[ERROR] CUDA event destruction failure (%d). Terminating...\n", i );
             exit( RUNTIME_ERROR );
         }
+    }
+#endif
+
+#if defined(USE_CUBLAS)
+    ret_cublas = cublasDestroy( control->cublas_handle );
+
+    if ( ret_cublas != CUBLAS_STATUS_SUCCESS )
+    {
+        fprintf( stderr, "[ERROR] cuBLAS cleanup failure. Terminating...\n" );
+        exit( CANNOT_INITIALIZE );
     }
 #endif
 }

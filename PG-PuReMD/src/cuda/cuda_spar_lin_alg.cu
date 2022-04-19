@@ -39,6 +39,12 @@
 /* mask used to determine which threads within a warp participate in operations */
 #define FULL_MASK (0xFFFFFFFF)
 
+#if defined(USE_CUBLAS)
+  #define CUDA_ARG (control->cublas_handle)
+#else
+  #define CUDA_ARG (s)
+#endif
+
 
 enum preconditioner_type
 {
@@ -583,19 +589,19 @@ void jacobi_apply( real const * const Hdia_inv, real const * const y,
 /* Communications for sparse matrix-dense vector multiplication AX = B
  *
  * system:
- * control: 
  * mpi_data:
  * x: dense vector (device)
  * n: number of entries in x
  * buf_type: data structure type for x
  * mpi_type: MPI_Datatype struct for communications
+ * s: CUDA stream
  *
  * returns: communication time
  */
 static void Dual_Sparse_MatVec_Comm_Part1( const reax_system * const system,
-        const control_params * const control, storage * const workspace,
-        mpi_datatypes * const mpi_data, void const * const x, int n,
-        int buf_type, MPI_Datatype mpi_type )
+        storage * const workspace, mpi_datatypes * const mpi_data,
+        void const * const x, int n, int buf_type, MPI_Datatype mpi_type,
+        cudaStream_t s )
 {
 #if !defined(CUDA_DEVICE_PACK)
     rvec2 *spad;
@@ -605,18 +611,18 @@ static void Dual_Sparse_MatVec_Comm_Part1( const reax_system * const system,
     spad = (rvec2 *) workspace->host_scratch;
 
     sCudaMemcpyAsync( spad, (void *) x, sizeof(rvec2) * n,
-            cudaMemcpyDeviceToHost, control->streams[5], __FILE__, __LINE__ );
+            cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
 
-    cudaStreamSynchronize( control->streams[5] );
+    cudaStreamSynchronize( s );
 
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
     Dist( system, mpi_data, spad, buf_type, mpi_type );
 
     sCudaMemcpyAsync( (void *) x, spad, sizeof(rvec2) * n,
-            cudaMemcpyHostToDevice, control->streams[5], __FILE__, __LINE__ );
+            cudaMemcpyHostToDevice, s, __FILE__, __LINE__ );
 #else
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
-    Cuda_Dist( system, workspace, mpi_data, x, buf_type, mpi_type, control->streams[5] );
+    Cuda_Dist( system, workspace, mpi_data, x, buf_type, mpi_type, s );
 #endif
 }
 
@@ -628,6 +634,7 @@ static void Dual_Sparse_MatVec_Comm_Part1( const reax_system * const system,
  * x: dense vector
  * b (output): dense vector
  * n: number of entries in b
+ * s: CUDA stream
  */
 static void Dual_Sparse_MatVec_local( control_params const * const control,
         sparse_matrix const * const A, rvec2 const * const x,
@@ -676,7 +683,6 @@ static void Dual_Sparse_MatVec_local( control_params const * const control,
  * (and hence has the same number of entries as X).
  *
  * system:
- * control:
  * mpi_data:
  * mat_format: storage type of sparse matrix A
  * b: dense vector (device)
@@ -684,13 +690,14 @@ static void Dual_Sparse_MatVec_local( control_params const * const control,
  * n2: number of entries in b (at output)
  * buf_type: data structure type for b
  * mpi_type: MPI_Datatype struct for communications
+ * s: CUDA stream
  *
  * returns: communication time
  */
 static void Dual_Sparse_MatVec_Comm_Part2( const reax_system * const system,
-        const control_params * const control, storage * const workspace,
-        mpi_datatypes * const mpi_data, int mat_format,
-        void * const b, int n1, int n2, int buf_type, MPI_Datatype mpi_type )
+        storage * const workspace, mpi_datatypes * const mpi_data, int mat_format,
+        void * const b, int n1, int n2, int buf_type, MPI_Datatype mpi_type,
+        cudaStream_t s )
 {
 #if !defined(CUDA_DEVICE_PACK)
     rvec2 *spad;
@@ -705,16 +712,16 @@ static void Dual_Sparse_MatVec_Comm_Part2( const reax_system * const system,
         spad = (rvec2 *) workspace->host_scratch;
 
         sCudaMemcpyAsync( spad, b, sizeof(rvec2) * n1,
-                cudaMemcpyDeviceToHost, control->streams[5], __FILE__, __LINE__ );
+                cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
 
-        cudaStreamSynchronize( control->streams[5] );
+        cudaStreamSynchronize( s );
 
         Coll( system, mpi_data, spad, buf_type, mpi_type );
 
-        sCudaMemcpyAsync( b, spad, sizeof(rvec2) * n2,
-                cudaMemcpyHostToDevice, control->streams[5], __FILE__, __LINE__ );
+        sCudaMemcpyAsync( b, spad, sizeof(rvec2) * n2, cudaMemcpyHostToDevice,
+                s, __FILE__, __LINE__ );
 #else
-        Cuda_Coll( system, mpi_data, b, buf_type, mpi_type, control->streams[5] );
+        Cuda_Coll( system, mpi_data, b, buf_type, mpi_type, s );
 #endif
     }
 }
@@ -730,12 +737,14 @@ static void Dual_Sparse_MatVec_Comm_Part2( const reax_system * const system,
  *    stored in CSR format
  * X: dense vector, size equal to num. columns in A
  * n: number of rows in X
- * B (output): dense vector */
+ * B (output): dense vector
+ * s: CUDA stream
+ */
 static void Dual_Sparse_MatVec( const reax_system * const system,
         control_params const * const control, simulation_data * const data,
         storage * const workspace, mpi_datatypes * const mpi_data,
         sparse_matrix const * const A, rvec2 const * const x,
-        int n, rvec2 * const b )
+        int n, rvec2 * const b, cudaStream_t s )
 {
 #if defined(LOG_PERFORMANCE)
     real time;
@@ -743,21 +752,21 @@ static void Dual_Sparse_MatVec( const reax_system * const system,
     time = Get_Time( );
 #endif
 
-    Dual_Sparse_MatVec_Comm_Part1( system, control, workspace, mpi_data,
-            x, n, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+    Dual_Sparse_MatVec_Comm_Part1( system, workspace, mpi_data,
+            x, n, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2, s );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_comm );
 #endif
 
-    Dual_Sparse_MatVec_local( control, A, x, b, n, control->streams[5] );
+    Dual_Sparse_MatVec_local( control, A, x, b, n, s );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_spmv );
 #endif
 
-    Dual_Sparse_MatVec_Comm_Part2( system, control, workspace, mpi_data,
-            A->format, b, n, A->n, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2 );
+    Dual_Sparse_MatVec_Comm_Part2( system, workspace, mpi_data, A->format, b, n,
+            A->n, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2, s );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_comm );
@@ -768,17 +777,17 @@ static void Dual_Sparse_MatVec( const reax_system * const system,
 /* Communications for sparse matrix-dense vector multiplication Ax = b
  *
  * system:
- * control: 
  * mpi_data:
  * x: dense vector (device)
  * n: number of entries in x
  * buf_type: data structure type for x
  * mpi_type: MPI_Datatype struct for communications
+ * s: CUDA stream
  */
 static void Sparse_MatVec_Comm_Part1( const reax_system * const system,
-        const control_params * const control, storage * const workspace,
-        mpi_datatypes * const mpi_data, void const * const x, int n,
-        int buf_type, MPI_Datatype mpi_type )
+        storage * const workspace, mpi_datatypes * const mpi_data,
+        void const * const x, int n, int buf_type, MPI_Datatype mpi_type,
+        cudaStream_t s )
 {
 #if !defined(CUDA_DEVICE_PACK)
     real *spad;
@@ -788,18 +797,18 @@ static void Sparse_MatVec_Comm_Part1( const reax_system * const system,
     spad = (real *) workspace->host_scratch;
 
     sCudaMemcpyAsync( spad, (void *) x, sizeof(real) * n,
-            cudaMemcpyDeviceToHost, control->streams[5], __FILE__, __LINE__ );
+            cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
 
-    cudaStreamSynchronize( control->streams[5] );
+    cudaStreamSynchronize( s );
 
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
     Dist( system, mpi_data, spad, buf_type, mpi_type );
 
     sCudaMemcpyAsync( (void *) x, spad, sizeof(real) * n,
-            cudaMemcpyHostToDevice, control->streams[5], __FILE__, __LINE__ );
+            cudaMemcpyHostToDevice, s, __FILE__, __LINE__ );
 #else
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
-    Cuda_Dist( system, workspace, mpi_data, x, buf_type, mpi_type, control->streams[5] );
+    Cuda_Dist( system, workspace, mpi_data, x, buf_type, mpi_type, s );
 #endif
 }
 
@@ -811,6 +820,7 @@ static void Sparse_MatVec_Comm_Part1( const reax_system * const system,
  * x: dense vector
  * b (output): dense vector
  * n: number of entries in b
+ * s: CUDA stream
  */
 static void Sparse_MatVec_local( control_params const * const control,
         sparse_matrix const * const A, real const * const x,
@@ -859,7 +869,6 @@ static void Sparse_MatVec_local( control_params const * const control,
  * (and hence has the same number of entries as x).
  *
  * system:
- * control:
  * mpi_data:
  * mat_format: storage type of sparse matrix A
  * b: dense vector (device)
@@ -867,11 +876,12 @@ static void Sparse_MatVec_local( control_params const * const control,
  * n2: number of entries in b (at output)
  * buf_type: data structure type for b
  * mpi_type: MPI_Datatype struct for communications
+ * s: CUDA stream
  */
 static void Sparse_MatVec_Comm_Part2( const reax_system * const system,
-        const control_params * const control, storage * const workspace,
-        mpi_datatypes * const mpi_data, int mat_format,
-        void * const b, int n1, int n2, int buf_type, MPI_Datatype mpi_type )
+        storage * const workspace, mpi_datatypes * const mpi_data, int mat_format,
+        void * const b, int n1, int n2, int buf_type, MPI_Datatype mpi_type,
+        cudaStream_t s )
 {
 #if !defined(CUDA_DEVICE_PACK)
     real *spad;
@@ -886,16 +896,16 @@ static void Sparse_MatVec_Comm_Part2( const reax_system * const system,
         spad = (real *) workspace->host_scratch;
 
         sCudaMemcpyAsync( spad, b, sizeof(real) * n1,
-                cudaMemcpyDeviceToHost, control->streams[5], __FILE__, __LINE__ );
+                cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
 
-        cudaStreamSynchronize( control->streams[5] );
+        cudaStreamSynchronize( s );
 
         Coll( system, mpi_data, spad, buf_type, mpi_type );
 
         sCudaMemcpyAsync( b, spad, sizeof(real) * n2,
-                cudaMemcpyHostToDevice, control->streams[5], __FILE__, __LINE__ );
+                cudaMemcpyHostToDevice, s, __FILE__, __LINE__ );
 #else
-        Cuda_Coll( system, mpi_data, b, buf_type, mpi_type, control->streams[5] );
+        Cuda_Coll( system, mpi_data, b, buf_type, mpi_type, s );
 #endif
     }
 }
@@ -911,12 +921,14 @@ static void Sparse_MatVec_Comm_Part2( const reax_system * const system,
  *    stored in CSR format
  * x: dense vector
  * n: number of entries in x
- * b (output): dense vector */
+ * b (output): dense vector
+ * s: CUDA stream
+ */
 static void Sparse_MatVec( reax_system const * const system,
         control_params const * const control, simulation_data * const data,
         storage * const workspace, mpi_datatypes * const mpi_data,
         sparse_matrix const * const A, real const * const x,
-        int n, real * const b )
+        int n, real * const b, cudaStream_t s )
 {
 #if defined(LOG_PERFORMANCE)
     real time;
@@ -924,21 +936,21 @@ static void Sparse_MatVec( reax_system const * const system,
     time = Get_Time( );
 #endif
 
-    Sparse_MatVec_Comm_Part1( system, control, workspace, mpi_data,
-            x, n, REAL_PTR_TYPE, MPI_DOUBLE );
+    Sparse_MatVec_Comm_Part1( system, workspace, mpi_data, x, n,
+            REAL_PTR_TYPE, MPI_DOUBLE, s );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_comm );
 #endif
 
-    Sparse_MatVec_local( control, A, x, b, n, control->streams[5] );
+    Sparse_MatVec_local( control, A, x, b, n, s );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_spmv );
 #endif
 
-    Sparse_MatVec_Comm_Part2( system, control, workspace, mpi_data,
-            A->format, b, n, A->n, REAL_PTR_TYPE, MPI_DOUBLE );
+    Sparse_MatVec_Comm_Part2( system, workspace, mpi_data, A->format, b, n, A->n,
+            REAL_PTR_TYPE, MPI_DOUBLE, s );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_comm );
@@ -958,6 +970,7 @@ static void Sparse_MatVec( reax_system const * const system,
  * fresh_pre: parameter indicating if this is a newly computed (fresh) preconditioner
  * side: used in determining how to apply preconditioner if the preconditioner is
  *  factorized as M = M_{1}M_{2} (e.g., incomplete LU, A \approx LU)
+ * s: CUDA stream
  *
  * Assumptions:
  *   Matrices have non-zero diagonals
@@ -965,7 +978,8 @@ static void Sparse_MatVec( reax_system const * const system,
 static void dual_apply_preconditioner( reax_system const * const system,
         storage * const workspace, control_params const * const control,
         simulation_data * const data, mpi_datatypes * const  mpi_data,
-        rvec2 const * const y, rvec2 * const x, int fresh_pre, int side )
+        rvec2 const * const y, rvec2 * const x, int fresh_pre, int side,
+        cudaStream_t s )
 {
 //    int i, si;
 
@@ -974,7 +988,7 @@ static void dual_apply_preconditioner( reax_system const * const system,
     {
         if ( x != y )
         {
-            Vector_Copy_rvec2( x, y, system->n, control->streams[5] );
+            Vector_Copy_rvec2( x, y, system->n, CUDA_ARG );
         }
     }
     else
@@ -989,7 +1003,7 @@ static void dual_apply_preconditioner( reax_system const * const system,
                         {
                             case JACOBI_PC:
                                 dual_jacobi_apply( workspace->d_workspace->Hdia_inv,
-                                        y, x, system->n, control->streams[5] );
+                                        y, x, system->n, s );
                                 break;
 //                            case ICHOLT_PC:
 //                            case ILUT_PC:
@@ -1000,11 +1014,11 @@ static void dual_apply_preconditioner( reax_system const * const system,
 #if defined(NEUTRAL_TERRITORY)
                                 Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
                                         &workspace->d_workspace->H_app_inv,
-                                        y, H->NT, x );
+                                        y, H->NT, x, s );
 #else
                                 Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
                                         &workspace->d_workspace->H_app_inv,
-                                        y, system->n, x );
+                                        y, system->n, x, s );
 #endif
                                 break;
                             default:
@@ -1018,7 +1032,7 @@ static void dual_apply_preconditioner( reax_system const * const system,
                         {
                             case JACOBI_PC:
                                 dual_jacobi_apply( workspace->d_workspace->Hdia_inv,
-                                        y, x, system->n, control->streams[5] );
+                                        y, x, system->n, s );
                                 break;
 //                            case ICHOLT_PC:
 //                            case ILUT_PC:
@@ -1030,11 +1044,11 @@ static void dual_apply_preconditioner( reax_system const * const system,
 #if defined(NEUTRAL_TERRITORY)
                                 Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
                                         &workspace->d_workspace->H_app_inv,
-                                        y, H->NT, x );
+                                        y, H->NT, x, s );
 #else
                                 Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
                                         &workspace->d_workspace->H_app_inv,
-                                        y, system->n, x );
+                                        y, system->n, x, s );
 #endif
                                 break;
                             default:
@@ -1117,7 +1131,7 @@ static void dual_apply_preconditioner( reax_system const * const system,
                             case SAI_PC:
                                 if ( x != y )
                                 {
-                                    Vector_Copy_rvec2( x, y, system->n, control->streams[5] );
+                                    Vector_Copy_rvec2( x, y, system->n, CUDA_ARG );
                                 }
                                 break;
 //                            case ICHOLT_PC:
@@ -1138,7 +1152,7 @@ static void dual_apply_preconditioner( reax_system const * const system,
                             case SAI_PC:
                                 if ( x != y )
                                 {
-                                    Vector_Copy_rvec2( x, y, system->n, control->streams[5] );
+                                    Vector_Copy_rvec2( x, y, system->n, CUDA_ARG );
                                 }
                                 break;
 //                            case ICHOLT_PC:
@@ -1227,6 +1241,7 @@ static void dual_apply_preconditioner( reax_system const * const system,
  * fresh_pre: parameter indicating if this is a newly computed (fresh) preconditioner
  * side: used in determining how to apply preconditioner if the preconditioner is
  *  factorized as M = M_{1}M_{2} (e.g., incomplete LU, A \approx LU)
+ * s: CUDA stream
  *
  * Assumptions:
  *   Matrices have non-zero diagonals
@@ -1234,7 +1249,8 @@ static void dual_apply_preconditioner( reax_system const * const system,
 static void apply_preconditioner( reax_system const * const system,
         storage * const workspace, control_params const * const control,
         simulation_data * const data, mpi_datatypes * const  mpi_data,
-        real const * const y, real * const x, int fresh_pre, int side )
+        real const * const y, real * const x, int fresh_pre, int side,
+        cudaStream_t s )
 {
 //    int i, si;
 
@@ -1243,7 +1259,7 @@ static void apply_preconditioner( reax_system const * const system,
     {
         if ( x != y )
         {
-            Vector_Copy( x, y, system->n, control->streams[5] );
+            Vector_Copy( x, y, system->n, CUDA_ARG );
         }
     }
     else
@@ -1258,7 +1274,7 @@ static void apply_preconditioner( reax_system const * const system,
                         {
                             case JACOBI_PC:
                                 jacobi_apply( workspace->d_workspace->Hdia_inv,
-                                        y, x, system->n, control->streams[5] );
+                                        y, x, system->n, s );
                                 break;
 //                            case ICHOLT_PC:
 //                            case ILUT_PC:
@@ -1269,11 +1285,11 @@ static void apply_preconditioner( reax_system const * const system,
 #if defined(NEUTRAL_TERRITORY)
                                 Sparse_MatVec( system, control, data, workspace, mpi_data,
                                         &workspace->d_workspace->H_app_inv,
-                                        y, H->NT, x );
+                                        y, H->NT, x, s );
 #else
                                 Sparse_MatVec( system, control, data, workspace, mpi_data,
                                         &workspace->d_workspace->H_app_inv,
-                                        y, system->n, x );
+                                        y, system->n, x, s );
 #endif
                                 break;
                             default:
@@ -1287,7 +1303,7 @@ static void apply_preconditioner( reax_system const * const system,
                         {
                             case JACOBI_PC:
                                 jacobi_apply( workspace->d_workspace->Hdia_inv,
-                                        y, x, system->n, control->streams[5] );
+                                        y, x, system->n, s );
                                 break;
 //                            case ICHOLT_PC:
 //                            case ILUT_PC:
@@ -1299,11 +1315,11 @@ static void apply_preconditioner( reax_system const * const system,
 #if defined(NEUTRAL_TERRITORY)
                                 Sparse_MatVec( system, control, data, workspace, mpi_data,
                                         &workspace->d_workspace->H_app_inv,
-                                        y, H->NT, x );
+                                        y, H->NT, x, s );
 #else
                                 Sparse_MatVec( system, control, data, workspace, mpi_data,
                                         &workspace->d_workspace->H_app_inv,
-                                        y, system->n, x );
+                                        y, system->n, x, s );
 #endif
                                 break;
                             default:
@@ -1386,7 +1402,7 @@ static void apply_preconditioner( reax_system const * const system,
                             case SAI_PC:
                                 if ( x != y )
                                 {
-                                    Vector_Copy( x, y, system->n, control->streams[5] );
+                                    Vector_Copy( x, y, system->n, CUDA_ARG );
                                 }
                                 break;
 //                            case ICHOLT_PC:
@@ -1407,7 +1423,7 @@ static void apply_preconditioner( reax_system const * const system,
                             case SAI_PC:
                                 if ( x != y )
                                 {
-                                    Vector_Copy( x, y, system->n, control->streams[5] );
+                                    Vector_Copy( x, y, system->n, CUDA_ARG );
                                 }
                                 break;
 //                            case ICHOLT_PC:
@@ -1488,7 +1504,8 @@ int Cuda_dual_SDM( reax_system const * const system,
         control_params const * const control,
         simulation_data * const data, storage * const workspace,
         sparse_matrix const * const H, rvec2 const * const b, real tol,
-        rvec2 * const x, mpi_datatypes * const mpi_data, int fresh_pre )
+        rvec2 * const x, mpi_datatypes * const mpi_data, int fresh_pre,
+        cudaStream_t s )
 {
     unsigned int i, matvecs;
     int ret;
@@ -1499,32 +1516,31 @@ int Cuda_dual_SDM( reax_system const * const system,
 #endif
 
     Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
-            H, x, system->N, workspace->d_workspace->q2 );
+            H, x, system->N, workspace->d_workspace->q2, s );
 
 #if defined(LOG_PERFORMANCE)
     time = Get_Time( );
 #endif
 
     Vector_Sum_rvec2( workspace->d_workspace->r2, 1.0, 1.0, b,
-            -1.0, -1.0, workspace->d_workspace->q2, system->n,
-	   control->streams[5] );
+            -1.0, -1.0, workspace->d_workspace->q2, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
     dual_apply_preconditioner( system, workspace, control, data, mpi_data,
-            workspace->d_workspace->r2, workspace->d_workspace->q2, fresh_pre, LEFT );
+            workspace->d_workspace->r2, workspace->d_workspace->q2, fresh_pre, LEFT, s );
     dual_apply_preconditioner( system, workspace, control, data, mpi_data,
-            workspace->d_workspace->q2, workspace->d_workspace->d2, fresh_pre, RIGHT );
+            workspace->d_workspace->q2, workspace->d_workspace->d2, fresh_pre, RIGHT, s );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
-    Dot_local_rvec2( workspace, b, b, system->n, &redux[0], &redux[1], control->streams[5] );
+    Dot_local_rvec2( workspace, b, b, system->n, &redux[0], &redux[1], CUDA_ARG );
     Dot_local_rvec2( workspace, workspace->d_workspace->r2,
-            workspace->d_workspace->d2, system->n, &redux[2], &redux[3], control->streams[5] );
+            workspace->d_workspace->d2, system->n, &redux[2], &redux[3], CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1550,16 +1566,16 @@ int Cuda_dual_SDM( reax_system const * const system,
         }
 
         Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
-                H, workspace->d_workspace->d2, system->N, workspace->d_workspace->q2 );
+                H, workspace->d_workspace->d2, system->N, workspace->d_workspace->q2, s );
 
 #if defined(LOG_PERFORMANCE)
         time = Get_Time( );
 #endif
 
         Dot_local_rvec2( workspace, workspace->d_workspace->r2,
-                workspace->d_workspace->d2, system->n, &redux[0], &redux[1], control->streams[5] );
+                workspace->d_workspace->d2, system->n, &redux[0], &redux[1], CUDA_ARG );
         Dot_local_rvec2( workspace, workspace->d_workspace->d2,
-                workspace->d_workspace->q2, system->n, &redux[2], &redux[3], control->streams[5] );
+                workspace->d_workspace->q2, system->n, &redux[2], &redux[3], CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
@@ -1579,18 +1595,19 @@ int Cuda_dual_SDM( reax_system const * const system,
         tmp[1] = redux[3];
         alpha[0] = sig[0] / tmp[0];
         alpha[1] = sig[1] / tmp[1];
-        Vector_Add_rvec2( x, alpha[0], alpha[1], workspace->d_workspace->d2, system->n, control->streams[5] );
+        Vector_Add_rvec2( x, alpha[0], alpha[1], workspace->d_workspace->d2, system->n,
+                CUDA_ARG );
         Vector_Add_rvec2( workspace->d_workspace->r2, -1.0 * alpha[0], -1.0 * alpha[1],
-                workspace->d_workspace->q2, system->n, control->streams[5] );
+                workspace->d_workspace->q2, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
         dual_apply_preconditioner( system, workspace, control, data, mpi_data,
-                workspace->d_workspace->r2, workspace->d_workspace->q2, FALSE, LEFT );
+                workspace->d_workspace->r2, workspace->d_workspace->q2, FALSE, LEFT, s );
         dual_apply_preconditioner( system, workspace, control, data, mpi_data,
-                workspace->d_workspace->q2, workspace->d_workspace->d2, FALSE, RIGHT );
+                workspace->d_workspace->q2, workspace->d_workspace->d2, FALSE, RIGHT, s );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -1601,27 +1618,27 @@ int Cuda_dual_SDM( reax_system const * const system,
             && SQRT(sig[1]) / b_norm[1] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->t,
-                workspace->d_workspace->x, 1, system->n, control->streams[5] );
+                workspace->d_workspace->x, 1, system->n, CUDA_ARG );
 
         matvecs = Cuda_SDM( system, control, data, workspace, H,
                 workspace->d_workspace->b_t, tol,
-                workspace->d_workspace->t, mpi_data, FALSE );
+                workspace->d_workspace->t, mpi_data, FALSE, s );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->t, 1, system->n, control->streams[5] );
+                workspace->d_workspace->t, 1, system->n, CUDA_ARG );
     }
     else if ( SQRT(sig[1]) / b_norm[1] <= tol
             && SQRT(sig[0]) / b_norm[0] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->s,
-                workspace->d_workspace->x, 0, system->n, control->streams[5] );
+                workspace->d_workspace->x, 0, system->n, CUDA_ARG );
 
         matvecs = Cuda_SDM( system, control, data, workspace, H,
                 workspace->d_workspace->b_s, tol,
-                workspace->d_workspace->s, mpi_data, FALSE );
+                workspace->d_workspace->s, mpi_data, FALSE, s );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->s, 0, system->n, control->streams[5] );
+                workspace->d_workspace->s, 0, system->n, CUDA_ARG );
     }
     else
     {
@@ -1643,8 +1660,8 @@ int Cuda_dual_SDM( reax_system const * const system,
 /* Steepest Descent */
 int Cuda_SDM( reax_system const * const system, control_params const * const control,
         simulation_data * const data, storage * const workspace,
-        sparse_matrix const * const H, real const * const b, real tol,
-        real * const x, mpi_datatypes * const mpi_data, int fresh_pre )
+        sparse_matrix const * const H, real const * const b, real tol, real * const x,
+        mpi_datatypes * const mpi_data, int fresh_pre, cudaStream_t s )
 {
     unsigned int i;
     int ret;
@@ -1655,31 +1672,31 @@ int Cuda_SDM( reax_system const * const system, control_params const * const con
 #endif
 
     Sparse_MatVec( system, control, data, workspace, mpi_data,
-            H, x, system->N, workspace->d_workspace->q );
+            H, x, system->N, workspace->d_workspace->q, s );
 
 #if defined(LOG_PERFORMANCE)
     time = Get_Time( );
 #endif
 
     Vector_Sum( workspace->d_workspace->r, 1.0, b,
-            -1.0, workspace->d_workspace->q, system->n, control->streams[5] );
+            -1.0, workspace->d_workspace->q, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
     apply_preconditioner( system, workspace, control, data, mpi_data,
-            workspace->d_workspace->r, workspace->d_workspace->q, fresh_pre, LEFT );
+            workspace->d_workspace->r, workspace->d_workspace->q, fresh_pre, LEFT, s );
     apply_preconditioner( system, workspace, control, data, mpi_data,
-            workspace->d_workspace->q, workspace->d_workspace->d, fresh_pre, RIGHT );
+            workspace->d_workspace->q, workspace->d_workspace->d, fresh_pre, RIGHT, s );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
-    redux[0] = Dot_local( workspace, b, b, system->n, control->streams[5] );
+    redux[0] = Dot_local( workspace, b, b, system->n, CUDA_ARG );
     redux[1] = Dot_local( workspace, workspace->d_workspace->r,
-            workspace->d_workspace->d, system->n, control->streams[5] );
+            workspace->d_workspace->d, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1698,16 +1715,16 @@ int Cuda_SDM( reax_system const * const system, control_params const * const con
     for ( i = 0; i < control->cm_solver_max_iters && SQRT(sig) / b_norm > tol; ++i )
     {
         Sparse_MatVec( system, control, data, workspace, mpi_data,
-                H, workspace->d_workspace->d, system->N, workspace->d_workspace->q );
+                H, workspace->d_workspace->d, system->N, workspace->d_workspace->q, s );
 
 #if defined(LOG_PERFORMANCE)
         time = Get_Time( );
 #endif
 
         redux[0] = Dot_local( workspace, workspace->d_workspace->r,
-                workspace->d_workspace->d, system->n, control->streams[5] );
+                workspace->d_workspace->d, system->n, CUDA_ARG );
         redux[1] = Dot_local( workspace, workspace->d_workspace->d,
-                workspace->d_workspace->q, system->n, control->streams[5] );
+                workspace->d_workspace->q, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
@@ -1724,18 +1741,18 @@ int Cuda_SDM( reax_system const * const system, control_params const * const con
         sig = redux[0];
         tmp = redux[1];
         alpha = sig / tmp;
-        Vector_Add( x, alpha, workspace->d_workspace->d, system->n, control->streams[5] );
+        Vector_Add( x, alpha, workspace->d_workspace->d, system->n, CUDA_ARG );
         Vector_Add( workspace->d_workspace->r, -1.0 * alpha,
-                workspace->d_workspace->q, system->n, control->streams[5] );
+                workspace->d_workspace->q, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
         apply_preconditioner( system, workspace, control, data, mpi_data,
-                workspace->d_workspace->r, workspace->d_workspace->q, FALSE, LEFT );
+                workspace->d_workspace->r, workspace->d_workspace->q, FALSE, LEFT, s );
         apply_preconditioner( system, workspace, control, data, mpi_data,
-                workspace->d_workspace->q, workspace->d_workspace->d, FALSE, RIGHT );
+                workspace->d_workspace->q, workspace->d_workspace->d, FALSE, RIGHT, s );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
@@ -1759,7 +1776,8 @@ int Cuda_dual_CG( reax_system const * const system,
         control_params const * const control,
         simulation_data * const data, storage * const workspace,
         sparse_matrix const * const H, rvec2 const * const b, real tol,
-        rvec2 * const x, mpi_datatypes * const mpi_data, int fresh_pre )
+        rvec2 * const x, mpi_datatypes * const mpi_data, int fresh_pre,
+        cudaStream_t s )
 {
     unsigned int i, matvecs;
     int ret;
@@ -1770,33 +1788,33 @@ int Cuda_dual_CG( reax_system const * const system,
 #endif
 
     Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
-            H, x, system->N, workspace->d_workspace->q2 );
+            H, x, system->N, workspace->d_workspace->q2, s );
 
 #if defined(LOG_PERFORMANCE)
     time = Get_Time( );
 #endif
 
     Vector_Sum_rvec2( workspace->d_workspace->r2, 1.0, 1.0, b,
-            -1.0, -1.0, workspace->d_workspace->q2, system->n, control->streams[5] );
+            -1.0, -1.0, workspace->d_workspace->q2, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
     dual_apply_preconditioner( system, workspace, control, data, mpi_data,
-            workspace->d_workspace->r2, workspace->d_workspace->q2, fresh_pre, LEFT );
+            workspace->d_workspace->r2, workspace->d_workspace->q2, fresh_pre, LEFT, s );
     dual_apply_preconditioner( system, workspace, control, data, mpi_data,
-            workspace->d_workspace->q2, workspace->d_workspace->d2, fresh_pre, RIGHT );
+            workspace->d_workspace->q2, workspace->d_workspace->d2, fresh_pre, RIGHT, s );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
     Dot_local_rvec2( workspace, workspace->d_workspace->r2,
-            workspace->d_workspace->d2, system->n, &redux[0], &redux[1], control->streams[5] );
+            workspace->d_workspace->d2, system->n, &redux[0], &redux[1], CUDA_ARG );
     Dot_local_rvec2( workspace, workspace->d_workspace->d2,
-            workspace->d_workspace->d2, system->n, &redux[2], &redux[3], control->streams[5] );
-    Dot_local_rvec2( workspace, b, b, system->n, &redux[4], &redux[5], control->streams[5] );
+            workspace->d_workspace->d2, system->n, &redux[2], &redux[3], CUDA_ARG );
+    Dot_local_rvec2( workspace, b, b, system->n, &redux[4], &redux[5], CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1823,14 +1841,14 @@ int Cuda_dual_CG( reax_system const * const system,
         }
 
         Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
-                H, workspace->d_workspace->d2, system->N, workspace->d_workspace->q2 );
+                H, workspace->d_workspace->d2, system->N, workspace->d_workspace->q2, s );
 
 #if defined(LOG_PERFORMANCE)
         time = Get_Time( );
 #endif
 
         Dot_local_rvec2( workspace, workspace->d_workspace->d2,
-                workspace->d_workspace->q2, system->n, &redux[0], &redux[1], control->streams[5] );
+                workspace->d_workspace->q2, system->n, &redux[0], &redux[1], CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1848,27 +1866,27 @@ int Cuda_dual_CG( reax_system const * const system,
         alpha[0] = sig_new[0] / tmp[0];
         alpha[1] = sig_new[1] / tmp[1];
         Vector_Add_rvec2( x, alpha[0], alpha[1],
-                workspace->d_workspace->d2, system->n, control->streams[5] );
+                workspace->d_workspace->d2, system->n, CUDA_ARG );
         Vector_Add_rvec2( workspace->d_workspace->r2, -1.0 * alpha[0], -1.0 * alpha[1],
-                workspace->d_workspace->q2, system->n, control->streams[5] );
+                workspace->d_workspace->q2, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
         dual_apply_preconditioner( system, workspace, control, data, mpi_data,
-                workspace->d_workspace->r2, workspace->d_workspace->q2, FALSE, LEFT );
+                workspace->d_workspace->r2, workspace->d_workspace->q2, FALSE, LEFT, s );
         dual_apply_preconditioner( system, workspace, control, data, mpi_data,
-                workspace->d_workspace->q2, workspace->d_workspace->p2, FALSE, RIGHT );
+                workspace->d_workspace->q2, workspace->d_workspace->p2, FALSE, RIGHT, s );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
         Dot_local_rvec2( workspace, workspace->d_workspace->r2,
-                workspace->d_workspace->p2, system->n, &redux[0], &redux[1], control->streams[5] );
+                workspace->d_workspace->p2, system->n, &redux[0], &redux[1], CUDA_ARG );
         Dot_local_rvec2( workspace, workspace->d_workspace->p2,
-                workspace->d_workspace->p2, system->n, &redux[2], &redux[3], control->streams[5] );
+                workspace->d_workspace->p2, system->n, &redux[2], &redux[3], CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1892,7 +1910,7 @@ int Cuda_dual_CG( reax_system const * const system,
         /* d = p + beta * d */
         Vector_Sum_rvec2( workspace->d_workspace->d2,
                 1.0, 1.0, workspace->d_workspace->p2,
-                beta[0], beta[1], workspace->d_workspace->d2, system->n, control->streams[5] );
+                beta[0], beta[1], workspace->d_workspace->d2, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1903,27 +1921,27 @@ int Cuda_dual_CG( reax_system const * const system,
             && r_norm[1] / b_norm[1] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->t,
-                workspace->d_workspace->x, 1, system->n, control->streams[5] );
+                workspace->d_workspace->x, 1, system->n, CUDA_ARG );
 
         matvecs = Cuda_CG( system, control, data, workspace, H,
                 workspace->d_workspace->b_t, tol,
-                workspace->d_workspace->t, mpi_data, FALSE );
+                workspace->d_workspace->t, mpi_data, FALSE, s );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->t, 1, system->n, control->streams[5] );
+                workspace->d_workspace->t, 1, system->n, CUDA_ARG );
     }
     else if ( r_norm[1] / b_norm[1] <= tol
             && r_norm[0] / b_norm[0] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->s,
-                workspace->d_workspace->x, 0, system->n, control->streams[5] );
+                workspace->d_workspace->x, 0, system->n, CUDA_ARG );
 
         matvecs = Cuda_CG( system, control, data, workspace, H,
                 workspace->d_workspace->b_s, tol,
-                workspace->d_workspace->s, mpi_data, FALSE );
+                workspace->d_workspace->s, mpi_data, FALSE, s );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->s, 0, system->n, control->streams[5] );
+                workspace->d_workspace->s, 0, system->n, CUDA_ARG );
     }
     else
     {
@@ -1946,7 +1964,8 @@ int Cuda_dual_CG( reax_system const * const system,
 int Cuda_CG( reax_system const * const system, control_params const * const control,
         simulation_data * const data, storage * const workspace,
         sparse_matrix const * const H, real const * const b, real tol,
-        real * const x, mpi_datatypes * const mpi_data, int fresh_pre )
+        real * const x, mpi_datatypes * const mpi_data, int fresh_pre,
+        cudaStream_t s )
 {
     unsigned int i;
     int ret;
@@ -1958,33 +1977,33 @@ int Cuda_CG( reax_system const * const system, control_params const * const cont
 #endif
 
     Sparse_MatVec( system, control, data, workspace, mpi_data,
-            H, x, system->N, workspace->d_workspace->q );
+            H, x, system->N, workspace->d_workspace->q, s );
 
 #if defined(LOG_PERFORMANCE)
     time = Get_Time( );
 #endif
 
     Vector_Sum( workspace->d_workspace->r, 1.0, b,
-            -1.0, workspace->d_workspace->q, system->n, control->streams[5] );
+            -1.0, workspace->d_workspace->q, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
     apply_preconditioner( system, workspace, control, data, mpi_data,
-            workspace->d_workspace->r, workspace->d_workspace->q, fresh_pre, LEFT );
+            workspace->d_workspace->r, workspace->d_workspace->q, fresh_pre, LEFT, s );
     apply_preconditioner( system, workspace, control, data, mpi_data,
-            workspace->d_workspace->q, workspace->d_workspace->d, fresh_pre, RIGHT );
+            workspace->d_workspace->q, workspace->d_workspace->d, fresh_pre, RIGHT, s );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
     redux[0] = Dot_local( workspace, workspace->d_workspace->r,
-            workspace->d_workspace->d, system->n, control->streams[5] );
+            workspace->d_workspace->d, system->n, CUDA_ARG );
     redux[1] = Dot_local( workspace, workspace->d_workspace->d,
-            workspace->d_workspace->d, system->n, control->streams[5] );
-    redux[2] = Dot_local( workspace, b, b, system->n, control->streams[5] );
+            workspace->d_workspace->d, system->n, CUDA_ARG );
+    redux[2] = Dot_local( workspace, b, b, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2004,41 +2023,41 @@ int Cuda_CG( reax_system const * const system, control_params const * const cont
     for ( i = 0; i < control->cm_solver_max_iters && r_norm / b_norm > tol; ++i )
     {
         Sparse_MatVec( system, control, data, workspace, mpi_data,
-                H, workspace->d_workspace->d, system->N, workspace->d_workspace->q );
+                H, workspace->d_workspace->d, system->N, workspace->d_workspace->q, s );
 
 #if defined(LOG_PERFORMANCE)
         time = Get_Time( );
 #endif
 
         tmp = Dot( workspace, workspace->d_workspace->d, workspace->d_workspace->q,
-                system->n, MPI_COMM_WORLD, control->streams[5] );
+                system->n, MPI_COMM_WORLD, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
 #endif
 
         alpha = sig_new / tmp;
-        Vector_Add( x, alpha, workspace->d_workspace->d, system->n, control->streams[5] );
+        Vector_Add( x, alpha, workspace->d_workspace->d, system->n, CUDA_ARG );
         Vector_Add( workspace->d_workspace->r, -1.0 * alpha,
-                workspace->d_workspace->q, system->n, control->streams[5] );
+                workspace->d_workspace->q, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
         apply_preconditioner( system, workspace, control, data, mpi_data,
-                workspace->d_workspace->r, workspace->d_workspace->q, FALSE, LEFT );
+                workspace->d_workspace->r, workspace->d_workspace->q, FALSE, LEFT, s );
         apply_preconditioner( system, workspace, control, data, mpi_data,
-                workspace->d_workspace->q, workspace->d_workspace->p, FALSE, RIGHT );
+                workspace->d_workspace->q, workspace->d_workspace->p, FALSE, RIGHT, s );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
         redux[0] = Dot_local( workspace, workspace->d_workspace->r,
-                workspace->d_workspace->p, system->n, control->streams[5] );
+                workspace->d_workspace->p, system->n, CUDA_ARG );
         redux[1] = Dot_local( workspace, workspace->d_workspace->p,
-                workspace->d_workspace->p, system->n, control->streams[5] );
+                workspace->d_workspace->p, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2057,7 +2076,7 @@ int Cuda_CG( reax_system const * const system, control_params const * const cont
         r_norm = SQRT( redux[1] );
         beta = sig_new / sig_old;
         Vector_Sum( workspace->d_workspace->d, 1.0, workspace->d_workspace->p,
-                beta, workspace->d_workspace->d, system->n, control->streams[5] );
+                beta, workspace->d_workspace->d, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2095,7 +2114,8 @@ int Cuda_CG( reax_system const * const system, control_params const * const cont
 int Cuda_dual_BiCGStab( reax_system const * const system, control_params const * const control,
         simulation_data * const data, storage * const workspace,
         sparse_matrix const * const H, rvec2 const * const b, real tol,
-        rvec2 * const x, mpi_datatypes * const mpi_data, int fresh_pre )
+        rvec2 * const x, mpi_datatypes * const mpi_data, int fresh_pre,
+        cudaStream_t s )
 {
     unsigned int i, matvecs;
     int ret;
@@ -2106,18 +2126,18 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
 #endif
 
     Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
-            H, x, system->N, workspace->d_workspace->d2 );
+            H, x, system->N, workspace->d_workspace->d2, s );
 
 #if defined(LOG_PERFORMANCE)
     time = Get_Time( );
 #endif
 
     Vector_Sum_rvec2( workspace->d_workspace->r2, 1.0, 1.0, b,
-            -1.0, -1.0, workspace->d_workspace->d2, system->n, control->streams[5] );
+            -1.0, -1.0, workspace->d_workspace->d2, system->n, CUDA_ARG );
     Dot_local_rvec2( workspace, b,
-            b, system->n, &redux[0], &redux[1], control->streams[5] );
+            b, system->n, &redux[0], &redux[1], CUDA_ARG );
     Dot_local_rvec2( workspace, workspace->d_workspace->r2,
-            workspace->d_workspace->r2, system->n, &redux[2], &redux[3], control->streams[5] );
+            workspace->d_workspace->r2, system->n, &redux[2], &redux[3], CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2144,7 +2164,7 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
         b_norm[1] = 1.0;
     }
     Vector_Copy_rvec2( workspace->d_workspace->r_hat2,
-            workspace->d_workspace->r2, system->n, control->streams[5] );
+            workspace->d_workspace->r2, system->n, CUDA_ARG );
     omega[0] = 1.0;
     omega[1] = 1.0;
     rho[0] = 1.0;
@@ -2162,7 +2182,7 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
         }
 
         Dot_local_rvec2( workspace, workspace->d_workspace->r_hat2,
-                workspace->d_workspace->r2, system->n, &redux[0], &redux[1], control->streams[5] );
+                workspace->d_workspace->r2, system->n, &redux[0], &redux[1], CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2188,15 +2208,15 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
             beta[1] = (rho[1] / rho_old[1]) * (alpha[1] / omega[1]);
             Vector_Sum_rvec2( workspace->d_workspace->q2,
                     1.0, 1.0, workspace->d_workspace->p2,
-                    -1.0 * omega[0], -1.0 * omega[1], workspace->d_workspace->z2, system->n, control->streams[5] );
+                    -1.0 * omega[0], -1.0 * omega[1], workspace->d_workspace->z2, system->n, CUDA_ARG );
             Vector_Sum_rvec2( workspace->d_workspace->p2,
                     1.0, 1.0, workspace->d_workspace->r2,
-                    beta[0], beta[1], workspace->d_workspace->q2, system->n, control->streams[5] );
+                    beta[0], beta[1], workspace->d_workspace->q2, system->n, CUDA_ARG );
         }
         else
         {
             Vector_Copy_rvec2( workspace->d_workspace->p2,
-                    workspace->d_workspace->r2, system->n, control->streams[5] );
+                    workspace->d_workspace->r2, system->n, CUDA_ARG );
         }
 
 #if defined(LOG_PERFORMANCE)
@@ -2205,24 +2225,24 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
 
         dual_apply_preconditioner( system, workspace, control, data, mpi_data,
                 workspace->d_workspace->p2, workspace->d_workspace->y2,
-                i == 0 ? fresh_pre : FALSE, LEFT );
+                i == 0 ? fresh_pre : FALSE, LEFT, s );
         dual_apply_preconditioner( system, workspace, control, data, mpi_data,
                 workspace->d_workspace->y2, workspace->d_workspace->d2,
-                i == 0 ? fresh_pre : FALSE, RIGHT );
+                i == 0 ? fresh_pre : FALSE, RIGHT, s );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
         Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
-                H, workspace->d_workspace->d2, system->N, workspace->d_workspace->z2 );
+                H, workspace->d_workspace->d2, system->N, workspace->d_workspace->z2, s );
 
 #if defined(LOG_PERFORMANCE)
         time = Get_Time( );
 #endif
 
         Dot_local_rvec2( workspace, workspace->d_workspace->r_hat2,
-                workspace->d_workspace->z2, system->n, &redux[0], &redux[1], control->streams[5] );
+                workspace->d_workspace->z2, system->n, &redux[0], &redux[1], CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2242,9 +2262,9 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
         alpha[1] = rho[1] / tmp[1];
         Vector_Sum_rvec2( workspace->d_workspace->q2,
                 1.0, 1.0, workspace->d_workspace->r2,
-                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->z2, system->n, control->streams[5] );
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->z2, system->n, CUDA_ARG );
         Dot_local_rvec2( workspace, workspace->d_workspace->q2,
-                workspace->d_workspace->q2, system->n, &redux[0], &redux[1], control->streams[5] );
+                workspace->d_workspace->q2, system->n, &redux[0], &redux[1], CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2263,7 +2283,8 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
         /* early convergence check */
         if ( tmp[0] < tol || tmp[1] < tol )
         {
-            Vector_Add_rvec2( x, alpha[0], alpha[1], workspace->d_workspace->d2, system->n, control->streams[5] );
+            Vector_Add_rvec2( x, alpha[0], alpha[1], workspace->d_workspace->d2,
+                    system->n, CUDA_ARG );
             break;
         }
 
@@ -2272,25 +2293,25 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
 #endif
 
         dual_apply_preconditioner( system, workspace, control, data, mpi_data,
-                workspace->d_workspace->q2, workspace->d_workspace->y2, fresh_pre, LEFT );
+                workspace->d_workspace->q2, workspace->d_workspace->y2, fresh_pre, LEFT, s );
         dual_apply_preconditioner( system, workspace, control, data, mpi_data,
-                workspace->d_workspace->y2, workspace->d_workspace->q_hat2, fresh_pre, RIGHT );
+                workspace->d_workspace->y2, workspace->d_workspace->q_hat2, fresh_pre, RIGHT, s );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
         Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
-                H, workspace->d_workspace->q_hat2, system->N, workspace->d_workspace->y2 );
+                H, workspace->d_workspace->q_hat2, system->N, workspace->d_workspace->y2, s );
 
 #if defined(LOG_PERFORMANCE)
         time = Get_Time( );
 #endif
 
         Dot_local_rvec2( workspace, workspace->d_workspace->y2,
-                workspace->d_workspace->q2, system->n, &redux[0], &redux[1], control->streams[5] );
+                workspace->d_workspace->q2, system->n, &redux[0], &redux[1], CUDA_ARG );
         Dot_local_rvec2( workspace, workspace->d_workspace->y2,
-                workspace->d_workspace->y2, system->n, &redux[2], &redux[3], control->streams[5] );
+                workspace->d_workspace->y2, system->n, &redux[2], &redux[3], CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2312,13 +2333,13 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
         omega[1] = sigma[1] / tmp[1];
         Vector_Sum_rvec2( workspace->d_workspace->g2,
                 alpha[0], alpha[1], workspace->d_workspace->d2,
-                omega[0], omega[1], workspace->d_workspace->q_hat2, system->n, control->streams[5] );
-        Vector_Add_rvec2( x, 1.0, 1.0, workspace->d_workspace->g2, system->n, control->streams[5] );
+                omega[0], omega[1], workspace->d_workspace->q_hat2, system->n, CUDA_ARG );
+        Vector_Add_rvec2( x, 1.0, 1.0, workspace->d_workspace->g2, system->n, CUDA_ARG );
         Vector_Sum_rvec2( workspace->d_workspace->r2,
                 1.0, 1.0, workspace->d_workspace->q2,
-                -1.0 * omega[0], -1.0 * omega[1], workspace->d_workspace->y2, system->n, control->streams[5] );
+                -1.0 * omega[0], -1.0 * omega[1], workspace->d_workspace->y2, system->n, CUDA_ARG );
         Dot_local_rvec2( workspace, workspace->d_workspace->r2,
-                workspace->d_workspace->r2, system->n, &redux[0], &redux[1], control->streams[5] );
+                workspace->d_workspace->r2, system->n, &redux[0], &redux[1], CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2350,27 +2371,27 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
             && r_norm[1] / b_norm[1] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->t,
-                workspace->d_workspace->x, 1, system->n, control->streams[5] );
+                workspace->d_workspace->x, 1, system->n, CUDA_ARG );
 
         matvecs = Cuda_BiCGStab( system, control, data, workspace, H,
                 workspace->d_workspace->b_t, tol,
-                workspace->d_workspace->t, mpi_data, FALSE );
+                workspace->d_workspace->t, mpi_data, FALSE, s );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->t, 1, system->n, control->streams[5] );
+                workspace->d_workspace->t, 1, system->n, CUDA_ARG );
     }
     else if ( r_norm[1] / b_norm[1] <= tol
             && r_norm[0] / b_norm[0] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->s,
-                workspace->d_workspace->x, 0, system->n, control->streams[5] );
+                workspace->d_workspace->x, 0, system->n, CUDA_ARG );
 
         matvecs = Cuda_BiCGStab( system, control, data, workspace, H,
                 workspace->d_workspace->b_s, tol,
-                workspace->d_workspace->s, mpi_data, FALSE );
+                workspace->d_workspace->s, mpi_data, FALSE, s );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->s, 0, system->n, control->streams[5] );
+                workspace->d_workspace->s, 0, system->n, CUDA_ARG );
     }
     else
     {
@@ -2408,7 +2429,8 @@ int Cuda_dual_BiCGStab( reax_system const * const system, control_params const *
 int Cuda_BiCGStab( reax_system const * const system, control_params const * const control,
         simulation_data * const data, storage * const workspace,
         sparse_matrix const * const H, real const * const b, real tol,
-        real * const x, mpi_datatypes * const mpi_data, int fresh_pre )
+        real * const x, mpi_datatypes * const mpi_data, int fresh_pre,
+        cudaStream_t s )
 {
     unsigned int i;
     int ret;
@@ -2419,17 +2441,17 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
 #endif
 
     Sparse_MatVec( system, control, data, workspace, mpi_data,
-            H, x, system->N, workspace->d_workspace->d );
+            H, x, system->N, workspace->d_workspace->d, s );
 
 #if defined(LOG_PERFORMANCE)
     time = Get_Time( );
 #endif
 
     Vector_Sum( workspace->d_workspace->r, 1.0, b,
-            -1.0, workspace->d_workspace->d, system->n, control->streams[5] );
-    redux[0] = Dot_local( workspace, b, b, system->n, control->streams[5] );
+            -1.0, workspace->d_workspace->d, system->n, CUDA_ARG );
+    redux[0] = Dot_local( workspace, b, b, system->n, CUDA_ARG );
     redux[1] = Dot_local( workspace, workspace->d_workspace->r,
-            workspace->d_workspace->r, system->n, control->streams[5] );
+            workspace->d_workspace->r, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2450,7 +2472,7 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
         b_norm = 1.0;
     }
     Vector_Copy( workspace->d_workspace->r_hat,
-            workspace->d_workspace->r, system->n, control->streams[5] );
+            workspace->d_workspace->r, system->n, CUDA_ARG );
     omega = 1.0;
     rho = 1.0;
 
@@ -2461,7 +2483,7 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
     for ( i = 0; i < control->cm_solver_max_iters && r_norm / b_norm > tol; ++i )
     {
         redux[0] = Dot_local( workspace, workspace->d_workspace->r_hat,
-                workspace->d_workspace->r, system->n, control->streams[5] );
+                workspace->d_workspace->r, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2485,15 +2507,15 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
             beta = (rho / rho_old) * (alpha / omega);
             Vector_Sum( workspace->d_workspace->q,
                     1.0, workspace->d_workspace->p,
-                    -1.0 * omega, workspace->d_workspace->z, system->n, control->streams[5] );
+                    -1.0 * omega, workspace->d_workspace->z, system->n, CUDA_ARG );
             Vector_Sum( workspace->d_workspace->p,
                     1.0, workspace->d_workspace->r,
-                    beta, workspace->d_workspace->q, system->n, control->streams[5] );
+                    beta, workspace->d_workspace->q, system->n, CUDA_ARG );
         }
         else
         {
             Vector_Copy( workspace->d_workspace->p,
-                    workspace->d_workspace->r, system->n, control->streams[5] );
+                    workspace->d_workspace->r, system->n, CUDA_ARG );
         }
 
 #if defined(LOG_PERFORMANCE)
@@ -2502,24 +2524,24 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
 
         apply_preconditioner( system, workspace, control, data, mpi_data,
                 workspace->d_workspace->p, workspace->d_workspace->y,
-                i == 0 ? fresh_pre : FALSE, LEFT );
+                i == 0 ? fresh_pre : FALSE, LEFT, s );
         apply_preconditioner( system, workspace, control, data, mpi_data,
                 workspace->d_workspace->y, workspace->d_workspace->d,
-                i == 0 ? fresh_pre : FALSE, RIGHT );
+                i == 0 ? fresh_pre : FALSE, RIGHT, s );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
         Sparse_MatVec( system, control, data, workspace, mpi_data,
-                H, workspace->d_workspace->d, system->N, workspace->d_workspace->z );
+                H, workspace->d_workspace->d, system->N, workspace->d_workspace->z, s );
 
 #if defined(LOG_PERFORMANCE)
         time = Get_Time( );
 #endif
 
         redux[0] = Dot_local( workspace, workspace->d_workspace->r_hat,
-                workspace->d_workspace->z, system->n, control->streams[5] );
+                workspace->d_workspace->z, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2537,9 +2559,9 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
         alpha = rho / tmp;
         Vector_Sum( workspace->d_workspace->q,
                 1.0, workspace->d_workspace->r,
-                -1.0 * alpha, workspace->d_workspace->z, system->n, control->streams[5] );
+                -1.0 * alpha, workspace->d_workspace->z, system->n, CUDA_ARG );
         redux[0] = Dot_local( workspace, workspace->d_workspace->q,
-                workspace->d_workspace->q, system->n, control->streams[5] );
+                workspace->d_workspace->q, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2557,7 +2579,7 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
         /* early convergence check */
         if ( tmp < tol )
         {
-            Vector_Add( x, alpha, workspace->d_workspace->d, system->n, control->streams[5] );
+            Vector_Add( x, alpha, workspace->d_workspace->d, system->n, CUDA_ARG );
             break;
         }
 
@@ -2566,25 +2588,25 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
 #endif
 
         apply_preconditioner( system, workspace, control, data, mpi_data,
-                workspace->d_workspace->q, workspace->d_workspace->y, fresh_pre, LEFT );
+                workspace->d_workspace->q, workspace->d_workspace->y, fresh_pre, LEFT, s );
         apply_preconditioner( system, workspace, control, data, mpi_data,
-                workspace->d_workspace->y, workspace->d_workspace->q_hat, fresh_pre, RIGHT );
+                workspace->d_workspace->y, workspace->d_workspace->q_hat, fresh_pre, RIGHT, s );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
         Sparse_MatVec( system, control, data, workspace, mpi_data,
-                H, workspace->d_workspace->q_hat, system->N, workspace->d_workspace->y );
+                H, workspace->d_workspace->q_hat, system->N, workspace->d_workspace->y, s );
 
 #if defined(LOG_PERFORMANCE)
         time = Get_Time( );
 #endif
 
         redux[0] = Dot_local( workspace, workspace->d_workspace->y,
-                workspace->d_workspace->q, system->n, control->streams[5] );
+                workspace->d_workspace->q, system->n, CUDA_ARG );
         redux[1] = Dot_local( workspace, workspace->d_workspace->y,
-                workspace->d_workspace->y, system->n, control->streams[5] );
+                workspace->d_workspace->y, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2603,13 +2625,13 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
         omega = sigma / tmp;
         Vector_Sum( workspace->d_workspace->g,
                 alpha, workspace->d_workspace->d,
-                omega, workspace->d_workspace->q_hat, system->n, control->streams[5] );
-        Vector_Add( x, 1.0, workspace->d_workspace->g, system->n, control->streams[5] );
+                omega, workspace->d_workspace->q_hat, system->n, CUDA_ARG );
+        Vector_Add( x, 1.0, workspace->d_workspace->g, system->n, CUDA_ARG );
         Vector_Sum( workspace->d_workspace->r,
                 1.0, workspace->d_workspace->q,
-                -1.0 * omega, workspace->d_workspace->y, system->n, control->streams[5] );
+                -1.0 * omega, workspace->d_workspace->y, system->n, CUDA_ARG );
         redux[0] = Dot_local( workspace, workspace->d_workspace->r,
-                workspace->d_workspace->r, system->n, control->streams[5] );
+                workspace->d_workspace->r, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2659,7 +2681,8 @@ int Cuda_BiCGStab( reax_system const * const system, control_params const * cons
 int Cuda_dual_PIPECG( reax_system const * const system, control_params const * const control,
         simulation_data * const data, storage * const workspace,
         sparse_matrix const * const H, rvec2 const * const b, real tol,
-        rvec2 * const x, mpi_datatypes * const mpi_data, int fresh_pre )
+        rvec2 * const x, mpi_datatypes * const mpi_data, int fresh_pre,
+        cudaStream_t s )
 {
     unsigned int i, matvecs;
     int ret;
@@ -2671,42 +2694,42 @@ int Cuda_dual_PIPECG( reax_system const * const system, control_params const * c
 #endif
 
     Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
-            H, x, system->N, workspace->d_workspace->u2 );
+            H, x, system->N, workspace->d_workspace->u2, s );
 
 #if defined(LOG_PERFORMANCE)
     time = Get_Time( );
 #endif
 
     Vector_Sum_rvec2( workspace->d_workspace->r2, 1.0, 1.0, b,
-            -1.0, -1.0, workspace->d_workspace->u2, system->n, control->streams[5] );
+            -1.0, -1.0, workspace->d_workspace->u2, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
     dual_apply_preconditioner( system, workspace, control, data, mpi_data,
-            workspace->d_workspace->r2, workspace->d_workspace->m2, fresh_pre, LEFT );
+            workspace->d_workspace->r2, workspace->d_workspace->m2, fresh_pre, LEFT, s );
     dual_apply_preconditioner( system, workspace, control, data, mpi_data,
-            workspace->d_workspace->m2, workspace->d_workspace->u2, fresh_pre, RIGHT );
+            workspace->d_workspace->m2, workspace->d_workspace->u2, fresh_pre, RIGHT, s );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
     Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
-            H, workspace->d_workspace->u2, system->N, workspace->d_workspace->w2 );
+            H, workspace->d_workspace->u2, system->N, workspace->d_workspace->w2, s );
 
 #if defined(LOG_PERFORMANCE)
     time = Get_Time( );
 #endif
 
     Dot_local_rvec2( workspace, workspace->d_workspace->w2,
-            workspace->d_workspace->u2, system->n, &redux[0], &redux[1], control->streams[5] );
+            workspace->d_workspace->u2, system->n, &redux[0], &redux[1], CUDA_ARG );
     Dot_local_rvec2( workspace, workspace->d_workspace->r2,
-            workspace->d_workspace->u2, system->n, &redux[2], &redux[3], control->streams[5] );
+            workspace->d_workspace->u2, system->n, &redux[2], &redux[3], CUDA_ARG );
     Dot_local_rvec2( workspace, workspace->d_workspace->u2,
-            workspace->d_workspace->u2, system->n, &redux[4], &redux[5], control->streams[5] );
-    Dot_local_rvec2( workspace, b, b, system->n, &redux[6], &redux[7], control->streams[5] );
+            workspace->d_workspace->u2, system->n, &redux[4], &redux[5], CUDA_ARG );
+    Dot_local_rvec2( workspace, b, b, system->n, &redux[6], &redux[7], CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2717,16 +2740,16 @@ int Cuda_dual_PIPECG( reax_system const * const system, control_params const * c
     Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     dual_apply_preconditioner( system, workspace, control, data, mpi_data,
-            workspace->d_workspace->w2, workspace->d_workspace->n2, FALSE, LEFT );
+            workspace->d_workspace->w2, workspace->d_workspace->n2, FALSE, LEFT, s );
     dual_apply_preconditioner( system, workspace, control, data, mpi_data,
-            workspace->d_workspace->n2, workspace->d_workspace->m2, FALSE, RIGHT );
+            workspace->d_workspace->n2, workspace->d_workspace->m2, FALSE, RIGHT, s );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
     Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
-            H, workspace->d_workspace->m2, system->N, workspace->d_workspace->n2 );
+            H, workspace->d_workspace->m2, system->N, workspace->d_workspace->n2, s );
 
 #if defined(LOG_PERFORMANCE)
     time = Get_Time( );
@@ -2770,27 +2793,27 @@ int Cuda_dual_PIPECG( reax_system const * const system, control_params const * c
         }
 
         Vector_Sum_rvec2( workspace->d_workspace->z2, 1.0, 1.0, workspace->d_workspace->n2,
-                beta[0], beta[1], workspace->d_workspace->z2, system->n, control->streams[5] );
+                beta[0], beta[1], workspace->d_workspace->z2, system->n, CUDA_ARG );
         Vector_Sum_rvec2( workspace->d_workspace->q2, 1.0, 1.0, workspace->d_workspace->m2,
-                beta[0], beta[1], workspace->d_workspace->q2, system->n, control->streams[5] );
+                beta[0], beta[1], workspace->d_workspace->q2, system->n, CUDA_ARG );
         Vector_Sum_rvec2( workspace->d_workspace->p2, 1.0, 1.0, workspace->d_workspace->u2,
-                beta[0], beta[1], workspace->d_workspace->p2, system->n, control->streams[5] );
+                beta[0], beta[1], workspace->d_workspace->p2, system->n, CUDA_ARG );
         Vector_Sum_rvec2( workspace->d_workspace->d2, 1.0, 1.0, workspace->d_workspace->w2,
-                beta[0], beta[1], workspace->d_workspace->d2, system->n, control->streams[5] );
+                beta[0], beta[1], workspace->d_workspace->d2, system->n, CUDA_ARG );
         Vector_Sum_rvec2( x, 1.0, 1.0, x,
-                alpha[0], alpha[1], workspace->d_workspace->p2, system->n, control->streams[5] );
+                alpha[0], alpha[1], workspace->d_workspace->p2, system->n, CUDA_ARG );
         Vector_Sum_rvec2( workspace->d_workspace->u2, 1.0, 1.0, workspace->d_workspace->u2,
-                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->q2, system->n, control->streams[5] );
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->q2, system->n, CUDA_ARG );
         Vector_Sum_rvec2( workspace->d_workspace->w2, 1.0, 1.0, workspace->d_workspace->w2,
-                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->z2, system->n, control->streams[5] );
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->z2, system->n, CUDA_ARG );
         Vector_Sum_rvec2( workspace->d_workspace->r2, 1.0, 1.0, workspace->d_workspace->r2,
-                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->d2, system->n, control->streams[5] );
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->d2, system->n, CUDA_ARG );
         Dot_local_rvec2( workspace, workspace->d_workspace->w2,
-                workspace->d_workspace->u2, system->n, &redux[0], &redux[1], control->streams[5] );
+                workspace->d_workspace->u2, system->n, &redux[0], &redux[1], CUDA_ARG );
         Dot_local_rvec2( workspace, workspace->d_workspace->r2,
-                workspace->d_workspace->u2, system->n, &redux[2], &redux[3], control->streams[5] );
+                workspace->d_workspace->u2, system->n, &redux[2], &redux[3], CUDA_ARG );
         Dot_local_rvec2( workspace, workspace->d_workspace->u2,
-                workspace->d_workspace->u2, system->n, &redux[4], &redux[5], control->streams[5] );
+                workspace->d_workspace->u2, system->n, &redux[4], &redux[5], CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2801,16 +2824,16 @@ int Cuda_dual_PIPECG( reax_system const * const system, control_params const * c
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         dual_apply_preconditioner( system, workspace, control, data, mpi_data,
-                workspace->d_workspace->w2, workspace->d_workspace->n2, FALSE, LEFT );
+                workspace->d_workspace->w2, workspace->d_workspace->n2, FALSE, LEFT, s );
         dual_apply_preconditioner( system, workspace, control, data, mpi_data,
-                workspace->d_workspace->n2, workspace->d_workspace->m2, FALSE, RIGHT );
+                workspace->d_workspace->n2, workspace->d_workspace->m2, FALSE, RIGHT, s );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
         Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
-                H, workspace->d_workspace->m2, system->N, workspace->d_workspace->n2 );
+                H, workspace->d_workspace->m2, system->N, workspace->d_workspace->n2, s );
 
 #if defined(LOG_PERFORMANCE)
         time = Get_Time( );
@@ -2837,27 +2860,27 @@ int Cuda_dual_PIPECG( reax_system const * const system, control_params const * c
             && r_norm[1] / b_norm[1] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->t,
-                workspace->d_workspace->x, 1, system->n, control->streams[5] );
+                workspace->d_workspace->x, 1, system->n, CUDA_ARG );
 
         matvecs = Cuda_PIPECG( system, control, data, workspace, H,
                 workspace->d_workspace->b_t, tol,
-                workspace->d_workspace->t, mpi_data, FALSE );
+                workspace->d_workspace->t, mpi_data, FALSE, s );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->t, 1, system->n, control->streams[5] );
+                workspace->d_workspace->t, 1, system->n, CUDA_ARG );
     }
     else if ( r_norm[1] / b_norm[1] <= tol
             && r_norm[0] / b_norm[0] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->s,
-                workspace->d_workspace->x, 0, system->n, control->streams[5] );
+                workspace->d_workspace->x, 0, system->n, CUDA_ARG );
 
         matvecs = Cuda_PIPECG( system, control, data, workspace, H,
                 workspace->d_workspace->b_s, tol,
-                workspace->d_workspace->s, mpi_data, FALSE );
+                workspace->d_workspace->s, mpi_data, FALSE, s );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->s, 0, system->n, control->streams[5] );
+                workspace->d_workspace->s, 0, system->n, CUDA_ARG );
     }
     else
     {
@@ -2888,7 +2911,8 @@ int Cuda_dual_PIPECG( reax_system const * const system, control_params const * c
 int Cuda_PIPECG( reax_system const * const system, control_params const * const control,
         simulation_data * const data, storage * const workspace,
         sparse_matrix const * const H, real const * const b, real tol,
-        real * const x, mpi_datatypes * const mpi_data, int fresh_pre )
+        real * const x, mpi_datatypes * const mpi_data, int fresh_pre,
+        cudaStream_t s )
 {
     unsigned int i;
     int ret;
@@ -2900,42 +2924,42 @@ int Cuda_PIPECG( reax_system const * const system, control_params const * const 
 #endif
 
     Sparse_MatVec( system, control, data, workspace, mpi_data,
-            H, x, system->N, workspace->d_workspace->u );
+            H, x, system->N, workspace->d_workspace->u, s );
 
 #if defined(LOG_PERFORMANCE)
     time = Get_Time( );
 #endif
 
     Vector_Sum( workspace->d_workspace->r, 1.0, b,
-            -1.0, workspace->d_workspace->u, system->n, control->streams[5] );
+            -1.0, workspace->d_workspace->u, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
     apply_preconditioner( system, workspace, control, data, mpi_data,
-            workspace->d_workspace->r, workspace->d_workspace->m, fresh_pre, LEFT );
+            workspace->d_workspace->r, workspace->d_workspace->m, fresh_pre, LEFT, s );
     apply_preconditioner( system, workspace, control, data, mpi_data,
-            workspace->d_workspace->m, workspace->d_workspace->u, fresh_pre, RIGHT );
+            workspace->d_workspace->m, workspace->d_workspace->u, fresh_pre, RIGHT, s );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
     Sparse_MatVec( system, control, data, workspace, mpi_data,
-            H, workspace->d_workspace->u, system->N, workspace->d_workspace->w );
+            H, workspace->d_workspace->u, system->N, workspace->d_workspace->w, s );
 
 #if defined(LOG_PERFORMANCE)
     time = Get_Time( );
 #endif
 
     redux[0] = Dot_local( workspace, workspace->d_workspace->w,
-            workspace->d_workspace->u, system->n, control->streams[5] );
+            workspace->d_workspace->u, system->n, CUDA_ARG );
     redux[1] = Dot_local( workspace, workspace->d_workspace->r,
-            workspace->d_workspace->u, system->n, control->streams[5] );
+            workspace->d_workspace->u, system->n, CUDA_ARG );
     redux[2] = Dot_local( workspace, workspace->d_workspace->u,
-            workspace->d_workspace->u, system->n, control->streams[5] );
-    redux[3] = Dot_local( workspace, b, b, system->n, control->streams[5] );
+            workspace->d_workspace->u, system->n, CUDA_ARG );
+    redux[3] = Dot_local( workspace, b, b, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2946,16 +2970,16 @@ int Cuda_PIPECG( reax_system const * const system, control_params const * const 
     Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     apply_preconditioner( system, workspace, control, data, mpi_data,
-            workspace->d_workspace->w, workspace->d_workspace->n, FALSE, LEFT );
+            workspace->d_workspace->w, workspace->d_workspace->n, FALSE, LEFT, s );
     apply_preconditioner( system, workspace, control, data, mpi_data,
-            workspace->d_workspace->n, workspace->d_workspace->m, FALSE, RIGHT );
+            workspace->d_workspace->n, workspace->d_workspace->m, FALSE, RIGHT, s );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
     Sparse_MatVec( system, control, data, workspace, mpi_data,
-            H, workspace->d_workspace->m, system->N, workspace->d_workspace->n );
+            H, workspace->d_workspace->m, system->N, workspace->d_workspace->n, s );
 
 #if defined(LOG_PERFORMANCE)
     time = Get_Time( );
@@ -2986,27 +3010,27 @@ int Cuda_PIPECG( reax_system const * const system, control_params const * const 
         }
 
         Vector_Sum( workspace->d_workspace->z, 1.0, workspace->d_workspace->n,
-                beta, workspace->d_workspace->z, system->n, control->streams[5] );
+                beta, workspace->d_workspace->z, system->n, CUDA_ARG );
         Vector_Sum( workspace->d_workspace->q, 1.0, workspace->d_workspace->m,
-                beta, workspace->d_workspace->q, system->n, control->streams[5] );
+                beta, workspace->d_workspace->q, system->n, CUDA_ARG );
         Vector_Sum( workspace->d_workspace->p, 1.0, workspace->d_workspace->u,
-                beta, workspace->d_workspace->p, system->n, control->streams[5] );
+                beta, workspace->d_workspace->p, system->n, CUDA_ARG );
         Vector_Sum( workspace->d_workspace->d, 1.0, workspace->d_workspace->w,
-                beta, workspace->d_workspace->d, system->n, control->streams[5] );
+                beta, workspace->d_workspace->d, system->n, CUDA_ARG );
         Vector_Sum( x, 1.0, x,
-                alpha, workspace->d_workspace->p, system->n, control->streams[5] );
+                alpha, workspace->d_workspace->p, system->n, CUDA_ARG );
         Vector_Sum( workspace->d_workspace->u, 1.0, workspace->d_workspace->u,
-                -1.0 * alpha, workspace->d_workspace->q, system->n, control->streams[5] );
+                -1.0 * alpha, workspace->d_workspace->q, system->n, CUDA_ARG );
         Vector_Sum( workspace->d_workspace->w, 1.0, workspace->d_workspace->w,
-                -1.0 * alpha, workspace->d_workspace->z, system->n, control->streams[5] );
+                -1.0 * alpha, workspace->d_workspace->z, system->n, CUDA_ARG );
         Vector_Sum( workspace->d_workspace->r, 1.0, workspace->d_workspace->r,
-                -1.0 * alpha, workspace->d_workspace->d, system->n, control->streams[5] );
+                -1.0 * alpha, workspace->d_workspace->d, system->n, CUDA_ARG );
         redux[0] = Dot_local( workspace, workspace->d_workspace->w,
-                workspace->d_workspace->u, system->n, control->streams[5] );
+                workspace->d_workspace->u, system->n, CUDA_ARG );
         redux[1] = Dot_local( workspace, workspace->d_workspace->r,
-                workspace->d_workspace->u, system->n, control->streams[5] );
+                workspace->d_workspace->u, system->n, CUDA_ARG );
         redux[2] = Dot_local( workspace, workspace->d_workspace->u,
-                workspace->d_workspace->u, system->n, control->streams[5] );
+                workspace->d_workspace->u, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -3017,16 +3041,16 @@ int Cuda_PIPECG( reax_system const * const system, control_params const * const 
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         apply_preconditioner( system, workspace, control, data, mpi_data,
-                workspace->d_workspace->w, workspace->d_workspace->n, FALSE, LEFT );
+                workspace->d_workspace->w, workspace->d_workspace->n, FALSE, LEFT, s );
         apply_preconditioner( system, workspace, control, data, mpi_data,
-                workspace->d_workspace->n, workspace->d_workspace->m, FALSE, RIGHT );
+                workspace->d_workspace->n, workspace->d_workspace->m, FALSE, RIGHT, s );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
         Sparse_MatVec( system, control, data, workspace, mpi_data,
-                H, workspace->d_workspace->m, system->N, workspace->d_workspace->n );
+                H, workspace->d_workspace->m, system->N, workspace->d_workspace->n, s );
 
 #if defined(LOG_PERFORMANCE)
         time = Get_Time( );
@@ -3066,7 +3090,8 @@ int Cuda_PIPECG( reax_system const * const system, control_params const * const 
 int Cuda_dual_PIPECR( reax_system const * const system, control_params const * const control,
         simulation_data * const data, storage * const workspace,
         sparse_matrix const * const H, rvec2 const * const b, real tol,
-        rvec2 * const x, mpi_datatypes * const mpi_data, int fresh_pre )
+        rvec2 * const x, mpi_datatypes * const mpi_data, int fresh_pre,
+        cudaStream_t s )
 {
     unsigned int i, matvecs;
     int ret;
@@ -3078,31 +3103,31 @@ int Cuda_dual_PIPECR( reax_system const * const system, control_params const * c
 #endif
 
     Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
-            H, x, system->N, workspace->d_workspace->u2 );
+            H, x, system->N, workspace->d_workspace->u2, s );
 
 #if defined(LOG_PERFORMANCE)
     time = Get_Time( );
 #endif
 
     Vector_Sum_rvec2( workspace->d_workspace->r2, 1.0, 1.0, b,
-            -1.0, -1.0, workspace->d_workspace->u2, system->n, control->streams[5] );
+            -1.0, -1.0, workspace->d_workspace->u2, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
     dual_apply_preconditioner( system, workspace, control, data, mpi_data,
-            workspace->d_workspace->r2, workspace->d_workspace->n2, fresh_pre, LEFT );
+            workspace->d_workspace->r2, workspace->d_workspace->n2, fresh_pre, LEFT, s );
     dual_apply_preconditioner( system, workspace, control, data, mpi_data,
-            workspace->d_workspace->n2, workspace->d_workspace->u2, fresh_pre, RIGHT );
+            workspace->d_workspace->n2, workspace->d_workspace->u2, fresh_pre, RIGHT, s );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
-    Dot_local_rvec2( workspace, b, b, system->n, &redux[0], &redux[1], control->streams[5] );
+    Dot_local_rvec2( workspace, b, b, system->n, &redux[0], &redux[1], CUDA_ARG );
     Dot_local_rvec2( workspace, workspace->d_workspace->u2,
-            workspace->d_workspace->u2, system->n, &redux[2], &redux[3], control->streams[5] );
+            workspace->d_workspace->u2, system->n, &redux[2], &redux[3], CUDA_ARG );
 
     ret = MPI_Iallreduce( MPI_IN_PLACE, redux, 4, MPI_DOUBLE, MPI_SUM,
             MPI_COMM_WORLD, &req );
@@ -3113,7 +3138,7 @@ int Cuda_dual_PIPECR( reax_system const * const system, control_params const * c
 #endif
 
     Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
-            H, workspace->d_workspace->u2, system->N, workspace->d_workspace->w2 );
+            H, workspace->d_workspace->u2, system->N, workspace->d_workspace->w2, s );
 
 #if defined(LOG_PERFORMANCE)
     time = Get_Time( );
@@ -3138,20 +3163,20 @@ int Cuda_dual_PIPECR( reax_system const * const system, control_params const * c
         }
 
         dual_apply_preconditioner( system, workspace, control, data, mpi_data,
-                workspace->d_workspace->w2, workspace->d_workspace->n2, FALSE, LEFT );
+                workspace->d_workspace->w2, workspace->d_workspace->n2, FALSE, LEFT, s );
         dual_apply_preconditioner( system, workspace, control, data, mpi_data,
-                workspace->d_workspace->n2, workspace->d_workspace->m2, FALSE, RIGHT );
+                workspace->d_workspace->n2, workspace->d_workspace->m2, FALSE, RIGHT, s );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
         Dot_local_rvec2( workspace, workspace->d_workspace->w2,
-                workspace->d_workspace->u2, system->n, &redux[0], &redux[1], control->streams[5] );
+                workspace->d_workspace->u2, system->n, &redux[0], &redux[1], CUDA_ARG );
         Dot_local_rvec2( workspace, workspace->d_workspace->m2,
-                workspace->d_workspace->w2, system->n, &redux[2], &redux[3], control->streams[5] );
+                workspace->d_workspace->w2, system->n, &redux[2], &redux[3], CUDA_ARG );
         Dot_local_rvec2( workspace, workspace->d_workspace->u2,
-                workspace->d_workspace->u2, system->n, &redux[4], &redux[5], control->streams[5] );
+                workspace->d_workspace->u2, system->n, &redux[4], &redux[5], CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -3162,7 +3187,7 @@ int Cuda_dual_PIPECR( reax_system const * const system, control_params const * c
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         Dual_Sparse_MatVec( system, control, data, workspace, mpi_data,
-                H, workspace->d_workspace->m2, system->N, workspace->d_workspace->n2 );
+                H, workspace->d_workspace->m2, system->N, workspace->d_workspace->n2, s );
 
 #if defined(LOG_PERFORMANCE)
         time = Get_Time( );
@@ -3197,21 +3222,21 @@ int Cuda_dual_PIPECR( reax_system const * const system, control_params const * c
         }
 
         Vector_Sum_rvec2( workspace->d_workspace->z2, 1.0, 1.0, workspace->d_workspace->n2,
-                beta[0], beta[1], workspace->d_workspace->z2, system->n, control->streams[5] );
+                beta[0], beta[1], workspace->d_workspace->z2, system->n, CUDA_ARG );
         Vector_Sum_rvec2( workspace->d_workspace->q2, 1.0, 1.0, workspace->d_workspace->m2,
-                beta[0], beta[1], workspace->d_workspace->q2, system->n, control->streams[5] );
+                beta[0], beta[1], workspace->d_workspace->q2, system->n, CUDA_ARG );
         Vector_Sum_rvec2( workspace->d_workspace->p2, 1.0, 1.0, workspace->d_workspace->u2,
-                beta[0], beta[1], workspace->d_workspace->p2, system->n, control->streams[5] );
+                beta[0], beta[1], workspace->d_workspace->p2, system->n, CUDA_ARG );
         Vector_Sum_rvec2( workspace->d_workspace->d2, 1.0, 1.0, workspace->d_workspace->w2,
-                beta[0], beta[1], workspace->d_workspace->d2, system->n, control->streams[5] );
+                beta[0], beta[1], workspace->d_workspace->d2, system->n, CUDA_ARG );
         Vector_Sum_rvec2( x, 1.0, 1.0, x,
-                alpha[0], alpha[1], workspace->d_workspace->p2, system->n, control->streams[5] );
+                alpha[0], alpha[1], workspace->d_workspace->p2, system->n, CUDA_ARG );
         Vector_Sum_rvec2( workspace->d_workspace->u2, 1.0, 1.0, workspace->d_workspace->u2,
-                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->q2, system->n, control->streams[5] );
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->q2, system->n, CUDA_ARG );
         Vector_Sum_rvec2( workspace->d_workspace->w2, 1.0, 1.0, workspace->d_workspace->w2,
-                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->z2, system->n, control->streams[5] );
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->z2, system->n, CUDA_ARG );
         Vector_Sum_rvec2( workspace->d_workspace->r2, 1.0, 1.0, workspace->d_workspace->r2,
-                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->d2, system->n, control->streams[5] );
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->d2, system->n, CUDA_ARG );
 
         gamma_old[0] = gamma_new[0];
         gamma_old[1] = gamma_new[1];
@@ -3225,27 +3250,27 @@ int Cuda_dual_PIPECR( reax_system const * const system, control_params const * c
             && r_norm[1] / b_norm[1] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->t,
-                workspace->d_workspace->x, 1, system->n, control->streams[5] );
+                workspace->d_workspace->x, 1, system->n, CUDA_ARG );
 
         matvecs = Cuda_PIPECR( system, control, data, workspace, H,
                 workspace->d_workspace->b_t, tol,
-                workspace->d_workspace->t, mpi_data, FALSE );
+                workspace->d_workspace->t, mpi_data, FALSE, s );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->t, 1, system->n, control->streams[5] );
+                workspace->d_workspace->t, 1, system->n, CUDA_ARG );
     }
     else if ( r_norm[1] / b_norm[1] <= tol
             && r_norm[0] / b_norm[0] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->s,
-                workspace->d_workspace->x, 0, system->n, control->streams[5] );
+                workspace->d_workspace->x, 0, system->n, CUDA_ARG );
 
         matvecs = Cuda_PIPECR( system, control, data, workspace, H,
                 workspace->d_workspace->b_s, tol,
-                workspace->d_workspace->s, mpi_data, FALSE );
+                workspace->d_workspace->s, mpi_data, FALSE, s );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->s, 0, system->n, control->streams[5] );
+                workspace->d_workspace->s, 0, system->n, CUDA_ARG );
     }
     else
     {
@@ -3273,7 +3298,8 @@ int Cuda_dual_PIPECR( reax_system const * const system, control_params const * c
 int Cuda_PIPECR( reax_system const * const system, control_params const * const control,
         simulation_data * const data, storage * const workspace,
         sparse_matrix const * const H, real const * const b, real tol,
-        real * const x, mpi_datatypes * const mpi_data, int fresh_pre )
+        real * const x, mpi_datatypes * const mpi_data, int fresh_pre,
+        cudaStream_t s )
 {
     unsigned int i;
     int ret;
@@ -3285,31 +3311,31 @@ int Cuda_PIPECR( reax_system const * const system, control_params const * const 
 #endif
 
     Sparse_MatVec( system, control, data, workspace, mpi_data,
-            H, x, system->N, workspace->d_workspace->u );
+            H, x, system->N, workspace->d_workspace->u, s );
 
 #if defined(LOG_PERFORMANCE)
     time = Get_Time( );
 #endif
 
     Vector_Sum( workspace->d_workspace->r, 1.0, b,
-            -1.0, workspace->d_workspace->u, system->n, control->streams[5] );
+            -1.0, workspace->d_workspace->u, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
     apply_preconditioner( system, workspace, control, data, mpi_data,
-            workspace->d_workspace->r, workspace->d_workspace->n, fresh_pre, LEFT );
+            workspace->d_workspace->r, workspace->d_workspace->n, fresh_pre, LEFT, s );
     apply_preconditioner( system, workspace, control, data, mpi_data,
-            workspace->d_workspace->n, workspace->d_workspace->u, fresh_pre, RIGHT );
+            workspace->d_workspace->n, workspace->d_workspace->u, fresh_pre, RIGHT, s );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
-    redux[0] = Dot_local( workspace, b, b, system->n, control->streams[5] );
+    redux[0] = Dot_local( workspace, b, b, system->n, CUDA_ARG );
     redux[1] = Dot_local( workspace, workspace->d_workspace->u,
-            workspace->d_workspace->u, system->n, control->streams[5] );
+            workspace->d_workspace->u, system->n, CUDA_ARG );
 
     ret = MPI_Iallreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE, MPI_SUM,
             MPI_COMM_WORLD, &req );
@@ -3320,7 +3346,7 @@ int Cuda_PIPECR( reax_system const * const system, control_params const * const 
 #endif
 
     Sparse_MatVec( system, control, data, workspace, mpi_data,
-            H, workspace->d_workspace->u, system->N, workspace->d_workspace->w );
+            H, workspace->d_workspace->u, system->N, workspace->d_workspace->w, s );
 
 #if defined(LOG_PERFORMANCE)
     time = Get_Time( );
@@ -3338,20 +3364,20 @@ int Cuda_PIPECR( reax_system const * const system, control_params const * const 
     for ( i = 0; i < control->cm_solver_max_iters && r_norm / b_norm > tol; ++i )
     {
         apply_preconditioner( system, workspace, control, data, mpi_data,
-                workspace->d_workspace->w, workspace->d_workspace->n, FALSE, LEFT );
+                workspace->d_workspace->w, workspace->d_workspace->n, FALSE, LEFT, s );
         apply_preconditioner( system, workspace, control, data, mpi_data,
-                workspace->d_workspace->n, workspace->d_workspace->m, FALSE, RIGHT );
+                workspace->d_workspace->n, workspace->d_workspace->m, FALSE, RIGHT, s );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
         redux[0] = Dot_local( workspace, workspace->d_workspace->w,
-                workspace->d_workspace->u, system->n, control->streams[5] );
+                workspace->d_workspace->u, system->n, CUDA_ARG );
         redux[1] = Dot_local( workspace, workspace->d_workspace->m,
-                workspace->d_workspace->w, system->n, control->streams[5] );
+                workspace->d_workspace->w, system->n, CUDA_ARG );
         redux[2] = Dot_local( workspace, workspace->d_workspace->u,
-                workspace->d_workspace->u, system->n, control->streams[5] );
+                workspace->d_workspace->u, system->n, CUDA_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -3362,7 +3388,7 @@ int Cuda_PIPECR( reax_system const * const system, control_params const * const 
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         Sparse_MatVec( system, control, data, workspace, mpi_data,
-                H, workspace->d_workspace->m, system->N, workspace->d_workspace->n );
+                H, workspace->d_workspace->m, system->N, workspace->d_workspace->n, s );
 
 #if defined(LOG_PERFORMANCE)
         time = Get_Time( );
@@ -3390,21 +3416,21 @@ int Cuda_PIPECR( reax_system const * const system, control_params const * const 
         }
 
         Vector_Sum( workspace->d_workspace->z, 1.0, workspace->d_workspace->n,
-                beta, workspace->d_workspace->z, system->n, control->streams[5] );
+                beta, workspace->d_workspace->z, system->n, CUDA_ARG );
         Vector_Sum( workspace->d_workspace->q, 1.0, workspace->d_workspace->m,
-                beta, workspace->d_workspace->q, system->n, control->streams[5] );
+                beta, workspace->d_workspace->q, system->n, CUDA_ARG );
         Vector_Sum( workspace->d_workspace->p, 1.0, workspace->d_workspace->u,
-                beta, workspace->d_workspace->p, system->n, control->streams[5] );
+                beta, workspace->d_workspace->p, system->n, CUDA_ARG );
         Vector_Sum( workspace->d_workspace->d, 1.0, workspace->d_workspace->w,
-                beta, workspace->d_workspace->d, system->n, control->streams[5] );
+                beta, workspace->d_workspace->d, system->n, CUDA_ARG );
         Vector_Sum( x, 1.0, x,
-                alpha, workspace->d_workspace->p, system->n, control->streams[5] );
+                alpha, workspace->d_workspace->p, system->n, CUDA_ARG );
         Vector_Sum( workspace->d_workspace->u, 1.0, workspace->d_workspace->u,
-                -1.0 * alpha, workspace->d_workspace->q, system->n, control->streams[5] );
+                -1.0 * alpha, workspace->d_workspace->q, system->n, CUDA_ARG );
         Vector_Sum( workspace->d_workspace->w, 1.0, workspace->d_workspace->w,
-                -1.0 * alpha, workspace->d_workspace->z, system->n, control->streams[5] );
+                -1.0 * alpha, workspace->d_workspace->z, system->n, CUDA_ARG );
         Vector_Sum( workspace->d_workspace->r, 1.0, workspace->d_workspace->r,
-                -1.0 * alpha, workspace->d_workspace->d, system->n, control->streams[5] );
+                -1.0 * alpha, workspace->d_workspace->d, system->n, CUDA_ARG );
 
         gamma_old = gamma_new;
 

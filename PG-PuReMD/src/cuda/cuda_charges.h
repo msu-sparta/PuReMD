@@ -27,7 +27,7 @@
 
 void Cuda_Compute_Charges( reax_system const * const,
         control_params const * const, simulation_data * const, storage * const,
-        output_controls const * const, mpi_datatypes * const );
+        output_controls const * const, mpi_datatypes * const, cudaStream_t );
 
 
 #endif

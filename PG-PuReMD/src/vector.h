@@ -62,26 +62,6 @@ CUDA_HOST_DEVICE static inline int Vector_isZero( real const * const v, int k )
 }
 
 
-/* sets all entries of a dense vector to zero
- *
- * inputs:
- *  v: dense vector
- *  k: number of entries in v
- * output: v with entries set to zero
- */
-CUDA_HOST_DEVICE static inline void Vector_MakeZero( real * const v, int k )
-{
-    int i;
-
-    assert( k >= 0 );
-
-    for ( i = 0; i < k; ++i )
-    {
-        v[i] = 0;
-    }
-}
-
-
 /* copy the entries from one vector to another
  *
  * inputs:
@@ -151,29 +131,6 @@ CUDA_HOST_DEVICE static inline void Vector_Copy_To_rvec2( rvec2 * const dst, rea
     for ( i = 0; i < k; ++i )
     {
         dst[i][index] = src[i];
-    }
-}
-
-
-/* scales the entries of a dense vector by a constant
- *
- * inputs:
- *  c: scaling constant
- *  v: dense vector whose entries to scale
- *  k: number of entries in v
- * output:
- *  dest: with entries scaled
- */
-CUDA_HOST_DEVICE static inline void Vector_Scale( real * const dest, real c,
-        real const * const v, int k )
-{
-    int i;
-
-    assert( k >= 0 );
-
-    for ( i = 0; i < k; ++i )
-    {
-        dest[i] = c * v[i];
     }
 }
 

@@ -2614,7 +2614,7 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
         if ( charge_flag == TRUE )
         {
             Cuda_Compute_Charges( system, control, data,
-                    workspace, out_control, mpi_data );
+                    workspace, out_control, mpi_data, control->streams[5] );
         }
     
 #if defined(LOG_PERFORMANCE)

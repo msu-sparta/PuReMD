@@ -4,52 +4,105 @@
 #include "../reax_types.h"
 
 
-void Vector_MakeZero( real * const, unsigned int,
-        cudaStream_t );
 
 void Vector_Copy( real * const, real const * const,
-        unsigned int, cudaStream_t );
+        unsigned int, 
+#if defined(USE_CUBLAS)
+        cublasHandle_t
+#else
+        cudaStream_t
+#endif
+        );
 
 void Vector_Copy_rvec2( rvec2 * const, rvec2 const * const,
-        unsigned int, cudaStream_t );
+        unsigned int, 
+#if defined(USE_CUBLAS)
+        cublasHandle_t
+#else
+        cudaStream_t
+#endif
+        );
 
 void Vector_Copy_From_rvec2( real * const, rvec2 const * const,
-        int, int, cudaStream_t );
+        int, int, 
+#if defined(USE_CUBLAS)
+        cublasHandle_t
+#else
+        cudaStream_t
+#endif
+        );
 
 void Vector_Copy_To_rvec2( rvec2 * const, real const * const,
-        int, int, cudaStream_t );
-
-void Vector_Scale( real * const, real, real const * const,
-        unsigned int, cudaStream_t );
+        int, int, 
+#if defined(USE_CUBLAS)
+        cublasHandle_t
+#else
+        cudaStream_t
+#endif
+        );
 
 void Vector_Sum( real * const, real, real const * const,
-        real, real const * const, unsigned int, cudaStream_t );
+        real, real const * const, unsigned int, 
+#if defined(USE_CUBLAS)
+        cublasHandle_t
+#else
+        cudaStream_t
+#endif
+        );
 
 void Vector_Sum_rvec2( rvec2 * const, real, real, rvec2 const * const,
-        real, real, rvec2 const * const, unsigned int, cudaStream_t );
+        real, real, rvec2 const * const, unsigned int, 
+#if defined(USE_CUBLAS)
+        cublasHandle_t
+#else
+        cudaStream_t
+#endif
+        );
 
 void Vector_Add( real * const, real, real const * const,
-        unsigned int, cudaStream_t );
+        unsigned int, 
+#if defined(USE_CUBLAS)
+        cublasHandle_t
+#else
+        cudaStream_t
+#endif
+        );
 
 void Vector_Add_rvec2( rvec2 * const, real, real, rvec2 const * const,
-        unsigned int, cudaStream_t );
-
-void Vector_Mult( real * const, real const * const,
-        real const * const, unsigned int, cudaStream_t );
-
-void Vector_Mult_rvec2( rvec2 * const, rvec2 const * const,
-        rvec2 const * const, unsigned int, cudaStream_t );
-
-real Norm( storage * const, real const * const, unsigned int, MPI_Comm, cudaStream_t );
+        unsigned int, 
+#if defined(USE_CUBLAS)
+        cublasHandle_t
+#else
+        cudaStream_t
+#endif
+        );
 
 real Dot( storage * const, real const * const, real const * const,
-        unsigned int, MPI_Comm, cudaStream_t );
+        unsigned int, MPI_Comm,
+#if defined(USE_CUBLAS)
+        cublasHandle_t
+#else
+        cudaStream_t
+#endif
+        );
 
 real Dot_local( storage * const, real const * const, real const * const,
-        unsigned int, cudaStream_t );
+        unsigned int, 
+#if defined(USE_CUBLAS)
+        cublasHandle_t
+#else
+        cudaStream_t
+#endif
+        );
 
 void Dot_local_rvec2( storage * const, rvec2 const * const, rvec2 const * const,
-        unsigned int, real *, real *, cudaStream_t );
+        unsigned int, real *, real *, 
+#if defined(USE_CUBLAS)
+        cublasHandle_t
+#else
+        cudaStream_t
+#endif
+        );
 
 
 #endif

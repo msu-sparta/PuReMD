@@ -44,6 +44,9 @@
   #include "../../common/include/config.h"
 #endif
 
+/* use cuBLAS for dense linear algebra */
+//#define USE_CUBLAS
+
 #include <ctype.h>
 #include <math.h>
 #include <mpi.h>
@@ -55,6 +58,9 @@
 #if defined(HAVE_CUDA)
   #include <cuda.h>
   #include <cuda_runtime.h>
+#if defined(USE_CUBLAS)
+  #include <cublas_v2.h>
+#endif
 #endif
 
 /* IBMC */
@@ -1725,6 +1731,10 @@ struct control_params
 #if defined(LOG_PERFORMANCE)
     /* CUDA events for timing */
     cudaEvent_t time_events[CUDA_TIMING_EVENT_N];
+#endif
+#if defined(USE_CUBLAS)
+    /* handle to cuBLAS library instance */
+    cublasHandle_t cublas_handle;
 #endif
 #endif
 };
