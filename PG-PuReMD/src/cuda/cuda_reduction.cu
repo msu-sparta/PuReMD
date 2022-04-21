@@ -6,9 +6,6 @@
 
 #include "../vector.h"
 
-/* mask used to determine which threads within a warp participate in operations */
-#define FULL_MASK (0xFFFFFFFF)
-
 #include <cub/device/device_reduce.cuh>
 #include <cub/device/device_scan.cuh>
 #include <cub/block/block_reduce.cuh>
@@ -26,113 +23,6 @@
 //};
 
 
-/* Perform a device-wide reduction (sum operation)
- *
- * d_array: device array to reduce
- * d_dest: device pointer to hold result of reduction */
-void Cuda_Reduction_Sum( int *d_array, int *d_dest, size_t n, int s_index, cudaStream_t s )
-{
-    static void *d_temp_storage[MAX_CUDA_STREAMS] = { NULL };
-    static size_t temp_storage_bytes[MAX_CUDA_STREAMS] = { 0 };
-    void *temp = NULL;
-    size_t temp_bytes = 0;
-
-    /* determine temporary device storage requirements */
-    cub::DeviceReduce::Sum( temp, temp_bytes, d_array, d_dest, n, s );
-    cudaCheckError( );
-
-    /* allocate temporary storage */
-    sCudaCheckMalloc( &d_temp_storage[s_index], &temp_storage_bytes[s_index],
-            temp_bytes, __FILE__, __LINE__ );
-
-    /* run sum-reduction */
-    cub::DeviceReduce::Sum( d_temp_storage[s_index], temp_storage_bytes[s_index],
-            d_array, d_dest, n, s );
-    cudaCheckError( );
-}
-
-
-/* Perform a device-wide reduction (sum operation)
- *
- * d_array: device array to reduce
- * d_dest: device pointer to hold result of reduction */
-void Cuda_Reduction_Sum( real *d_array, real *d_dest, size_t n, int s_index, cudaStream_t s )
-{
-    static void *d_temp_storage[MAX_CUDA_STREAMS] = { NULL };
-    static size_t temp_storage_bytes[MAX_CUDA_STREAMS] = { 0 };
-    void *temp = NULL;
-    size_t temp_bytes = 0;
-
-    /* determine temporary device storage requirements */
-    cub::DeviceReduce::Sum( temp, temp_bytes, d_array, d_dest, n, s );
-    cudaCheckError( );
-
-    /* allocate temporary storage */
-    sCudaCheckMalloc( &d_temp_storage[s_index], &temp_storage_bytes[s_index],
-            temp_bytes, __FILE__, __LINE__ );
-
-    /* run sum-reduction */
-    cub::DeviceReduce::Sum( d_temp_storage[s_index], temp_storage_bytes[s_index],
-            d_array, d_dest, n, s );
-    cudaCheckError( );
-}
-
-
-///* Perform a device-wide reduction (sum operation)
-// *
-// * d_array: device array to reduce
-// * d_dest: device pointer to hold result of reduction */
-//void Cuda_Reduction_Sum( rvec *d_array, rvec *d_dest, size_t n, cudaStream_t s )
-//{
-//    void *d_temp_storage = NULL;
-//    size_t temp_storage_bytes = 0;
-//    RvecSum sum_op;
-//    rvec init = {0.0, 0.0, 0.0};
-//
-//    /* determine temporary device storage requirements */
-//    cub::DeviceReduce::Reduce( d_temp_storage, temp_storage_bytes,
-//            d_array, d_dest, n, sum_op, init, s );
-//    cudaCheckError( );
-//
-//    /* allocate temporary storage */
-//    sCudaMalloc( &d_temp_storage, temp_storage_bytes, __FILE__, __LINE__ );
-//
-//    /* run sum-reduction */
-//    cub::DeviceReduce::Reduce( d_temp_storage, temp_storage_bytes,
-//            d_array, d_dest, n, sum_op, init, s );
-//    cudaCheckError( );
-//
-//    /* deallocate temporary storage */
-//    sCudaFree( d_temp_storage, __FILE__, __LINE__ );
-//}
-
-
-/* Perform a device-wide scan (partial sum operation)
- *
- * d_src: device array to scan
- * d_dest: device array to hold result of scan */
-void Cuda_Scan_Excl_Sum( int *d_src, int *d_dest, size_t n, int s_index, cudaStream_t s )
-{
-    static void *d_temp_storage[MAX_CUDA_STREAMS] = { NULL };
-    static size_t temp_storage_bytes[MAX_CUDA_STREAMS] = { 0 };
-    void *temp = NULL;
-    size_t temp_bytes = 0;
-
-    /* determine temporary device storage requirements */
-    cub::DeviceScan::ExclusiveSum( temp, temp_bytes, d_src, d_dest, n, s );
-    cudaCheckError( );
-
-    /* allocate temporary storage */
-    sCudaCheckMalloc( &d_temp_storage[s_index], &temp_storage_bytes[s_index],
-            temp_bytes, __FILE__, __LINE__ );
-
-    /* run exclusive prefix sum */
-    cub::DeviceScan::ExclusiveSum( d_temp_storage[s_index], temp_storage_bytes[s_index],
-            d_src, d_dest, n, s );
-    cudaCheckError( );
-}
-
-
 /* Performs a device-wide partial reduction (sum) on input in 2 stages:
  *  1) Perform a warp-level sum of parts of input assigned to warps
  *  2) Perform an block-level sum of the warp-local partial sums
@@ -141,50 +31,38 @@ void Cuda_Scan_Excl_Sum( int *d_src, int *d_dest, size_t n, int s_index, cudaStr
  */
 CUDA_GLOBAL void k_reduction_rvec( rvec *input, rvec *results, size_t n )
 {
-    extern __shared__ rvec data_s[];
+    extern __shared__ cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage temp_block[];
     rvec data;
-    unsigned int i, mask;
-    int offset;
+    unsigned int i;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
-    mask = __ballot_sync( FULL_MASK, i < n );
 
     if ( i < n )
     {
         rvec_Copy( data, input[i] );
-
-        /* warp-level sum using registers within a warp */
-        for ( offset = warpSize >> 1; offset > 0; offset >>= 1 )
-        {
-            data[0] += __shfl_down_sync( mask, data[0], offset );
-            data[1] += __shfl_down_sync( mask, data[1], offset );
-            data[2] += __shfl_down_sync( mask, data[2], offset );
-        }
-
-        /* first thread within a warp writes warp-level sum to shared memory */
-        if ( threadIdx.x % warpSize == 0 )
-        {
-            rvec_Copy( data_s[threadIdx.x >> 5], data );
-        }
     }
-    __syncthreads( );
-
-    /* block-level sum using shared memory */
-    for ( offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
+    else
     {
-        if ( threadIdx.x < offset )
-        {
-            rvec_Add( data_s[threadIdx.x], data_s[threadIdx.x + offset] );
-        }
-
-        __syncthreads( );
+        rvec_MakeZero( data );
     }
+
+    data[0] = cub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(data[0]);
+    __syncthreads( );
+    data[1] = cub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(data[1]);
+    __syncthreads( );
+    data[2] = cub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(data[2]);
 
     /* one thread writes the block-level partial sum
      * of the reduction back to global memory */
     if ( threadIdx.x == 0 )
     {
+#if !defined(CUDA_ACCUM_ATOMIC)
         rvec_Copy( results[blockIdx.x], data_s[0] );
+#else
+        atomicAdd( (double *) &results[0][0], (double) data[0] );
+        atomicAdd( (double *) &results[0][1], (double) data[1] );
+        atomicAdd( (double *) &results[0][2], (double) data[2] );
+#endif
     }
 }
 
@@ -224,4 +102,201 @@ CUDA_GLOBAL void k_reduction_rvec2( rvec2 *input, rvec2 *results, size_t n )
         atomicAdd( (double *) &results[0][1], (double) data[1] );
 #endif
     }
+}
+
+
+/* Perform a device-wide reduction (sum operation)
+ *
+ * d_array: device array to reduce
+ * d_dest: device pointer to hold result of reduction
+ * n: num. elements to reduce
+ * s: stream to perform the reduction in
+ */
+void Cuda_Reduction_Sum( int *d_array, int *d_dest, size_t n, int s_index, cudaStream_t s )
+{
+    static void *d_temp_storage[MAX_CUDA_STREAMS] = { NULL };
+    static size_t temp_storage_bytes[MAX_CUDA_STREAMS] = { 0 };
+    void *temp = NULL;
+    size_t temp_bytes = 0;
+
+    /* determine temporary device storage requirements */
+    cub::DeviceReduce::Sum( temp, temp_bytes, d_array, d_dest, n, s );
+    cudaCheckError( );
+
+    /* allocate temporary storage */
+    sCudaCheckMalloc( &d_temp_storage[s_index], &temp_storage_bytes[s_index],
+            temp_bytes, __FILE__, __LINE__ );
+
+    /* run sum-reduction */
+    cub::DeviceReduce::Sum( d_temp_storage[s_index], temp_storage_bytes[s_index],
+            d_array, d_dest, n, s );
+    cudaCheckError( );
+}
+
+
+/* Perform a device-wide reduction (sum operation)
+ *
+ * d_array: device array to reduce
+ * d_dest: device pointer to hold result of reduction
+ * n: num. elements to reduce
+ * s: stream to perform the reduction in
+ */
+void Cuda_Reduction_Sum( real *d_array, real *d_dest, size_t n, int s_index, cudaStream_t s )
+{
+    static void *d_temp_storage[MAX_CUDA_STREAMS] = { NULL };
+    static size_t temp_storage_bytes[MAX_CUDA_STREAMS] = { 0 };
+    void *temp = NULL;
+    size_t temp_bytes = 0;
+
+    /* determine temporary device storage requirements */
+    cub::DeviceReduce::Sum( temp, temp_bytes, d_array, d_dest, n, s );
+    cudaCheckError( );
+
+    /* allocate temporary storage */
+    sCudaCheckMalloc( &d_temp_storage[s_index], &temp_storage_bytes[s_index],
+            temp_bytes, __FILE__, __LINE__ );
+
+    /* run sum-reduction */
+    cub::DeviceReduce::Sum( d_temp_storage[s_index], temp_storage_bytes[s_index],
+            d_array, d_dest, n, s );
+    cudaCheckError( );
+}
+
+
+/* Perform a device-wide reduction (sum operation)
+ *
+ * d_array: device array to reduce
+ * d_dest: device pointer to hold result of reduction
+ * n: num. elements to reduce
+ * s: stream to perform the reduction in
+ */
+void Cuda_Reduction_Sum( rvec *d_array, rvec *d_dest, size_t n,
+        int s_index, cudaStream_t s )
+{
+//    void *d_temp_storage = NULL;
+//    size_t temp_storage_bytes = 0;
+//    RvecSum sum_op;
+//    rvec init = {0.0, 0.0, 0.0};
+//
+//    /* determine temporary device storage requirements */
+//    cub::DeviceReduce::Reduce( d_temp_storage, temp_storage_bytes,
+//            d_array, d_dest, n, sum_op, init, s );
+//    cudaCheckError( );
+//
+//    /* allocate temporary storage */
+//    sCudaMalloc( &d_temp_storage, temp_storage_bytes, __FILE__, __LINE__ );
+//
+//    /* run sum-reduction */
+//    cub::DeviceReduce::Reduce( d_temp_storage, temp_storage_bytes,
+//            d_array, d_dest, n, sum_op, init, s );
+//    cudaCheckError( );
+//
+//    /* deallocate temporary storage */
+//    sCudaFree( d_temp_storage, __FILE__, __LINE__ );
+
+    int blocks;
+#if !defined(CUDA_ACCUM_ATOMIC)
+    static rvec *temp[MAX_CUDA_STREAMS] = { NULL };
+    static size_t temp_size[MAX_CUDA_STREAMS] = { 0 };
+#endif
+
+    blocks = n / DEF_BLOCK_SIZE
+        + ((n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+
+#if !defined(CUDA_ACCUM_ATOMIC)
+    sCudaCheckMalloc( &temp[s_index], &temp_size[s_index],
+            sizeof(rvec) * blocks, __FILE__, __LINE__ );
+#else
+    sCudaMemsetAsync( d_dest, 0, sizeof(rvec), s, __FILE__, __LINE__ );
+#endif
+
+    k_reduction_rvec <<< blocks, DEF_BLOCK_SIZE,
+                     sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage), s >>> 
+        ( d_array,
+#if !defined(CUDA_ACCUM_ATOMIC)
+          temp[s_index],
+#else
+          d_dest,
+#endif
+          n );
+    cudaCheckError( ); 
+
+#if !defined(CUDA_ACCUM_ATOMIC)
+    k_reduction_rvec <<< 1, ((blocks + 31) / 32) * 32,
+                     sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage), s >>>
+        ( temp[s_index], d_dest, blocks );
+    cudaCheckError( ); 
+#endif
+}
+
+
+/* Perform a device-wide reduction (sum operation)
+ *
+ * d_array: device array to reduce
+ * d_dest: device pointer to hold result of reduction
+ * n: num. elements to reduce
+ * s: stream to perform the reduction in
+ */
+void Cuda_Reduction_Sum( rvec2 *d_array, rvec2 *d_dest, size_t n,
+        int s_index, cudaStream_t s )
+{
+    int blocks;
+#if !defined(CUDA_ACCUM_ATOMIC)
+    static rvec2 *temp[MAX_CUDA_STREAMS] = { NULL };
+    static size_t temp_size[MAX_CUDA_STREAMS] = { 0 };
+#endif
+
+    blocks = n / DEF_BLOCK_SIZE
+        + ((n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+
+#if !defined(CUDA_ACCUM_ATOMIC)
+    sCudaCheckMalloc( &temp[s_index], &temp_size[s_index],
+            sizeof(rvec2) * blocks, __FILE__, __LINE__ );
+#else
+    sCudaMemsetAsync( d_dest, 0, sizeof(rvec2), s, __FILE__, __LINE__ );
+#endif
+
+    k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE,
+                     sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage), s >>> 
+        ( d_array,
+#if !defined(CUDA_ACCUM_ATOMIC)
+          temp[s_index],
+#else
+          d_dest,
+#endif
+          n );
+    cudaCheckError( ); 
+
+#if !defined(CUDA_ACCUM_ATOMIC)
+    k_reduction_rvec2 <<< 1, ((blocks + 31) / 32) * 32,
+                     sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage), s >>>
+        ( temp[s_index], d_dest, blocks );
+    cudaCheckError( ); 
+#endif
+}
+
+
+/* Perform a device-wide scan (partial sum operation)
+ *
+ * d_src: device array to scan
+ * d_dest: device array to hold result of scan */
+void Cuda_Scan_Excl_Sum( int *d_src, int *d_dest, size_t n, int s_index, cudaStream_t s )
+{
+    static void *d_temp_storage[MAX_CUDA_STREAMS] = { NULL };
+    static size_t temp_storage_bytes[MAX_CUDA_STREAMS] = { 0 };
+    void *temp = NULL;
+    size_t temp_bytes = 0;
+
+    /* determine temporary device storage requirements */
+    cub::DeviceScan::ExclusiveSum( temp, temp_bytes, d_src, d_dest, n, s );
+    cudaCheckError( );
+
+    /* allocate temporary storage */
+    sCudaCheckMalloc( &d_temp_storage[s_index], &temp_storage_bytes[s_index],
+            temp_bytes, __FILE__, __LINE__ );
+
+    /* run exclusive prefix sum */
+    cub::DeviceScan::ExclusiveSum( d_temp_storage[s_index], temp_storage_bytes[s_index],
+            d_src, d_dest, n, s );
+    cudaCheckError( );
 }

@@ -12,167 +12,133 @@
 #include "../tool_box.h"
 #include "../vector.h"
 
-#include <cub/warp/warp_reduce.cuh>
+#include <cub/block/block_reduce.cuh>
 
 
 /* mask used to determine which threads within a warp participate in operations */
-#define FULL_MASK (0xFFFFFFFF)
+#define FULL_WARP_MASK (0xFFFFFFFF)
 
 
-CUDA_GLOBAL void k_center_of_mass_blocks_xcm( single_body_parameters *sbp,
+CUDA_GLOBAL void k_center_of_mass_xcm( single_body_parameters *sbp,
         reax_atom *atoms, rvec *xcm_g, size_t n )
 {
-    extern __shared__ rvec xcm_s[];
-    unsigned int i, mask;
-    int offset;
+    extern __shared__ cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage temp_block[];
+    unsigned int i;
     rvec xcm;
     real m;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
-    mask = __ballot_sync( FULL_MASK, i < n );
 
     if ( i < n )
     {
         m = sbp[ atoms[i].type ].mass;
         rvec_Scale( xcm, m, atoms[i].x );
-
-        /* warp-level sum using registers within a warp */
-        for ( offset = warpSize >> 1; offset > 0; offset /= 2 )
-        {
-            xcm[0] += __shfl_down_sync( mask, xcm[0], offset );
-            xcm[1] += __shfl_down_sync( mask, xcm[1], offset );
-            xcm[2] += __shfl_down_sync( mask, xcm[2], offset );
-        }
-
-        /* first thread within a warp writes warp-level sum to shared memory */
-        if ( threadIdx.x % warpSize == 0 )
-        {
-            rvec_Copy( xcm_s[ threadIdx.x >> 5 ], xcm );
-        }
     }
-    __syncthreads( );
-
-    /* block-level sum using shared memory */
-    for ( offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
+    else
     {
-        if ( threadIdx.x < offset )
-        {
-            rvec_Add( xcm_s[threadIdx.x], xcm_s[threadIdx.x + offset] );
-        }
-
-        __syncthreads( );
+        rvec_MakeZero( xcm );
     }
+
+    xcm[0] = cub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(xcm[0]);
+    __syncthreads( );
+    xcm[1] = cub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(xcm[1]);
+    __syncthreads( );
+    xcm[2] = cub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(xcm[2]);
 
     /* one thread writes the block-level partial sum
      * of the reduction back to global memory */
     if ( threadIdx.x == 0 )
     {
-        rvec_Copy( xcm_g[blockIdx.x], xcm_s[0] );
+#if !defined(CUDA_ACCUM_ATOMIC)
+        rvec_Copy( xcm_g[blockIdx.x], xcm );
+#else
+        atomicAdd( (double *) &xcm_g[0][0], (double) xcm[0] );
+        atomicAdd( (double *) &xcm_g[0][1], (double) xcm[1] );
+        atomicAdd( (double *) &xcm_g[0][2], (double) xcm[2] );
+#endif
     }
 }
 
 
-CUDA_GLOBAL void k_center_of_mass_blocks_vcm( single_body_parameters *sbp,
+CUDA_GLOBAL void k_center_of_mass_vcm( single_body_parameters *sbp,
         reax_atom *atoms, rvec *vcm_g, size_t n )
 {
-    extern __shared__ rvec vcm_s[];
-    unsigned int i, mask;
-    int offset;
+    extern __shared__ cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage temp_block[];
+    unsigned int i;
     real m;
     rvec vcm;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
-    mask = __ballot_sync( FULL_MASK, i < n );
 
     if ( i < n )
     {
         m = sbp[ atoms[i].type ].mass;
         rvec_Scale( vcm, m, atoms[i].v );
-
-        /* warp-level sum using registers within a warp */
-        for ( offset = warpSize >> 1; offset > 0; offset /= 2 )
-        {
-            vcm[0] += __shfl_down_sync( mask, vcm[0], offset );
-            vcm[1] += __shfl_down_sync( mask, vcm[1], offset );
-            vcm[2] += __shfl_down_sync( mask, vcm[2], offset );
-        }
-
-        /* first thread within a warp writes warp-level sum to shared memory */
-        if ( threadIdx.x % warpSize == 0 )
-        {
-            rvec_Copy( vcm_s[ threadIdx.x >> 5 ], vcm );
-        }
     }
-    __syncthreads( );
-
-    /* block-level sum using shared memory */
-    for ( offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
+    else
     {
-        if ( threadIdx.x < offset )
-        {
-            rvec_Add( vcm_s[threadIdx.x], vcm_s[threadIdx.x + offset] );
-        }
-        __syncthreads( );
+        rvec_MakeZero( vcm );
     }
+
+    vcm[0] = cub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(vcm[0]);
+    __syncthreads( );
+    vcm[1] = cub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(vcm[1]);
+    __syncthreads( );
+    vcm[2] = cub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(vcm[2]);
 
     /* one thread writes the block-level partial sum
      * of the reduction back to global memory */
     if ( threadIdx.x == 0 )
     {
-        rvec_Copy( vcm_g[blockIdx.x], vcm_s[0] );
+#if !defined(CUDA_ACCUM_ATOMIC)
+        rvec_Copy( vcm_g[blockIdx.x], vcm );
+#else
+        atomicAdd( (double *) &vcm_g[0][0], (double) vcm[0] );
+        atomicAdd( (double *) &vcm_g[0][1], (double) vcm[1] );
+        atomicAdd( (double *) &vcm_g[0][2], (double) vcm[2] );
+#endif
     }
 }
 
 
-CUDA_GLOBAL void k_center_of_mass_blocks_amcm( single_body_parameters *sbp,
+CUDA_GLOBAL void k_center_of_mass_amcm( single_body_parameters *sbp,
         reax_atom *atoms, rvec *amcm_g, size_t n )
 {
-    extern __shared__ rvec amcm_s[];
-    unsigned int i, mask;
-    int offset;
+    extern __shared__ cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage temp_block[];
+    unsigned int i;
     real m;
     rvec amcm;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
-    mask = __ballot_sync( FULL_MASK, i < n );
 
     if ( i < n )
     {
         m = sbp[ atoms[i].type ].mass;
         rvec_Cross( amcm, atoms[i].x, atoms [i].v );
         rvec_Scale( amcm, m, amcm );
-
-        /* warp-level sum using registers within a warp */
-        for ( offset = warpSize >> 1; offset > 0; offset /= 2 )
-        {
-            amcm[0] += __shfl_down_sync( mask, amcm[0], offset );
-            amcm[1] += __shfl_down_sync( mask, amcm[1], offset );
-            amcm[2] += __shfl_down_sync( mask, amcm[2], offset );
-        }
-
-        /* first thread within a warp writes warp-level sum to shared memory */
-        if ( threadIdx.x % warpSize == 0 )
-        {
-            rvec_Copy( amcm_s[ threadIdx.x >> 5 ], amcm );
-        }
     }
-    __syncthreads( );
-
-    /* block-level sum using shared memory */
-    for ( offset = blockDim.x >> 6; offset > 0; offset >>= 1 )
+    else
     {
-        if ( threadIdx.x < offset )
-        {
-            rvec_Add( amcm_s[threadIdx.x], amcm_s[threadIdx.x + offset] );
-        }
-        __syncthreads( );
+        rvec_MakeZero( amcm );
     }
+
+    amcm[0] = cub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(amcm[0]);
+    __syncthreads( );
+    amcm[1] = cub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(amcm[1]);
+    __syncthreads( );
+    amcm[2] = cub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(amcm[2]);
 
     /* one thread writes the block-level partial sum
      * of the reduction back to global memory */
     if ( threadIdx.x == 0 )
     {
-        rvec_Copy( amcm_g[blockIdx.x], amcm_s[0] );
+#if !defined(CUDA_ACCUM_ATOMIC)
+        rvec_Copy( amcm_g[blockIdx.x], amcm );
+#else
+        atomicAdd( (double *) &amcm_g[0][0], (double) amcm[0] );
+        atomicAdd( (double *) &amcm_g[0][1], (double) amcm[1] );
+        atomicAdd( (double *) &amcm_g[0][2], (double) amcm[2] );
+#endif
     }
 }
 
@@ -242,7 +208,7 @@ CUDA_GLOBAL void k_compute_inertial_tensor_xx_xy( single_body_parameters *sbp,
     rvec diff, xcm;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
-    mask = __ballot_sync( FULL_MASK, i < n );
+    mask = __ballot_sync( FULL_WARP_MASK, i < n );
     xcm[0] = xcm0;
     xcm[1] = xcm1;
     xcm[2] = xcm2;
@@ -302,7 +268,7 @@ CUDA_GLOBAL void k_compute_inertial_tensor_xz_yy( single_body_parameters *sbp,
     rvec diff, xcm;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
-    mask = __ballot_sync( FULL_MASK, i < n );
+    mask = __ballot_sync( FULL_WARP_MASK, i < n );
     xcm[0] = xcm0;
     xcm[1] = xcm1;
     xcm[2] = xcm2;
@@ -362,7 +328,7 @@ CUDA_GLOBAL void k_compute_inertial_tensor_yz_zz( single_body_parameters *sbp,
     rvec diff, xcm;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
-    mask = __ballot_sync( FULL_MASK, i < n );
+    mask = __ballot_sync( FULL_WARP_MASK, i < n );
     xcm[0] = xcm0;
     xcm[1] = xcm1;
     xcm[2] = xcm2;
@@ -520,70 +486,75 @@ static void Cuda_Compute_Momentum( reax_system *system, control_params *control,
     rvec *spad;
 
     sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
-            sizeof(rvec) * (control->blocks + 1), __FILE__, __LINE__ );
+#if !defined(CUDA_ACCUM_ATOMIC)
+            sizeof(rvec) * (control->blocks + 1),
+#else
+            sizeof(rvec),
+#endif
+            __FILE__, __LINE__ );
     spad = (rvec *) workspace->scratch[0];
 
     // xcm
-    sCudaMemsetAsync( spad, 0, sizeof(rvec) * (control->blocks + 1),
-            control->streams[0], __FILE__, __LINE__ );
-    cudaStreamSynchronize( control->streams[0] );
-    
-    k_center_of_mass_blocks_xcm <<< control->blocks, control->block_size,
-                                sizeof(rvec) * (control->block_size / 32),
+    k_center_of_mass_xcm <<< control->blocks, control->block_size,
+                                sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage),
                                 control->streams[0] >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad, system->n );
     cudaCheckError( );
     
-    k_reduction_rvec <<< 1, control->blocks_pow_2,
-                     sizeof(rvec) * (control->blocks_pow_2 / 32),
-                     control->streams[0] >>>
-            ( spad, &spad[control->blocks], control->blocks );
-    cudaCheckError( );
+#if !defined(CUDA_ACCUM_ATOMIC)
+    Cuda_Reduction_Sum( spad, &spad[control->blocks], control->blocks,
+            0, control->streams[0] );
+#endif
 
-    sCudaMemcpyAsync( xcm, &spad[control->blocks], sizeof(rvec),
-            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    sCudaMemcpyAsync( xcm,
+#if !defined(CUDA_ACCUM_ATOMIC)
+            &spad[control->blocks],
+#else
+            spad,
+#endif
+            sizeof(rvec), cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
     
     // vcm
-    sCudaMemsetAsync( spad, 0, sizeof(rvec) * (control->blocks + 1),
-            control->streams[0], __FILE__, __LINE__ );
-    cudaStreamSynchronize( control->streams[0] );
-    
-    k_center_of_mass_blocks_vcm <<< control->blocks, control->block_size,
-                                sizeof(rvec) * (control->block_size / 32),
-                                control->streams[0] >>>
+    k_center_of_mass_vcm <<< control->blocks, control->block_size,
+                         sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage),
+                         control->streams[0] >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad, system->n );
     cudaCheckError( );
     
-    k_reduction_rvec <<< 1, control->blocks_pow_2,
-                     sizeof(rvec) * (control->blocks_pow_2 / 32),
-                     control->streams[0] >>>
-        ( spad, &spad[control->blocks], control->blocks );
-    cudaCheckError( );
+#if !defined(CUDA_ACCUM_ATOMIC)
+    Cuda_Reduction_Sum( spad, &spad[control->blocks], control->blocks,
+            0 control->streams[0] );
+#endif
 
-    sCudaMemcpyAsync( vcm, &spad[control->blocks], sizeof(rvec),
-        cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    sCudaMemcpyAsync( vcm,
+#if !defined(CUDA_ACCUM_ATOMIC)
+            &spad[control->blocks],
+#else
+            spad,
+#endif
+            sizeof(rvec), cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
     
     // amcm
-    sCudaMemsetAsync( spad, 0,  sizeof(rvec) * (control->blocks + 1),
-            control->streams[0], __FILE__, __LINE__ );
-    cudaStreamSynchronize( control->streams[0] );
-    
-    k_center_of_mass_blocks_amcm <<< control->blocks, control->block_size,
-                                 sizeof(rvec) * (control->block_size / 32),
-                                 control->streams[0] >>>
+    k_center_of_mass_amcm <<< control->blocks, control->block_size,
+                          sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage),
+                          control->streams[0] >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad, system->n );
     cudaCheckError( );
     
-    k_reduction_rvec <<< 1, control->blocks_pow_2,
-                     sizeof(rvec) * (control->blocks_pow_2 / 32),
-                     control->streams[0] >>>
-        ( spad, &spad[control->blocks], control->blocks );
-    cudaCheckError( );
+#if !defined(CUDA_ACCUM_ATOMIC)
+    Cuda_Reduction_Sum( spad, &spad[control->blocks], control->blocks,
+            0, control->streams[0] );
+#endif
 
-    sCudaMemcpyAsync( amcm, &spad[control->blocks], sizeof(rvec),
-        cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+    sCudaMemcpyAsync( amcm, 
+#if !defined(CUDA_ACCUM_ATOMIC)
+            &spad[control->blocks],
+#else
+            spad,
+#endif
+            sizeof(rvec), cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
 }
 
@@ -864,7 +835,7 @@ void Cuda_Compute_Pressure( reax_system* system, control_params *control,
         storage *workspace, simulation_data* data, mpi_datatypes *mpi_data )
 {
     int ret;
-    rvec *rvec_spad, int_press;
+    rvec *spad_rvec, int_press;
     simulation_box *big_box;
     
     big_box = &system->big_box;
@@ -873,29 +844,18 @@ void Cuda_Compute_Pressure( reax_system* system, control_params *control,
     if ( control->press_mode == 0 || control->press_mode == 2 )
     {
         sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
-                sizeof(rvec) * (system->n + control->blocks + 1),
-                __FILE__, __LINE__ );
-        rvec_spad = (rvec *) workspace->scratch[0];
+                sizeof(rvec) * (system->n + 1), __FILE__, __LINE__ );
+        spad_rvec = (rvec *) workspace->scratch[0];
 
         k_compute_pressure <<< control->blocks, control->block_size, 0,
                            control->streams[0] >>>
-            ( system->d_my_atoms, system->d_big_box, rvec_spad,
+            ( system->d_my_atoms, system->d_big_box, spad_rvec,
               system->n );
 
-        k_reduction_rvec <<< control->blocks, control->block_size,
-                         sizeof(rvec) * (control->block_size / 32),
-                         control->streams[0] >>>
-            ( rvec_spad, &rvec_spad[system->n],  system->n );
-        cudaCheckError( );
+        Cuda_Reduction_Sum( spad_rvec, &spad_rvec[system->n], system->n,
+                0, control->streams[0] );
 
-        k_reduction_rvec <<< 1, control->blocks_pow_2,
-                         sizeof(rvec) * (control->blocks_pow_2 / 32),
-                         control->streams[0] >>>
-            ( &rvec_spad[system->n], &rvec_spad[system->n + control->blocks],
-              control->blocks );
-        cudaCheckError( );
-
-        sCudaMemcpyAsync( &int_press, &rvec_spad[system->n + control->blocks],
+        sCudaMemcpyAsync( &int_press, &spad_rvec[system->n],
                 sizeof(rvec), cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
         cudaStreamSynchronize( control->streams[0] );
     }

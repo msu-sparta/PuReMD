@@ -1277,7 +1277,7 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
 #if !defined(CUDA_ACCUM_ATOMIC)
     if ( control->virial == 1 )
     {
-        s = (sizeof(real) * 2 + sizeof(rvec)) * system->n + sizeof(rvec) * control->blocks;
+        s = (sizeof(real) * 2 + sizeof(rvec)) * system->n;
     }
     else
     {
@@ -1370,22 +1370,9 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
     {
         rvec_spad = (rvec *) (&spad[2 * system->n]);
 
-        k_reduction_rvec <<< control->blocks, control->block_size,
-                         sizeof(rvec) * (control->block_size / 32),
-                         control->streams[3] >>>
-            ( rvec_spad, &rvec_spad[system->n], system->n );
-        cudaCheckError( );
-
-        k_reduction_rvec <<< 1, control->blocks_pow_2,
-                         sizeof(rvec) * (control->blocks_pow_2 / 32),
-                         control->streams[3] >>>
-                ( &rvec_spad[system->n],
-                  &((simulation_data *)data->d_simulation_data)->my_ext_press,
-                  control->blocks );
-        cudaCheckError( );
-//            Cuda_Reduction_Sum( rvec_spad,
-//                    &((simulation_data *)data->d_simulation_data)->my_ext_press,
-//                    system->n, 3, control->streams[3] );
+        Cuda_Reduction_Sum( rvec_spad,
+                &((simulation_data *)data->d_simulation_data)->my_ext_press,
+                system->n, 3, control->streams[3] );
     }
 #endif
 

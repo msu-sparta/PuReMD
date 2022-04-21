@@ -22,11 +22,12 @@
 #include "../tool_box.h"
 #include "../vector.h"
 
+#include <cub/util_ptx.cuh>
 #include <cub/warp/warp_reduce.cuh>
 #include <cub/warp/warp_scan.cuh>
 
 
-#define FULL_MASK (0xFFFFFFFF)
+#define FULL_WARP_MASK (0xFFFFFFFF)
 
 
 typedef enum
@@ -542,7 +543,7 @@ CUDA_GLOBAL void k_init_cm_full_fs_opt( reax_atom * const my_atoms,
 
             /* get cm_top from thread in last lane */
             cm_top = cm_top + offset + (flag == TRUE ? 1 : 0);
-            cm_top = __shfl_sync( FULL_MASK, cm_top, warpSize - 1 );
+            cm_top = cub::ShuffleIndex<32>( cm_top, warpSize - 1, FULL_WARP_MASK );
 
             pj += warpSize;
         }
@@ -894,7 +895,7 @@ CUDA_GLOBAL void k_init_bonds_opt( reax_atom * const my_atoms,
 
         /* get btop_i from thread in last lane */
         btop_i = btop_i + offset + (flag == TRUE ? 1 : 0);
-        btop_i = __shfl_sync( FULL_MASK, btop_i, warpSize - 1 );
+        btop_i = cub::ShuffleIndex<32>( btop_i, warpSize - 1, FULL_WARP_MASK );
 
         pj += warpSize;
     }
@@ -1144,7 +1145,7 @@ CUDA_GLOBAL void k_init_hbonds_opt( reax_atom * const my_atoms,
 
             /* get ihb_top from thread in last lane */
             ihb_top = ihb_top + offset + (flag == TRUE ? 1 : 0);
-            ihb_top = __shfl_sync( FULL_MASK, ihb_top, warpSize - 1 );
+            ihb_top = cub::ShuffleIndex<32>( ihb_top, warpSize - 1, FULL_WARP_MASK );
 
             pj += warpSize;
         }

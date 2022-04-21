@@ -98,7 +98,7 @@ static void Cuda_Post_Evolve( reax_system * const system, control_params * const
         output_controls * const out_control, mpi_datatypes * const mpi_data )
 {
     /* remove translational and rotational velocity of the center of mass from system */
-    if ( control->ensemble != NVE && control->remove_CoM_vel
+    if ( control->ensemble != NVE && control->remove_CoM_vel > 0
             && data->step % control->remove_CoM_vel == 0 )
     {
         /* compute velocity of the center of mass */

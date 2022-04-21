@@ -5,8 +5,6 @@
 
 #include "../comm_tools.h"
 
-#include <cub/block/block_reduce.cuh>
-
 
 #if !defined(USE_CUBLAS)
 /* copy the entries from one vector to another
@@ -978,54 +976,20 @@ void Dot_local_rvec2( storage * const workspace,
         exit( RUNTIME_ERROR );
     }
 #else
-    int blocks;
-    size_t sz;
     rvec2 sum, *spad;
 
-    blocks = (k / DEF_BLOCK_SIZE)
-        + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
-
-#if !defined(CUDA_ACCUM_ATOMIC)
-    sz = sizeof(rvec2) * (k + blocks + 1);
-#else
-    sz = sizeof(rvec2) * (k + 1);
-#endif
-
     sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
-            sz, __FILE__, __LINE__ );
+            sizeof(rvec2) * (k + 1), __FILE__, __LINE__ );
     spad = (rvec2 *) workspace->scratch[5];
 
     Vector_Mult_rvec2( spad, v1, v2, k, s );
 
     /* local reduction (sum) on device */
-//    Cuda_Reduction_Sum( spad, &spad[k], k, 5, s );
-
-#if defined(CUDA_ACCUM_ATOMIC)
-    sCudaMemsetAsync( &spad[k], 0, sizeof(rvec2), s, __FILE__, __LINE__ );
-#endif
-
-    k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE,
-                      sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage),
-                      s >>>
-        ( spad, &spad[k], k );
-    cudaCheckError( );
-
-#if !defined(CUDA_ACCUM_ATOMIC)
-    k_reduction_rvec2 <<< 1, ((blocks + 31) / 32) * 32,
-                      sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage),
-                      s >>>
-        ( &spad[k], &spad[k + blocks], blocks );
-    cudaCheckError( );
-#endif
+    Cuda_Reduction_Sum( spad, &spad[k], k, 5, s );
 
     //TODO: keep result of reduction on devie and pass directly to CUDA-aware MPI
-    sCudaMemcpyAsync( &sum,
-#if !defined(CUDA_ACCUM_ATOMIC)
-            &spad[k + blocks],
-#else
-            &spad[k],
-#endif
-            sizeof(rvec2), cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( &sum, &spad[k], sizeof(rvec2), cudaMemcpyDeviceToHost,
+            s, __FILE__, __LINE__ );
 
     cudaStreamSynchronize( s );
 

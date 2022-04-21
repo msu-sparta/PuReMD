@@ -1076,22 +1076,9 @@ void Cuda_Total_Forces_Part1( reax_system const * const system,
             ( *(workspace->d_workspace), *(lists[BONDS]), spad_rvec, system->N );
         cudaCheckError( );
 
-        blocks = system->N / DEF_BLOCK_SIZE
-            + ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
-
-        /* reduction for ext_press */
-        k_reduction_rvec <<< blocks, DEF_BLOCK_SIZE,
-                         sizeof(rvec) * (DEF_BLOCK_SIZE / 32),
-                         control->streams[0] >>> 
-            ( spad_rvec, &spad_rvec[system->N], system->N );
-        cudaCheckError( ); 
-
-        k_reduction_rvec <<< 1, ((blocks + 31) / 32) * 32,
-                         sizeof(rvec) * ((blocks + 31) / 32),
-                         control->streams[0] >>>
-            ( &spad_rvec[system->N],
-              &((simulation_data *)data->d_simulation_data)->my_ext_press, blocks );
-        cudaCheckError( ); 
+        Cuda_Reduction_Sum( spad_rvec,
+                &((simulation_data *)data->d_simulation_data)->my_ext_press,
+                system->N, 0, control->streams[0] );
     }
 
 #if !defined(CUDA_ACCUM_ATOMIC)

@@ -837,22 +837,9 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
     {
         rvec_spad = (rvec *) (&spad[system->n]);
 
-        k_reduction_rvec <<< control->blocks, control->block_size,
-                         sizeof(rvec) * (control->block_size / 32),
-                         control->streams[2] >>>
-            ( rvec_spad, &rvec_spad[system->n], system->n );
-        cudaCheckError( );
-
-        k_reduction_rvec <<< 1, control->blocks_pow_2,
-                         sizeof(rvec) * (control->blocks_pow_2 / 32),
-                         control->streams[2] >>>
-            ( &rvec_spad[system->n],
-              &((simulation_data *)data->d_simulation_data)->my_ext_press,
-              control->blocks );
-        cudaCheckError( );
-//        Cuda_Reduction_Sum( rvec_spad,
-//                &((simulation_data *)data->d_simulation_data)->my_ext_press,
-//                system->n, 2, control->streams[2] );
+        Cuda_Reduction_Sum( rvec_spad,
+                &((simulation_data *)data->d_simulation_data)->my_ext_press,
+                system->n, 2, control->streams[2] );
     }
 
     k_hydrogen_bonds_part2 <<< control->blocks, control->block_size, 0,

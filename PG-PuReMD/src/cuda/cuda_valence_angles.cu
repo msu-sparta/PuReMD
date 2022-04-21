@@ -31,11 +31,12 @@
 #include "../index_utils.h"
 #include "../vector.h"
 
+#include <cub/util_ptx.cuh>
 #include <cub/warp/warp_scan.cuh>
 #include <cub/warp/warp_reduce.cuh>
 
 
-#define FULL_MASK (0xFFFFFFFF)
+#define FULL_WARP_MASK (0xFFFFFFFF)
 
 
 /**
@@ -525,8 +526,8 @@ CUDA_GLOBAL void k_valence_angles_part1_opt( reax_atom const * const my_atoms,
     prod_SBO = cub::WarpReduce<double>(temp_d[warp_id]).Reduce(prod_SBO, Prod());
 
     /* broadcast redux results from lane 0 */
-    SBOp = __shfl_sync( FULL_MASK, SBOp, 0 );
-    prod_SBO = __shfl_sync( FULL_MASK, prod_SBO, 0 );
+    SBOp = cub::ShuffleIndex<32>( SBOp, 0, FULL_WARP_MASK );
+    prod_SBO = cub::ShuffleIndex<32>( prod_SBO, 0, FULL_WARP_MASK );
 
     /* modifications to match Adri's code - 09/01/09 */
     if ( workspace.vlpex[j] >= 0.0 )
@@ -795,7 +796,7 @@ CUDA_GLOBAL void k_valence_angles_part1_opt( reax_atom const * const my_atoms,
 
                 /* get num_thb_intrs from thread in last lane */
                 num_thb_intrs = num_thb_intrs + offset + (flag == TRUE ? 1 : 0);
-                num_thb_intrs = __shfl_sync( FULL_MASK, num_thb_intrs, warpSize - 1 );
+                num_thb_intrs = cub::ShuffleIndex<32>( num_thb_intrs, warpSize - 1, FULL_WARP_MASK );
 
                 pk += warpSize;
             }
@@ -1488,7 +1489,7 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
 
 #if !defined(CUDA_ACCUM_ATOMIC)
     s = MAX( sizeof(int) * system->total_bonds,
-            (sizeof(real) * 3 + sizeof(rvec)) * system->N + sizeof(rvec) * control->blocks_n ),
+            (sizeof(real) * 3 + sizeof(rvec)) * system->N ),
 #else
     s = sizeof(int) * system->total_bonds;
 #endif
@@ -1603,22 +1604,9 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
         {
             rvec_spad = (rvec *) (&spad[3 * system->N]);
 
-            k_reduction_rvec <<< control->blocks_n, control->block_size_n,
-                             sizeof(rvec) * (control->block_size_n / 32),
-                             control->streams[3] >>>
-                ( rvec_spad, &rvec_spad[system->N], system->N );
-            cudaCheckError( );
-
-            k_reduction_rvec <<< 1, control->blocks_pow_2_n,
-                             sizeof(rvec) * (control->blocks_pow_2_n / 32),
-                             control->streams[3] >>>
-                ( &rvec_spad[system->N],
-                  &((simulation_data *)data->d_simulation_data)->my_ext_press,
-                  control->blocks_n );
-            cudaCheckError( );
-//            Cuda_Reduction_Sum( rvec_spad,
-//                    &((simulation_data *)data->d_simulation_data)->my_ext_press,
-//                    system->N, control->streams[3] );
+            Cuda_Reduction_Sum( rvec_spad,
+                    &((simulation_data *)data->d_simulation_data)->my_ext_press,
+                    system->N, 3, control->streams[3] );
         }
 
         k_valence_angles_part2 <<< control->blocks_n, control->block_size_n,

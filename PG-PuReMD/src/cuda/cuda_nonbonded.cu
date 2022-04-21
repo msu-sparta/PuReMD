@@ -1490,20 +1490,9 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
     {
         spad_rvec = (rvec *) (&spad[system->n]);
 
-        /* reduction for ext_press */
-        k_reduction_rvec <<< control->blocks, control->block_size,
-                         sizeof(rvec) * (control->block_size / 32),
-                         control->streams[4] >>>
-            ( spad_rvec, &spad_rvec[system->n], system->n );
-        cudaCheckError( );
-
-        k_reduction_rvec <<< 1, control->blocks_pow_2,
-                         sizeof(rvec) * (control->blocks_pow_2 / 32),
-                         control->streams[4] >>>
-            ( &spad_rvec[system->n],
-              &((simulation_data *)data->d_simulation_data)->my_ext_press,
-              control->blocks );
-        cudaCheckError( );
+        Cuda_Reduction_Sum( spad_rvec,
+                &((simulation_data *)data->d_simulation_data)->my_ext_press,
+                system->n, 4, control->streams[4] );
     }
 #endif
 
@@ -1704,20 +1693,9 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
         spad_rvec = (rvec *) (&spad[system->n]);
 #endif
 
-        /* reduction for ext_press */
-        k_reduction_rvec <<< control->blocks, control->block_size,
-                         sizeof(rvec) * (control->block_size / 32),
-                         control->streams[5] >>>
-            ( spad_rvec, &spad_rvec[system->n], system->n );
-        cudaCheckError( );
-
-        k_reduction_rvec <<< 1, control->blocks_pow_2,
-                         sizeof(rvec) * (control->blocks_pow_2 / 32),
-                         control->streams[5] >>>
-            ( &spad_rvec[system->n],
-              &((simulation_data *)data->d_simulation_data)->my_ext_press,
-              control->blocks );
-        cudaCheckError( );
+        Cuda_Reduction_Sum( spad_rvec,
+                &((simulation_data *)data->d_simulation_data)->my_ext_press,
+                system->n, 5, control->streams[5] );
     }
 #endif
 

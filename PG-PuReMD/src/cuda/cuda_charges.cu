@@ -40,7 +40,6 @@
 #endif
 
 #include <cub/device/device_radix_sort.cuh>
-#include <cub/block/block_reduce.cuh>
 
 
 //TODO: move k_jacob and jacboi to cuda_lin_alg.cu
@@ -552,52 +551,24 @@ static void Calculate_Charges_QEq( reax_system const * const system,
         mpi_datatypes * const mpi_data, cudaStream_t s )
 {
     int ret;
-    size_t sz;
     real u, *q;
     rvec2 my_sum, all_sum;
 #if defined(DUAL_SOLVER)
-    int blocks;
     rvec2 *spad;
 #else
     real *spad;
 #endif
 
 #if defined(DUAL_SOLVER)
-    blocks = system->n / DEF_BLOCK_SIZE
-        + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
-
-#if !defined(CUDA_ACCUM_ATOMIC)
-    sz = sizeof(rvec2) * (blocks + 1);
-#else
-    sz = sizeof(rvec2);
-#endif
-
     sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
-            sz, __FILE__, __LINE__ );
+            sizeof(rvec2), __FILE__, __LINE__ );
     spad = (rvec2 *) workspace->scratch[5];
 
-    sCudaMemsetAsync( spad, 0, sz, s, __FILE__, __LINE__ );
-
     /* compute local sums of pseudo-charges in s and t on device */
-    k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE,
-                      sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage), s >>>
-        ( workspace->d_workspace->x, spad, system->n );
-    cudaCheckError( );
+    Cuda_Reduction_Sum( workspace->d_workspace->x, spad, system->n, 5, s );
 
-#if !defined(CUDA_ACCUM_ATOMIC)
-    k_reduction_rvec2 <<< 1, ((blocks + 31) / 32) * 32,
-                      sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage), s >>>
-        ( spad, &spad[blocks], blocks );
-    cudaCheckError( );
-#endif
-
-    sCudaMemcpyAsync( &my_sum,
-#if !defined(CUDA_ACCUM_ATOMIC)
-            &spad[blocks],
-#else
-            spad,
-#endif
-            sizeof(rvec2), cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( &my_sum, spad, sizeof(rvec2), cudaMemcpyDeviceToHost,
+            s, __FILE__, __LINE__ );
 #else
     sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
             sizeof(real) * 2, __FILE__, __LINE__ );
