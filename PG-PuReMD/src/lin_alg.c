@@ -142,38 +142,44 @@ static void qsort_dbls( double *array, int array_len )
 }
 
 
-static int find_bucket( double *list, int len, double a )
+/* find the bucket an element maps to by performing
+ * a bisection search through a given list of bin boundaries
+ *
+ * list: bin boundaries (strictly increasing order)
+ * n: length of list
+ * a: element to determine the bin for
+ */
+static int find_bucket( double *list, int n, double a )
 {
-    int s, e, m;
+    int start, end, middle;
 
-    if ( len == 0 )
+    if ( n == 0 )
     {
         return 0;
     }
-
-    if ( a > list[len - 1] )
+    else if ( a > list[n - 1] )
     {
-        return len;
+        return n;
     }
 
-    s = 0;
-    e = len - 1;
+    start = 0;
+    end = n - 1;
 
-    while ( s < e )
+    while ( start < end )
     {
-        m = (s + e) / 2;
+        middle = (start + end) / 2;
 
-        if ( list[m] < a )
+        if ( list[middle] < a )
         {
-            s = m + 1;
+            start = middle + 1;
         }
         else
         {
-            e = m;
+            end = middle;
         }
     }
 
-    return s;
+    return start;
 }
 
 
@@ -695,16 +701,20 @@ void setup_sparse_approx_inverse( reax_system const * const system,
 #endif
                 A->m, A->format );
     }
-
-    A_spar_patt->n = A->n;
+    else
+    {
+        A_spar_patt->n = A->n;
+    }
 
     n_local = 0;
+    /* num. of sampled non-zeros from local matrix is ~10% (every 10-th entry),
+     * so round up to nearest multiple of 10 when deriving counts per row using indices */
     for ( i = 0; i < num_rows; ++i )
     {
         /* round row NNZ up to nearest factor of 10 */
         n_local += (A->end[i] - A->start[i] + 9) / 10;
     }
-    s_local = (int) (12.0 * (LOG2(n_local) + LOG2(nprocs)));
+    s_local = MIN( (int) (12.0 * (LOG2(n_local) + LOG2(nprocs))), n_local );
     
     t_start = Get_Time( );
     ret = MPI_Allreduce( &n_local, &n, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD );
