@@ -2538,7 +2538,7 @@ static void Cuda_Compute_Total_Force( reax_system *system, control_params *contr
             cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
 
-    Coll_FS( system, mpi_data, f, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll( system, mpi_data, f, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
 
     sCudaMemcpyAsync( workspace->d_workspace->f, f, sizeof(rvec) * system->N,
             cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );

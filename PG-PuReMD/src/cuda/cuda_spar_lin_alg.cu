@@ -224,7 +224,7 @@ CUDA_GLOBAL void k_sparse_matvec_half_opt_csr( int *row_ptr_start,
     for ( itr = 0, pj = si + lane_id;
             itr < (ei - si + warpSize - 1) / warpSize; ++itr )
     {
-        /* coaleseced 128-bit aligned reads from global memory */
+        /* coalesced aligned reads from global memory */
         vals_l = vals[pj];
         col_ind_l = col_ind[pj];
 
@@ -322,17 +322,14 @@ CUDA_GLOBAL void k_sparse_matvec_full_opt_csr( int *row_ptr_start,
     sum = 0.0;
 
     /* partial sums per thread */
-    for ( itr = 0, pj = si + lane_id;
-            itr < (ei - si + warpSize - 1) / warpSize; ++itr )
+    pj = si + lane_id;
+    for ( itr = 0; itr < (ei - si + warpSize - 1) / warpSize; ++itr )
     {
-        /* coalesced 128-bit aligned reads from global memory */
         vals_l = vals[pj];
         col_ind_l = col_ind[pj];
 
-        /* only threads with value non-zero positions accumulate the result */
         if ( pj < ei )
         {
-            /* gather on x from global memory and compute partial sum for this non-zero entry */
             sum += vals_l * x[col_ind_l];
         }
 
@@ -500,7 +497,8 @@ CUDA_GLOBAL void k_dual_sparse_matvec_full_opt_csr( int *row_ptr_start,
         rvec2 const * const x, rvec2 * const b, int n )
 {
     extern __shared__ cub::WarpReduce<double>::TempStorage temp_storage[];
-    int pj, si, ei, warp_id, lane_id;
+    int pj, si, ei, warp_id, lane_id, itr, col_ind_l;
+    real vals_l;
     rvec2 sum;
 
     warp_id = (blockDim.x * blockIdx.x + threadIdx.x) / warpSize;
@@ -517,10 +515,19 @@ CUDA_GLOBAL void k_dual_sparse_matvec_full_opt_csr( int *row_ptr_start,
     sum[1] = 0.0;
 
     /* partial sums per thread */
-    for ( pj = si + lane_id; pj < ei; pj += warpSize )
+    pj = si + lane_id;
+    for ( itr = 0; itr < (ei - si + warpSize - 1) / warpSize; ++itr )
     {
-        sum[0] += vals[pj] * x[col_ind[pj]][0];
-        sum[1] += vals[pj] * x[col_ind[pj]][1];
+        vals_l = vals[pj];
+        col_ind_l = col_ind[pj];
+
+        if ( pj < ei )
+        {
+            sum[0] += vals_l * x[col_ind_l][0];
+            sum[1] += vals_l * x[col_ind_l][1];
+        }
+
+        pj += warpSize;
     }
 
     sum[0] = cub::WarpReduce<double>(temp_storage[warp_id]).Sum(sum[0]);
@@ -637,7 +644,7 @@ static void Dual_Sparse_MatVec_local( control_params const * const control,
                                           sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32), s >>>
              ( A->start, A->end, A->j, A->val, x, b, A->n );
     }
-    else if ( A->format == SYM_FULL_MATRIX )
+    else if ( A->format == SYM_FULL_MATRIX || A->format == FULL_MATRIX )
     {
         /* 1 thread per row implementation */
 //        k_dual_sparse_matvec_full_csr <<< control->blocks_n, control->blocks_size_n, 0, s >>>
@@ -825,7 +832,7 @@ static void Sparse_MatVec_local( control_params const * const control,
                                      sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32), s >>>
              ( A->start, A->end, A->j, A->val, x, b, A->n );
     }
-    else if ( A->format == SYM_FULL_MATRIX )
+    else if ( A->format == SYM_FULL_MATRIX || A->format == FULL_MATRIX )
     {
         /* 1 thread per row implementation */
 //        k_sparse_matvec_full_csr <<< control->blocks, control->blocks_size, 0, s >>>

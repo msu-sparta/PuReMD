@@ -324,8 +324,6 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
             Cuda_Copy_Matrix_Device_to_Host( &workspace->H,
                     &workspace->d_workspace->H, s );
 
-            workspace->H.n = workspace->d_workspace->H.n;
-
             setup_sparse_approx_inverse( system, data, workspace, mpi_data,
                     &workspace->H, &workspace->H_spar_patt, 
                     control->nprocs, control->cm_solver_pre_comp_sai_thres );
@@ -401,8 +399,6 @@ static void Compute_Preconditioner_QEq( reax_system const * const system,
 
         Cuda_Copy_Matrix_Host_to_Device( &workspace->H_app_inv,
                 &workspace->d_workspace->H_app_inv, s );
-
-        workspace->d_workspace->H_app_inv.n = workspace->H_app_inv.n;
 
         if( system->my_rank == MASTER_NODE )
         {
@@ -607,9 +603,9 @@ static void Calculate_Charges_QEq( reax_system const * const system,
     Extrapolate_Charges_QEq_Part2( system, control, workspace, q, u, s );
 
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
-    Dist_FS( system, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE );
+    Dist( system, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE );
 #else
-    Cuda_Dist_FS( system, workspace, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE, s );
+    Cuda_Dist( system, workspace, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE, s );
 #endif
 
     /* copy atomic charges to ghost atoms in case of ownership transfer */

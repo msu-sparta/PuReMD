@@ -58,10 +58,20 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
     }
 
     /* reading first header comment */
-    fgets( s, MAX_LINE, fp );
+    if ( fgets( s, MAX_LINE, fp ) == NULL )
+    {
+        fprintf( stderr, "[ERROR] reading force field failed\n" \
+                 "  [INFO] reading first header comment\n" );
+        exit( INVALID_INPUT );
+    }
 
     /* line 2 is number of global parameters */
-    fgets( s, MAX_LINE, fp );
+    if ( fgets( s, MAX_LINE, fp ) == NULL )
+    {
+        fprintf( stderr, "[ERROR] reading force field failed\n" \
+                 "  [INFO] reading number of global parameters\n" );
+        exit( INVALID_INPUT );
+    }
     c = Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
     /* reading the number of global parameters */
@@ -85,9 +95,14 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
     reax->gp.l = smalloc( sizeof(real) * n, __FILE__, __LINE__ );
 
     /* see reax_types.h for mapping between l[i] and the lambdas used in ff */
-    for (i = 0; i < n; i++)
+    for ( i = 0; i < n; i++ )
     {
-        fgets( s, MAX_LINE, fp );
+        if ( fgets( s, MAX_LINE, fp ) == NULL )
+        {
+            fprintf( stderr, "[ERROR] reading force field failed\n" \
+                     "  [INFO] reading global parameters (entry %d)\n", i );
+            exit( INVALID_INPUT );
+        }
         c = Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         if ( c > 0 )
@@ -102,7 +117,12 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
     control->nonb_cut  = reax->gp.l[12];
 
     /* next line is number of atom types and some comments */
-    fgets( s, MAX_LINE, fp );
+    if ( fgets( s, MAX_LINE, fp ) == NULL )
+    {
+        fprintf( stderr, "[ERROR] reading force field failed\n" \
+                 "  [INFO] reading number of single body parameters\n" );
+        exit( INVALID_INPUT );
+    }
     c = Tokenize( s, &tmp, MAX_TOKEN_LEN );
     if ( c > 0 )
     {
@@ -110,9 +130,14 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
     }
 
     /* 3 lines of comments */
-    fgets( s, MAX_LINE, fp );
-    fgets( s, MAX_LINE, fp );
-    fgets( s, MAX_LINE, fp );
+    if ( fgets( s, MAX_LINE, fp ) == NULL
+            || fgets( s, MAX_LINE, fp ) == NULL
+            || fgets( s, MAX_LINE, fp ) == NULL )
+    {
+        fprintf( stderr, "[ERROR] reading force field failed\n" \
+                 "  [INFO] reading single body comments\n" );
+        exit( INVALID_INPUT );
+    }
 
     /* Allocating structures in reax_interaction */
     __N = reax->num_atom_types;
@@ -148,7 +173,12 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
     for ( i = 0; i < reax->num_atom_types; i++ )
     {
         /* line one */
-        fgets( s, MAX_LINE, fp );
+        if ( fgets( s, MAX_LINE, fp ) == NULL )
+        {
+            fprintf( stderr, "[ERROR] reading force field failed\n" \
+                     "  [INFO] reading single body parameters (entry %d, line 1)\n", i );
+            exit( INVALID_INPUT );
+        }
         c = Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         /* strlen safe here as tmp[0] is NULL-terminated in Tokenize */
@@ -185,7 +215,12 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
         reax->sbp[i].nlp_opt = 0.5 * (reax->sbp[i].valency_e - reax->sbp[i].valency);
 
         /* line two */
-        fgets( s, MAX_LINE, fp );
+        if ( fgets( s, MAX_LINE, fp ) == NULL )
+        {
+            fprintf( stderr, "[ERROR] reading force field failed\n" \
+                     "  [INFO] reading single body parameters (entry %d, line 2)\n", i );
+            exit( INVALID_INPUT );
+        }
         c = Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         if ( c >= 8 )
@@ -212,7 +247,12 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
         }
 
         /* line 3 */
-        fgets( s, MAX_LINE, fp );
+        if ( fgets( s, MAX_LINE, fp ) == NULL )
+        {
+            fprintf( stderr, "[ERROR] reading force field failed\n" \
+                     "  [INFO] reading single body parameters (entry %d, line 3)\n", i );
+            exit( INVALID_INPUT );
+        }
         c = Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         if ( c >= 8 )
@@ -234,7 +274,12 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
         }
 
         /* line 4  */
-        fgets( s, MAX_LINE, fp );
+        if ( fgets( s, MAX_LINE, fp ) == NULL )
+        {
+            fprintf( stderr, "[ERROR] reading force field failed\n" \
+                     "  [INFO] reading single body parameters (entry %d, line 4)\n", i );
+            exit( INVALID_INPUT );
+        }
         c = Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         if ( c >= 8 )
@@ -354,17 +399,32 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
     }
 
     /* next line is number of two body combination and some comments */
-    fgets( s, MAX_LINE, fp );
+    if ( fgets( s, MAX_LINE, fp ) == NULL )
+    {
+        fprintf( stderr, "[ERROR] reading force field failed\n" \
+                 "  [INFO] reading number of two body parameters\n" );
+        exit( INVALID_INPUT );
+    }
     c = Tokenize( s, &tmp, MAX_TOKEN_LEN );
     l = atoi( tmp[0] );
 
     /* a line of comments */
-    fgets( s, MAX_LINE, fp );
+    if ( fgets( s, MAX_LINE, fp ) == NULL )
+    {
+        fprintf( stderr, "[ERROR] reading force field failed\n" \
+                 "  [INFO] reading two body comments\n" );
+        exit( INVALID_INPUT );
+    }
 
     for ( i = 0; i < l; i++ )
     {
         /* line 1 */
-        fgets( s, MAX_LINE, fp );
+        if ( fgets( s, MAX_LINE, fp ) == NULL )
+        {
+            fprintf( stderr, "[ERROR] reading force field failed\n" \
+                     "  [INFO] reading two body parameters (entry %d, line 1)\n", i );
+            exit( INVALID_INPUT );
+        }
         c = Tokenize(s, &tmp, MAX_TOKEN_LEN);
 
         j = atoi(tmp[0]) - 1;
@@ -401,7 +461,12 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
             reax->tbp[ index2 ].p_ovun1 = val;
 
             /* line 2 */
-            fgets( s, MAX_LINE, fp );
+            if ( fgets( s, MAX_LINE, fp ) == NULL )
+            {
+                fprintf( stderr, "[ERROR] reading force field failed\n" \
+                         "  [INFO] reading two body parameters (entry %d, line 2)\n", i );
+                exit( INVALID_INPUT );
+            }
             c = Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
             val = atof(tmp[0]);
@@ -485,13 +550,23 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
     /* next line is number of two body offdiagonal combinations and comments */
     /* these are two body offdiagonal terms that are different from the
        combination rules defined above */
-    fgets( s, MAX_LINE, fp );
+    if ( fgets( s, MAX_LINE, fp ) == NULL )
+    {
+        fprintf( stderr, "[ERROR] reading force field failed\n" \
+                 "  [INFO] reading number of two body off-diagonal parameters\n" );
+        exit( INVALID_INPUT );
+    }
     c = Tokenize( s, &tmp, MAX_TOKEN_LEN );
     l = atoi(tmp[0]);
 
     for ( i = 0; i < l; i++ )
     {
-        fgets( s, MAX_LINE, fp );
+        if ( fgets( s, MAX_LINE, fp ) == NULL )
+        {
+            fprintf( stderr, "[ERROR] reading force field failed\n" \
+                     "  [INFO] reading two body off-diagonal parameters (entry %d)\n", i );
+            exit( INVALID_INPUT );
+        }
         c = Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         j = atoi(tmp[0]) - 1;
@@ -561,13 +636,23 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
     }
 
     /* next line is number of 3-body params and some comments */
-    fgets( s, MAX_LINE, fp );
+    if ( fgets( s, MAX_LINE, fp ) == NULL )
+    {
+        fprintf( stderr, "[ERROR] reading force field failed\n" \
+                 "  [INFO] reading number of three body parameters\n" );
+        exit( INVALID_INPUT );
+    }
     c = Tokenize( s, &tmp, MAX_TOKEN_LEN );
     l = atoi( tmp[0] );
 
     for ( i = 0; i < l; i++ )
     {
-        fgets( s, MAX_LINE, fp );
+        if ( fgets( s, MAX_LINE, fp ) == NULL )
+        {
+            fprintf( stderr, "[ERROR] reading force field failed\n" \
+                     "  [INFO] reading three body parameters (entry %d)\n", i );
+            exit( INVALID_INPUT );
+        }
         c = Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         j = atoi(tmp[0]) - 1;
@@ -639,13 +724,23 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
     }
 
     /* next line is number of 4-body params and some comments */
-    fgets( s, MAX_LINE, fp );
+    if ( fgets( s, MAX_LINE, fp ) == NULL )
+    {
+        fprintf( stderr, "[ERROR] reading force field failed\n" \
+                 "  [INFO] reading number of four body parameters\n" );
+        exit( INVALID_INPUT );
+    }
     c = Tokenize( s, &tmp, MAX_TOKEN_LEN );
     l = atoi( tmp[0] );
 
     for ( i = 0; i < l; i++ )
     {
-        fgets( s, MAX_LINE, fp );
+        if ( fgets( s, MAX_LINE, fp ) == NULL )
+        {
+            fprintf( stderr, "[ERROR] reading force field failed\n" \
+                     "  [INFO] reading four body parameters (entry %d)\n", i );
+            exit( INVALID_INPUT );
+        }
         c = Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         j = atoi(tmp[0]) - 1;
@@ -729,13 +824,34 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
     }
 
     /* next line is number of hydrogen bond params and some comments */
-    fgets( s, MAX_LINE, fp );
+    if ( fgets( s, MAX_LINE, fp ) == NULL )
+    {
+        fprintf( stderr, "[ERROR] reading force field failed\n" \
+                 "  [INFO] reading number of hydrogen bond parameters\n" );
+        exit( INVALID_INPUT );
+    }
     c = Tokenize( s, &tmp, MAX_TOKEN_LEN );
     l = atoi( tmp[0] );
 
+    for ( i = 0; i < __N; ++i )
+    {
+        for ( j = 0; j < __N; ++j )
+        {
+            for ( k = 0; k < __N; ++k )
+            {
+                reax->hbp[i * __N * __N + j * __N + k].is_valid = FALSE;
+            }
+        }
+    }
+
     for ( i = 0; i < l; i++ )
     {
-        fgets( s, MAX_LINE, fp );
+        if ( fgets( s, MAX_LINE, fp ) == NULL )
+        {
+            fprintf( stderr, "[ERROR] reading force field failed\n" \
+                     "  [INFO] reading hydrogen bond parameters (entry %d)\n", i );
+            exit( INVALID_INPUT );
+        }
         c = Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
         j = atoi(tmp[0]) - 1;
@@ -756,6 +872,8 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
 
             val = atof(tmp[6]);
             reax->hbp[index1].p_hb3 = val;
+
+            reax->hbp[index1].is_valid = TRUE;
         }
     }
 

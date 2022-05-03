@@ -41,13 +41,7 @@ extern "C" {
 void Dist( reax_system const * const, mpi_datatypes * const,
         void const * const, int, MPI_Datatype );
 
-void Dist_FS( reax_system const * const, mpi_datatypes * const,
-        void const * const, int, MPI_Datatype );
-
 void Coll( reax_system const * const, mpi_datatypes * const,
-        void * const , int, MPI_Datatype );
-
-void Coll_FS( reax_system const * const, mpi_datatypes * const,
         void * const , int, MPI_Datatype );
 
 real Parallel_Dot( const real * const, const real * const, const int, MPI_Comm );

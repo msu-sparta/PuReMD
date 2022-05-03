@@ -561,8 +561,11 @@ struct single_body_parameters
     real chi;
     /**/
     real eta;
-    /* Determines whether this type of atom participates in H_bonds:
-     * 1 for H donor, 2 for acceptors (O,S,N), 0 for others */
+    /* info related to hydrogen bonding
+     * (values correspond to hydrogen_bonding_atom_types enum above):
+     *  0: non-hydrogen bonding atom
+     *  1: H atom
+     *  2: hydrogen bonding atom (e.g., O, S, P, N) */
     int p_hbond;
 
     /* Line three in field file */
@@ -698,7 +701,7 @@ struct three_body_header
 };
 
 
-/* hydrogen-bond parameters */
+/* hydrogen bond parameters in force field parameters file */
 struct hbond_parameters
 {
     /* ideal H-bond distance */

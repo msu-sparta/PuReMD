@@ -125,7 +125,8 @@ CUDA_GLOBAL void k_hydrogen_bonds_part1( reax_atom const * const my_atoms,
                 pbond_ij = &bond_list.bond_list[pi];
                 i = pbond_ij->nbr;
 
-                if ( my_atoms[i].orig_id != my_atoms[k].orig_id )
+                if ( my_atoms[i].orig_id != my_atoms[k].orig_id
+                        && hbp[ index_hbp(my_atoms[i].type, type_j, type_k, num_atom_types) ].is_valid == TRUE )
                 {
                     bo_ij = &pbond_ij->bo_data;
                     type_i = my_atoms[i].type;
@@ -458,7 +459,8 @@ CUDA_GLOBAL void k_hydrogen_bonds_virial_part1( reax_atom const * const my_atoms
                 pbond_ij = &bond_list.bond_list[pi];
                 i = pbond_ij->nbr;
 
-                if ( my_atoms[i].orig_id != my_atoms[k].orig_id )
+                if ( my_atoms[i].orig_id != my_atoms[k].orig_id
+                        && hbp[ index_hbp(my_atoms[i].type, type_j, type_k, num_atom_types) ].is_valid == TRUE )
                 {
                     bo_ij = &pbond_ij->bo_data;
                     type_i = my_atoms[i].type;

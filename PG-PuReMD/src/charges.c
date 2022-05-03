@@ -366,7 +366,7 @@ static void Calculate_Charges_QEq( reax_system const * const system,
 #endif
     }
 
-    Dist_FS( system, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE );
+    Dist( system, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE );
 
     /* copy charges of received ghost atoms */
     for ( i = system->n; i < system->N; ++i )

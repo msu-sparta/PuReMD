@@ -1136,7 +1136,7 @@ struct three_body_header
 /* hydrogen bond parameters in force field parameters file */
 struct hbond_parameters
 {
-    /**/
+    /* ideal H-bond distance */
     real r0_hb;
     /**/
     real p_hb1;
@@ -1144,6 +1144,8 @@ struct hbond_parameters
     real p_hb2;
     /**/
     real p_hb3;
+    /* TRUE if parameters are set for this triplet of atom types, FALSE otherwise */
+    int is_valid;
 };
 
 

@@ -834,8 +834,8 @@ void setup_sparse_approx_inverse( reax_system const * const system,
 
     /* determine counts for elements per process */
     t_start = Get_Time( );
-    ret = MPI_Allreduce( MPI_IN_PLACE, scounts, nprocs, MPI_INT,
-            MPI_SUM, MPI_COMM_WORLD );
+    ret = MPI_Allreduce( MPI_IN_PLACE, scounts, nprocs, MPI_INT, MPI_SUM,
+            MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
     t_comm += Get_Time( ) - t_start;
 
@@ -863,7 +863,7 @@ void setup_sparse_approx_inverse( reax_system const * const system,
 
     /* send local buckets to target processor for quickselect */
     t_start = Get_Time( );
-    ret = MPI_Gather( scounts_local + target_proc, 1, MPI_INT, scounts,
+    ret = MPI_Gather( &scounts_local[target_proc], 1, MPI_INT, scounts,
             1, MPI_INT, target_proc, MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
     t_comm += Get_Time( ) - t_start;
@@ -878,7 +878,7 @@ void setup_sparse_approx_inverse( reax_system const * const system,
     }
 
     t_start = Get_Time( );
-    ret = MPI_Gatherv( bucketlist_local + dspls_local[target_proc],
+    ret = MPI_Gatherv( &bucketlist_local[dspls_local[target_proc]],
             scounts_local[target_proc], MPI_DOUBLE,
             bucketlist, scounts, dspls, MPI_DOUBLE, target_proc, MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
@@ -1415,7 +1415,7 @@ real sparse_approx_inverse( reax_system const * const system,
     int *X, *q;
     size_t q_size;
     int e_size, D_size;
-    int cnt, cnt1, cnt2, cnt3, cnt4;
+    int cnt, cnt_, cnt1, cnt2, cnt3, cnt4;
     int *row_nnz;
     int **j_list;
     int d;
@@ -1510,6 +1510,7 @@ real sparse_approx_inverse( reax_system const * const system,
         nbr1 = &system->my_nbrs[2 * d];
         nbr2 = &system->my_nbrs[2 * d + 1];
 
+        /* count for entries in send1 */
         cnt = 0;
         for ( i = 0; i < out_bufs[2 * d].cnt; ++i )
         {
@@ -1521,7 +1522,7 @@ real sparse_approx_inverse( reax_system const * const system,
         smalloc_check( (void **) &val_send1, &val_send1_size, sizeof(real) * cnt,
                 TRUE, SAFE_ZONE, __FILE__, __LINE__ );
 
-        cnt = 0;
+        cnt_ = 0;
         for ( i = 0; i < out_bufs[2 * d].cnt; ++i )
         {
             if ( out_bufs[2 * d].index[i] < A->n )
@@ -1529,29 +1530,36 @@ real sparse_approx_inverse( reax_system const * const system,
                 for ( pj = A->start[ out_bufs[2 * d].index[i] ];
                         pj < A->end[ out_bufs[2 * d].index[i] ]; ++pj )
                 {
-                    j_send1[cnt] = system->my_atoms[A->j[pj]].orig_id;
-                    val_send1[cnt] = A->val[pj];
-                    ++cnt;
+                    j_send1[cnt_] = system->my_atoms[A->j[pj]].orig_id;
+                    val_send1[cnt_] = A->val[pj];
+                    ++cnt_;
                 }
             }
             else
             {
                 for ( pj = 0; pj < row_nnz[ out_bufs[2 * d].index[i] ]; ++pj )
                 {
-                    j_send1[cnt] = j_list[ out_bufs[2 * d].index[i] ][pj];
-                    val_send1[cnt] = val_list[ out_bufs[2 * d].index[i] ][pj];
-                    ++cnt;
+                    j_send1[cnt_] = j_list[ out_bufs[2 * d].index[i] ][pj];
+                    val_send1[cnt_] = val_list[ out_bufs[2 * d].index[i] ][pj];
+                    ++cnt_;
                 }
             }
         }
 
-        ret = MPI_Isend( j_send1, cnt, MPI_INT, nbr1->rank,
+        if ( cnt != cnt_ )
+        {
+            fprintf( stderr, "[ERROR] SAI comp: send1 count mismatch: %d != %d (d = %d)\n", cnt, cnt_, d );
+            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+        }
+
+        ret = MPI_Isend( j_send1, cnt_, MPI_INT, nbr1->rank,
                 2 * d, mpi_data->comm_mesh3D, &req1 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
-        ret = MPI_Isend( val_send1, cnt, MPI_DOUBLE, nbr1->rank,
+        ret = MPI_Isend( val_send1, cnt_, MPI_DOUBLE, nbr1->rank,
                 6 + (2 * d), mpi_data->comm_mesh3D, &req2 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
+        /* count for entries in send2 */
         cnt = 0;
         for ( i = 0; i < out_bufs[2 * d + 1].cnt; ++i )
         {
@@ -1563,7 +1571,7 @@ real sparse_approx_inverse( reax_system const * const system,
         smalloc_check( (void **) &val_send2, &val_send2_size, sizeof(real) * cnt,
                 TRUE, SAFE_ZONE, __FILE__, __LINE__ );
 
-        cnt = 0;
+        cnt_ = 0;
         for ( i = 0; i < out_bufs[2 * d + 1].cnt; ++i )
         {
             if ( out_bufs[2 * d + 1].index[i] < A->n )
@@ -1571,26 +1579,32 @@ real sparse_approx_inverse( reax_system const * const system,
                 for ( pj = A->start[ out_bufs[2 * d + 1].index[i] ];
                         pj < A->end[ out_bufs[2 * d + 1].index[i] ]; ++pj )
                 {
-                    j_send2[cnt] = system->my_atoms[A->j[pj]].orig_id;
-                    val_send2[cnt] = A->val[pj];
-                    ++cnt;
+                    j_send2[cnt_] = system->my_atoms[A->j[pj]].orig_id;
+                    val_send2[cnt_] = A->val[pj];
+                    ++cnt_;
                 }
             }
             else
             {
                 for ( pj = 0; pj < row_nnz[ out_bufs[2 * d + 1].index[i] ]; ++pj )
                 {
-                    j_send2[cnt] = j_list[ out_bufs[2 * d + 1].index[i] ][pj];
-                    val_send2[cnt] = val_list[ out_bufs[2 * d + 1].index[i] ][pj];
-                    ++cnt;
+                    j_send2[cnt_] = j_list[ out_bufs[2 * d + 1].index[i] ][pj];
+                    val_send2[cnt_] = val_list[ out_bufs[2 * d + 1].index[i] ][pj];
+                    ++cnt_;
                 }
             }
         }
 
-        ret = MPI_Isend( j_send2, cnt, MPI_INT, nbr2->rank,
+        if ( cnt != cnt_ )
+        {
+            fprintf( stderr, "[ERROR] SAI comp: send2 count mismatch: %d != %d (d = %d)\n", cnt, cnt_, d );
+            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+        }
+
+        ret = MPI_Isend( j_send2, cnt_, MPI_INT, nbr2->rank,
                 2 * d + 1, mpi_data->comm_mesh3D, &req3 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
-        ret = MPI_Isend( val_send2, cnt, MPI_DOUBLE, nbr2->rank,
+        ret = MPI_Isend( val_send2, cnt_, MPI_DOUBLE, nbr2->rank,
                 6 + (2 * d + 1), mpi_data->comm_mesh3D, &req4 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
@@ -1623,10 +1637,10 @@ real sparse_approx_inverse( reax_system const * const system,
                 TRUE, SAFE_ZONE, __FILE__, __LINE__ );
 
         t_start = Get_Time( );
-        ret = MPI_Recv( j_recv1, cnt, MPI_INT, nbr1->rank,
+        ret = MPI_Recv( j_recv1, cnt1, MPI_INT, nbr1->rank,
                 2 * d + 1, mpi_data->comm_mesh3D, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
-        ret = MPI_Recv( val_recv1, cnt, MPI_DOUBLE, nbr1->rank,
+        ret = MPI_Recv( val_recv1, cnt2, MPI_DOUBLE, nbr1->rank,
                 6 + (2 * d + 1), mpi_data->comm_mesh3D, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
         t_comm += Get_Time( ) - t_start;
@@ -1696,14 +1710,14 @@ real sparse_approx_inverse( reax_system const * const system,
         }
 
         t_start = Get_Time( );
-        ret = MPI_Wait( &req1, &stat1 );
+        ret = MPI_Wait( &req1, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
-        ret = MPI_Wait( &req2, &stat2 );
+        ret = MPI_Wait( &req2, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-        ret = MPI_Wait( &req3, &stat3 );
+        ret = MPI_Wait( &req3, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
-        ret = MPI_Wait( &req4, &stat4 );
+        ret = MPI_Wait( &req4, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
         t_comm += Get_Time( ) - t_start;
     }
@@ -2904,7 +2918,6 @@ int dual_CG( reax_system const * const system, control_params const * const cont
     }
 
     return i;
-
 }
 
 

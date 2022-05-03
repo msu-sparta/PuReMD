@@ -1876,25 +1876,25 @@ static void Compute_Total_Force( reax_system * const system,
      * based on the neighbors information each processor has had.
      * final values of force on each atom needs to be computed by adding up
      * all partially-final pieces */
-    Coll_FS( system, mpi_data, workspace->f, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll( system, mpi_data, workspace->f, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
     for ( i = 0; i < system->n; ++i )
     {
         rvec_Copy( system->my_atoms[i].f, workspace->f[i] );
     }
 
 #if defined(TEST_FORCES)
-    Coll_FS( system, mpi_data, workspace->f_ele, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
-    Coll_FS( system, mpi_data, workspace->f_vdw, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
-    Coll_FS( system, mpi_data, workspace->f_be, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
-    Coll_FS( system, mpi_data, workspace->f_lp, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
-    Coll_FS( system, mpi_data, workspace->f_ov, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
-    Coll_FS( system, mpi_data, workspace->f_un, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
-    Coll_FS( system, mpi_data, workspace->f_ang, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
-    Coll_FS( system, mpi_data, workspace->f_coa, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
-    Coll_FS( system, mpi_data, workspace->f_pen, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
-    Coll_FS( system, mpi_data, workspace->f_hb, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
-    Coll_FS( system, mpi_data, workspace->f_tor, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
-    Coll_FS( system, mpi_data, workspace->f_con, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll( system, mpi_data, workspace->f_ele, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll( system, mpi_data, workspace->f_vdw, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll( system, mpi_data, workspace->f_be, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll( system, mpi_data, workspace->f_lp, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll( system, mpi_data, workspace->f_ov, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll( system, mpi_data, workspace->f_un, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll( system, mpi_data, workspace->f_ang, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll( system, mpi_data, workspace->f_coa, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll( system, mpi_data, workspace->f_pen, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll( system, mpi_data, workspace->f_hb, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll( system, mpi_data, workspace->f_tor, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll( system, mpi_data, workspace->f_con, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
 #endif
 
 #endif

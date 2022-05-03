@@ -134,7 +134,9 @@ void Hydrogen_Bonds( reax_system * const system, control_params * const control,
                     pbond_ij = &bond_list->bond_list[pi];
                     i = pbond_ij->nbr;
 
-                    if ( system->my_atoms[i].orig_id != system->my_atoms[k].orig_id )
+                    if ( system->my_atoms[i].orig_id != system->my_atoms[k].orig_id
+                            && system->reax_param.hbp[
+                                index_hbp(system->my_atoms[i].type, type_j, type_k, system->reax_param.num_atom_types) ].is_valid == TRUE )
                     {
                         bo_ij = &pbond_ij->bo_data;
                         type_i = system->my_atoms[i].type;
