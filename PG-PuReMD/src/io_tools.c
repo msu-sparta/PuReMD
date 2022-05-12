@@ -743,7 +743,8 @@ void Print_Sparse_Matrix( reax_system *system, sparse_matrix *A )
 }
 
 
-void Print_Sparse_Matrix2( reax_system *system, sparse_matrix *A, char *fname )
+void Print_Sparse_Matrix2( reax_system const * const system,
+        sparse_matrix const * const A, char const * const fname )
 {
     int i, pj;
     FILE *f;
@@ -752,7 +753,6 @@ void Print_Sparse_Matrix2( reax_system *system, sparse_matrix *A, char *fname )
 
     for ( i = 0; i < A->n; ++i )
     {
-        fprintf( f, "===> i = %d\n", i );
         for ( pj = A->start[i]; pj < A->end[i]; ++pj )
         {
             fprintf( f, "%d %d %.15e\n",

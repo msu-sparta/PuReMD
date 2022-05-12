@@ -67,8 +67,8 @@ extern "C" void Cuda_Copy_Atoms_Host_to_Device( reax_system *system, control_par
 extern "C" void Cuda_Copy_Matrix_Host_to_Device( sparse_matrix const * const A,
         sparse_matrix * const d_A, cudaStream_t s )
 {
-   assert( d_A->n_max >= A->n_max );
-   assert( d_A->m >= A->m );
+    assert( d_A->n_max >= A->n_max );
+    assert( d_A->m >= A->m );
 
     sCudaMemcpyAsync( d_A->start, A->start, sizeof(int) * A->n_max,
             cudaMemcpyHostToDevice, s, __FILE__, __LINE__ );
@@ -127,7 +127,8 @@ extern "C" void Cuda_Copy_System_Host_to_Device( reax_system *system,
 
 
 /* Copy atom info from device to host */
-extern "C" void Cuda_Copy_Atoms_Device_to_Host( reax_system *system, control_params *control )
+extern "C" void Cuda_Copy_Atoms_Device_to_Host( reax_system * const system,
+        control_params const * const control )
 {
     sCudaMemcpyAsync( system->my_atoms, system->d_my_atoms,
             sizeof(reax_atom) * system->N,
@@ -141,8 +142,8 @@ extern "C" void Cuda_Copy_Atoms_Device_to_Host( reax_system *system, control_par
 extern "C" void Cuda_Copy_Matrix_Device_to_Host( sparse_matrix * const A,
         sparse_matrix const * const d_A, cudaStream_t s )
 {
-   assert( A->n_max >= d_A->n_max );
-   assert( A->m >= d_A->m );
+    assert( A->n_max >= d_A->n_max );
+    assert( A->m >= d_A->m );
 
     sCudaMemcpyAsync( A->start, d_A->start, sizeof(int) * d_A->n_max,
             cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );

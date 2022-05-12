@@ -210,7 +210,7 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
             break;
 
         case SAI_PC:
-            setup_sparse_approx_inverse( system, data, workspace, mpi_data,
+            setup_sparse_approx_inverse( system, data,
                     &workspace->H, &workspace->H_spar_patt, 
                     control->nprocs, control->cm_solver_pre_comp_sai_thres );
             break;
@@ -257,18 +257,19 @@ static void Compute_Preconditioner_QEq( reax_system const * const system,
     int ret;
 #endif
 
-    if ( control->cm_solver_pre_comp_type == JACOBI_PC )
-    {
 #if defined(LOG_PERFORMANCE)
-        time = Get_Time( );
+    time = Get_Time( );
 #endif
 
+
+    if ( control->cm_solver_pre_comp_type == JACOBI_PC )
+    {
         jacobi( &workspace->H, workspace->Hdia_inv );
     }
     else if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
-        time = sparse_approx_inverse( system, data, workspace, mpi_data,
+        sparse_approx_inverse( system, data, mpi_data,
                 &workspace->H, &workspace->H_spar_patt, &workspace->H_app_inv,
                 control->nprocs );
 #else

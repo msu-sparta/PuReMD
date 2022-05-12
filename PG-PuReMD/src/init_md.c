@@ -441,7 +441,6 @@ void Init_Workspace( reax_system * const system, control_params * const control,
 
     if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
-        workspace->H_full.allocated = FALSE;
         workspace->H_spar_patt.allocated = FALSE;
         workspace->H_spar_patt_full.allocated = FALSE;
         workspace->H_app_inv.allocated = FALSE;
@@ -837,7 +836,6 @@ static void Finalize_Workspace( reax_system * const system, control_params * con
     Deallocate_Matrix( &workspace->H );
     if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
-//        Deallocate_Matrix( &workspace->H_full );
 //        Deallocate_Matrix( &workspace->H_spar_patt );
 //        Deallocate_Matrix( &workspace->H_spar_patt_full );
 //        Deallocate_Matrix( &workspace->H_app_inv );

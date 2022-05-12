@@ -36,13 +36,12 @@ void jacobi( sparse_matrix const * const, real * const );
 
 void setup_sparse_approx_inverse( reax_system const * const,
         simulation_data * const,
-        storage * const, mpi_datatypes * const, 
         sparse_matrix * const, sparse_matrix *, int, double );
 
-real sparse_approx_inverse( reax_system const * const,
-        simulation_data * const,
-        storage * const, mpi_datatypes * const, 
-        sparse_matrix * const, sparse_matrix * const, sparse_matrix * const, int );
+void sparse_approx_inverse( reax_system const * const,
+        simulation_data * const, mpi_datatypes * const,
+        sparse_matrix const * const, sparse_matrix const * const,
+        sparse_matrix * const, int );
 
 int dual_SDM( reax_system const * const, control_params const * const,
         simulation_data * const,

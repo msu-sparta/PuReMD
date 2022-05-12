@@ -2246,8 +2246,6 @@ struct storage
     /* charge method storage */
     /* charge matrix */
     sparse_matrix H;
-    /* charge matrix (full) */
-    sparse_matrix H_full;
     /* sparser charge matrix */
     sparse_matrix H_sp;
     /* permuted charge matrix (graph coloring) */

@@ -238,7 +238,7 @@ void jacobi( sparse_matrix const * const H, real * const Hdia_inv )
  * x: preconditioned residuals
  * N: dimensions of preconditioner and vectors (# rows in H)
  */
-static void dual_jacobi_app( const real * const Hdia_inv, const rvec2 * const y,
+static void dual_jacobi_apply( const real * const Hdia_inv, const rvec2 * const y,
         rvec2 * const x, const int N )
 {
     unsigned int i;
@@ -258,7 +258,7 @@ static void dual_jacobi_app( const real * const Hdia_inv, const rvec2 * const y,
  * x: preconditioned residual
  * N: dimensions of preconditioner and vectors (# rows in H)
  */
-static void jacobi_app( const real * const Hdia_inv, const real * const y,
+static void jacobi_apply( const real * const Hdia_inv, const real * const y,
         real * const x, const int N )
 {
     unsigned int i;
@@ -635,7 +635,6 @@ static void Sparse_MatVec( reax_system const * const system,
 
 void setup_sparse_approx_inverse( reax_system const * const system,
         simulation_data * const data,
-        storage * const workspace, mpi_datatypes * const mpi_data,
         sparse_matrix * const A, sparse_matrix * A_spar_patt,
         int nprocs, real filter )
 {
@@ -654,8 +653,10 @@ void setup_sparse_approx_inverse( reax_system const * const system,
     real *samplelist_local, *samplelist;
     real *pivotlist;
     real *bucketlist_local, *bucketlist;
+#if defined(LOG_PERFORMANCE)
     real t_start, t_comm;
     real total_comm;
+#endif
 
     sample_counts = NULL;
     sample_index = NULL;
@@ -716,12 +717,18 @@ void setup_sparse_approx_inverse( reax_system const * const system,
     }
     s_local = MIN( (int) (12.0 * (LOG2(n_local) + LOG2(nprocs))), n_local );
     
+#if defined(LOG_PERFORMANCE)
     t_start = Get_Time( );
+#endif
+
     ret = MPI_Allreduce( &n_local, &n, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
     ret = MPI_Reduce( &s_local, &s, 1, MPI_INT, MPI_SUM, MASTER_NODE, MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
     t_comm += Get_Time( ) - t_start;
+#endif
 
     /* count num. bin elements for each processor, uniform bin sizes */
     input_array = smalloc( sizeof(real) * n_local, __FILE__, __LINE__ );
@@ -759,12 +766,18 @@ void setup_sparse_approx_inverse( reax_system const * const system,
         samplelist_local[i] = input_array[i];
     }
 
-    /* gather samples at the root process */
+#if defined(LOG_PERFORMANCE)
     t_start = Get_Time( );
+#endif
+
+    /* gather samples at the root process */
     ret = MPI_Gather( &s_local, 1, MPI_INT, sample_counts, 1, MPI_INT,
             MASTER_NODE, MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
     t_comm += Get_Time( ) - t_start;
+#endif
 
     if ( system->my_rank == MASTER_NODE )
     {
@@ -775,11 +788,17 @@ void setup_sparse_approx_inverse( reax_system const * const system,
         }
     }
 
+#if defined(LOG_PERFORMANCE)
     t_start = Get_Time( );
+#endif
+
     ret = MPI_Gatherv( samplelist_local, s_local, MPI_DOUBLE,
             samplelist, sample_counts, sample_index, MPI_DOUBLE, MASTER_NODE, MPI_COMM_WORLD);
     Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
     t_comm += Get_Time( ) - t_start;
+#endif
 
     /* sort samples at the root process and select pivots */
     if ( system->my_rank == MASTER_NODE )
@@ -792,12 +811,18 @@ void setup_sparse_approx_inverse( reax_system const * const system,
         }
     }
 
-    /* broadcast pivots */
+#if defined(LOG_PERFORMANCE)
     t_start = Get_Time( );
+#endif
+
+    /* broadcast pivots */
     ret = MPI_Bcast( pivotlist, nprocs - 1, MPI_DOUBLE,
             MASTER_NODE, MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
     t_comm += Get_Time( ) - t_start;
+#endif
 
     for ( i = 0; i < nprocs; ++i )
     {
@@ -832,12 +857,18 @@ void setup_sparse_approx_inverse( reax_system const * const system,
         bin_elements[bin]--;
     }
 
-    /* determine counts for elements per process */
+#if defined(LOG_PERFORMANCE)
     t_start = Get_Time( );
+#endif
+
+    /* determine counts for elements per process */
     ret = MPI_Allreduce( MPI_IN_PLACE, scounts, nprocs, MPI_INT, MPI_SUM,
             MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
     t_comm += Get_Time( ) - t_start;
+#endif
 
     /* find the target process */
     target_proc = 0;
@@ -861,12 +892,18 @@ void setup_sparse_approx_inverse( reax_system const * const system,
         bucketlist = smalloc( sizeof( real ) * n_gather, __FILE__, __LINE__ );
     }
 
-    /* send local buckets to target processor for quickselect */
+#if defined(LOG_PERFORMANCE)
     t_start = Get_Time( );
+#endif
+
+    /* send local buckets to target processor for quickselect */
     ret = MPI_Gather( &scounts_local[target_proc], 1, MPI_INT, scounts,
             1, MPI_INT, target_proc, MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
     t_comm += Get_Time( ) - t_start;
+#endif
 
     if ( system->my_rank == target_proc )
     {
@@ -877,12 +914,18 @@ void setup_sparse_approx_inverse( reax_system const * const system,
         }
     }
 
+#if defined(LOG_PERFORMANCE)
     t_start = Get_Time( );
+#endif
+
     ret = MPI_Gatherv( &bucketlist_local[dspls_local[target_proc]],
             scounts_local[target_proc], MPI_DOUBLE,
             bucketlist, scounts, dspls, MPI_DOUBLE, target_proc, MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
     t_comm += Get_Time( ) - t_start;
+#endif
 
     /* apply quick select algorithm at the target process */
     if ( system->my_rank == target_proc )
@@ -949,11 +992,17 @@ void setup_sparse_approx_inverse( reax_system const * const system,
 //        }
     }
 
-    /* broadcast the filtering value */
+#if defined(LOG_PERFORMANCE)
     t_start = Get_Time( );
+#endif
+
+    /* broadcast the filtering value */
     ret = MPI_Bcast( &threshold, 1, MPI_DOUBLE, target_proc, MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
     t_comm += Get_Time( ) - t_start;
+#endif
 
     /* select entries based on filter value */
     for ( i = 0; i < num_rows; ++i )
@@ -972,7 +1021,13 @@ void setup_sparse_approx_inverse( reax_system const * const system,
         }
         A_spar_patt->end[i] = size;
     }
+    for ( i = A->n; i < A->n_max; ++i )
+    {
+        A_spar_patt->start[i] = 0;
+        A_spar_patt->end[i] = 0;
+    }
  
+#if defined(LOG_PERFORMANCE)
     ret = MPI_Reduce( &t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM,
             MASTER_NODE, MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
@@ -981,6 +1036,7 @@ void setup_sparse_approx_inverse( reax_system const * const system,
     {
         data->timing.cm_solver_comm += total_comm / nprocs;
     }
+#endif
 
     sfree( input_array, __FILE__, __LINE__ );
     sfree( scounts_local, __FILE__, __LINE__ );
@@ -1009,10 +1065,9 @@ void setup_sparse_approx_inverse( reax_system const * const system,
 
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
 #if defined(NEUTRAL_TERRITORY)
-real sparse_approx_inverse( reax_system const * const system,
-        simulation_data * const data,
-        storage * const workspace, mpi_datatypes * const mpi_data, 
-        sparse_matrix * const A, sparse_matrix * const A_spar_patt,
+void sparse_approx_inverse( reax_system const * const system,
+        simulation_data * const data, mpi_datatypes * const mpi_data, 
+        sparse_matrix const * const A, sparse_matrix const * const A_spar_patt,
         sparse_matrix * const A_app_inv, int nprocs )
 {
     int i, k, pj, j_temp, ret;
@@ -1028,15 +1083,16 @@ real sparse_approx_inverse( reax_system const * const system,
     real *val_send, *val_recv[6];
     reax_atom *atom;
     real **val_list;
-    real start, t_start, t_comm, total_comm;
     mpi_out_data *out_bufs;
     neighbor_proc *nbr;
     MPI_Request req[12];
     MPI_Status stat[12];
     lapack_int m, n, nrhs, lda, ldb, info;
+#if defined(LOG_PERFORMANCE)
+    real t_start, t_comm, total_comm;
 
-    start = Get_Time( );
     t_comm = 0.0;
+#endif
 
     if ( A_app_inv->allocated == FALSE )
     {
@@ -1086,10 +1142,16 @@ real sparse_approx_inverse( reax_system const * const system,
         row_nnz[i] = A->end[i] - A->start[i];
     }
 
-    /* Announce the nnz's in each row that will be communicated later */
+#if defined(LOG_PERFORMANCE)
     t_start = Get_Time( );
+#endif
+
+    /* Announce the nnz's in each row that will be communicated later */
     Dist( system, mpi_data, row_nnz, REAL_PTR_TYPE, MPI_INT );
+
+#if defined(LOG_PERFORMANCE)
     t_comm += Get_Time( ) - t_start;
+#endif
     fprintf( stdout,"SAI after Dist call\n" );
     fflush( stdout );
 
@@ -1120,14 +1182,20 @@ real sparse_approx_inverse( reax_system const * const system,
 
                 fprintf( stdout, "Dist communication receive phase direction %d will receive %d\n", d, cnt );
                 fflush( stdout );
+#if defined(LOG_PERFORMANCE)
                 t_start = Get_Time( );
+#endif
+
                 ret = MPI_Irecv( j_recv + d, cnt, MPI_INT, nbr->receive_rank,
                         d, mpi_data->comm_mesh3D, &req[2 * d] );
                 Check_MPI_Error( ret, __FILE__, __LINE__ );
                 ret = MPI_Irecv( val_recv + d, cnt, MPI_DOUBLE, nbr->receive_rank,
                         d, mpi_data->comm_mesh3D, &req[2 * d + 1] );
                 Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
                 t_comm += Get_Time( ) - t_start;
+#endif
             }
         }
     }
@@ -1172,7 +1240,10 @@ real sparse_approx_inverse( reax_system const * const system,
                 fprintf( stdout,"Dist communication    send phase direction %d will    send %d\n", d, cnt );
                 fflush( stdout );
 
+#if defined(LOG_PERFORMANCE)
                 t_start = Get_Time( );
+#endif
+
                 ret = MPI_Send( j_send, cnt, MPI_INT, nbr->rank,
                         d, mpi_data->comm_mesh3D );
                 Check_MPI_Error( ret, __FILE__, __LINE__ );
@@ -1183,7 +1254,10 @@ real sparse_approx_inverse( reax_system const * const system,
                 Check_MPI_Error( ret, __FILE__, __LINE__ );
                 fprintf( stdout,"Dist communication send phase direction %d cnt = %d\n", d, cnt );
                 fflush( stdout );
+
+#if defined(LOG_PERFORMANCE)
                 t_comm += Get_Time( ) - t_start;
+#endif
             }
         }
     }
@@ -1192,10 +1266,16 @@ real sparse_approx_inverse( reax_system const * const system,
     ///////////////////////
     for ( d = 0; d < count; ++d )
     {
+#if defined(LOG_PERFORMANCE)
         t_start = Get_Time( );
+#endif
+
         ret = MPI_Waitany( MAX_NT_NBRS, req, &index, stat );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
         t_comm += Get_Time( ) - t_start;
+#endif
 
         nbr = &system->my_nt_nbrs[index / 2];
         cnt = 0;
@@ -1389,6 +1469,7 @@ real sparse_approx_inverse( reax_system const * const system,
     sfree( pos_x, __FILE__, __LINE__ );
     sfree( X, __FILE__, __LINE__ );
 
+#if defined(LOG_PERFORMANCE)
     ret = MPI_Reduce( &t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM,
             MASTER_NODE, MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
@@ -1397,16 +1478,14 @@ real sparse_approx_inverse( reax_system const * const system,
     {
         data->timing.cm_solver_comm += total_comm / nprocs;
     }
-
-    return Get_Time( ) - start;
+#endif
 }
 
 
 #else
-real sparse_approx_inverse( reax_system const * const system,
-        simulation_data * const data,
-        storage * const workspace, mpi_datatypes * const mpi_data, 
-        sparse_matrix * const A, sparse_matrix * const A_spar_patt,
+void sparse_approx_inverse( reax_system const * const system,
+        simulation_data * const data, mpi_datatypes * const mpi_data, 
+        sparse_matrix const * const A, sparse_matrix const * const A_spar_patt,
         sparse_matrix * const A_app_inv, int nprocs )
 {
     int i, k, pj, j_temp, push, ret;
@@ -1425,16 +1504,17 @@ real sparse_approx_inverse( reax_system const * const system,
     real *e_j, *D;
     real **val_list;
     real *val_send1, *val_send2, *val_recv1, *val_recv2;
-    real start, t_start, t_comm, total_comm;
     reax_atom *atom;
-    mpi_out_data *out_bufs;
+    mpi_out_data * const out_bufs = mpi_data->out_buffers;
     const neighbor_proc *nbr1, *nbr2;
     MPI_Request req1, req2, req3, req4;
     MPI_Status stat1, stat2, stat3, stat4;
     lapack_int m, n, nrhs, lda, ldb, info;
+#if defined(LOG_PERFORMANCE)
+    real t_start, t_comm, total_comm;
 
-    start = Get_Time( );
     t_comm = 0.0;
+#endif
 
     if ( A_app_inv->allocated == FALSE )
     {
@@ -1498,11 +1578,15 @@ real sparse_approx_inverse( reax_system const * const system,
     }
 
     /* announce nnz's in each row that will be communicated later */
+#if defined(LOG_PERFORMANCE)
     t_start = Get_Time( );
-    Dist( system, mpi_data, row_nnz, INT_PTR_TYPE, MPI_INT );
-    t_comm += Get_Time( ) - t_start;
+#endif
 
-    out_bufs = mpi_data->out_buffers;
+    Dist( system, mpi_data, row_nnz, INT_PTR_TYPE, MPI_INT );
+
+#if defined(LOG_PERFORMANCE)
+    t_comm += Get_Time( ) - t_start;
+#endif
 
     /* use a Dist-like approach to send the row information */
     for ( d = 0; d < 3; ++d )
@@ -1636,14 +1720,20 @@ real sparse_approx_inverse( reax_system const * const system,
         smalloc_check( (void **) &val_recv1, &val_recv1_size, sizeof(real) * cnt2,
                 TRUE, SAFE_ZONE, __FILE__, __LINE__ );
 
+#if defined(LOG_PERFORMANCE)
         t_start = Get_Time( );
+#endif
+
         ret = MPI_Recv( j_recv1, cnt1, MPI_INT, nbr1->rank,
                 2 * d + 1, mpi_data->comm_mesh3D, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
         ret = MPI_Recv( val_recv1, cnt2, MPI_DOUBLE, nbr1->rank,
                 6 + (2 * d + 1), mpi_data->comm_mesh3D, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
         t_comm += Get_Time( ) - t_start;
+#endif
 
         ret = MPI_Probe( nbr2->rank, 2 * d, mpi_data->comm_mesh3D, &stat3 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
@@ -1672,14 +1762,20 @@ real sparse_approx_inverse( reax_system const * const system,
         smalloc_check( (void **) &val_recv2, &val_recv2_size, sizeof(real) * cnt4,
                 TRUE, SAFE_ZONE, __FILE__, __LINE__ );
 
+#if defined(LOG_PERFORMANCE)
         t_start = Get_Time( );
+#endif
+
         ret = MPI_Recv( j_recv2, cnt3, MPI_INT, nbr2->rank,
                 2 * d, mpi_data->comm_mesh3D, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
         ret = MPI_Recv( val_recv2, cnt4, MPI_DOUBLE, nbr2->rank,
                 6 + (2 * d), mpi_data->comm_mesh3D, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
         t_comm += Get_Time( ) - t_start;
+#endif
 
         cnt = 0;
         for ( i = nbr1->atoms_str; i < (nbr1->atoms_str + nbr1->atoms_cnt); ++i )
@@ -1709,7 +1805,10 @@ real sparse_approx_inverse( reax_system const * const system,
             }
         }
 
+#if defined(LOG_PERFORMANCE)
         t_start = Get_Time( );
+#endif
+
         ret = MPI_Wait( &req1, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
         ret = MPI_Wait( &req2, MPI_STATUS_IGNORE );
@@ -1719,7 +1818,10 @@ real sparse_approx_inverse( reax_system const * const system,
         Check_MPI_Error( ret, __FILE__, __LINE__ );
         ret = MPI_Wait( &req4, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+#if defined(LOG_PERFORMANCE)
         t_comm += Get_Time( ) - t_start;
+#endif
     }
 
     sfree( j_send1, __FILE__, __LINE__ );
@@ -1908,6 +2010,11 @@ real sparse_approx_inverse( reax_system const * const system,
             A_app_inv->val[k] = e_j[k - A_spar_patt->start[i]];
         }
     }
+    for ( i = A_spar_patt->n; i < A_spar_patt->n_max; ++i )
+    {
+        A_app_inv->start[i] = 0;
+        A_app_inv->end[i] = 0;
+    }
 
     sfree( q, __FILE__, __LINE__ );
     sfree( D, __FILE__, __LINE__ );
@@ -1931,6 +2038,7 @@ real sparse_approx_inverse( reax_system const * const system,
     sfree( val_list, __FILE__, __LINE__ );
     sfree( row_nnz, __FILE__, __LINE__ );
 
+#if defined(LOG_PERFORMANCE)
     ret = MPI_Reduce( &t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM,
             MASTER_NODE, MPI_COMM_WORLD );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
@@ -1939,8 +2047,7 @@ real sparse_approx_inverse( reax_system const * const system,
     {
         data->timing.cm_solver_comm += total_comm / nprocs;
     }
-
-    return Get_Time( ) - start;
+#endif
 }
 #endif
 #endif
@@ -1969,242 +2076,149 @@ static void dual_apply_preconditioner( reax_system const * const system,
 {
 //    int i, si;
 
-    /* no preconditioning */
-    if ( control->cm_solver_pre_comp_type == NONE_PC )
+    switch ( control->cm_solver_pre_comp_type )
     {
-        if ( x != y )
-        {
-            Vector_Copy_rvec2( x, y, system->n );
-        }
-    }
-    else
-    {
-        switch ( side )
-        {
-            case LEFT:
-                switch ( control->cm_solver_pre_app_type )
-                {
-                    case TRI_SOLVE_PA:
-                        switch ( control->cm_solver_pre_comp_type )
-                        {
-                            case JACOBI_PC:
-                                dual_jacobi_app( workspace->Hdia_inv, y, x, system->n );
-                                break;
-//                            case ICHOLT_PC:
-//                            case ILUT_PC:
-//                            case ILUTP_PC:
-//                                  tri_solve( workspace->L, y, x, workspace->L->n, LOWER );
-//                                  break;
-                            case SAI_PC:
+        case NONE_PC:
+            if ( x != y )
+            {
+                Vector_Copy_rvec2( x, y, system->n );
+            }
+            break;
+
+        case JACOBI_PC:
+            switch ( side )
+            {
+                case LEFT:
+                    dual_jacobi_apply( workspace->Hdia_inv,
+                            y, x, system->n );
+                    break;
+
+                case RIGHT:
+                    if ( x != y )
+                    {
+                        Vector_Copy_rvec2( x, y, system->n );
+                    }
+                    break;
+            }
+            break;
+
+        case SAI_PC:
+            switch ( side )
+            {
+                case LEFT:
 #if defined(NEUTRAL_TERRITORY)
-                                Dual_Sparse_MatVec( system, control, data, mpi_data, &workspace->H_app_inv,
-                                        y, H->NT, x );
+                    Dual_Sparse_MatVec( system, control, data, mpi_data,
+                            &workspace->H_app_inv, y, H->NT, x );
 #else
-                                Dual_Sparse_MatVec( system, control, data, mpi_data, &workspace->H_app_inv,
-                                        y, system->n, x );
+                    Dual_Sparse_MatVec( system, control, data, mpi_data,
+                            &workspace->H_app_inv, y, system->N, x );
 #endif
-                                break;
-                            default:
-                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-                                exit( INVALID_INPUT );
-                                break;
-                        }
-                        break;
-                    case TRI_SOLVE_LEVEL_SCHED_PA:
-                        switch ( control->cm_solver_pre_comp_type )
-                        {
-                            case JACOBI_PC:
-                                dual_jacobi_app( workspace->Hdia_inv, y, x, system->n );
-                                break;
-//                            case ICHOLT_PC:
-//                            case ILUT_PC:
-//                            case ILUTP_PC:
-//                                  tri_solve_level_sched( (static_storage *) workspace,
-//                                          workspace->L, y, x, workspace->L->n, LOWER, fresh_pre );
-//                                  break;
-                            case SAI_PC:
-#if defined(NEUTRAL_TERRITORY)
-                                Dual_Sparse_MatVec( system, control, data, mpi_data, &workspace->H_app_inv,
-                                        y, H->NT, x );
-#else
-                                Dual_Sparse_MatVec( system, control, data, mpi_data, &workspace->H_app_inv,
-                                        y, system->n, x );
-#endif
-                                break;
-                            default:
-                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-                                exit( INVALID_INPUT );
-                                break;
-                        }
-                        break;
-                    case TRI_SOLVE_GC_PA:
-                        switch ( control->cm_solver_pre_comp_type )
-                        {
-                            case JACOBI_PC:
-                            case SAI_PC:
-                                fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
-                                exit( INVALID_INPUT );
-                                break;
-//                            case ICHOLT_PC:
-//                            case ILUT_PC:
-//                            case ILUTP_PC:
-//                                  for ( i = 0; i < workspace->H->n; ++i )
-//                                  {
-//                                      workspace->y_p[i] = y[i];
-//                                  }
+                    break;
+
+                case RIGHT:
+                    if ( x != y )
+                    {
+                        Vector_Copy_rvec2( x, y, system->n );
+                    }
+                    break;
+            }
+            break;
+
+        case ICHOLT_PC:
+        case ILUT_PC:
+        case ILUTP_PC:
+            switch ( side )
+            {
+                case LEFT:
+                    switch ( control->cm_solver_pre_app_type )
+                    {
+                        case TRI_SOLVE_PA:
+//                            tri_solve( workspace->L, y, x, workspace->L->n, LOWER );
+                            break;
+
+                        case TRI_SOLVE_LEVEL_SCHED_PA:
+//                            tri_solve_level_sched( (static_storage *) workspace,
+//                                    workspace->L, y, x, workspace->L->n, LOWER, fresh_pre );
+                            break;
+
+                        case TRI_SOLVE_GC_PA:
+//                            for ( i = 0; i < workspace->H->n; ++i )
+//                            {
+//                                workspace->y_p[i] = y[i];
+//                            }
 //
-//                                  permute_vector( workspace, workspace->y_p, workspace->H->n, FALSE, LOWER );
-//                                  tri_solve_level_sched( (static_storage *) workspace,
-//                                  workspace->L, workspace->y_p, x, workspace->L->n, LOWER, fresh_pre );
-//                                  break;
-                            default:
-                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-                                exit( INVALID_INPUT );
-                                break;
-                        }
-                        break;
-                    case JACOBI_ITER_PA:
-                        switch ( control->cm_solver_pre_comp_type )
-                        {
-                            case JACOBI_PC:
-                            case SAI_PC:
-                                fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
-                                exit( INVALID_INPUT );
-                                break;
-//                            case ICHOLT_PC:
-//                            case ILUT_PC:
-//                            case ILUTP_PC:
-//                                // construct D^{-1}_L
-//                                if ( fresh_pre == TRUE )
+//                            permute_vector( workspace, workspace->y_p, workspace->H->n, FALSE, LOWER );
+//                            tri_solve_level_sched( (static_storage *) workspace,
+//                                    workspace->L, workspace->y_p, x, workspace->L->n, LOWER, fresh_pre );
+                            break;
+
+                        case JACOBI_ITER_PA:
+//                            // construct D^{-1}_L
+//                            if ( fresh_pre == TRUE )
+//                            {
+//                                for ( i = 0; i < workspace->L->n; ++i )
 //                                {
-//                                    for ( i = 0; i < workspace->L->n; ++i )
-//                                    {
-//                                        si = workspace->L->start[i + 1] - 1;
-//                                        workspace->Dinv_L[i] = 1.0 / workspace->L->val[si];
-//                                    }
+//                                    si = workspace->L->start[i + 1] - 1;
+//                                    workspace->Dinv_L[i] = 1.0 / workspace->L->val[si];
 //                                }
+//                            }
 //
-//                                jacobi_iter( workspace, workspace->L, workspace->Dinv_L,
-//                                        y, x, LOWER, control->cm_solver_pre_app_jacobi_iters );
-//                                break;
-                            default:
-                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-                                exit( INVALID_INPUT );
-                                break;
-                        }
-                        break;
-                    default:
-                        fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-                        exit( INVALID_INPUT );
-                        break;
+//                            jacobi_iter( workspace, workspace->L, workspace->Dinv_L,
+//                                    y, x, LOWER, control->cm_solver_pre_app_jacobi_iters );
+                            break;
 
-                }
-                break;
+                        default:
+                            fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                            exit( INVALID_INPUT );
+                            break;
+                    }
+                    break;
 
-            case RIGHT:
-                switch ( control->cm_solver_pre_app_type )
-                {
-                    case TRI_SOLVE_PA:
-                        switch ( control->cm_solver_pre_comp_type )
-                        {
-                            case JACOBI_PC:
-                            case SAI_PC:
-                                if ( x != y )
-                                {
-                                    Vector_Copy_rvec2( x, y, system->n );
-                                }
-                                break;
-//                            case ICHOLT_PC:
-//                            case ILUT_PC:
-//                            case ILUTP_PC:
-//                                  tri_solve( workspace->U, y, x, workspace->U->n, UPPER );
-//                                  break;
-                            default:
-                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-                                exit( INVALID_INPUT );
-                                break;
-                        }
-                        break;
-                    case TRI_SOLVE_LEVEL_SCHED_PA:
-                        switch ( control->cm_solver_pre_comp_type )
-                        {
-                            case JACOBI_PC:
-                            case SAI_PC:
-                                if ( x != y )
-                                {
-                                    Vector_Copy_rvec2( x, y, system->n );
-                                }
-                                break;
-//                            case ICHOLT_PC:
-//                            case ILUT_PC:
-//                            case ILUTP_PC:
-//                                  tri_solve_level_sched( (static_storage *) workspace,
-//                                          workspace->U, y, x, workspace->U->n, UPPER, fresh_pre );
-//                                  break;
-                            default:
-                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-                                exit( INVALID_INPUT );
-                                break;
-                        }
-                        break;
-                    case TRI_SOLVE_GC_PA:
-                        switch ( control->cm_solver_pre_comp_type )
-                        {
-                            case JACOBI_PC:
-                            case SAI_PC:
-                                fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
-                                exit( INVALID_INPUT );
-                                break;
-//                            case ICHOLT_PC:
-//                            case ILUT_PC:
-//                            case ILUTP_PC:
-//                                  tri_solve_level_sched( (static_storage *) workspace,
-//                                  workspace->U, y, x, workspace->U->n, UPPER, fresh_pre );
-//                                  permute_vector( workspace, x, workspace->H->n, TRUE, UPPER );
-//                                  break;
-                            default:
-                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-                                exit( INVALID_INPUT );
-                                break;
-                        }
-                        break;
-                    case JACOBI_ITER_PA:
-                        switch ( control->cm_solver_pre_comp_type )
-                        {
-                            case JACOBI_PC:
-                            case SAI_PC:
-                                fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
-                                exit( INVALID_INPUT );
-                                break;
-//                            case ICHOLT_PC:
-//                            case ILUT_PC:
-//                            case ILUTP_PC:
-//                                  if ( fresh_pre == TRUE )
-//                                  {
-//                                      for ( i = 0; i < workspace->U->n; ++i )
-//                                      {
-//                                          si = workspace->U->start[i];
-//                                          workspace->Dinv_U[i] = 1.0 / workspace->U->val[si];
-//                                      }
-//                                  }
+                case RIGHT:
+                    switch ( control->cm_solver_pre_app_type )
+                    {
+                        case TRI_SOLVE_PA:
+//                            tri_solve( workspace->U, y, x, workspace->U->n, UPPER );
+                            break;
+
+                        case TRI_SOLVE_LEVEL_SCHED_PA:
+//                            tri_solve_level_sched( (static_storage *) workspace,
+//                                    workspace->U, y, x, workspace->U->n, UPPER, fresh_pre );
+                            break;
+
+                        case TRI_SOLVE_GC_PA:
+//                            tri_solve_level_sched( (static_storage *) workspace,
+//                                    workspace->U, y, x, workspace->U->n, UPPER, fresh_pre );
+//                            permute_vector( workspace, x, workspace->H->n, TRUE, UPPER );
+                            break;
+
+                        case JACOBI_ITER_PA:
+//                            if ( fresh_pre == TRUE )
+//                            {
+//                                for ( i = 0; i < workspace->U->n; ++i )
+//                                {
+//                                    si = workspace->U->start[i];
+//                                    workspace->Dinv_U[i] = 1.0 / workspace->U->val[si];
+//                                }
+//                            }
 //
-//                                  jacobi_iter( workspace, workspace->U, workspace->Dinv_U,
-//                                          y, x, UPPER, control->cm_solver_pre_app_jacobi_iters );
-//                                  break;
-                            default:
-                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-                                exit( INVALID_INPUT );
-                                break;
-                        }
-                        break;
-                    default:
-                        fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-                        exit( INVALID_INPUT );
-                        break;
+//                            jacobi_iter( workspace, workspace->U, workspace->Dinv_U,
+//                                    y, x, UPPER, control->cm_solver_pre_app_jacobi_iters );
+                            break;
 
-                }
+                        default:
+                            fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                            exit( INVALID_INPUT );
+                            break;
+                    }
+                    break;
+            }
+            break;
+
+            default:
+                fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );
+                exit( INVALID_INPUT );
                 break;
-        }
     }
 }
 
@@ -2232,242 +2246,148 @@ static void apply_preconditioner( reax_system const * const system,
 {
 //    int i, si;
 
-    /* no preconditioning */
-    if ( control->cm_solver_pre_comp_type == NONE_PC )
+    switch ( control->cm_solver_pre_comp_type )
     {
-        if ( x != y )
-        {
-            Vector_Copy( x, y, system->n );
-        }
-    }
-    else
-    {
-        switch ( side )
-        {
-            case LEFT:
-                switch ( control->cm_solver_pre_app_type )
-                {
-                    case TRI_SOLVE_PA:
-                        switch ( control->cm_solver_pre_comp_type )
-                        {
-                            case JACOBI_PC:
-                                jacobi_app( workspace->Hdia_inv, y, x, system->n );
-                                break;
-//                            case ICHOLT_PC:
-//                            case ILUT_PC:
-//                            case ILUTP_PC:
-//                                  tri_solve( workspace->L, y, x, workspace->L->n, LOWER );
-//                                  break;
-                            case SAI_PC:
+        case NONE_PC:
+            if ( x != y )
+            {
+                Vector_Copy( x, y, system->n );
+            }
+            break;
+
+        case JACOBI_PC:
+            switch ( side )
+            {
+                case LEFT:
+                    jacobi_apply( workspace->Hdia_inv, y, x, system->n );
+                    break;
+
+                case RIGHT:
+                    if ( x != y )
+                    {
+                        Vector_Copy( x, y, system->n );
+                    }
+                    break;
+            }
+            break;
+
+        case SAI_PC:
+            switch ( side )
+            {
+                case LEFT:
 #if defined(NEUTRAL_TERRITORY)
-                                Sparse_MatVec( system, control, data, mpi_data, &workspace->H_app_inv,
-                                        y, H->NT, x );
+                    Sparse_MatVec( system, control, data, mpi_data,
+                            &workspace->H_app_inv, y, H->NT, x );
 #else
-                                Sparse_MatVec( system, control, data, mpi_data, &workspace->H_app_inv,
-                                        y, system->n, x );
+                    Sparse_MatVec( system, control, data, mpi_data,
+                            &workspace->H_app_inv, y, system->N, x );
 #endif
-                                break;
-                            default:
-                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-                                exit( INVALID_INPUT );
-                                break;
-                        }
-                        break;
-                    case TRI_SOLVE_LEVEL_SCHED_PA:
-                        switch ( control->cm_solver_pre_comp_type )
-                        {
-                            case JACOBI_PC:
-                                jacobi_app( workspace->Hdia_inv, y, x, system->n );
-                                break;
-//                            case ICHOLT_PC:
-//                            case ILUT_PC:
-//                            case ILUTP_PC:
-//                                  tri_solve_level_sched( (static_storage *) workspace,
-//                                          workspace->L, y, x, workspace->L->n, LOWER, fresh_pre );
-//                                  break;
-                            case SAI_PC:
-#if defined(NEUTRAL_TERRITORY)
-                                Sparse_MatVec( system, control, data, mpi_data, &workspace->H_app_inv,
-                                        y, H->NT, x );
-#else
-                                Sparse_MatVec( system, control, data, mpi_data, &workspace->H_app_inv,
-                                        y, system->n, x );
-#endif
-                                break;
-                            default:
-                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-                                exit( INVALID_INPUT );
-                                break;
-                        }
-                        break;
-                    case TRI_SOLVE_GC_PA:
-                        switch ( control->cm_solver_pre_comp_type )
-                        {
-                            case JACOBI_PC:
-                            case SAI_PC:
-                                fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
-                                exit( INVALID_INPUT );
-                                break;
-//                            case ICHOLT_PC:
-//                            case ILUT_PC:
-//                            case ILUTP_PC:
-//                                  for ( i = 0; i < workspace->H->n; ++i )
-//                                  {
-//                                      workspace->y_p[i] = y[i];
-//                                  }
+                    break;
+
+                case RIGHT:
+                    if ( x != y )
+                    {
+                        Vector_Copy( x, y, system->n );
+                    }
+                    break;
+            }
+            break;
+
+        case ICHOLT_PC:
+        case ILUT_PC:
+        case ILUTP_PC:
+            switch ( side )
+            {
+                case LEFT:
+                    switch ( control->cm_solver_pre_app_type )
+                    {
+                        case TRI_SOLVE_PA:
+//                            tri_solve( workspace->L, y, x, workspace->L->n, LOWER );
+                            break;
+
+                        case TRI_SOLVE_LEVEL_SCHED_PA:
+//                            tri_solve_level_sched( (static_storage *) workspace,
+//                                    workspace->L, y, x, workspace->L->n, LOWER, fresh_pre );
+                            break;
+
+                        case TRI_SOLVE_GC_PA:
+//                            for ( i = 0; i < workspace->H->n; ++i )
+//                            {
+//                                workspace->y_p[i] = y[i];
+//                            }
 //
-//                                  permute_vector( workspace, workspace->y_p, workspace->H->n, FALSE, LOWER );
-//                                  tri_solve_level_sched( (static_storage *) workspace,
-//                                  workspace->L, workspace->y_p, x, workspace->L->n, LOWER, fresh_pre );
-//                                  break;
-                            default:
-                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-                                exit( INVALID_INPUT );
-                                break;
-                        }
-                        break;
-                    case JACOBI_ITER_PA:
-                        switch ( control->cm_solver_pre_comp_type )
-                        {
-                            case JACOBI_PC:
-                            case SAI_PC:
-                                fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
-                                exit( INVALID_INPUT );
-                                break;
-//                            case ICHOLT_PC:
-//                            case ILUT_PC:
-//                            case ILUTP_PC:
-//                                // construct D^{-1}_L
-//                                if ( fresh_pre == TRUE )
+//                            permute_vector( workspace, workspace->y_p, workspace->H->n, FALSE, LOWER );
+//                            tri_solve_level_sched( (static_storage *) workspace,
+//                                    workspace->L, workspace->y_p, x, workspace->L->n, LOWER, fresh_pre );
+                            break;
+
+                        case JACOBI_ITER_PA:
+//                            // construct D^{-1}_L
+//                            if ( fresh_pre == TRUE )
+//                            {
+//                                for ( i = 0; i < workspace->L->n; ++i )
 //                                {
-//                                    for ( i = 0; i < workspace->L->n; ++i )
-//                                    {
-//                                        si = workspace->L->start[i + 1] - 1;
-//                                        workspace->Dinv_L[i] = 1.0 / workspace->L->val[si];
-//                                    }
+//                                    si = workspace->L->start[i + 1] - 1;
+//                                    workspace->Dinv_L[i] = 1.0 / workspace->L->val[si];
 //                                }
+//                            }
 //
-//                                jacobi_iter( workspace, workspace->L, workspace->Dinv_L,
-//                                        y, x, LOWER, control->cm_solver_pre_app_jacobi_iters );
-//                                break;
-                            default:
-                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-                                exit( INVALID_INPUT );
-                                break;
-                        }
-                        break;
-                    default:
-                        fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-                        exit( INVALID_INPUT );
-                        break;
+//                            jacobi_iter( workspace, workspace->L, workspace->Dinv_L,
+//                                    y, x, LOWER, control->cm_solver_pre_app_jacobi_iters );
+                            break;
 
-                }
-                break;
+                        default:
+                            fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                            exit( INVALID_INPUT );
+                            break;
+                    }
+                    break;
 
-            case RIGHT:
-                switch ( control->cm_solver_pre_app_type )
-                {
-                    case TRI_SOLVE_PA:
-                        switch ( control->cm_solver_pre_comp_type )
-                        {
-                            case JACOBI_PC:
-                            case SAI_PC:
-                                if ( x != y )
-                                {
-                                    Vector_Copy( x, y, system->n );
-                                }
-                                break;
-//                            case ICHOLT_PC:
-//                            case ILUT_PC:
-//                            case ILUTP_PC:
-//                                  tri_solve( workspace->U, y, x, workspace->U->n, UPPER );
-//                                  break;
-                            default:
-                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-                                exit( INVALID_INPUT );
-                                break;
-                        }
-                        break;
-                    case TRI_SOLVE_LEVEL_SCHED_PA:
-                        switch ( control->cm_solver_pre_comp_type )
-                        {
-                            case JACOBI_PC:
-                            case SAI_PC:
-                                if ( x != y )
-                                {
-                                    Vector_Copy( x, y, system->n );
-                                }
-                                break;
-//                            case ICHOLT_PC:
-//                            case ILUT_PC:
-//                            case ILUTP_PC:
-//                                  tri_solve_level_sched( (static_storage *) workspace,
-//                                          workspace->U, y, x, workspace->U->n, UPPER, fresh_pre );
-//                                  break;
-                            default:
-                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-                                exit( INVALID_INPUT );
-                                break;
-                        }
-                        break;
-                    case TRI_SOLVE_GC_PA:
-                        switch ( control->cm_solver_pre_comp_type )
-                        {
-                            case JACOBI_PC:
-                            case SAI_PC:
-                                fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
-                                exit( INVALID_INPUT );
-                                break;
-//                            case ICHOLT_PC:
-//                            case ILUT_PC:
-//                            case ILUTP_PC:
-//                                  tri_solve_level_sched( (static_storage *) workspace,
-//                                  workspace->U, y, x, workspace->U->n, UPPER, fresh_pre );
-//                                  permute_vector( workspace, x, workspace->H->n, TRUE, UPPER );
-//                                  break;
-                            default:
-                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-                                exit( INVALID_INPUT );
-                                break;
-                        }
-                        break;
-                    case JACOBI_ITER_PA:
-                        switch ( control->cm_solver_pre_comp_type )
-                        {
-                            case JACOBI_PC:
-                            case SAI_PC:
-                                fprintf( stderr, "Unsupported preconditioner computation/application method combination. Terminating...\n" );
-                                exit( INVALID_INPUT );
-                                break;
-//                            case ICHOLT_PC:
-//                            case ILUT_PC:
-//                            case ILUTP_PC:
-//                                  if ( fresh_pre == TRUE )
-//                                  {
-//                                      for ( i = 0; i < workspace->U->n; ++i )
-//                                      {
-//                                          si = workspace->U->start[i];
-//                                          workspace->Dinv_U[i] = 1.0 / workspace->U->val[si];
-//                                      }
-//                                  }
+                case RIGHT:
+                    switch ( control->cm_solver_pre_app_type )
+                    {
+                        case TRI_SOLVE_PA:
+//                            tri_solve( workspace->U, y, x, workspace->U->n, UPPER );
+                            break;
+
+                        case TRI_SOLVE_LEVEL_SCHED_PA:
+//                            tri_solve_level_sched( (static_storage *) workspace,
+//                                    workspace->U, y, x, workspace->U->n, UPPER, fresh_pre );
+                            break;
+
+                        case TRI_SOLVE_GC_PA:
+//                            tri_solve_level_sched( (static_storage *) workspace,
+//                                    workspace->U, y, x, workspace->U->n, UPPER, fresh_pre );
+//                            permute_vector( workspace, x, workspace->H->n, TRUE, UPPER );
+                            break;
+
+                        case JACOBI_ITER_PA:
+//                            if ( fresh_pre == TRUE )
+//                            {
+//                                for ( i = 0; i < workspace->U->n; ++i )
+//                                {
+//                                    si = workspace->U->start[i];
+//                                    workspace->Dinv_U[i] = 1.0 / workspace->U->val[si];
+//                                }
+//                            }
 //
-//                                  jacobi_iter( workspace, workspace->U, workspace->Dinv_U,
-//                                          y, x, UPPER, control->cm_solver_pre_app_jacobi_iters );
-//                                  break;
-                            default:
-                                fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-                                exit( INVALID_INPUT );
-                                break;
-                        }
-                        break;
-                    default:
-                        fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
-                        exit( INVALID_INPUT );
-                        break;
+//                            jacobi_iter( workspace, workspace->U, workspace->Dinv_U,
+//                                    y, x, UPPER, control->cm_solver_pre_app_jacobi_iters );
+                            break;
 
-                }
+                        default:
+                            fprintf( stderr, "Unrecognized preconditioner application method. Terminating...\n" );
+                            exit( INVALID_INPUT );
+                            break;
+                    }
+                    break;
+            }
+            break;
+
+            default:
+                fprintf( stderr, "Unrecognized preconditioner computation method. Terminating...\n" );
+                exit( INVALID_INPUT );
                 break;
-        }
     }
 }
 
@@ -2589,7 +2509,7 @@ int dual_SDM( reax_system const * const system, control_params const * const con
     }
 
     /* continue to solve the system that has not converged yet */
-    if ( sig[0] / bnorm[0] > tol )
+    if ( sig[1] / bnorm[1] <= tol && sig[0] / bnorm[0] > tol )
     {
         Vector_Copy_From_rvec2( workspace->s, workspace->x, 0, system->n );
 
@@ -2598,7 +2518,7 @@ int dual_SDM( reax_system const * const system, control_params const * const con
 
         Vector_Copy_To_rvec2( workspace->x, workspace->s, 0, system->n );
     }
-    else if ( sig[1] / bnorm[1] > tol )
+    else if ( sig[0] / bnorm[0] <= tol && sig[1] / bnorm[1] > tol )
     {
         Vector_Copy_From_rvec2( workspace->t, workspace->x, 1, system->n );
 
@@ -2608,12 +2528,12 @@ int dual_SDM( reax_system const * const system, control_params const * const con
         Vector_Copy_To_rvec2( workspace->x, workspace->t, 1, system->n );
     }
 
-    if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )
+    if ( i >= control->cm_solver_max_iters )
     {
-        fprintf( stderr, "[WARNING] SDM convergence failed (%d iters)\n", i );
+        fprintf( stderr, "[WARNING] p%d: dual SDM convergence failed (%d iters)\n",
+                system->my_rank, i );
         fprintf( stderr, "  [INFO] Rel. residual error (s solve): %f\n", SQRT(sig[0]) / bnorm[0] );
         fprintf( stderr, "  [INFO] Rel. residual error (t solve): %f\n", SQRT(sig[1]) / bnorm[1] );
-        return i;
     }
 
     return i;
@@ -2722,11 +2642,11 @@ int SDM( reax_system const * const system, control_params const * const control,
                 workspace->d, FALSE, RIGHT );
     }
 
-    if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )
+    if ( i >= control->cm_solver_max_iters )
     {
-        fprintf( stderr, "[WARNING] SDM convergence failed (%d iters)\n", i );
+        fprintf( stderr, "[WARNING] p%d: SDM convergence failed (%d iters)\n",
+                system->my_rank, i );
         fprintf( stderr, "  [INFO] Rel. residual error: %f\n", SQRT(sig) / bnorm );
-        return i;
     }
 
     return i;
@@ -2740,7 +2660,7 @@ int dual_CG( reax_system const * const system, control_params const * const cont
         storage * const workspace, sparse_matrix * const H, rvec2 * const b,
         real tol, rvec2 * const x, mpi_datatypes * const  mpi_data, int fresh_pre )
 {
-    int i, j, ret;
+    int i, ret;
     rvec2 tmp, alpha, beta, r_norm, b_norm, sig_old, sig_new;
     real redux[6];
 #if defined(LOG_PERFORMANCE)
@@ -2773,11 +2693,6 @@ int dual_CG( reax_system const * const system, control_params const * const cont
 #if defined(LOG_PERFORMANCE)
     time = Get_Time( );
 #endif
-
-    for ( j = 0; j < 6; ++j )
-    {
-        redux[j] = 0.0;
-    }
 
     Dot_local_rvec2( workspace->r2, workspace->d2, system->n, &redux[0], &redux[1] );
     Dot_local_rvec2( workspace->d2, workspace->d2, system->n, &redux[2], &redux[3] );
@@ -2821,17 +2736,17 @@ int dual_CG( reax_system const * const system, control_params const * const cont
         time = Get_Time( );
 #endif
 
-        redux[0] = 0.0;
-        redux[1] = 0.0;
         Dot_local_rvec2( workspace->d2, workspace->q2, system->n, &redux[0], &redux[1] );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
-        ret = MPI_Allreduce( &redux, &tmp, 2, MPI_DOUBLE,
-                MPI_SUM, MPI_COMM_WORLD );
+        ret = MPI_Allreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
+        tmp[0] = redux[0];
+        tmp[1] = redux[1];
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
@@ -2856,10 +2771,6 @@ int dual_CG( reax_system const * const system, control_params const * const cont
         time = Get_Time( );
 #endif
 
-        redux[0] = 0.0;
-        redux[1] = 0.0;
-        redux[2] = 0.0;
-        redux[3] = 0.0;
         Dot_local_rvec2( workspace->r2, workspace->p2, system->n, &redux[0], &redux[1] );
         Dot_local_rvec2( workspace->p2, workspace->p2, system->n, &redux[2], &redux[3] );
 
@@ -2867,8 +2778,8 @@ int dual_CG( reax_system const * const system, control_params const * const cont
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
 #endif
 
-        ret = MPI_Allreduce( MPI_IN_PLACE, redux, 4, MPI_DOUBLE,
-                MPI_SUM, MPI_COMM_WORLD );
+        ret = MPI_Allreduce( MPI_IN_PLACE, redux, 4, MPI_DOUBLE, MPI_SUM,
+                MPI_COMM_WORLD );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
 #if defined(LOG_PERFORMANCE)
@@ -2892,7 +2803,7 @@ int dual_CG( reax_system const * const system, control_params const * const cont
     }
 
     /* continue to solve the system that has not converged yet */
-    if ( r_norm[0] / b_norm[0] > tol )
+    if ( r_norm[0] / b_norm[0] > tol && r_norm[1] / b_norm[1] <= tol )
     {
         Vector_Copy_From_rvec2( workspace->s, workspace->x, 0, system->n );
 
@@ -2901,7 +2812,7 @@ int dual_CG( reax_system const * const system, control_params const * const cont
 
         Vector_Copy_To_rvec2( workspace->x, workspace->s, 0, system->n );
     }
-    else if ( r_norm[1] / b_norm[1] > tol )
+    else if ( r_norm[1] / b_norm[1] > tol && r_norm[0] / b_norm[0] <= tol )
     {
         Vector_Copy_From_rvec2( workspace->t, workspace->x, 1, system->n );
 
@@ -2911,10 +2822,12 @@ int dual_CG( reax_system const * const system, control_params const * const cont
         Vector_Copy_To_rvec2( workspace->x, workspace->t, 1, system->n );
     }
 
-    if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )
+    if ( i >= control->cm_solver_max_iters )
     {
-        fprintf( stderr, "[WARNING] CG convergence failed!\n" );
-        return i;
+        fprintf( stderr, "[WARNING] p%d: dual CG convergence failed (%d iters)\n",
+                system->my_rank, i );
+        fprintf( stderr, "    [INFO] Rel. residual error for s solve: %e\n", r_norm[0] / b_norm[0] );
+        fprintf( stderr, "    [INFO] Rel. residual error for t solve: %e\n", r_norm[1] / b_norm[1] );
     }
 
     return i;
@@ -2927,7 +2840,7 @@ int CG( reax_system const * const system, control_params const * const control,
         storage * const workspace, sparse_matrix * const H, real * const b,
         real tol, real * const x, mpi_datatypes * const  mpi_data, int fresh_pre )
 {
-    int i, j, ret;
+    int i, ret;
     real tmp, alpha, beta, r_norm, b_norm;
     real sig_old, sig_new;
     real redux[3];
@@ -3045,11 +2958,11 @@ int CG( reax_system const * const system, control_params const * const control,
 #endif
     }
 
-    if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )
+    if ( i >= control->cm_solver_max_iters )
     {
-        fprintf( stderr, "[WARNING] CG convergence failed (%d iters)\n", i );
-        fprintf( stderr, "  [INFO] Rel. residual error: %e\n", r_norm / b_norm );
-        return i;
+        fprintf( stderr, "[WARNING] p%d: CG convergence failed (%d iters)\n",
+                system->my_rank, i );
+        fprintf( stderr, "    [INFO] Rel. residual error: %e\n", r_norm / b_norm );
     }
 
     return i;
@@ -3327,7 +3240,7 @@ int dual_BiCGStab( reax_system const * const system, control_params const * cons
     }
 
     /* continue to solve the system that has not converged yet */
-    if ( r_norm[0] / b_norm[0] > tol )
+    if ( r_norm[0] / b_norm[0] > tol && r_norm[1] / b_norm[1] <= tol )
     {
         Vector_Copy_From_rvec2( workspace->s, workspace->x, 0, system->n );
 
@@ -3336,7 +3249,7 @@ int dual_BiCGStab( reax_system const * const system, control_params const * cons
 
         Vector_Copy_To_rvec2( workspace->x, workspace->s, 0, system->n );
     }
-    else if ( r_norm[1] / b_norm[1] > tol )
+    else if ( r_norm[1] / b_norm[1] > tol && r_norm[0] / b_norm[0] <= tol )
     {
         Vector_Copy_From_rvec2( workspace->t, workspace->x, 1, system->n );
 
@@ -3347,10 +3260,10 @@ int dual_BiCGStab( reax_system const * const system, control_params const * cons
     }
 
 
-    if ( i >= control->cm_solver_max_iters
-            && system->my_rank == MASTER_NODE )
+    if ( i >= control->cm_solver_max_iters )
     {
-        fprintf( stderr, "[WARNING] BiCGStab convergence failed (%d iters)\n", i );
+        fprintf( stderr, "[WARNING] p%d: dual BiCGStab convergence failed (%d iters)\n",
+                system->my_rank, i );
         fprintf( stderr, "  [INFO] Rel. residual error (s solve): %e\n", r_norm[0] / b_norm[0] );
         fprintf( stderr, "  [INFO] Rel. residual error (t solve): %e\n", r_norm[1] / b_norm[1] );
     }
@@ -3622,7 +3535,7 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
         storage * const workspace, sparse_matrix * const H, rvec2 * const b,
         real tol, rvec2 * const x, mpi_datatypes * const  mpi_data, int fresh_pre )
 {
-    int i, j, ret;
+    int i, ret;
     rvec2 alpha, beta, delta, gamma_old, gamma_new, r_norm, b_norm;
     real redux[8];
     MPI_Request req;
@@ -3665,10 +3578,6 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
     time = Get_Time( );
 #endif
 
-    for ( j = 0; j < 8; ++j )
-    {
-        redux[j] = 0.0;
-    }
     Dot_local_rvec2( workspace->w2, workspace->u2, system->n, &redux[0], &redux[1] );
     Dot_local_rvec2( workspace->r2, workspace->u2, system->n, &redux[2], &redux[3] );
     Dot_local_rvec2( workspace->u2, workspace->u2, system->n, &redux[4], &redux[5] );
@@ -3752,10 +3661,6 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
         Vector_Sum_rvec2( workspace->r2, 1.0, 1.0, workspace->r2,
                 -1.0 * alpha[0], -1.0 * alpha[1], workspace->d2, system->n );
 
-        for ( j = 0; j < 6; ++j )
-        {
-            redux[j] = 0.0;
-        }
         Dot_local_rvec2( workspace->w2, workspace->u2, system->n, &redux[0], &redux[1] );
         Dot_local_rvec2( workspace->r2, workspace->u2, system->n, &redux[2], &redux[3] );
         Dot_local_rvec2( workspace->u2, workspace->u2, system->n, &redux[4], &redux[5] );
@@ -3803,7 +3708,7 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
     }
 
     /* continue to solve the system that has not converged yet */
-    if ( r_norm[0] / b_norm[0] > tol )
+    if ( r_norm[0] / b_norm[0] > tol && r_norm[1] / b_norm[1] <= tol )
     {
         Vector_Copy_From_rvec2( workspace->s, workspace->x, 0, system->n );
 
@@ -3812,7 +3717,7 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
 
         Vector_Copy_To_rvec2( workspace->x, workspace->s, 0, system->n );
     }
-    else if ( r_norm[1] / b_norm[1] > tol )
+    else if ( r_norm[1] / b_norm[1] > tol && r_norm[0] / b_norm[0] <= tol )
     {
         Vector_Copy_From_rvec2( workspace->t, workspace->x, 1, system->n );
 
@@ -3822,10 +3727,12 @@ int dual_PIPECG( reax_system const * const system, control_params const * const 
         Vector_Copy_To_rvec2( workspace->x, workspace->t, 1, system->n );
     }
 
-    if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )
+    if ( i >= control->cm_solver_max_iters )
     {
-        fprintf( stderr, "[WARNING] PIPECG convergence failed!\n" );
-        return i;
+        fprintf( stderr, "[WARNING] p%d: dual PIPECG convergence failed (%d iters)\n",
+                system->my_rank, i );
+        fprintf( stderr, "  [INFO] Rel. residual error (s solve): %f\n", r_norm[0] / b_norm[0] );
+        fprintf( stderr, "  [INFO] Rel. residual error (t solve): %f\n", r_norm[1] / b_norm[1] );
     }
 
     return i;
@@ -3846,7 +3753,7 @@ int PIPECG( reax_system const * const system, control_params const * const contr
         storage * const workspace, sparse_matrix * const H, real * const b,
         real tol, real * const x, mpi_datatypes * const  mpi_data, int fresh_pre )
 {
-    int i, j, ret;
+    int i, ret;
     real alpha, beta, delta, gamma_old, gamma_new, r_norm, b_norm;
     real redux[4];
     MPI_Request req;
@@ -3993,10 +3900,11 @@ int PIPECG( reax_system const * const system, control_params const * const contr
 #endif
     }
 
-    if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )
+    if ( i >= control->cm_solver_max_iters )
     {
-        fprintf( stderr, "[WARNING] PIPECG convergence failed!\n" );
-        return i;
+        fprintf( stderr, "[WARNING] p%d: PIPECG convergence failed (%d iters)\n",
+                system->my_rank, i );
+        fprintf( stderr, "  [INFO] Rel. residual error: %f\n", r_norm / b_norm );
     }
 
     return i;
@@ -4015,7 +3923,7 @@ int dual_PIPECR( reax_system const * const system, control_params const * const 
         storage * const workspace, sparse_matrix * const H, rvec2 * const b,
         real tol, rvec2 * const x, mpi_datatypes * const  mpi_data, int fresh_pre )
 {
-    int i, j, ret;
+    int i, ret;
     rvec2 alpha, beta, delta, gamma_old, gamma_new, r_norm, b_norm;
     real redux[6];
     MPI_Request req;
@@ -4177,7 +4085,7 @@ int dual_PIPECR( reax_system const * const system, control_params const * const 
     }
 
     /* continue to solve the system that has not converged yet */
-    if ( r_norm[0] / b_norm[0] > tol )
+    if ( r_norm[0] / b_norm[0] > tol && r_norm[1] / b_norm[1] <= tol )
     {
         Vector_Copy_From_rvec2( workspace->s, workspace->x, 0, system->n );
 
@@ -4186,7 +4094,7 @@ int dual_PIPECR( reax_system const * const system, control_params const * const 
 
         Vector_Copy_To_rvec2( workspace->x, workspace->s, 0, system->n );
     }
-    else if ( r_norm[1] / b_norm[1] > tol )
+    else if ( r_norm[1] / b_norm[1] > tol && r_norm[0] / b_norm[0] > tol )
     {
         Vector_Copy_From_rvec2( workspace->t, workspace->x, 1, system->n );
 
@@ -4198,8 +4106,10 @@ int dual_PIPECR( reax_system const * const system, control_params const * const 
 
     if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )
     {
-        fprintf( stderr, "[WARNING] PIPECR convergence failed!\n" );
-        return i;
+        fprintf( stderr, "[WARNING] p%d: dual PIPECR convergence failed (%d iters)\n",
+                system->my_rank, i );
+        fprintf( stderr, "  [INFO] Rel. residual error (s solve): %f\n", r_norm[0] / b_norm[0] );
+        fprintf( stderr, "  [INFO] Rel. residual error (t solve): %f\n", r_norm[1] / b_norm[1] );
     }
 
     return i;
@@ -4217,7 +4127,7 @@ int PIPECR( reax_system const * const system, control_params const * const contr
         storage * const workspace, sparse_matrix * const H, real * const b,
         real tol, real * const x, mpi_datatypes * const  mpi_data, int fresh_pre )
 {
-    int i, j, ret;
+    int i, ret;
     real alpha, beta, delta, gamma_old, gamma_new, r_norm, b_norm;
     real redux[3];
     MPI_Request req;
@@ -4356,10 +4266,11 @@ int PIPECR( reax_system const * const system, control_params const * const contr
 #endif
     }
 
-    if ( i >= control->cm_solver_max_iters && system->my_rank == MASTER_NODE )
+    if ( i >= control->cm_solver_max_iters )
     {
-        fprintf( stderr, "[WARNING] PIPECR convergence failed!\n" );
-        return i;
+        fprintf( stderr, "[WARNING] p%d: PIPECR convergence failed (%d iters)\n",
+                system->my_rank, i );
+        fprintf( stderr, "  [INFO] Rel. residual error: %f\n", r_norm / b_norm );
     }
 
     return i;

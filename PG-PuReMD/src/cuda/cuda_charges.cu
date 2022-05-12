@@ -82,10 +82,10 @@ static void jacobi( reax_system const * const system,
  *
  * A: sparse matrix for which to sort nonzeros within a row, stored in CSR format
  */
-void Sort_Matrix_Rows( sparse_matrix * const A, reax_system const * const system,
-       control_params const * const control, cudaStream_t s )
+void Sort_Matrix_Rows( sparse_matrix * const A, storage * const workspace,
+        cudaStream_t s )
 {
-    int i, num_entries, *start, *end, *d_j_temp;
+    int i, *start, *end, *d_j_temp;
     real *d_val_temp;
     void *d_temp_storage;
     size_t temp_storage_bytes, max_temp_storage_bytes;
@@ -95,39 +95,39 @@ void Sort_Matrix_Rows( sparse_matrix * const A, reax_system const * const system
     max_temp_storage_bytes = 0;
 
     /* copy row indices from device */
-    start = (int *) smalloc( sizeof(int) * system->total_cap, __FILE__, __LINE__ );
-    end = (int *) smalloc( sizeof(int) * system->total_cap, __FILE__, __LINE__ );
-    sCudaMemcpyAsync( start, A->start, sizeof(int) * system->total_cap, 
+    start = (int *) smalloc( sizeof(int) * A->n_max, __FILE__, __LINE__ );
+    end = (int *) smalloc( sizeof(int) * A->n_max, __FILE__, __LINE__ );
+    sCudaMemcpyAsync( start, A->start, sizeof(int) * A->n_max, 
             cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
-    sCudaMemcpyAsync( end, A->end, sizeof(int) * system->total_cap, 
+    sCudaMemcpyAsync( end, A->end, sizeof(int) * A->n_max, 
             cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
 
     /* make copies of column indices and non-zero values */
-    sCudaMalloc( (void **) &d_j_temp, sizeof(int) * system->total_cm_entries,
-            __FILE__, __LINE__ );
-    sCudaMalloc( (void **) &d_val_temp, sizeof(real) * system->total_cm_entries,
-            __FILE__, __LINE__ );
-    sCudaMemcpyAsync( d_j_temp, A->j, sizeof(int) * system->total_cm_entries,
+    sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
+            (sizeof(int) + sizeof(real)) * A->m, __FILE__, __LINE__ );
+    d_j_temp = (int *) workspace->scratch[5];
+    d_val_temp = (real *) &((int *) workspace->scratch[5])[A->m];
+    sCudaMemcpyAsync( d_j_temp, A->j, sizeof(int) * A->m,
             cudaMemcpyDeviceToDevice, s, __FILE__, __LINE__ );
-    sCudaMemcpyAsync( d_val_temp, A->val, sizeof(real) * system->total_cm_entries,
+    sCudaMemcpyAsync( d_val_temp, A->val, sizeof(real) * A->m,
             cudaMemcpyDeviceToDevice, s, __FILE__, __LINE__ );
 
-    cudaStreamSynchronize( s );
-
-    for ( i = 0; i < system->n; ++i )
+    for ( i = 0; i < A->n; ++i )
     {
-        num_entries = end[i] - start[i];
-
         /* determine temporary device storage requirements */
-        cub::DeviceRadixSort::SortPairs( d_temp_storage, temp_storage_bytes,
+        cub::DeviceRadixSort::SortPairs( NULL, temp_storage_bytes,
                 &d_j_temp[start[i]], &A->j[start[i]],
-                &d_val_temp[start[i]], &A->val[start[i]], num_entries );
+                &d_val_temp[start[i]], &A->val[start[i]],
+                end[i] - start[i], 0, sizeof(int) * 8, s );
+        cudaCheckError( );
 
         if ( d_temp_storage == NULL )
         {
             /* allocate temporary storage */
             sCudaMalloc( &d_temp_storage, temp_storage_bytes,
                     __FILE__, __LINE__ );
+
+            max_temp_storage_bytes = temp_storage_bytes;
         }
         else if ( max_temp_storage_bytes < temp_storage_bytes )
         {
@@ -144,14 +144,13 @@ void Sort_Matrix_Rows( sparse_matrix * const A, reax_system const * const system
         /* run sorting operation */
         cub::DeviceRadixSort::SortPairs( d_temp_storage, temp_storage_bytes,
                 &d_j_temp[start[i]], &A->j[start[i]],
-                &d_val_temp[start[i]], &A->val[start[i]], num_entries );
+                &d_val_temp[start[i]], &A->val[start[i]],
+                end[i] - start[i], 0, sizeof(int) * 8, s);
         cudaCheckError( );
     }
 
     /* deallocate temporary storage */
     sCudaFree( d_temp_storage, __FILE__, __LINE__ );
-    sCudaFree( d_j_temp, __FILE__, __LINE__ );
-    sCudaFree( d_val_temp, __FILE__, __LINE__ );
     sfree( start, __FILE__, __LINE__ );
     sfree( end, __FILE__, __LINE__ );
 }
@@ -159,7 +158,7 @@ void Sort_Matrix_Rows( sparse_matrix * const A, reax_system const * const system
 
 CUDA_GLOBAL void k_spline_extrapolate_charges_qeq( reax_atom const * const my_atoms,
         single_body_parameters const * const sbp, control_params const * const control,
-        storage workspace, int n  )
+        storage workspace, int n )
 {
     int i;
     real s_tmp, t_tmp;
@@ -282,7 +281,7 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
 #endif
 
     /* sort H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
-//    Sort_Matrix_Rows( &workspace->d_workspace->H, system, control, s );
+//    Sort_Matrix_Rows( &workspace->d_workspace->H, workspace, s );
     
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_sort );
@@ -324,7 +323,9 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
             Cuda_Copy_Matrix_Device_to_Host( &workspace->H,
                     &workspace->d_workspace->H, s );
 
-            setup_sparse_approx_inverse( system, data, workspace, mpi_data,
+            Sort_Matrix_Rows( &workspace->H );
+
+            setup_sparse_approx_inverse( system, data,
                     &workspace->H, &workspace->H_spar_patt, 
                     control->nprocs, control->cm_solver_pre_comp_sai_thres );
             break;
@@ -364,8 +365,11 @@ static void Compute_Preconditioner_QEq( reax_system const * const system,
         mpi_datatypes * const mpi_data, cudaStream_t s )
 {
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
-    int ret;
-    real t_pc, total_pc;
+    real time;
+#endif
+
+#if defined(LOG_PERFORMANCE)
+    time = Get_Time( );
 #endif
 
     if ( control->cm_solver_pre_comp_type == JACOBI_PC )
@@ -375,12 +379,9 @@ static void Compute_Preconditioner_QEq( reax_system const * const system,
     else if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
 #if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
-        t_pc = sparse_approx_inverse( system, data, workspace, mpi_data,
+        sparse_approx_inverse( system, data, mpi_data,
                 &workspace->H, &workspace->H_spar_patt,
                 &workspace->H_app_inv, control->nprocs );
-
-        ret = MPI_Reduce( &t_pc, &total_pc, 1, MPI_DOUBLE, MPI_SUM, MASTER_NODE, MPI_COMM_WORLD );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         if ( workspace->d_workspace->H_app_inv.allocated == FALSE )
         {
@@ -400,15 +401,15 @@ static void Compute_Preconditioner_QEq( reax_system const * const system,
         Cuda_Copy_Matrix_Host_to_Device( &workspace->H_app_inv,
                 &workspace->d_workspace->H_app_inv, s );
 
-        if( system->my_rank == MASTER_NODE )
-        {
-            data->timing.cm_solver_pre_comp += total_pc / control->nprocs;
-        }
 #else
         fprintf( stderr, "[ERROR] LAPACKE support disabled. Re-compile before enabling. Terminating...\n" );
         exit( INVALID_INPUT );
 #endif
     }
+
+#if defined(LOG_PERFORMANCE)
+    Update_Timing_Info( &time, &data->timing.cm_solver_pre_comp );
+#endif
 }
 
 

@@ -19,7 +19,8 @@ void Cuda_Copy_System_Host_to_Device( reax_system *, control_params * );
 
 void Cuda_Copy_List_Device_to_Host( control_params *, reax_list *, reax_list *, int );
 
-void Cuda_Copy_Atoms_Device_to_Host( reax_system *, control_params * );
+void Cuda_Copy_Atoms_Device_to_Host( reax_system * const,
+        control_params const * const );
 
 void Cuda_Copy_Matrix_Device_to_Host( sparse_matrix * const,
         sparse_matrix const * const, cudaStream_t );

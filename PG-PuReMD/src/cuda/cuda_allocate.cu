@@ -999,10 +999,7 @@ void Cuda_Allocate_Matrix( sparse_matrix * const H, int n, int n_max, int m,
     sCudaMalloc( (void **) &H->start, sizeof(int) * n_max, __FILE__, __LINE__ );
     sCudaMalloc( (void **) &H->end, sizeof(int) * n_max, __FILE__, __LINE__ );
     sCudaMalloc( (void **) &H->j, sizeof(int) * m, __FILE__, __LINE__ );
-    sCudaMemsetAsync( H->j, FALSE, sizeof(int) * m, s, __FILE__, __LINE__ );
     sCudaMalloc( (void **) &H->val, sizeof(real) * m, __FILE__, __LINE__ );
-    sCudaMemsetAsync( H->val, FALSE, sizeof(real) * m, s, __FILE__, __LINE__ );
-    cudaStreamSynchronize( s );
 }
 
 
