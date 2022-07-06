@@ -137,6 +137,7 @@ nsteps                  100                     ! number of simulation steps
 dt                      0.25                    ! time step in fs
 proc_by_dim             1 1 1                   ! distribution of processors by dimensions
 gpus_per_node           1                       ! GPUs per node
+gpu_streams             6                       ! GPU streams
 periodic_boundaries     1                       ! 0: no periodic boundaries, 1: periodic boundaries
 
 reposition_atoms        0                       ! 0: just fit to periodic boundaries, 1: CoM to the center of box, 3: CoM to the origin
@@ -903,7 +904,7 @@ if __name__ == '__main__':
                 'nsteps': ['20'],
                 'dt': ['0.25'],
                 'gpus_per_node': ['1'],
-                'gpu_streams': ['5'],
+                'gpu_streams': ['6'],
                 'proc_by_dim': ['1:1:1'],
                 'periodic_boundaries': ['1'],
                 'reposition_atoms': ['0'],
@@ -1140,20 +1141,20 @@ if __name__ == '__main__':
             header_fmt_str = '{:15}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:5}|{:10}|{:10}|{:10}|{:10}|{:10}|{:3}|{:10}\n'
             header_str = ['Data Set', 'Steps', 'CM', 'Solvr', 'Q_Tol', 'QDS', 'PreCT', 'PreCD', 'PreCS', 'PCSAI', 'PreAT', 'PreAJ', 'Pre_Comp',
                     'Pre_App', 'Iters', 'SpMV', 'CM', 'Thd', 'Time (s)']
-            body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:3} {:10.3f}\n'
+            body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:3} {:10.4f}\n'
         elif args.run_type[0] == 'mpi':
             header_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10}\n'
             header_str = ['Data_Set', 'Proc', 'Steps', 'PreCT', 'Q_Tol', 'Ren', 'PCSAI',
                     'total_time', 'step_time', 'comm', 'neighbors', 'init', 'init_dist', 'init_cm', 'init_bond',
                     'bonded', 'nonbonded', 'cm', 'cm_sort',
                     's_iters', 'pre_comm', 'pre_app', 's_comm', 's_allr', 's_spmv', 's_vec_ops']
-            body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f}\n'
+            body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f}\n'
         elif args.run_type[0] == 'mpi-gpu':
             header_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10}\n'
             header_str = ['Data_Set', 'Proc', 'Steps', 'PreCT', 'Q_Tol', 'Ren', 'PCSAI',
                     'total_time', 'step_time', 'comm', 'neighbors', 'init',
                     'bonded', 'nonbonded', 'cm', 's_iters']
-            body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f} {:10.3f}\n'
+            body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f}\n'
 
         if args.binary:
             binary = args.binary[0]

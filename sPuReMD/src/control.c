@@ -88,6 +88,11 @@ int Set_Control_Parameter( const char * const keyword,
         // skip since not applicable to shared memory code
         ;
     }
+    else if ( strncmp(keyword, "gpu_streams", MAX_LINE) == 0 )
+    {
+        // skip since not applicable to shared memory code
+        ;
+    }
     else if ( strncmp(keyword, "proc_by_dim", MAX_LINE) == 0 )
     {
         // skip since not applicable to shared memory code
