@@ -69,12 +69,13 @@ CUDA_GLOBAL void k_generate_neighbor_lists_full( reax_atom *my_atoms,
     atom1 = &my_atoms[l];
     num_far = Start_Index( l, &far_nbr_list );
 
-    /* get the coordinates of the atom and compute the grid cell */
+    /* map this atom to its grid cell indices */
     if ( l < n )
     {
-        for ( i = 0; i < 3; i++ )
+        for ( i = 0; i < 3; ++i )
         {
-            c[i] = (int)((my_atoms[l].x[i] - my_ext_box.min[i]) * g.inv_len[i]);   
+            c[i] = (int) ((my_atoms[l].x[i] - my_ext_box.min[i]) * g.inv_len[i]);   
+
             if ( c[i] >= g.native_end[i] )
             {
                 c[i] = g.native_end[i] - 1;
@@ -87,9 +88,10 @@ CUDA_GLOBAL void k_generate_neighbor_lists_full( reax_atom *my_atoms,
     }
     else
     {
-        for ( i = 0; i < 3; i++ )
+        for ( i = 0; i < 3; ++i )
         {
-            c[i] = (int)((my_atoms[l].x[i] - my_ext_box.min[i]) * g.inv_len[i]);
+            c[i] = (int) ((my_atoms[l].x[i] - my_ext_box.min[i]) * g.inv_len[i]);
+
             if ( c[i] < 0 )
             {
                 c[i] = 0;
@@ -140,7 +142,6 @@ CUDA_GLOBAL void k_generate_neighbor_lists_full( reax_atom *my_atoms,
                         ivec_ScaledSum( far_nbr_list.far_nbr_list.rel_box[num_far],
                                 1, g.rel_box[ index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g) ], 
                                 -1, g.rel_box[ index_grid_3d(i, j, k, &g) ] );
-
                         ++num_far;
                     }
                 }

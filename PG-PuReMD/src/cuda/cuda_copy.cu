@@ -15,24 +15,6 @@ extern "C" void Cuda_Copy_Grid_Host_to_Device( control_params *control,
 
     total = host->ncells[0] * host->ncells[1] * host->ncells[2];
 
-    ivec_Copy( device->ncells, host->ncells );
-    rvec_Copy( device->cell_len, host->cell_len );
-    rvec_Copy( device->inv_len, host->inv_len );
-
-    ivec_Copy( device->bond_span, host->bond_span );
-    ivec_Copy( device->nonb_span, host->nonb_span );
-    ivec_Copy( device->vlist_span, host->vlist_span );
-
-    ivec_Copy( device->native_cells, host->native_cells );
-    ivec_Copy( device->native_str, host->native_str );
-    ivec_Copy( device->native_end, host->native_end );
-
-    device->ghost_cut = host->ghost_cut;
-    ivec_Copy( device->ghost_span, host->ghost_span );
-    ivec_Copy( device->ghost_nonb_span, host->ghost_nonb_span );
-    ivec_Copy( device->ghost_hbond_span, host->ghost_hbond_span );
-    ivec_Copy( device->ghost_bond_span, host->ghost_bond_span );
-
     sCudaMemcpyAsync( device->str, host->str, sizeof(int) * total,
             cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
     sCudaMemcpyAsync( device->end, host->end, sizeof(int) * total,
@@ -43,13 +25,28 @@ extern "C" void Cuda_Copy_Grid_Host_to_Device( control_params *control,
             cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
     sCudaMemcpyAsync( device->nbrs_cp, host->nbrs_cp, sizeof(rvec) * total * host->max_nbrs,
             cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
-
     sCudaMemcpyAsync( device->rel_box, host->rel_box, sizeof(ivec) * total,
             cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
 
-    cudaStreamSynchronize( control->streams[0] );
-
+    device->total = host->total;
+    device->max_atoms = host->max_atoms;
     device->max_nbrs = host->max_nbrs;
+    ivec_Copy( device->ncells, host->ncells );
+    rvec_Copy( device->cell_len, host->cell_len );
+    rvec_Copy( device->inv_len, host->inv_len );
+    ivec_Copy( device->bond_span, host->bond_span );
+    ivec_Copy( device->nonb_span, host->nonb_span );
+    ivec_Copy( device->vlist_span, host->vlist_span );
+    ivec_Copy( device->native_cells, host->native_cells );
+    ivec_Copy( device->native_str, host->native_str );
+    ivec_Copy( device->native_end, host->native_end );
+    device->ghost_cut = host->ghost_cut;
+    ivec_Copy( device->ghost_span, host->ghost_span );
+    ivec_Copy( device->ghost_nonb_span, host->ghost_nonb_span );
+    ivec_Copy( device->ghost_hbond_span, host->ghost_hbond_span );
+    ivec_Copy( device->ghost_bond_span, host->ghost_bond_span );
+
+    cudaStreamSynchronize( control->streams[0] );
 }
 
 

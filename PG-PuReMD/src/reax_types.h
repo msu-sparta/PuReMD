@@ -749,10 +749,10 @@ struct restart_header
 };
 
 
-/* atom type used for restarting simulation */
+/* atom type used for restarting simulation (32 bytes) */
 struct restart_atom
 {
-    /* atom serial number as given in the geo file */
+    /* atom serial number as given in the geo file (1-based) */
     int orig_id;
     /* non-negative integer used to indicate atom type,
      * as identified by short element string in force field file (single
@@ -767,7 +767,7 @@ struct restart_atom
 };
 
 
-/* atom type used for MPI communications */
+/* atom type used for MPI communications (164 bytes) */
 struct mpi_atom
 {
     /* atom serial number as given in the geo file */
@@ -799,7 +799,7 @@ struct mpi_atom
 };
 
 
-/* atom type used for MPI communications at boundary regions */
+/* atom type used for MPI communications at boundary regions (28 bytes) */
 struct boundary_atom
 {
     /* atom serial number as given in the geo file */
@@ -824,7 +824,7 @@ struct mpi_out_data
 {
     /* num. of elements currently contained in the egress buffer */
     int cnt;
-    /* mapping between elements of egress buffer and another buffer */
+    /* maps elements in egress buffer back to local atom position for a process (in system->my_atoms) */
     int *index;
     /* size of index, in bytes */
     size_t index_size;
@@ -1214,7 +1214,7 @@ struct reax_interaction
 };
 
 
-/**/
+/* atom type used for local storage (140 bytes) */
 struct reax_atom
 {
     /* atom serial number as given in the geo file */
@@ -1419,7 +1419,7 @@ struct reax_system
     int n;
     /* num. atoms (locally owned AND ghost region) within spatial domain of MPI process */
     int N;
-    /* num. atoms within simulation */
+    /* total num. atoms in simulation */
     int bigN;
     /* dimension of locally owned part of sparse charge matrix */
     int n_cm;

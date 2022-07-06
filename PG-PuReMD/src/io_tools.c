@@ -689,7 +689,7 @@ void Print_My_Ext_Atoms( reax_system *system )
 void Print_Far_Neighbors( reax_system *system, reax_list **lists,
         control_params *control )
 {
-    int i, j, id_i, id_j, nbr, natoms;
+    int i, j, id_i, id_j, nbr;
     char fname[100];
     FILE *fout;
     reax_list *far_nbrs;
@@ -697,30 +697,64 @@ void Print_Far_Neighbors( reax_system *system, reax_list **lists,
     sprintf( fname, "%s.far_nbrs.%d", control->sim_name, system->my_rank );
     fout = sfopen( fname, "w", __FILE__, __LINE__ );
     far_nbrs = lists[FAR_NBRS];
-    natoms = system->N;
 
-    for ( i = 0; i < natoms; ++i )
+    if ( far_nbrs->format == HALF_LIST )
     {
-        id_i = system->my_atoms[i].orig_id;
-
-        for ( j = Start_Index(i, far_nbrs); j < End_Index(i, far_nbrs); ++j )
+        for ( i = 0; i < system->N; ++i )
         {
-            nbr = far_nbrs->far_nbr_list.nbr[j];
-            id_j = system->my_atoms[nbr].orig_id;
+            id_i = system->my_atoms[i].orig_id;
 
-            fprintf( fout, "%6d%6d%24.15e%24.15e%24.15e%24.15e\n",
-                     id_i, id_j, far_nbrs->far_nbr_list.d[j],
-                     far_nbrs->far_nbr_list.dvec[j][0],
-                     far_nbrs->far_nbr_list.dvec[j][1],
-                     far_nbrs->far_nbr_list.dvec[j][2] );
+            for ( j = Start_Index(i, far_nbrs); j < End_Index(i, far_nbrs); ++j )
+            {
+                nbr = far_nbrs->far_nbr_list.nbr[j];
+                id_j = system->my_atoms[nbr].orig_id;
 
-            fprintf( fout, "%6d%6d%24.15e%24.15e%24.15e%24.15e\n",
-                     id_j, id_i, far_nbrs->far_nbr_list.d[j],
-                     -far_nbrs->far_nbr_list.dvec[j][0],
-                     -far_nbrs->far_nbr_list.dvec[j][1],
-                     -far_nbrs->far_nbr_list.dvec[j][2] );
+                fprintf( fout, "%6d %6d %9d %9d (%3d,%3d,%3d) %12.7e %12.7e %12.7e %12.7e\n",
+                         id_i, id_j, i, j,
+                         far_nbrs->far_nbr_list.rel_box[j][0],
+                         far_nbrs->far_nbr_list.rel_box[j][1],
+                         far_nbrs->far_nbr_list.rel_box[j][2],
+                         far_nbrs->far_nbr_list.d[j],
+                         far_nbrs->far_nbr_list.dvec[j][0],
+                         far_nbrs->far_nbr_list.dvec[j][1],
+                         far_nbrs->far_nbr_list.dvec[j][2] );
+
+                fprintf( fout, "%6d %6d %9d %9d (%3d,%3d,%3d) %12.7e %12.7e %12.7e %12.7e\n",
+                         id_j, id_i, j, i,
+                         -far_nbrs->far_nbr_list.rel_box[j][0],
+                         -far_nbrs->far_nbr_list.rel_box[j][1],
+                         -far_nbrs->far_nbr_list.rel_box[j][2],
+                         far_nbrs->far_nbr_list.d[j],
+                         -far_nbrs->far_nbr_list.dvec[j][0],
+                         -far_nbrs->far_nbr_list.dvec[j][1],
+                         -far_nbrs->far_nbr_list.dvec[j][2] );
+            }
         }
     }
+    else
+    {
+        for ( i = 0; i < system->N; ++i )
+        {
+            id_i = system->my_atoms[i].orig_id;
+
+            for ( j = Start_Index(i, far_nbrs); j < End_Index(i, far_nbrs); ++j )
+            {
+                nbr = far_nbrs->far_nbr_list.nbr[j];
+                id_j = system->my_atoms[nbr].orig_id;
+
+                fprintf( fout, "%6d %6d %9d %9d (%3d,%3d,%3d) %12.7e %12.7e %12.7e %12.7e\n",
+                         id_i, id_j, i, j,
+                         far_nbrs->far_nbr_list.rel_box[j][0],
+                         far_nbrs->far_nbr_list.rel_box[j][1],
+                         far_nbrs->far_nbr_list.rel_box[j][2],
+                         far_nbrs->far_nbr_list.d[j],
+                         far_nbrs->far_nbr_list.dvec[j][0],
+                         far_nbrs->far_nbr_list.dvec[j][1],
+                         far_nbrs->far_nbr_list.dvec[j][2] );
+            }
+        }
+    }
+
 
     sfclose( fout, __FILE__, __LINE__ );
 }
@@ -910,7 +944,7 @@ void Print_HBonds( reax_system *system, reax_list **lists,
     sprintf( fname, "%s.hbonds.%d.%d", control->sim_name, step, system->my_rank );
     fout = sfopen( fname, "w", __FILE__, __LINE__ );
 
-    for ( i = 0; i < system->numH; ++i )
+    for ( i = 0; i < hbond_list->n; ++i )
     {
         for ( pj = Start_Index(i, hbond_list); pj < End_Index(i, hbond_list); ++pj )
         {

@@ -1276,7 +1276,14 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
         start_i = Start_Index( i, far_nbr_list );
         end_i = End_Index( i, far_nbr_list );
         ihb = sbp_i->p_hbond;
-        ihb_top = Start_Index( atom_i->Hindex, hbond_list );
+        if ( atom_i->Hindex == -1 )
+        {
+            ihb_top = -1;
+        }
+        else
+        {
+            ihb_top = Start_Index( atom_i->Hindex, hbond_list );
+        }
 
         for ( pj = start_i; pj < end_i; ++pj )
         {

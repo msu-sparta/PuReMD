@@ -641,7 +641,7 @@ void setup_sparse_approx_inverse( reax_system const * const system,
     int i, ret, bin, total, pos;
     int n, n_gather, s_local, s, n_local;
     int target_proc;
-    int k, pj, size;
+    int k, pj, pk;
     int left, right, p, turn;
     int num_rows;
     int *sample_counts, *sample_index;
@@ -656,6 +656,8 @@ void setup_sparse_approx_inverse( reax_system const * const system,
 #if defined(LOG_PERFORMANCE)
     real t_start, t_comm;
     real total_comm;
+
+    t_comm = 0.0;
 #endif
 
     sample_counts = NULL;
@@ -671,7 +673,6 @@ void setup_sparse_approx_inverse( reax_system const * const system,
     dspls_local = NULL;
     dspls = NULL;
     bin_elements = NULL;
-    t_comm = 0.0;
 
 #if defined(NEUTRAL_TERRITORY)
     num_rows = A->NT;
@@ -1008,18 +1009,19 @@ void setup_sparse_approx_inverse( reax_system const * const system,
     for ( i = 0; i < num_rows; ++i )
     {
         A_spar_patt->start[i] = A->start[i];
-        size = A->start[i];
+        pk = A->start[i];
 
         for ( pj = A->start[i]; pj < A->end[i]; ++pj )
         {
             if ( A->val[pj] >= threshold || A->j[pj] == i )
             {
-                A_spar_patt->val[size] = A->val[pj];
-                A_spar_patt->j[size] = A->j[pj];
-                size++;
+                A_spar_patt->j[pk] = A->j[pj];
+                A_spar_patt->val[pk] = A->val[pj];
+                ++pk;
             }
         }
-        A_spar_patt->end[i] = size;
+
+        A_spar_patt->end[i] = pk;
     }
     for ( i = A->n; i < A->n_max; ++i )
     {
@@ -1079,7 +1081,7 @@ void sparse_approx_inverse( reax_system const * const system,
     int **j_list;
     int d, count, index;
     int *j_send, *j_recv[6];
-    real *e_j, *D;
+    real *e_i, *D;
     real *val_send, *val_recv[6];
     reax_atom *atom;
     real **val_list;
@@ -1426,13 +1428,13 @@ void sparse_approx_inverse( reax_system const * const system,
 
         /* create the right hand side of the linear equation
          * that is the full column of the identity matrix */
-        e_j = smalloc( sizeof(real) * M, __FILE__, __LINE__ );
+        e_i = smalloc( sizeof(real) * M, __FILE__, __LINE__ );
         //////////////////////
         for ( k = 0; k < M; ++k )
         {
-            e_j[k] = 0.0;
+            e_i[k] = 0.0;
         }
-        e_j[identity_pos] = 1.0;
+        e_i[identity_pos] = 1.0;
 
         /* Solve the overdetermined system AX = B through the least-squares problem:
          * min ||B - AX||_2 */
@@ -1442,8 +1444,7 @@ void sparse_approx_inverse( reax_system const * const system,
         lda = N;
         ldb = nrhs;
 
-        info = LAPACKE_dgels( LAPACK_ROW_MAJOR, 'N', m, n, nrhs, D, lda,
-                e_j, ldb );
+        info = LAPACKE_dgels( LAPACK_ROW_MAJOR, 'N', m, n, nrhs, D, lda, e_i, ldb );
 
         /* Check for the full rank */
         if ( info > 0 )
@@ -1460,10 +1461,10 @@ void sparse_approx_inverse( reax_system const * const system,
         for ( k = A_app_inv->start[i]; k < A_app_inv->end[i]; ++k)
         {
             A_app_inv->j[k] = A_spar_patt->j[k];
-            A_app_inv->val[k] = e_j[k - A_spar_patt->start[i]];
+            A_app_inv->val[k] = e_i[k - A_spar_patt->start[i]];
         }
         sfree( D, __FILE__, __LINE__ );
-        sfree( e_j, __FILE__, __LINE__ );
+        sfree( e_i, __FILE__, __LINE__ );
     }
 
     sfree( pos_x, __FILE__, __LINE__ );
@@ -1488,28 +1489,29 @@ void sparse_approx_inverse( reax_system const * const system,
         sparse_matrix const * const A, sparse_matrix const * const A_spar_patt,
         sparse_matrix * const A_app_inv, int nprocs )
 {
-    int i, k, pj, j_temp, push, ret;
+    int i, pj, pk, ret;
     int N, M, d_i, d_j, mark;
-    int local_pos, atom_pos, identity_pos;
+    int local_pos, identity_pos;
     int *X, *q;
-    size_t q_size;
+    int q_size, q_top;
     int e_size, D_size;
-    int cnt, cnt_, cnt1, cnt2, cnt3, cnt4;
-    int *row_nnz;
-    int **j_list;
+    int cnt;
+    int *row_nnz, *row_start, total_entries;
+    int *col_inds;
     int d;
-    int *j_send1, *j_send2, *j_recv1, *j_recv2;
-    size_t j_send1_size, j_send2_size, val_send1_size, val_send2_size;
-    size_t j_recv1_size, j_recv2_size, val_recv1_size, val_recv2_size;
-    real *e_j, *D;
-    real **val_list;
-    real *val_send1, *val_send2, *val_recv1, *val_recv2;
-    reax_atom *atom;
+    int *col_inds_send_buf1, *col_inds_send_buf2;
+    size_t col_inds_send_buf1_size, col_inds_send_buf2_size;
+    int col_inds_recv1_cnt, col_inds_recv2_cnt;
+    real *e_i, *D;
+    real *nz_vals;
+    real *nz_vals_send_buf1, *nz_vals_send_buf2;
+    size_t nz_vals_send_buf1_size, nz_vals_send_buf2_size;
+    int nz_vals_recv1_cnt, nz_vals_recv2_cnt;
     mpi_out_data * const out_bufs = mpi_data->out_buffers;
     const neighbor_proc *nbr1, *nbr2;
     MPI_Request req1, req2, req3, req4;
     MPI_Status stat1, stat2, stat3, stat4;
-    lapack_int m, n, nrhs, lda, ldb, info;
+    lapack_int m, n, lda, info;
 #if defined(LOG_PERFORMANCE)
     real t_start, t_comm, total_comm;
 
@@ -1529,45 +1531,26 @@ void sparse_approx_inverse( reax_system const * const system,
         Allocate_Matrix( A_app_inv, A_spar_patt->n, A_spar_patt->n_max, A_spar_patt->m,
                 SYM_FULL_MATRIX );
     }
+    else
+    {
+        A_app_inv->n = A_spar_patt->n;
+    }
 
-    A_app_inv->n = A_spar_patt->n;
-
-    X = NULL;
-    j_send1 = NULL;
-    j_send2 = NULL;
-    val_send1 = NULL;
-    val_send2 = NULL;
-    j_recv1 = NULL;
-    j_recv2 = NULL;
-    val_recv1 = NULL;
-    val_recv2 = NULL;
-    j_send1_size = 0;
-    j_send2_size = 0;
-    val_send1_size = 0;
-    val_send2_size = 0;
-    j_recv1_size = 0;
-    j_recv2_size = 0;
-    val_recv1_size = 0;
-    val_recv2_size = 0;
-
-    e_j = NULL;
-    D = NULL;
+    col_inds_send_buf1 = NULL;
+    col_inds_send_buf1_size = 0;
+    col_inds_send_buf2 = NULL;
+    col_inds_send_buf2_size = 0;
+    nz_vals_send_buf1 = NULL;
+    nz_vals_send_buf1_size = 0;
+    nz_vals_send_buf2 = NULL;
+    nz_vals_send_buf2_size = 0;
+    e_i = NULL;
     e_size = 0;
+    D = NULL;
     D_size = 0;
-
     row_nnz = smalloc( sizeof(int) * system->total_cap, __FILE__, __LINE__ );
-    j_list = smalloc( sizeof(int *) * system->N, __FILE__, __LINE__ );
-    val_list = smalloc( sizeof(real *) * system->N, __FILE__, __LINE__ );
-    for ( i = 0; i < system->N; ++i )
-    {
-        j_list[i] = NULL;
-    }
-    for ( i = 0; i < system->N; ++i )
-    {
-        val_list[i] = NULL;
-    }
+    row_start = smalloc( sizeof(int) * (system->total_cap + 1 - A->n), __FILE__, __LINE__ );
 
-    /* mark the atoms that already have their row stored in the local matrix */
     for ( i = 0; i < system->n; ++i )
     {
         row_nnz[i] = A->end[i] - A->start[i];
@@ -1588,6 +1571,23 @@ void sparse_approx_inverse( reax_system const * const system,
     t_comm += Get_Time( ) - t_start;
 #endif
 
+    /* exclusive prefix sum to determine indices for imported row info */
+    row_start[0] = 0;
+    for ( i = 1; i < system->total_cap + 1 - A->n; ++i )
+    {
+        row_start[i] = row_start[i - 1] + row_nnz[i - 1 + A->n];
+    }
+
+    /* total imported row info counts */
+    total_entries = 0;
+    for ( i = system->n; i < system->total_cap; ++i )
+    {
+        total_entries += row_nnz[i];
+    }
+
+    col_inds = smalloc( sizeof(int) * total_entries, __FILE__, __LINE__ );
+    nz_vals = smalloc( sizeof(real) * total_entries, __FILE__, __LINE__ );
+
     /* use a Dist-like approach to send the row information */
     for ( d = 0; d < 3; ++d )
     {
@@ -1601,45 +1601,41 @@ void sparse_approx_inverse( reax_system const * const system,
             cnt += row_nnz[out_bufs[2 * d].index[i]];
         }
 
-        smalloc_check( (void **) &j_send1, &j_send1_size, sizeof(int) * cnt,
-                TRUE, SAFE_ZONE, __FILE__, __LINE__ );
-        smalloc_check( (void **) &val_send1, &val_send1_size, sizeof(real) * cnt,
-                TRUE, SAFE_ZONE, __FILE__, __LINE__ );
+        smalloc_check( (void **) &col_inds_send_buf1, &col_inds_send_buf1_size,
+                sizeof(int) * cnt, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
+        smalloc_check( (void **) &nz_vals_send_buf1, &nz_vals_send_buf1_size,
+                sizeof(real) * cnt, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
 
-        cnt_ = 0;
+        /* pack for send1 */
+        cnt = 0;
         for ( i = 0; i < out_bufs[2 * d].cnt; ++i )
         {
             if ( out_bufs[2 * d].index[i] < A->n )
             {
-                for ( pj = A->start[ out_bufs[2 * d].index[i] ];
-                        pj < A->end[ out_bufs[2 * d].index[i] ]; ++pj )
+                for ( pj = A->start[out_bufs[2 * d].index[i]];
+                        pj < A->end[out_bufs[2 * d].index[i]]; ++pj )
                 {
-                    j_send1[cnt_] = system->my_atoms[A->j[pj]].orig_id;
-                    val_send1[cnt_] = A->val[pj];
-                    ++cnt_;
+                    col_inds_send_buf1[cnt] = system->my_atoms[A->j[pj]].orig_id - 1;
+                    nz_vals_send_buf1[cnt] = A->val[pj];
+                    ++cnt;
                 }
             }
             else
             {
-                for ( pj = 0; pj < row_nnz[ out_bufs[2 * d].index[i] ]; ++pj )
+                for ( pj = row_start[out_bufs[2 * d].index[i] - A->n];
+                        pj < row_start[out_bufs[2 * d].index[i] - A->n + 1]; ++pj )
                 {
-                    j_send1[cnt_] = j_list[ out_bufs[2 * d].index[i] ][pj];
-                    val_send1[cnt_] = val_list[ out_bufs[2 * d].index[i] ][pj];
-                    ++cnt_;
+                    col_inds_send_buf1[cnt] = col_inds[pj];
+                    nz_vals_send_buf1[cnt] = nz_vals[pj];
+                    ++cnt;
                 }
             }
         }
 
-        if ( cnt != cnt_ )
-        {
-            fprintf( stderr, "[ERROR] SAI comp: send1 count mismatch: %d != %d (d = %d)\n", cnt, cnt_, d );
-            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
-        }
-
-        ret = MPI_Isend( j_send1, cnt_, MPI_INT, nbr1->rank,
+        ret = MPI_Isend( col_inds_send_buf1, cnt, MPI_INT, nbr1->rank,
                 2 * d, mpi_data->comm_mesh3D, &req1 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
-        ret = MPI_Isend( val_send1, cnt_, MPI_DOUBLE, nbr1->rank,
+        ret = MPI_Isend( nz_vals_send_buf1, cnt, MPI_DOUBLE, nbr1->rank,
                 6 + (2 * d), mpi_data->comm_mesh3D, &req2 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
@@ -1650,85 +1646,77 @@ void sparse_approx_inverse( reax_system const * const system,
             cnt += row_nnz[ out_bufs[2 * d + 1].index[i] ];
         }
 
-        smalloc_check( (void **) &j_send2, &j_send2_size, sizeof(int) * cnt,
-                TRUE, SAFE_ZONE, __FILE__, __LINE__ );
-        smalloc_check( (void **) &val_send2, &val_send2_size, sizeof(real) * cnt,
-                TRUE, SAFE_ZONE, __FILE__, __LINE__ );
+        smalloc_check( (void **) &col_inds_send_buf2, &col_inds_send_buf2_size,
+                sizeof(int) * cnt, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
+        smalloc_check( (void **) &nz_vals_send_buf2, &nz_vals_send_buf2_size,
+                sizeof(real) * cnt, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
 
-        cnt_ = 0;
+        /* pack for send2 */
+        cnt = 0;
         for ( i = 0; i < out_bufs[2 * d + 1].cnt; ++i )
         {
             if ( out_bufs[2 * d + 1].index[i] < A->n )
             {
-                for ( pj = A->start[ out_bufs[2 * d + 1].index[i] ];
-                        pj < A->end[ out_bufs[2 * d + 1].index[i] ]; ++pj )
+                for ( pj = A->start[out_bufs[2 * d + 1].index[i]];
+                        pj < A->end[out_bufs[2 * d + 1].index[i]]; ++pj )
                 {
-                    j_send2[cnt_] = system->my_atoms[A->j[pj]].orig_id;
-                    val_send2[cnt_] = A->val[pj];
-                    ++cnt_;
+                    col_inds_send_buf2[cnt] = system->my_atoms[A->j[pj]].orig_id - 1;
+                    nz_vals_send_buf2[cnt] = A->val[pj];
+                    ++cnt;
                 }
             }
             else
             {
-                for ( pj = 0; pj < row_nnz[ out_bufs[2 * d + 1].index[i] ]; ++pj )
+                for ( pj = row_start[out_bufs[2 * d + 1].index[i] - A->n];
+                        pj < row_start[out_bufs[2 * d + 1].index[i] - A->n + 1]; ++pj )
                 {
-                    j_send2[cnt_] = j_list[ out_bufs[2 * d + 1].index[i] ][pj];
-                    val_send2[cnt_] = val_list[ out_bufs[2 * d + 1].index[i] ][pj];
-                    ++cnt_;
+                    col_inds_send_buf2[cnt] = col_inds[pj];
+                    nz_vals_send_buf2[cnt] = nz_vals[pj];
+                    ++cnt;
                 }
             }
         }
 
-        if ( cnt != cnt_ )
-        {
-            fprintf( stderr, "[ERROR] SAI comp: send2 count mismatch: %d != %d (d = %d)\n", cnt, cnt_, d );
-            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
-        }
-
-        ret = MPI_Isend( j_send2, cnt_, MPI_INT, nbr2->rank,
+        ret = MPI_Isend( col_inds_send_buf2, cnt, MPI_INT, nbr2->rank,
                 2 * d + 1, mpi_data->comm_mesh3D, &req3 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
-        ret = MPI_Isend( val_send2, cnt_, MPI_DOUBLE, nbr2->rank,
+        ret = MPI_Isend( nz_vals_send_buf2, cnt, MPI_DOUBLE, nbr2->rank,
                 6 + (2 * d + 1), mpi_data->comm_mesh3D, &req4 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         /* recv both messages in dimension d */
         ret = MPI_Probe( nbr1->rank, 2 * d + 1, mpi_data->comm_mesh3D, &stat1 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
-        ret = MPI_Get_count( &stat1, MPI_INT, &cnt1 );
+        ret = MPI_Get_count( &stat1, MPI_INT, &col_inds_recv1_cnt );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         ret = MPI_Probe( nbr1->rank, 6 + (2 * d + 1), mpi_data->comm_mesh3D, &stat2 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
-        ret = MPI_Get_count( &stat2, MPI_DOUBLE, &cnt2 );
+        ret = MPI_Get_count( &stat2, MPI_DOUBLE, &nz_vals_recv1_cnt );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-        if ( cnt1 == MPI_UNDEFINED || cnt2 == MPI_UNDEFINED )
+        if ( col_inds_recv1_cnt == MPI_UNDEFINED || nz_vals_recv1_cnt == MPI_UNDEFINED )
         {
             fprintf( stderr, "[ERROR] MPI_Get_count returned MPI_UNDEFINED\n" );
             MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
         }
-        else if ( cnt1 != cnt2 )
+        else if ( col_inds_recv1_cnt != nz_vals_recv1_cnt )
         {
             fprintf( stderr, "[ERROR] MPI_Get_count mismatch between messages\n" );
-            fprintf( stderr, "  [INFO] cnt1 = %d, cnt2 = %d\n", cnt1, cnt2 );
+            fprintf( stderr, "  [INFO] col_inds_recv1_cnt = %d, nz_vals_recv1_cnt = %d\n",
+                    col_inds_recv1_cnt, nz_vals_recv1_cnt );
             MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
         }
-
-        smalloc_check( (void **) &j_recv1, &j_recv1_size, sizeof(int) * cnt1,
-                TRUE, SAFE_ZONE, __FILE__, __LINE__ );
-        smalloc_check( (void **) &val_recv1, &val_recv1_size, sizeof(real) * cnt2,
-                TRUE, SAFE_ZONE, __FILE__, __LINE__ );
 
 #if defined(LOG_PERFORMANCE)
         t_start = Get_Time( );
 #endif
 
-        ret = MPI_Recv( j_recv1, cnt1, MPI_INT, nbr1->rank,
-                2 * d + 1, mpi_data->comm_mesh3D, MPI_STATUS_IGNORE );
+        ret = MPI_Recv( &col_inds[row_start[nbr1->atoms_str - A->n]], col_inds_recv1_cnt,
+                MPI_INT, nbr1->rank, 2 * d + 1, mpi_data->comm_mesh3D, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
-        ret = MPI_Recv( val_recv1, cnt2, MPI_DOUBLE, nbr1->rank,
-                6 + (2 * d + 1), mpi_data->comm_mesh3D, MPI_STATUS_IGNORE );
+        ret = MPI_Recv( &nz_vals[row_start[nbr1->atoms_str - A->n]], nz_vals_recv1_cnt,
+                MPI_DOUBLE, nbr1->rank, 6 + (2 * d + 1), mpi_data->comm_mesh3D, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
 #if defined(LOG_PERFORMANCE)
@@ -1737,77 +1725,38 @@ void sparse_approx_inverse( reax_system const * const system,
 
         ret = MPI_Probe( nbr2->rank, 2 * d, mpi_data->comm_mesh3D, &stat3 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
-        ret = MPI_Get_count( &stat3, MPI_INT, &cnt3 );
+        ret = MPI_Get_count( &stat3, MPI_INT, &col_inds_recv2_cnt );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
         ret = MPI_Probe( nbr2->rank, 6 + (2 * d), mpi_data->comm_mesh3D, &stat4 );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
-        ret = MPI_Get_count( &stat4, MPI_DOUBLE, &cnt4 );
+        ret = MPI_Get_count( &stat4, MPI_DOUBLE, &nz_vals_recv2_cnt );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-        if ( cnt3 == MPI_UNDEFINED || cnt4 == MPI_UNDEFINED )
+        if ( col_inds_recv2_cnt == MPI_UNDEFINED || nz_vals_recv2_cnt == MPI_UNDEFINED )
         {
             fprintf( stderr, "[ERROR] MPI_Get_count returned MPI_UNDEFINED\n" );
             MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
         }
-        else if ( cnt3 != cnt4 )
+        else if ( col_inds_recv2_cnt != nz_vals_recv2_cnt )
         {
             fprintf( stderr, "[ERROR] MPI_Get_count mismatch between messages\n" );
-            fprintf( stderr, "  [INFO] cnt3 = %d, cnt4 = %d\n", cnt3, cnt4 );
+            fprintf( stderr, "  [INFO] col_inds_recv2_cnt = %d, nz_vals_recv2_cnt = %d\n",
+                    col_inds_recv2_cnt, nz_vals_recv2_cnt );
             MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
         }
 
-        smalloc_check( (void **) &j_recv2, &j_recv2_size, sizeof(int) * cnt3,
-                TRUE, SAFE_ZONE, __FILE__, __LINE__ );
-        smalloc_check( (void **) &val_recv2, &val_recv2_size, sizeof(real) * cnt4,
-                TRUE, SAFE_ZONE, __FILE__, __LINE__ );
-
 #if defined(LOG_PERFORMANCE)
         t_start = Get_Time( );
 #endif
 
-        ret = MPI_Recv( j_recv2, cnt3, MPI_INT, nbr2->rank,
-                2 * d, mpi_data->comm_mesh3D, MPI_STATUS_IGNORE );
+        ret = MPI_Recv( &col_inds[row_start[nbr2->atoms_str - A->n]], col_inds_recv2_cnt,
+                MPI_INT, nbr2->rank, 2 * d, mpi_data->comm_mesh3D, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
-        ret = MPI_Recv( val_recv2, cnt4, MPI_DOUBLE, nbr2->rank,
+        ret = MPI_Recv( &nz_vals[row_start[nbr2->atoms_str - A->n]], nz_vals_recv2_cnt,
+                MPI_DOUBLE, nbr2->rank,
                 6 + (2 * d), mpi_data->comm_mesh3D, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
-
-#if defined(LOG_PERFORMANCE)
-        t_comm += Get_Time( ) - t_start;
-#endif
-
-        cnt = 0;
-        for ( i = nbr1->atoms_str; i < (nbr1->atoms_str + nbr1->atoms_cnt); ++i )
-        {
-            j_list[i] = smalloc( sizeof(int) * row_nnz[i], __FILE__, __LINE__ );
-            val_list[i] = smalloc( sizeof(real) * row_nnz[i], __FILE__, __LINE__ );
-
-            for ( pj = 0; pj < row_nnz[i]; ++pj )
-            {
-                j_list[i][pj] = j_recv1[cnt];
-                val_list[i][pj] = val_recv1[cnt];
-                cnt++;
-            }
-        }
-
-        cnt = 0;
-        for ( i = nbr2->atoms_str; i < (nbr2->atoms_str + nbr2->atoms_cnt); ++i )
-        {
-            j_list[i] = smalloc( sizeof(int) *  row_nnz[i], __FILE__, __LINE__ );
-            val_list[i] = smalloc( sizeof(real) * row_nnz[i], __FILE__, __LINE__ );
-
-            for ( pj = 0; pj < row_nnz[i]; ++pj )
-            {
-                j_list[i][pj] = j_recv2[cnt];
-                val_list[i][pj] = val_recv2[cnt];
-                cnt++;
-            }
-        }
-
-#if defined(LOG_PERFORMANCE)
-        t_start = Get_Time( );
-#endif
 
         ret = MPI_Wait( &req1, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
@@ -1824,130 +1773,152 @@ void sparse_approx_inverse( reax_system const * const system,
 #endif
     }
 
-    sfree( j_send1, __FILE__, __LINE__ );
-    sfree( j_send2, __FILE__, __LINE__ );
-    sfree( val_send1, __FILE__, __LINE__ );
-    sfree( val_send2, __FILE__, __LINE__ );
-    sfree( j_recv1, __FILE__, __LINE__ );
-    sfree( j_recv2, __FILE__, __LINE__ );
-    sfree( val_recv1, __FILE__, __LINE__ );
-    sfree( val_recv2, __FILE__, __LINE__ );
+    sfree( col_inds_send_buf1, __FILE__, __LINE__ );
+    sfree( col_inds_send_buf2, __FILE__, __LINE__ );
+    sfree( nz_vals_send_buf1, __FILE__, __LINE__ );
+    sfree( nz_vals_send_buf2, __FILE__, __LINE__ );
 
-    X = smalloc( sizeof(int) * (system->bigN + 1), __FILE__, __LINE__ );
+    X = smalloc( sizeof(int) * system->bigN, __FILE__, __LINE__ );
     q_size = MIN_QUEUE_SIZE;
     q = smalloc( sizeof(int) * q_size, __FILE__, __LINE__ );
 
-    for ( i = 0; i < system->bigN + 1; ++i )
-    {
-        X[i] = -1;
-    }
-
     for ( i = 0; i < A_spar_patt->n; ++i )
     {
-        N = 0;
         M = 0;
-        push = 0;
-        mark = i + system->bigN;
+        N = 0;
+        q_top = 0;
+        mark = -999;
         
-        /* find column indices of nonzeros (which will be the columns indices of the dense matrix) */
+        /* column indices for the non-zeros in the i-th row in the sparsity pattern
+         * for H_app_inv delineate which columns of H must be searched for non-zeros
+         * (when constructing the dense matrix D) */
         for ( pj = A_spar_patt->start[i]; pj < A_spar_patt->end[i]; ++pj )
         {
-            j_temp = A_spar_patt->j[pj];
-            atom = &system->my_atoms[j_temp];
             ++N;
 
-            /* for each of those indices
-             * search through the row of full A of that index */
+            assert( 0 <= A_spar_patt->j[pj] );
+            assert( A_spar_patt->j[pj] < system->N );
 
-            /* the case where the local matrix has that index's row */
-            if ( j_temp < A->n )
+            /* due to symmetry, search rows of H instead of columns for non-zeros
+             * 
+             * case: index's row in local matrix */
+            if ( A_spar_patt->j[pj] < A->n )
             {
-                for ( k = A->start[j_temp]; k < A->end[j_temp]; ++k )
+                for ( pk = A->start[A_spar_patt->j[pj]]; pk < A->end[A_spar_patt->j[pj]]; ++pk )
                 {
-                    /* and accumulate the nonzero column indices to serve as the row indices of the dense matrix */
-                    atom = &system->my_atoms[A->j[k]];
-                    X[atom->orig_id] = mark;
-                    if ( (size_t) (push + 1) >= q_size )
+                    assert( 1 <= system->my_atoms[A->j[pk]].orig_id
+                            && system->my_atoms[A->j[pk]].orig_id <= system->bigN );
+
+                    /* accumulate the nonzero column indices to serve as the row indices of the dense matrix */
+                    X[system->my_atoms[A->j[pk]].orig_id - 1] = mark;
+
+                    if ( q_top >= q_size )
                     {
-                        q_size = (size_t) CEIL( q_size * SAFE_ZONE );
+                        q_size = (int) CEIL( q_size * SAFE_ZONE );
                         q = srealloc( q, sizeof(int) * q_size, __FILE__, __LINE__ );
                     }
-                    q[push] = atom->orig_id;
-                    ++push;
+
+                    q[q_top] = system->my_atoms[A->j[pk]].orig_id - 1;
+                    ++q_top;
                 }
             }
-            /* the case where we communicated that index's row */
+            /* case: index's row communicated */
             else
             {
-                for ( k = 0; k < row_nnz[j_temp]; ++k )
+                assert( 0 <= row_start[A_spar_patt->j[pj] - A->n] );
+                assert( row_start[A_spar_patt->j[pj] - A->n] < total_entries );
+                assert( 0 <= row_start[A_spar_patt->j[pj] - A->n + 1] );
+                assert( row_start[A_spar_patt->j[pj] - A->n + 1] < total_entries );
+
+                for ( pk = row_start[A_spar_patt->j[pj] - A->n];
+                        pk < row_start[A_spar_patt->j[pj] - A->n + 1]; ++pk )
                 {
-                    /* and accumulate the nonzero column indices to serve as the row indices of the dense matrix */
-                    X[j_list[j_temp][k]] = mark;
-                    if ( (size_t) (push + 1) >= q_size )
+                    assert( 0 <= col_inds[pk] );
+                    assert( col_inds[pk] < system->bigN );
+
+                    /* accumulate the nonzero column indices to serve as the row indices of the dense matrix */
+                    X[col_inds[pk]] = mark;
+
+                    if ( q_top >= q_size )
                     {
-                        q_size = (size_t) CEIL( q_size * SAFE_ZONE );
+                        q_size = (int) CEIL( q_size * SAFE_ZONE );
                         q = srealloc( q, sizeof(int) * q_size, __FILE__, __LINE__ );
                     }
-                    q[push] = j_list[j_temp][k];
-                    ++push;
+
+                    q[q_top] = col_inds[pk];
+                    ++q_top;
                 }
             }
         }
 
         /* enumerate the row indices from 0 to (# of nonzero rows - 1) for the dense matrix */
-        identity_pos = M;
-        atom = &system->my_atoms[i];
-        atom_pos = atom->orig_id;
-
-        for ( k = 0; k < push; k++ )
+        for ( pj = 0; pj < q_top; ++pj )
         {
-            if ( X[q[k]] == mark )
+            if ( X[q[pj]] == mark )
             {
-                X[q[k]] = M;
+                X[q[pj]] = M;
                 ++M;
             }
         }
-        identity_pos = X[atom_pos];
+        identity_pos = X[system->my_atoms[i].orig_id - 1];
 
-        /* allocate memory for N x M dense matrix */
-        if ( D_size < N * M )
+        assert( 0 <= identity_pos );
+        assert( identity_pos < M );
+
+        if ( M * N > D_size )
         {
             if ( D_size > 0 )
             {
                 sfree( D, __FILE__, __LINE__ );
             }
             
-            D_size = (int) CEIL( N * M * SAFE_ZONE );
+            D_size = (int) CEIL( M * N * SAFE_ZONE );
 
             D = smalloc( sizeof(real) * D_size, __FILE__, __LINE__ );
         }
 
-        /* fill in the entries of dense matrix */
-        for ( d_j = 0; d_j < N; ++d_j )
+        for ( d_i = 0; d_i < M; ++d_i )
         {
-            /* all rows are initialized to zero */
-            for ( d_i = 0; d_i < M; ++d_i )
+            for ( d_j = 0; d_j < N; ++d_j )
             {
                 D[d_i * N + d_j] = 0.0;
             }
-            /* change the value if any of the column indices is seen */
+        }
 
-            /* it is in the original list */
+        /* fill in entries of D column-wise */
+        for ( d_j = 0; d_j < N; ++d_j )
+        {
             local_pos = A_spar_patt->j[A_spar_patt->start[i] + d_j];
+
+            assert( 0 <= local_pos );
+            assert( local_pos < system->N );
 
             if ( local_pos < A->n )
             {
                 for ( d_i = A->start[local_pos]; d_i < A->end[local_pos]; ++d_i )
                 {
-                    atom = &system->my_atoms[A->j[d_i]];
-                    D[X[atom->orig_id] * N + d_j] = A->val[d_i];
+                    assert( 0 <= X[system->my_atoms[A->j[d_i]].orig_id - 1] );
+                    assert( X[system->my_atoms[A->j[d_i]].orig_id - 1] < M );
+
+                    D[X[system->my_atoms[A->j[d_i]].orig_id - 1] * N + d_j] = A->val[d_i];
                 }
             }
             else
             {
-                for ( d_i = 0; d_i < row_nnz[local_pos]; ++d_i )
+                assert( 0 <= row_start[local_pos - A->n] );
+                assert( row_start[local_pos - A->n] < total_entries );
+                assert( 0 <= row_start[local_pos - A->n + 1] );
+                assert( row_start[local_pos - A->n + 1] < total_entries );
+
+                for ( d_i = row_start[local_pos - A->n];
+                        d_i < row_start[local_pos - A->n + 1]; ++d_i )
                 {
-                    D[X[j_list[local_pos][d_i]] * N + d_j] = val_list[local_pos][d_i];
+                    assert( 0 <= col_inds[d_i] );
+                    assert( col_inds[d_i] < system->bigN );
+                    assert( 0 <= X[col_inds[d_i]] );
+                    assert( X[col_inds[d_i]] < M );
+
+                    D[X[col_inds[d_i]] * N + d_j] = nz_vals[d_i];
                 }
             }
         }
@@ -1958,39 +1929,41 @@ void sparse_approx_inverse( reax_system const * const system,
         {
             if ( e_size > 0 )
             {
-                sfree( e_j, __FILE__, __LINE__ );
+                sfree( e_i, __FILE__, __LINE__ );
             }
 
             e_size = (int) CEIL( M * SAFE_ZONE );
 
-            e_j = smalloc( sizeof(real) * e_size, __FILE__, __LINE__ );
+            e_i = smalloc( sizeof(real) * e_size, __FILE__, __LINE__ );
         }
 
-        for ( k = 0; k < M; ++k )
+        for ( pk = 0; pk < M; ++pk )
         {
-            e_j[k] = 0.0;
+            e_i[pk] = 0.0;
         }
-        e_j[identity_pos] = 1.0;
+        e_i[identity_pos] = 1.0;
 
-        /* Solve the overdetermined system from the j-th columns of HM = I
-         * through the least-squares problem: min ||e_j - Dm_j||_{2}^{2}
+        /* solve the overdetermined system from the i-th columns of min_{M} ||I - HM||_F
+         * through the least-squares problem min_{m_i} ||e_i - Dm_i||_{2}^{2}
          * where D represents the dense matrix composed of relevant non-zeros from H,
-         * e_j is the j-th column of the identify matrix, and m_j is the j-th column of M */
-        m = M;
-        n = N;
-        nrhs = 1;
-        lda = N;
-        ldb = nrhs;
+         * e_i is the i-th column of the identify matrix, and m_i is the i-th column of M
+         *
+         * after solve, D contains the QR factorization and e_i contains
+         * the solution (if info == 0) */
+        m = (lapack_int) M;
+        n = (lapack_int) N;
+        lda = n;
 
-        info = LAPACKE_dgels( LAPACK_ROW_MAJOR, 'N', m, n, nrhs, D, lda,
-                e_j, ldb );
+        assert( M >= N );
+
+        info = LAPACKE_dgels( LAPACK_ROW_MAJOR, 'N', m, n, 1, D, lda, e_i, 1 );
 
         /* check for full rank */
         if ( info > 0 )
         {
             fprintf( stderr, "[ERROR] SAI preconditioner computation failure\n" );
             fprintf( stderr, "  [INFO] The diagonal element %i of the triangular factor\n", info );
-            fprintf( stderr, "         of A is zero, so that A does not have full rank;\n" );
+            fprintf( stderr, "         of A is zero, so A does not have full rank.\n" );
             MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
         }
 
@@ -2001,16 +1974,17 @@ void sparse_approx_inverse( reax_system const * const system,
             MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
         }
 
-        /* accumulate the resulting vector to build A_app_inv */
+        /* least-squares solution in e_i comprises non-zero values for i-th row in A_app_inv
+         * (computed as right preconditioner, store transpose as left preconditioner) */
         A_app_inv->start[i] = A_spar_patt->start[i];
         A_app_inv->end[i] = A_spar_patt->end[i];
-        for ( k = A_app_inv->start[i]; k < A_app_inv->end[i]; ++k )
+        for ( pj = A_app_inv->start[i]; pj < A_app_inv->end[i]; ++pj )
         {
-            A_app_inv->j[k] = A_spar_patt->j[k];
-            A_app_inv->val[k] = e_j[k - A_spar_patt->start[i]];
+            A_app_inv->j[pj] = A_spar_patt->j[pj];
+            A_app_inv->val[pj] = e_i[pj - A_spar_patt->start[i]];
         }
     }
-    for ( i = A_spar_patt->n; i < A_spar_patt->n_max; ++i )
+    for ( i = A_app_inv->n; i < A_app_inv->n_max; ++i )
     {
         A_app_inv->start[i] = 0;
         A_app_inv->end[i] = 0;
@@ -2018,25 +1992,12 @@ void sparse_approx_inverse( reax_system const * const system,
 
     sfree( q, __FILE__, __LINE__ );
     sfree( D, __FILE__, __LINE__ );
-    sfree( e_j, __FILE__, __LINE__ );
+    sfree( e_i, __FILE__, __LINE__ );
     sfree( X, __FILE__, __LINE__ );
-    for ( i = 0; i < system->N; ++i )
-    {
-        if ( j_list[i] != NULL )
-        {
-            sfree( j_list[i], __FILE__, __LINE__ );
-        }
-    }
-    sfree( j_list, __FILE__, __LINE__ );
-    for ( i = 0; i < system->N; ++i )
-    {
-        if ( val_list[i] != NULL )
-        {
-            sfree( val_list[i], __FILE__, __LINE__ );
-        }
-    }
-    sfree( val_list, __FILE__, __LINE__ );
+    sfree( col_inds, __FILE__, __LINE__ );
+    sfree( nz_vals, __FILE__, __LINE__ );
     sfree( row_nnz, __FILE__, __LINE__ );
+    sfree( row_start, __FILE__, __LINE__ );
 
 #if defined(LOG_PERFORMANCE)
     ret = MPI_Reduce( &t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM,
@@ -2400,7 +2361,7 @@ int dual_SDM( reax_system const * const system, control_params const * const con
         sparse_matrix * const H, rvec2 * const b, real tol,
         rvec2 * const x, mpi_datatypes * const  mpi_data, int fresh_pre )
 {
-    int i, j, ret;
+    int i, ret;
     rvec2 tmp, alpha, bnorm, sig;
     real redux[4];
 #if defined(LOG_PERFORMANCE)
@@ -2546,7 +2507,7 @@ int SDM( reax_system const * const system, control_params const * const control,
         sparse_matrix * const H, real * const b, real tol,
         real * const x, mpi_datatypes * const  mpi_data, int fresh_pre )
 {
-    int i, j, ret;
+    int i, ret;
     real tmp, alpha, bnorm, sig;
     real redux[2];
 #if defined(LOG_PERFORMANCE)
@@ -2991,7 +2952,7 @@ int dual_BiCGStab( reax_system const * const system, control_params const * cons
         storage * const workspace, sparse_matrix * const H, rvec2 * const b,
         real tol, rvec2 * const x, mpi_datatypes * const  mpi_data, int fresh_pre )
 {
-    int i, j, ret;
+    int i, ret;
     rvec2 tmp, alpha, beta, omega, sigma, rho, rho_old, r_norm, b_norm;
     real time, redux[4];
 
@@ -3231,12 +3192,14 @@ int dual_BiCGStab( reax_system const * const system, control_params const * cons
     if ( (omega[0] == 0.0 || omega[1] == 0.0) && system->my_rank == MASTER_NODE )
     {
         fprintf( stderr, "[WARNING] BiCGStab numeric breakdown (%d iters)\n", i );
-        fprintf( stderr, "  [INFO] omega = %e\n", omega );
+        fprintf( stderr, "  [INFO] omega[0] = %e\n", omega[0] );
+        fprintf( stderr, "  [INFO] omega[1] = %e\n", omega[1] );
     }
     else if ( (rho[0] == 0.0 || rho[1] == 0.0) && system->my_rank == MASTER_NODE )
     {
         fprintf( stderr, "[WARNING] BiCGStab numeric breakdown (%d iters)\n", i );
-        fprintf( stderr, "  [INFO] rho = %e\n", rho );
+        fprintf( stderr, "  [INFO] rho[0] = %e\n", rho[0] );
+        fprintf( stderr, "  [INFO] rho[1] = %e\n", rho[1] );
     }
 
     /* continue to solve the system that has not converged yet */
@@ -3293,7 +3256,7 @@ int BiCGStab( reax_system const * const system, control_params const * const con
         storage * const workspace, sparse_matrix * const H, real * const b,
         real tol, real * const x, mpi_datatypes * const  mpi_data, int fresh_pre )
 {
-    int i, j, ret;
+    int i, ret;
     real tmp, alpha, beta, omega, sigma, rho, rho_old, r_norm, b_norm;
     real time, redux[2];
 

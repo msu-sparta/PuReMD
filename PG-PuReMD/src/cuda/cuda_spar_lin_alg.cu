@@ -835,7 +835,7 @@ static void Sparse_MatVec_local( control_params const * const control,
     else if ( A->format == SYM_FULL_MATRIX || A->format == FULL_MATRIX )
     {
         /* 1 thread per row implementation */
-//        k_sparse_matvec_full_csr <<< control->blocks, control->blocks_size, 0, s >>>
+//        k_sparse_matvec_full_csr <<< control->blocks, control->block_size, 0, s >>>
 //             ( A->start, A->end, A->j, A->val, x, b, A->n );
 
         blocks = ((A->n * 32) / DEF_BLOCK_SIZE)

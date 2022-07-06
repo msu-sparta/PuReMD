@@ -223,26 +223,25 @@ static void Find_Neighbor_Grid_Cells( grid * const g, control_params * const con
             {
                 gc = &g->cells[ index_grid_3d_v(ci, g) ];
                 top = 0;
-                //fprintf( stderr, "grid1: %d %d %d:\n", ci[0], ci[1], ci[2] );
 
-#if defined(NEUTRAL_TERRITORY)
-                if ( gc->type == NATIVE || ( gc->type >= NT_NBRS && gc->type < NT_NBRS + 6 ) )
-#else
-                if ( gc->type == NATIVE )
-#endif
-                {
+//#if defined(NEUTRAL_TERRITORY)
+//                if ( gc->type == NATIVE || ( gc->type >= NT_NBRS && gc->type < NT_NBRS + 6 ) )
+//#else
+//                if ( gc->type == NATIVE )
+//#endif
+//                {
                     g->cutoff[ index_grid_3d_v(ci, g) ] = control->vlist_cut;
-                }
-                else
-                {
-                    g->cutoff[ index_grid_3d_v(ci, g) ] = control->bond_cut;
-                }
+//                }
+//                else
+//                {
+//                    g->cutoff[ index_grid_3d_v(ci, g) ] = control->bond_cut;
+//                }
 
                 for ( d = 0; d < 3; ++d )
                 {
                     //TODO: investigate which is correct
-                    span[d] = (int) CEIL( g->cutoff[ index_grid_3d_v(ci, g) ] / g->cell_len[d] );
-//                    span[d] = (int) CEIL( control->vlist_cut / g->cell_len[d] );
+//                    span[d] = (int) CEIL( g->cutoff[ index_grid_3d_v(ci, g) ] / g->cell_len[d] );
+                    span[d] = (int) CEIL( control->vlist_cut / g->cell_len[d] );
                     cmin[d] = MAX( ci[d] - span[d], 0 );
                     cmax[d] = MIN( ci[d] + span[d] + 1, g->ncells[d] );
                 }
@@ -254,28 +253,15 @@ static void Find_Neighbor_Grid_Cells( grid * const g, control_params * const con
                     {
                         for ( cj[2] = cmin[2]; cj[2] < cmax[2]; ++cj[2] )
                         {
-                            //fprintf( stderr, "\tgrid2: %d %d %d (%d - %d) - ", cj[0], cj[1], cj[2], top, g->max_nbrs );
-                            
-                            //TODO: below commented out, is this correct? (SUDHIR)
-                            //gc->nbrs[top] = &g->cells[ index_grid_3d_v(cj,g) ];
                             ivec_Copy( g->nbrs_x[index_grid_nbrs(ci[0], ci[1], ci[2], top, g)], cj );
 
-                            //fprintf( stderr, " index: %d - %d \n", index_grid_nbrs (ci[0], ci[1], ci[2], top, g), g->total * g->max_nbrs );
                             Find_Closest_Point( g, ci, cj,
                                     g->nbrs_cp[ index_grid_nbrs(ci[0], ci[1], ci[2], top, g) ] );
-
-                            //fprintf( stderr, "cp: %f %f %f\n",
-                            //       gc->nbrs_cp[top][0], gc->nbrs_cp[top][1],
-                            //       gc->nbrs_cp[top][2] );
 
                             ++top;
                         }
                     }
                 }
-                //TODO: below commented out, is this correct?
-                //gc->nbrs[top] = NULL;
-                
-                //fprintf( stderr, "top=%d\n", top );
             }
         }
     }
@@ -574,6 +560,7 @@ void Bin_My_Atoms( reax_system * const system, storage * const workspace )
 
                 /* compute grid cell relative coordinates */
                 c[d] = (int) ((atoms[l].x[d] - my_ext_box->min[d]) * g->inv_len[d]);
+
                 if ( c[d] >= g->native_end[d] )
                 {
                     c[d] = g->native_end[d] - 1;
@@ -737,6 +724,7 @@ static void Get_Boundary_Grid_Cell( grid * const g, rvec base, rvec x, grid_cell
     for ( d = 0; d < 3; ++d )
     {
         c[d] = (int) ((x[d] - base[d]) * g->inv_len[d]);
+
         if ( c[d] < 0 )
         {
             c[d] = 0;

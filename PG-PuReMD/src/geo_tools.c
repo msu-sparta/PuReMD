@@ -36,7 +36,7 @@ static void Count_Geo_Atoms( FILE *geo, reax_system * const system )
     char element[3], name[9], line[MAX_LINE + 1];
 
     /* total number of atoms */
-    fscanf( geo, " %d", &(system->bigN) );
+    fscanf( geo, " %d", &system->bigN );
 
     /* count my own atoms */
     system->n = 0;

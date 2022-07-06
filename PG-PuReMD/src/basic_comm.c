@@ -132,11 +132,7 @@ static void int_unpacker( void const * const src, void * const dest,
     {
         assert( index[i] >= 0 );
 
-        //TODO: used in SAI, purpose?
-        if ( dest_[index[i]] == -1 && src_[i] != -1 )
-        {
-            dest_[index[i]] = src_[i];
-        }
+        dest_[index[i]] = src_[i];
     }
 }
 
