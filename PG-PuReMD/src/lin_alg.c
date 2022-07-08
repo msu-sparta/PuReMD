@@ -1494,7 +1494,7 @@ void sparse_approx_inverse( reax_system const * const system,
     int local_pos, identity_pos;
     int *X, *q;
     int q_size, q_top;
-    int e_size, D_size;
+    int e_i_size, D_size;
     int cnt;
     int *row_nnz, *row_start, total_entries;
     int *col_inds;
@@ -1544,10 +1544,6 @@ void sparse_approx_inverse( reax_system const * const system,
     nz_vals_send_buf1_size = 0;
     nz_vals_send_buf2 = NULL;
     nz_vals_send_buf2_size = 0;
-    e_i = NULL;
-    e_size = 0;
-    D = NULL;
-    D_size = 0;
     row_nnz = smalloc( sizeof(int) * system->total_cap, __FILE__, __LINE__ );
     row_start = smalloc( sizeof(int) * (system->total_cap + 1 - A->n), __FILE__, __LINE__ );
 
@@ -1778,222 +1774,249 @@ void sparse_approx_inverse( reax_system const * const system,
     sfree( nz_vals_send_buf1, __FILE__, __LINE__ );
     sfree( nz_vals_send_buf2, __FILE__, __LINE__ );
 
-    X = smalloc( sizeof(int) * system->bigN, __FILE__, __LINE__ );
-    q_size = MIN_QUEUE_SIZE;
-    q = smalloc( sizeof(int) * q_size, __FILE__, __LINE__ );
-
-    for ( i = 0; i < A_spar_patt->n; ++i )
+#if defined(_OPENMP)
+    #pragma omp parallel default(none) \
+    private(i, pj, pk, ret, N, M, d_i, d_j, mark, local_pos, identity_pos, \
+            X, q, q_size, q_top, e_i, e_i_size, D, D_size, \
+            m, n, lda, info) \
+    firstprivate(system, A, A_spar_patt, A_app_inv, row_nnz, row_start, col_inds, nz_vals) \
+    shared(stderr)
+#endif
     {
-        M = 0;
-        N = 0;
-        q_top = 0;
-        mark = -999;
-        
-        /* column indices for the non-zeros in the i-th row in the sparsity pattern
-         * for H_app_inv delineate which columns of H must be searched for non-zeros
-         * (when constructing the dense matrix D) */
-        for ( pj = A_spar_patt->start[i]; pj < A_spar_patt->end[i]; ++pj )
+        e_i = NULL;
+        e_i_size = 0;
+        D = NULL;
+        D_size = 0;
+        X = smalloc( sizeof(int) * system->bigN, __FILE__, __LINE__ );
+        q_size = MIN_QUEUE_SIZE;
+        q = smalloc( sizeof(int) * q_size, __FILE__, __LINE__ );
+
+#if defined(_OPENMP)
+        #pragma omp for schedule(dynamic,32)
+#endif
+        for ( i = 0; i < A_spar_patt->n; ++i )
         {
-            ++N;
-
-            assert( 0 <= A_spar_patt->j[pj] );
-            assert( A_spar_patt->j[pj] < system->N );
-
-            /* due to symmetry, search rows of H instead of columns for non-zeros
-             * 
-             * case: index's row in local matrix */
-            if ( A_spar_patt->j[pj] < A->n )
-            {
-                for ( pk = A->start[A_spar_patt->j[pj]]; pk < A->end[A_spar_patt->j[pj]]; ++pk )
-                {
-                    assert( 1 <= system->my_atoms[A->j[pk]].orig_id
-                            && system->my_atoms[A->j[pk]].orig_id <= system->bigN );
-
-                    /* accumulate the nonzero column indices to serve as the row indices of the dense matrix */
-                    X[system->my_atoms[A->j[pk]].orig_id - 1] = mark;
-
-                    if ( q_top >= q_size )
-                    {
-                        q_size = (int) CEIL( q_size * SAFE_ZONE );
-                        q = srealloc( q, sizeof(int) * q_size, __FILE__, __LINE__ );
-                    }
-
-                    q[q_top] = system->my_atoms[A->j[pk]].orig_id - 1;
-                    ++q_top;
-                }
-            }
-            /* case: index's row communicated */
-            else
-            {
-                assert( 0 <= row_start[A_spar_patt->j[pj] - A->n] );
-                assert( row_start[A_spar_patt->j[pj] - A->n] < total_entries );
-                assert( 0 <= row_start[A_spar_patt->j[pj] - A->n + 1] );
-                assert( row_start[A_spar_patt->j[pj] - A->n + 1] < total_entries );
-
-                for ( pk = row_start[A_spar_patt->j[pj] - A->n];
-                        pk < row_start[A_spar_patt->j[pj] - A->n + 1]; ++pk )
-                {
-                    assert( 0 <= col_inds[pk] );
-                    assert( col_inds[pk] < system->bigN );
-
-                    /* accumulate the nonzero column indices to serve as the row indices of the dense matrix */
-                    X[col_inds[pk]] = mark;
-
-                    if ( q_top >= q_size )
-                    {
-                        q_size = (int) CEIL( q_size * SAFE_ZONE );
-                        q = srealloc( q, sizeof(int) * q_size, __FILE__, __LINE__ );
-                    }
-
-                    q[q_top] = col_inds[pk];
-                    ++q_top;
-                }
-            }
-        }
-
-        /* enumerate the row indices from 0 to (# of nonzero rows - 1) for the dense matrix */
-        for ( pj = 0; pj < q_top; ++pj )
-        {
-            if ( X[q[pj]] == mark )
-            {
-                X[q[pj]] = M;
-                ++M;
-            }
-        }
-        identity_pos = X[system->my_atoms[i].orig_id - 1];
-
-        assert( 0 <= identity_pos );
-        assert( identity_pos < M );
-
-        if ( M * N > D_size )
-        {
-            if ( D_size > 0 )
-            {
-                sfree( D, __FILE__, __LINE__ );
-            }
+            M = 0;
+            N = 0;
+            q_top = 0;
+            mark = -999;
             
-            D_size = (int) CEIL( M * N * SAFE_ZONE );
+            /* column indices for the non-zeros in the i-th row in the sparsity pattern
+             * for H_app_inv delineate which columns of H must be searched for non-zeros
+             * (when constructing the dense matrix D) */
+            for ( pj = A_spar_patt->start[i]; pj < A_spar_patt->end[i]; ++pj )
+            {
+                ++N;
 
-            D = smalloc( sizeof(real) * D_size, __FILE__, __LINE__ );
-        }
+                assert( 0 <= A_spar_patt->j[pj] );
+                assert( A_spar_patt->j[pj] < system->N );
 
-        for ( d_i = 0; d_i < M; ++d_i )
-        {
+                /* due to symmetry, search rows of H instead of columns for non-zeros
+                 * 
+                 * case: index's row in local matrix */
+                if ( A_spar_patt->j[pj] < A->n )
+                {
+                    for ( pk = A->start[A_spar_patt->j[pj]]; pk < A->end[A_spar_patt->j[pj]]; ++pk )
+                    {
+                        assert( 1 <= system->my_atoms[A->j[pk]].orig_id
+                                && system->my_atoms[A->j[pk]].orig_id <= system->bigN );
+
+                        /* accumulate the nonzero column indices to serve as the row indices of the dense matrix */
+                        X[system->my_atoms[A->j[pk]].orig_id - 1] = mark;
+
+                        if ( q_top >= q_size )
+                        {
+                            q_size = (int) CEIL( q_size * SAFE_ZONE );
+                            q = srealloc( q, sizeof(int) * q_size, __FILE__, __LINE__ );
+                        }
+
+                        q[q_top] = system->my_atoms[A->j[pk]].orig_id - 1;
+                        ++q_top;
+                    }
+                }
+                /* case: index's row communicated */
+                else
+                {
+                    assert( 0 <= row_start[A_spar_patt->j[pj] - A->n] );
+                    assert( row_start[A_spar_patt->j[pj] - A->n] < total_entries );
+                    assert( 0 <= row_start[A_spar_patt->j[pj] - A->n + 1] );
+                    assert( row_start[A_spar_patt->j[pj] - A->n + 1] < total_entries );
+
+                    for ( pk = row_start[A_spar_patt->j[pj] - A->n];
+                            pk < row_start[A_spar_patt->j[pj] - A->n + 1]; ++pk )
+                    {
+                        assert( 0 <= col_inds[pk] );
+                        assert( col_inds[pk] < system->bigN );
+
+                        /* accumulate the nonzero column indices to serve as the row indices of the dense matrix */
+                        X[col_inds[pk]] = mark;
+
+                        if ( q_top >= q_size )
+                        {
+                            q_size = (int) CEIL( q_size * SAFE_ZONE );
+                            q = srealloc( q, sizeof(int) * q_size, __FILE__, __LINE__ );
+                        }
+
+                        q[q_top] = col_inds[pk];
+                        ++q_top;
+                    }
+                }
+            }
+
+            /* enumerate the row indices from 0 to (# of nonzero rows - 1) for the dense matrix */
+            for ( pj = 0; pj < q_top; ++pj )
+            {
+                if ( X[q[pj]] == mark )
+                {
+                    X[q[pj]] = M;
+                    ++M;
+                }
+            }
+            identity_pos = X[system->my_atoms[i].orig_id - 1];
+
+            assert( 0 <= identity_pos );
+            assert( identity_pos < M );
+
+            if ( M * N > D_size )
+            {
+                if ( D_size > 0 )
+                {
+                    sfree( D, __FILE__, __LINE__ );
+                }
+                
+                D_size = (int) CEIL( M * N * SAFE_ZONE );
+
+                D = smalloc( sizeof(real) * D_size, __FILE__, __LINE__ );
+            }
+
+            for ( d_i = 0; d_i < M; ++d_i )
+            {
+                for ( d_j = 0; d_j < N; ++d_j )
+                {
+                    D[d_i * N + d_j] = 0.0;
+                }
+            }
+
+            /* fill in entries of D column-wise */
             for ( d_j = 0; d_j < N; ++d_j )
             {
-                D[d_i * N + d_j] = 0.0;
-            }
-        }
+                local_pos = A_spar_patt->j[A_spar_patt->start[i] + d_j];
 
-        /* fill in entries of D column-wise */
-        for ( d_j = 0; d_j < N; ++d_j )
-        {
-            local_pos = A_spar_patt->j[A_spar_patt->start[i] + d_j];
+                assert( 0 <= local_pos );
+                assert( local_pos < system->N );
 
-            assert( 0 <= local_pos );
-            assert( local_pos < system->N );
-
-            if ( local_pos < A->n )
-            {
-                for ( d_i = A->start[local_pos]; d_i < A->end[local_pos]; ++d_i )
+                if ( local_pos < A->n )
                 {
-                    assert( 0 <= X[system->my_atoms[A->j[d_i]].orig_id - 1] );
-                    assert( X[system->my_atoms[A->j[d_i]].orig_id - 1] < M );
+                    for ( d_i = A->start[local_pos]; d_i < A->end[local_pos]; ++d_i )
+                    {
+                        assert( 0 <= X[system->my_atoms[A->j[d_i]].orig_id - 1] );
+                        assert( X[system->my_atoms[A->j[d_i]].orig_id - 1] < M );
 
-                    D[X[system->my_atoms[A->j[d_i]].orig_id - 1] * N + d_j] = A->val[d_i];
+                        D[X[system->my_atoms[A->j[d_i]].orig_id - 1] * N + d_j] = A->val[d_i];
+                    }
+                }
+                else
+                {
+                    assert( 0 <= row_start[local_pos - A->n] );
+                    assert( row_start[local_pos - A->n] < total_entries );
+                    assert( 0 <= row_start[local_pos - A->n + 1] );
+                    assert( row_start[local_pos - A->n + 1] < total_entries );
+
+                    for ( d_i = row_start[local_pos - A->n];
+                            d_i < row_start[local_pos - A->n + 1]; ++d_i )
+                    {
+                        assert( 0 <= col_inds[d_i] );
+                        assert( col_inds[d_i] < system->bigN );
+                        assert( 0 <= X[col_inds[d_i]] );
+                        assert( X[col_inds[d_i]] < M );
+
+                        D[X[col_inds[d_i]] * N + d_j] = nz_vals[d_i];
+                    }
                 }
             }
-            else
-            {
-                assert( 0 <= row_start[local_pos - A->n] );
-                assert( row_start[local_pos - A->n] < total_entries );
-                assert( 0 <= row_start[local_pos - A->n + 1] );
-                assert( row_start[local_pos - A->n + 1] < total_entries );
 
-                for ( d_i = row_start[local_pos - A->n];
-                        d_i < row_start[local_pos - A->n + 1]; ++d_i )
+            /* create the right hand side of the linear equation
+             * that is the full column of the identity matrix */
+            if ( e_i_size < M )
+            {
+                if ( e_i_size > 0 )
                 {
-                    assert( 0 <= col_inds[d_i] );
-                    assert( col_inds[d_i] < system->bigN );
-                    assert( 0 <= X[col_inds[d_i]] );
-                    assert( X[col_inds[d_i]] < M );
-
-                    D[X[col_inds[d_i]] * N + d_j] = nz_vals[d_i];
+                    sfree( e_i, __FILE__, __LINE__ );
                 }
-            }
-        }
 
-        /* create the right hand side of the linear equation
-         * that is the full column of the identity matrix */
-        if ( e_size < M )
-        {
-            if ( e_size > 0 )
+                e_i_size = (int) CEIL( M * SAFE_ZONE );
+
+                e_i = smalloc( sizeof(real) * e_i_size, __FILE__, __LINE__ );
+            }
+
+            for ( pk = 0; pk < M; ++pk )
             {
-                sfree( e_i, __FILE__, __LINE__ );
+                e_i[pk] = 0.0;
+            }
+            e_i[identity_pos] = 1.0;
+
+            /* solve the overdetermined system from the i-th columns of min_{M} ||I - HM||_F
+             * through the least-squares problem min_{m_i} ||e_i - Dm_i||_{2}^{2}
+             * where D represents the dense matrix composed of relevant non-zeros from H,
+             * e_i is the i-th column of the identify matrix, and m_i is the i-th column of M
+             *
+             * after solve, D contains the QR factorization and e_i contains
+             * the solution (if info == 0) */
+            m = (lapack_int) M;
+            n = (lapack_int) N;
+            lda = n;
+
+            assert( M >= N );
+
+            info = LAPACKE_dgels( LAPACK_ROW_MAJOR, 'N', m, n, 1, D, lda, e_i, 1 );
+
+            /* check for full rank */
+            if ( info > 0 )
+            {
+                fprintf( stderr, "[ERROR] SAI preconditioner computation failure\n" );
+                fprintf( stderr, "  [INFO] The diagonal element %i of the triangular factor\n", info );
+                fprintf( stderr, "         of A is zero, so A does not have full rank.\n" );
+//                MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+                exit( RUNTIME_ERROR );
             }
 
-            e_size = (int) CEIL( M * SAFE_ZONE );
+            if ( A_spar_patt->end[i] - A_spar_patt->start[i] < N )
+            {
+                fprintf( stderr, "[ERROR] SAI preconditioner computation failure\n" );
+                fprintf( stderr, "  [INFO] out of memory for row i = %d\n", i );
+//                MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+                exit( RUNTIME_ERROR );
+            }
 
-            e_i = smalloc( sizeof(real) * e_size, __FILE__, __LINE__ );
+            /* least-squares solution in e_i comprises non-zero values for i-th row in A_app_inv
+             * (computed as right preconditioner, store transpose as left preconditioner) */
+            A_app_inv->start[i] = A_spar_patt->start[i];
+            A_app_inv->end[i] = A_spar_patt->end[i];
+            for ( pj = A_app_inv->start[i]; pj < A_app_inv->end[i]; ++pj )
+            {
+                A_app_inv->j[pj] = A_spar_patt->j[pj];
+                A_app_inv->val[pj] = e_i[pj - A_spar_patt->start[i]];
+            }
         }
 
-        for ( pk = 0; pk < M; ++pk )
+        if ( D != NULL )
         {
-            e_i[pk] = 0.0;
+            sfree( D, __FILE__, __LINE__ );
         }
-        e_i[identity_pos] = 1.0;
-
-        /* solve the overdetermined system from the i-th columns of min_{M} ||I - HM||_F
-         * through the least-squares problem min_{m_i} ||e_i - Dm_i||_{2}^{2}
-         * where D represents the dense matrix composed of relevant non-zeros from H,
-         * e_i is the i-th column of the identify matrix, and m_i is the i-th column of M
-         *
-         * after solve, D contains the QR factorization and e_i contains
-         * the solution (if info == 0) */
-        m = (lapack_int) M;
-        n = (lapack_int) N;
-        lda = n;
-
-        assert( M >= N );
-
-        info = LAPACKE_dgels( LAPACK_ROW_MAJOR, 'N', m, n, 1, D, lda, e_i, 1 );
-
-        /* check for full rank */
-        if ( info > 0 )
+        if ( e_i != NULL )
         {
-            fprintf( stderr, "[ERROR] SAI preconditioner computation failure\n" );
-            fprintf( stderr, "  [INFO] The diagonal element %i of the triangular factor\n", info );
-            fprintf( stderr, "         of A is zero, so A does not have full rank.\n" );
-            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+            sfree( e_i, __FILE__, __LINE__ );
         }
-
-        if ( A_spar_patt->end[i] - A_spar_patt->start[i] < N )
-        {
-            fprintf( stderr, "[ERROR] SAI preconditioner computation failure\n" );
-            fprintf( stderr, "  [INFO] out of memory for row i = %d\n", i );
-            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
-        }
-
-        /* least-squares solution in e_i comprises non-zero values for i-th row in A_app_inv
-         * (computed as right preconditioner, store transpose as left preconditioner) */
-        A_app_inv->start[i] = A_spar_patt->start[i];
-        A_app_inv->end[i] = A_spar_patt->end[i];
-        for ( pj = A_app_inv->start[i]; pj < A_app_inv->end[i]; ++pj )
-        {
-            A_app_inv->j[pj] = A_spar_patt->j[pj];
-            A_app_inv->val[pj] = e_i[pj - A_spar_patt->start[i]];
-        }
+        sfree( X, __FILE__, __LINE__ );
+        sfree( q, __FILE__, __LINE__ );
     }
+
     for ( i = A_app_inv->n; i < A_app_inv->n_max; ++i )
     {
         A_app_inv->start[i] = 0;
         A_app_inv->end[i] = 0;
     }
 
-    sfree( q, __FILE__, __LINE__ );
-    sfree( D, __FILE__, __LINE__ );
-    sfree( e_i, __FILE__, __LINE__ );
-    sfree( X, __FILE__, __LINE__ );
     sfree( col_inds, __FILE__, __LINE__ );
     sfree( nz_vals, __FILE__, __LINE__ );
     sfree( row_nnz, __FILE__, __LINE__ );

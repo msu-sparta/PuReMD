@@ -63,6 +63,10 @@
 #endif
 #endif
 
+#if defined(_OPENMP)
+  #include <omp.h>
+#endif
+
 /* IBMC */
 #if defined(__IBMC__)
   #define inline __inline__
@@ -1702,6 +1706,10 @@ struct control_params
     int freq_diffusion_coef;
     /**/
     int restrict_type;
+    /* number of OpenMP threads to use during the simulation */
+    int num_threads;
+    /* TRUE if the num. OpenMP has bet set, FALSE otherwise */
+    int num_threads_set;
     /* function pointer for ensemble used to evolve atomic system */
     evolve_function Evolve;
     /* function pointers for bonded interactions */

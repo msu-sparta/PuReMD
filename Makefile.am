@@ -331,7 +331,7 @@ include cuda.am
 endif
 
 if USE_CUDA
-AM_NVCCFLAGS = --compiler-options="$(DEFS) $(AM_CFLAGS) -std=c++14 @CFLAGS_EXTRA@ $(CFLAGS) @M_CFLAGS@" -std=c++14 @NFLAGS@ @NFLAGS_EXTRA@
+AM_NVCCFLAGS = --compiler-options="$(DEFS) $(AM_CFLAGS) -std=c++14 @CFLAGS_EXTRA@ $(CFLAGS) @OMP_CFLAGS@ @M_CFLAGS@" -std=c++14 @NFLAGS@ @NFLAGS_EXTRA@
 endif
 
 bin_PROGRAMS = PG-PuReMD/bin/pg-puremd
@@ -464,9 +464,9 @@ PG_PuReMD_bin_pg_puremd_SOURCES += PG-PuReMD/src/cuda/cuda_allocate.cu \
 nodist_EXTRA_PG_PuReMD_bin_pg_puremd_SOURCES = src/dummy.c
 endif
 
-PG_PuReMD_bin_pg_puremd_CFLAGS = -std=c11 @CFLAGS_EXTRA@ @M_CFLAGS@
+PG_PuReMD_bin_pg_puremd_CFLAGS = -std=c11 @CFLAGS_EXTRA@ @OMP_CFLAGS@ @M_CFLAGS@
 PG_PuReMD_bin_pg_puremd_CPPFLAGS = -I PG-PuReMD/src @CPPFLAGS_EXTRA@
-PG_PuReMD_bin_pg_puremd_LDADD = @M_LIBS@ @L_LIBS@ -lstdc++
+PG_PuReMD_bin_pg_puremd_LDADD = @OMP_LIBS@ @M_LIBS@ @L_LIBS@ -lstdc++
 if USE_CUDA
 PG_PuReMD_bin_pg_puremd_CFLAGS += @CUDA_CFLAGS@
 PG_PuReMD_bin_pg_puremd_LDADD += @CUDA_LIBS@

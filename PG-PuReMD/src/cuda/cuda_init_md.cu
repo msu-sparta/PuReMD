@@ -250,6 +250,25 @@ extern "C" void Cuda_Initialize( reax_system *system, control_params *control,
 {
     int i;
 
+#if defined(_OPENMP)
+    #pragma omp parallel default(none) shared(control)
+    {
+        #pragma omp single
+        {
+            if ( control->num_threads_set == FALSE )
+            {
+                /* set using OMP_NUM_THREADS environment variable */
+                control->num_threads = omp_get_num_threads( );
+                control->num_threads_set = TRUE;
+            }
+        }
+    }
+
+    omp_set_num_threads( control->num_threads );
+#else
+    control->num_threads = 1;
+#endif
+
     Init_MPI_Datatypes( system, workspace, mpi_data );
 
 #if defined(CUDA_DEVICE_PACK)

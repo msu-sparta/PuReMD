@@ -143,7 +143,7 @@ AC_PROG_CXXCPP
 AC_CONFIG_HEADERS([common/include/config.h])
 
 # sPuReMD
-if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "xyes"; then
+if test "x${pack_mpi_enabled}" != "xyes" && test "x${pack_mpi_gpu_enabled}" != "xyes" && { test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "xyes"; }; then
 	if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" != "xyes"; then
 		BUILD_OPENMP="no"
 	else
@@ -217,8 +217,6 @@ if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "
 			OPENMP_LIBS="-lgomp"
 		fi
 
-	#	AC_MSG_NOTICE([OPENMP_CFLAGS=${OPENMP_CFLAGS}])
-	#	AC_MSG_NOTICE([OPENMP_LIBS=${OPENMP_LIBS}])
 		AC_SUBST([OMP_CFLAGS], ["${OPENMP_CFLAGS}"])
 		AC_SUBST([OMP_LIBS], ["${OPENMP_LIBS}"])
 	fi
@@ -351,7 +349,7 @@ if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "
 
 	AC_LANG_POP([C])
 fi
-AM_CONDITIONAL([BUILD_S_OMP], [test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "xyes"])
+AM_CONDITIONAL([BUILD_S_OMP], [test "x${pack_mpi_enabled}" != "xyes" && test "x${pack_mpi_gpu_enabled}" != "xyes" && { test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "xyes"; }])
 
 
 # PuReMD-GPU
@@ -633,6 +631,11 @@ AM_CONDITIONAL([BUILD_MPI], [test "x${pack_mpi_old_enabled}" = "xyes"])
 
 # PG-PuReMD
 if test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" = "xyes"; then
+	if test "x${pack_openmp_enabled}" = "xyes"; then
+		BUILD_OPENMP_MPI="yes"
+	else
+		BUILD_OPENMP_MPI="no"
+	fi
 	if test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" != "xyes"; then
 		export BUILD_GPU="no"
 	else
@@ -690,6 +693,28 @@ if test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" = "xy
 	fi
 	AC_SUBST(CPPFLAGS_EXTRA)
 	AC_SUBST(CFLAGS_EXTRA)
+
+	# Check for OpenMP support.
+	if test "x${BUILD_OPENMP_MPI}" = "xyes"; then
+		AX_OPENMP
+
+		if test "x${OPENMP_CFLAGS}" = "x"; then
+			AC_MSG_WARN([
+-----------------------------------------------
+ Unable to find OpenMP support on this system.
+ Building a single-threaded version.
+-----------------------------------------------])
+		else
+			# bug due to recent Intel compiler change (?)
+			if test "x${ax_cv_c_compiler_vendor}" = "xintel"; then
+				OPENMP_CFLAGS="-qopenmp"
+			fi
+			OPENMP_LIBS="-lgomp"
+		fi
+
+		AC_SUBST([OMP_CFLAGS], ["${OPENMP_CFLAGS}"])
+		AC_SUBST([OMP_LIBS], ["${OPENMP_LIBS}"])
+	fi
 
 	# Check for MPI support.
 	CONFIGURE_HEADLINE([ MPI compiler ])

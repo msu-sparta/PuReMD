@@ -280,13 +280,6 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
     time = Get_Time( );
 #endif
 
-    /* sort H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
-//    Sort_Matrix_Rows( &workspace->d_workspace->H, workspace, s );
-    
-#if defined(LOG_PERFORMANCE)
-    Update_Timing_Info( &time, &data->timing.cm_sort );
-#endif
-
     switch ( control->cm_solver_pre_comp_type )
     {
         case NONE_PC:
@@ -322,8 +315,6 @@ static void Setup_Preconditioner_QEq( reax_system const * const system,
 
             Cuda_Copy_Matrix_Device_to_Host( &workspace->H,
                     &workspace->d_workspace->H, s );
-
-            Sort_Matrix_Rows( &workspace->H );
 
             setup_sparse_approx_inverse( system, data,
                     &workspace->H, &workspace->H_spar_patt, 

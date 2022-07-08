@@ -710,6 +710,25 @@ void Initialize( reax_system * const system, control_params * const control,
         reax_list ** const lists, output_controls * const out_control,
         mpi_datatypes * const mpi_data )
 {
+#if defined(_OPENMP)
+    #pragma omp parallel default(none) shared(control)
+    {
+        #pragma omp single
+        {
+            if ( control->num_threads_set == FALSE )
+            {
+                /* set using OMP_NUM_THREADS environment variable */
+                control->num_threads = omp_get_num_threads( );
+                control->num_threads_set = TRUE;
+            }
+        }
+    }
+
+    omp_set_num_threads( control->num_threads );
+#else
+    control->num_threads = 1;
+#endif
+
     Init_MPI_Datatypes( system, workspace, mpi_data );
 
     Init_Simulation_Data( system, control, data, mpi_data );
@@ -728,21 +747,6 @@ void Initialize( reax_system * const system, control_params * const control,
     {
         Make_LR_Lookup_Table( system, control, workspace, mpi_data );
     }
-
-    Init_Force_Functions( control );
-}
-
-
-void Pure_Initialize( reax_system * const system, control_params * const control,
-        simulation_data * const data, storage * const workspace,
-        reax_list ** const lists, output_controls * const out_control,
-        mpi_datatypes * const mpi_data )
-{
-    Init_Simulation_Data( system, control, data, mpi_data );
-
-    Init_Workspace( system, control, workspace, mpi_data );
-
-    Init_Lists( system, control, data, workspace, lists, mpi_data );
 
     Init_Force_Functions( control );
 }
