@@ -1513,7 +1513,7 @@ void sparse_approx_inverse( reax_system const * const system,
     MPI_Status stat1, stat2, stat3, stat4;
     lapack_int m, n, lda, info;
 #if defined(LOG_PERFORMANCE)
-    real t_start, t_comm, total_comm;
+    real t_start, t_comm;
 
     t_comm = 0.0;
 #endif
@@ -1584,195 +1584,271 @@ void sparse_approx_inverse( reax_system const * const system,
     col_inds = smalloc( sizeof(int) * total_entries, __FILE__, __LINE__ );
     nz_vals = smalloc( sizeof(real) * total_entries, __FILE__, __LINE__ );
 
+#if defined(LOG_PERFORMANCE)
+    t_start = Get_Time( );
+#endif
+
     /* use a Dist-like approach to send the row information */
     for ( d = 0; d < 3; ++d )
     {
         nbr1 = &system->my_nbrs[2 * d];
         nbr2 = &system->my_nbrs[2 * d + 1];
 
-        /* count for entries in send1 */
-        cnt = 0;
-        for ( i = 0; i < out_bufs[2 * d].cnt; ++i )
+        if ( nbr1->rank != system->my_rank )
         {
-            cnt += row_nnz[out_bufs[2 * d].index[i]];
-        }
-
-        smalloc_check( (void **) &col_inds_send_buf1, &col_inds_send_buf1_size,
-                sizeof(int) * cnt, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
-        smalloc_check( (void **) &nz_vals_send_buf1, &nz_vals_send_buf1_size,
-                sizeof(real) * cnt, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
-
-        /* pack for send1 */
-        cnt = 0;
-        for ( i = 0; i < out_bufs[2 * d].cnt; ++i )
-        {
-            if ( out_bufs[2 * d].index[i] < A->n )
+            /* count for entries in send1 */
+            cnt = 0;
+            for ( i = 0; i < out_bufs[2 * d].cnt; ++i )
             {
-                for ( pj = A->start[out_bufs[2 * d].index[i]];
-                        pj < A->end[out_bufs[2 * d].index[i]]; ++pj )
+                cnt += row_nnz[out_bufs[2 * d].index[i]];
+            }
+
+            smalloc_check( (void **) &col_inds_send_buf1, &col_inds_send_buf1_size,
+                    sizeof(int) * cnt, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
+            smalloc_check( (void **) &nz_vals_send_buf1, &nz_vals_send_buf1_size,
+                    sizeof(real) * cnt, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
+
+            /* pack for send1 */
+            cnt = 0;
+            for ( i = 0; i < out_bufs[2 * d].cnt; ++i )
+            {
+                if ( out_bufs[2 * d].index[i] < A->n )
                 {
-                    col_inds_send_buf1[cnt] = system->my_atoms[A->j[pj]].orig_id - 1;
-                    nz_vals_send_buf1[cnt] = A->val[pj];
-                    ++cnt;
+                    for ( pj = A->start[out_bufs[2 * d].index[i]];
+                            pj < A->end[out_bufs[2 * d].index[i]]; ++pj )
+                    {
+                        col_inds_send_buf1[cnt] = system->my_atoms[A->j[pj]].orig_id - 1;
+                        nz_vals_send_buf1[cnt] = A->val[pj];
+                        ++cnt;
+                    }
+                }
+                else
+                {
+                    for ( pj = row_start[out_bufs[2 * d].index[i] - A->n];
+                            pj < row_start[out_bufs[2 * d].index[i] - A->n + 1]; ++pj )
+                    {
+                        col_inds_send_buf1[cnt] = col_inds[pj];
+                        nz_vals_send_buf1[cnt] = nz_vals[pj];
+                        ++cnt;
+                    }
                 }
             }
-            else
-            {
-                for ( pj = row_start[out_bufs[2 * d].index[i] - A->n];
-                        pj < row_start[out_bufs[2 * d].index[i] - A->n + 1]; ++pj )
-                {
-                    col_inds_send_buf1[cnt] = col_inds[pj];
-                    nz_vals_send_buf1[cnt] = nz_vals[pj];
-                    ++cnt;
-                }
-            }
+
+            ret = MPI_Isend( col_inds_send_buf1, cnt, MPI_INT, nbr1->rank,
+                    2 * d, mpi_data->comm_mesh3D, &req1 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
+            ret = MPI_Isend( nz_vals_send_buf1, cnt, MPI_DOUBLE, nbr1->rank,
+                    6 + (2 * d), mpi_data->comm_mesh3D, &req2 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
 
-        ret = MPI_Isend( col_inds_send_buf1, cnt, MPI_INT, nbr1->rank,
-                2 * d, mpi_data->comm_mesh3D, &req1 );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-        ret = MPI_Isend( nz_vals_send_buf1, cnt, MPI_DOUBLE, nbr1->rank,
-                6 + (2 * d), mpi_data->comm_mesh3D, &req2 );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-
-        /* count for entries in send2 */
-        cnt = 0;
-        for ( i = 0; i < out_bufs[2 * d + 1].cnt; ++i )
+        if ( nbr2->rank != system->my_rank )
         {
-            cnt += row_nnz[ out_bufs[2 * d + 1].index[i] ];
-        }
-
-        smalloc_check( (void **) &col_inds_send_buf2, &col_inds_send_buf2_size,
-                sizeof(int) * cnt, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
-        smalloc_check( (void **) &nz_vals_send_buf2, &nz_vals_send_buf2_size,
-                sizeof(real) * cnt, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
-
-        /* pack for send2 */
-        cnt = 0;
-        for ( i = 0; i < out_bufs[2 * d + 1].cnt; ++i )
-        {
-            if ( out_bufs[2 * d + 1].index[i] < A->n )
+            /* count for entries in send2 */
+            cnt = 0;
+            for ( i = 0; i < out_bufs[2 * d + 1].cnt; ++i )
             {
-                for ( pj = A->start[out_bufs[2 * d + 1].index[i]];
-                        pj < A->end[out_bufs[2 * d + 1].index[i]]; ++pj )
+                cnt += row_nnz[ out_bufs[2 * d + 1].index[i] ];
+            }
+
+            smalloc_check( (void **) &col_inds_send_buf2, &col_inds_send_buf2_size,
+                    sizeof(int) * cnt, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
+            smalloc_check( (void **) &nz_vals_send_buf2, &nz_vals_send_buf2_size,
+                    sizeof(real) * cnt, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
+
+            /* pack for send2 */
+            cnt = 0;
+            for ( i = 0; i < out_bufs[2 * d + 1].cnt; ++i )
+            {
+                if ( out_bufs[2 * d + 1].index[i] < A->n )
                 {
-                    col_inds_send_buf2[cnt] = system->my_atoms[A->j[pj]].orig_id - 1;
-                    nz_vals_send_buf2[cnt] = A->val[pj];
-                    ++cnt;
+                    for ( pj = A->start[out_bufs[2 * d + 1].index[i]];
+                            pj < A->end[out_bufs[2 * d + 1].index[i]]; ++pj )
+                    {
+                        col_inds_send_buf2[cnt] = system->my_atoms[A->j[pj]].orig_id - 1;
+                        nz_vals_send_buf2[cnt] = A->val[pj];
+                        ++cnt;
+                    }
+                }
+                else
+                {
+                    for ( pj = row_start[out_bufs[2 * d + 1].index[i] - A->n];
+                            pj < row_start[out_bufs[2 * d + 1].index[i] - A->n + 1]; ++pj )
+                    {
+                        col_inds_send_buf2[cnt] = col_inds[pj];
+                        nz_vals_send_buf2[cnt] = nz_vals[pj];
+                        ++cnt;
+                    }
                 }
             }
-            else
-            {
-                for ( pj = row_start[out_bufs[2 * d + 1].index[i] - A->n];
-                        pj < row_start[out_bufs[2 * d + 1].index[i] - A->n + 1]; ++pj )
-                {
-                    col_inds_send_buf2[cnt] = col_inds[pj];
-                    nz_vals_send_buf2[cnt] = nz_vals[pj];
-                    ++cnt;
-                }
-            }
-        }
 
-        ret = MPI_Isend( col_inds_send_buf2, cnt, MPI_INT, nbr2->rank,
-                2 * d + 1, mpi_data->comm_mesh3D, &req3 );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-        ret = MPI_Isend( nz_vals_send_buf2, cnt, MPI_DOUBLE, nbr2->rank,
-                6 + (2 * d + 1), mpi_data->comm_mesh3D, &req4 );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
+            ret = MPI_Isend( col_inds_send_buf2, cnt, MPI_INT, nbr2->rank,
+                    2 * d + 1, mpi_data->comm_mesh3D, &req3 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
+            ret = MPI_Isend( nz_vals_send_buf2, cnt, MPI_DOUBLE, nbr2->rank,
+                    6 + (2 * d + 1), mpi_data->comm_mesh3D, &req4 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
+        }
 
         /* recv both messages in dimension d */
-        ret = MPI_Probe( nbr1->rank, 2 * d + 1, mpi_data->comm_mesh3D, &stat1 );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-        ret = MPI_Get_count( &stat1, MPI_INT, &col_inds_recv1_cnt );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-
-        ret = MPI_Probe( nbr1->rank, 6 + (2 * d + 1), mpi_data->comm_mesh3D, &stat2 );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-        ret = MPI_Get_count( &stat2, MPI_DOUBLE, &nz_vals_recv1_cnt );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-
-        if ( col_inds_recv1_cnt == MPI_UNDEFINED || nz_vals_recv1_cnt == MPI_UNDEFINED )
+        if ( nbr1->rank != system->my_rank )
         {
-            fprintf( stderr, "[ERROR] MPI_Get_count returned MPI_UNDEFINED\n" );
-            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+            ret = MPI_Probe( nbr1->rank, 2 * d + 1, mpi_data->comm_mesh3D, &stat1 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
+            ret = MPI_Get_count( &stat1, MPI_INT, &col_inds_recv1_cnt );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+            ret = MPI_Probe( nbr1->rank, 6 + (2 * d + 1), mpi_data->comm_mesh3D, &stat2 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
+            ret = MPI_Get_count( &stat2, MPI_DOUBLE, &nz_vals_recv1_cnt );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+            if ( col_inds_recv1_cnt == MPI_UNDEFINED || nz_vals_recv1_cnt == MPI_UNDEFINED )
+            {
+                fprintf( stderr, "[ERROR] MPI_Get_count returned MPI_UNDEFINED\n" );
+                MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+            }
+            else if ( col_inds_recv1_cnt != nz_vals_recv1_cnt )
+            {
+                fprintf( stderr, "[ERROR] MPI_Get_count mismatch between messages\n" );
+                fprintf( stderr, "  [INFO] col_inds_recv1_cnt = %d, nz_vals_recv1_cnt = %d\n",
+                        col_inds_recv1_cnt, nz_vals_recv1_cnt );
+                MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+            }
+
+            ret = MPI_Recv( &col_inds[row_start[nbr1->atoms_str - A->n]], col_inds_recv1_cnt,
+                    MPI_INT, nbr1->rank, 2 * d + 1, mpi_data->comm_mesh3D, MPI_STATUS_IGNORE );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
+            ret = MPI_Recv( &nz_vals[row_start[nbr1->atoms_str - A->n]], nz_vals_recv1_cnt,
+                    MPI_DOUBLE, nbr1->rank, 6 + (2 * d + 1), mpi_data->comm_mesh3D, MPI_STATUS_IGNORE );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
-        else if ( col_inds_recv1_cnt != nz_vals_recv1_cnt )
+        else
         {
-            fprintf( stderr, "[ERROR] MPI_Get_count mismatch between messages\n" );
-            fprintf( stderr, "  [INFO] col_inds_recv1_cnt = %d, nz_vals_recv1_cnt = %d\n",
-                    col_inds_recv1_cnt, nz_vals_recv1_cnt );
-            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+            cnt = row_start[nbr1->atoms_str - A->n];
+            for ( i = 0; i < out_bufs[2 * d + 1].cnt; ++i )
+            {
+                if ( out_bufs[2 * d + 1].index[i] < A->n )
+                {
+                    for ( pj = A->start[out_bufs[2 * d + 1].index[i]];
+                            pj < A->end[out_bufs[2 * d + 1].index[i]]; ++pj )
+                    {
+                        col_inds[cnt] = system->my_atoms[A->j[pj]].orig_id - 1;
+                        nz_vals[cnt] = A->val[pj];
+                        ++cnt;
+                    }
+                }
+                else
+                {
+                    for ( pj = row_start[out_bufs[2 * d + 1].index[i] - A->n];
+                            pj < row_start[out_bufs[2 * d + 1].index[i] - A->n + 1]; ++pj )
+                    {
+                        col_inds[cnt] = col_inds[pj];
+                        nz_vals[cnt] = nz_vals[pj];
+                        ++cnt;
+                    }
+                }
+            }
         }
 
-#if defined(LOG_PERFORMANCE)
-        t_start = Get_Time( );
-#endif
-
-        ret = MPI_Recv( &col_inds[row_start[nbr1->atoms_str - A->n]], col_inds_recv1_cnt,
-                MPI_INT, nbr1->rank, 2 * d + 1, mpi_data->comm_mesh3D, MPI_STATUS_IGNORE );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-        ret = MPI_Recv( &nz_vals[row_start[nbr1->atoms_str - A->n]], nz_vals_recv1_cnt,
-                MPI_DOUBLE, nbr1->rank, 6 + (2 * d + 1), mpi_data->comm_mesh3D, MPI_STATUS_IGNORE );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-
-#if defined(LOG_PERFORMANCE)
-        t_comm += Get_Time( ) - t_start;
-#endif
-
-        ret = MPI_Probe( nbr2->rank, 2 * d, mpi_data->comm_mesh3D, &stat3 );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-        ret = MPI_Get_count( &stat3, MPI_INT, &col_inds_recv2_cnt );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-
-        ret = MPI_Probe( nbr2->rank, 6 + (2 * d), mpi_data->comm_mesh3D, &stat4 );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-        ret = MPI_Get_count( &stat4, MPI_DOUBLE, &nz_vals_recv2_cnt );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-
-        if ( col_inds_recv2_cnt == MPI_UNDEFINED || nz_vals_recv2_cnt == MPI_UNDEFINED )
+        if ( nbr2->rank != system->my_rank )
         {
-            fprintf( stderr, "[ERROR] MPI_Get_count returned MPI_UNDEFINED\n" );
-            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+            ret = MPI_Probe( nbr2->rank, 2 * d, mpi_data->comm_mesh3D, &stat3 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
+            ret = MPI_Get_count( &stat3, MPI_INT, &col_inds_recv2_cnt );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+            ret = MPI_Probe( nbr2->rank, 6 + (2 * d), mpi_data->comm_mesh3D, &stat4 );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
+            ret = MPI_Get_count( &stat4, MPI_DOUBLE, &nz_vals_recv2_cnt );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
+
+            if ( col_inds_recv2_cnt == MPI_UNDEFINED || nz_vals_recv2_cnt == MPI_UNDEFINED )
+            {
+                fprintf( stderr, "[ERROR] MPI_Get_count returned MPI_UNDEFINED\n" );
+                MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+            }
+            else if ( col_inds_recv2_cnt != nz_vals_recv2_cnt )
+            {
+                fprintf( stderr, "[ERROR] MPI_Get_count mismatch between messages\n" );
+                fprintf( stderr, "  [INFO] col_inds_recv2_cnt = %d, nz_vals_recv2_cnt = %d\n",
+                        col_inds_recv2_cnt, nz_vals_recv2_cnt );
+                MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+            }
+
+            ret = MPI_Recv( &col_inds[row_start[nbr2->atoms_str - A->n]], col_inds_recv2_cnt,
+                    MPI_INT, nbr2->rank, 2 * d, mpi_data->comm_mesh3D, MPI_STATUS_IGNORE );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
+            ret = MPI_Recv( &nz_vals[row_start[nbr2->atoms_str - A->n]], nz_vals_recv2_cnt,
+                    MPI_DOUBLE, nbr2->rank,
+                    6 + (2 * d), mpi_data->comm_mesh3D, MPI_STATUS_IGNORE );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
         }
-        else if ( col_inds_recv2_cnt != nz_vals_recv2_cnt )
+        else
         {
-            fprintf( stderr, "[ERROR] MPI_Get_count mismatch between messages\n" );
-            fprintf( stderr, "  [INFO] col_inds_recv2_cnt = %d, nz_vals_recv2_cnt = %d\n",
-                    col_inds_recv2_cnt, nz_vals_recv2_cnt );
-            MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+            cnt = row_start[nbr2->atoms_str - A->n];
+            for ( i = 0; i < out_bufs[2 * d].cnt; ++i )
+            {
+                if ( out_bufs[2 * d].index[i] < A->n )
+                {
+                    for ( pj = A->start[out_bufs[2 * d].index[i]];
+                            pj < A->end[out_bufs[2 * d].index[i]]; ++pj )
+                    {
+                        col_inds[cnt] = system->my_atoms[A->j[pj]].orig_id - 1;
+                        nz_vals[cnt] = A->val[pj];
+                        ++cnt;
+                    }
+                }
+                else
+                {
+                    for ( pj = row_start[out_bufs[2 * d].index[i] - A->n];
+                            pj < row_start[out_bufs[2 * d].index[i] - A->n + 1]; ++pj )
+                    {
+                        col_inds[cnt] = col_inds[pj];
+                        nz_vals[cnt] = nz_vals[pj];
+                        ++cnt;
+                    }
+                }
+            }
         }
 
-#if defined(LOG_PERFORMANCE)
-        t_start = Get_Time( );
-#endif
+        if ( nbr1->rank != system->my_rank )
+        {
+            ret = MPI_Wait( &req1, MPI_STATUS_IGNORE );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
+            ret = MPI_Wait( &req2, MPI_STATUS_IGNORE );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
+        }
 
-        ret = MPI_Recv( &col_inds[row_start[nbr2->atoms_str - A->n]], col_inds_recv2_cnt,
-                MPI_INT, nbr2->rank, 2 * d, mpi_data->comm_mesh3D, MPI_STATUS_IGNORE );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-        ret = MPI_Recv( &nz_vals[row_start[nbr2->atoms_str - A->n]], nz_vals_recv2_cnt,
-                MPI_DOUBLE, nbr2->rank,
-                6 + (2 * d), mpi_data->comm_mesh3D, MPI_STATUS_IGNORE );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-
-        ret = MPI_Wait( &req1, MPI_STATUS_IGNORE );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-        ret = MPI_Wait( &req2, MPI_STATUS_IGNORE );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-
-        ret = MPI_Wait( &req3, MPI_STATUS_IGNORE );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-        ret = MPI_Wait( &req4, MPI_STATUS_IGNORE );
-        Check_MPI_Error( ret, __FILE__, __LINE__ );
-
-#if defined(LOG_PERFORMANCE)
-        t_comm += Get_Time( ) - t_start;
-#endif
+        if ( nbr2->rank != system->my_rank )
+        {
+            ret = MPI_Wait( &req3, MPI_STATUS_IGNORE );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
+            ret = MPI_Wait( &req4, MPI_STATUS_IGNORE );
+            Check_MPI_Error( ret, __FILE__, __LINE__ );
+        }
     }
 
-    sfree( col_inds_send_buf1, __FILE__, __LINE__ );
-    sfree( col_inds_send_buf2, __FILE__, __LINE__ );
-    sfree( nz_vals_send_buf1, __FILE__, __LINE__ );
-    sfree( nz_vals_send_buf2, __FILE__, __LINE__ );
+#if defined(LOG_PERFORMANCE)
+    t_comm += Get_Time( ) - t_start;
+#endif
+
+    if ( col_inds_send_buf1 != NULL )
+    {
+        sfree( col_inds_send_buf1, __FILE__, __LINE__ );
+    }
+    if ( col_inds_send_buf1 != NULL )
+    {
+        sfree( col_inds_send_buf2, __FILE__, __LINE__ );
+    }
+    if ( nz_vals_send_buf1 != NULL )
+    {
+        sfree( nz_vals_send_buf1, __FILE__, __LINE__ );
+    }
+    if ( nz_vals_send_buf2 != NULL )
+    {
+        sfree( nz_vals_send_buf2, __FILE__, __LINE__ );
+    }
 
 #if defined(_OPENMP)
     #pragma omp parallel default(none) \
@@ -2023,14 +2099,7 @@ void sparse_approx_inverse( reax_system const * const system,
     sfree( row_start, __FILE__, __LINE__ );
 
 #if defined(LOG_PERFORMANCE)
-    ret = MPI_Reduce( &t_comm, &total_comm, 1, MPI_DOUBLE, MPI_SUM,
-            MASTER_NODE, MPI_COMM_WORLD );
-    Check_MPI_Error( ret, __FILE__, __LINE__ );
-
-    if ( system->my_rank == MASTER_NODE )
-    {
-        data->timing.cm_solver_comm += total_comm / nprocs;
-    }
+    data->timing.cm_solver_comm += t_comm;
 #endif
 }
 #endif

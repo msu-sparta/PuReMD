@@ -38,8 +38,20 @@ int main( int argc, char* argv[] )
 {
     void *handle;
     int ret, ret_mpi;
+#if defined(_OPENMP)
+    int provided;
 
+    MPI_Init_thread( &argc, &argv, MPI_THREAD_FUNNELED, &provided );
+
+    if ( provided < MPI_THREAD_FUNNELED )
+    {
+        fprintf( stderr, "[ERROR] MPI_Init_threaded failure\n" );
+        fprintf( stderr, "  [INFO] MPI_THREAD_FUNNELED not supported (provided = %d)\n", provided );
+        MPI_Abort( MPI_COMM_WORLD, RUNTIME_ERROR );
+    }
+#else
     MPI_Init( &argc, &argv );
+#endif
 
     if ( argc != 4 )
     {
