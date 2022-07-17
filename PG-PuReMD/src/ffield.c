@@ -161,9 +161,9 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
            __FILE__, __LINE__ );
 
     /* vdWaals type:
-     * 1: Shielded Morse, no inner-wall
+     * 1: no inner-wall, shielded Morse
      * 2: inner wall, no shielding
-     * 3: inner wall+shielding */
+     * 3: inner wall, shielded Morse */
     reax->gp.vdw_type = 0;
 
     /* reading single atom parameters */
@@ -380,6 +380,12 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
                 MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
             }
         }
+
+        reax->sbp[i].thbp_cnt_j = 0;
+        reax->sbp[i].thbp_cnt_i = 0;
+        reax->sbp[i].fbp_cnt_j = 0;
+        reax->sbp[i].fbp_cnt_k = 0;
+        reax->sbp[i].fbp_cnt_i = 0;
     }
 
 #if defined(DEBUG_FOCUS)
@@ -695,6 +701,9 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
             val = atof(tmp[9]);
             reax->thbp[index1].prm[cnt].p_val4 = val;
             reax->thbp[index2].prm[cnt].p_val4 = val;
+
+            ++(reax->sbp[k].thbp_cnt_j);
+            ++(reax->sbp[j].thbp_cnt_i);
         }
     }
 
@@ -783,6 +792,14 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
                 val = atof(tmp[8]);
                 reax->fbp[index1].prm[0].p_cot1 = val;
                 reax->fbp[index2].prm[0].p_cot1 = val;
+
+                ++(reax->sbp[k].fbp_cnt_j);
+                ++(reax->sbp[m].fbp_cnt_k);
+                ++(reax->sbp[j].fbp_cnt_i);
+
+                ++(reax->sbp[m].fbp_cnt_j);
+                ++(reax->sbp[k].fbp_cnt_k);
+                ++(reax->sbp[n].fbp_cnt_i);
             }
         }
         /* This means the entry is of the form 0-X-Y-0 */
@@ -800,22 +817,30 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
                         reax->fbp[index1].cnt = 1;
                         reax->fbp[index2].cnt = 1;
 
-                        if (tor_flag[index1] == 0)
+                        if ( tor_flag[index1] == 0 )
                         {
                             reax->fbp[index1].prm[0].V1 = atof(tmp[4]);
                             reax->fbp[index1].prm[0].V2 = atof(tmp[5]);
                             reax->fbp[index1].prm[0].V3 = atof(tmp[6]);
                             reax->fbp[index1].prm[0].p_tor1 = atof(tmp[7]);
                             reax->fbp[index1].prm[0].p_cot1 = atof(tmp[8]);
+
+                            ++(reax->sbp[k].fbp_cnt_j);
+                            ++(reax->sbp[m].fbp_cnt_k);
+                            ++(reax->sbp[p].fbp_cnt_i);
                         }
 
-                        if (tor_flag[index2] == 0)
+                        if ( tor_flag[index2] == 0 )
                         {
                             reax->fbp[index2].prm[0].V1 = atof(tmp[4]);
                             reax->fbp[index2].prm[0].V2 = atof(tmp[5]);
                             reax->fbp[index2].prm[0].V3 = atof(tmp[6]);
                             reax->fbp[index2].prm[0].p_tor1 = atof(tmp[7]);
                             reax->fbp[index2].prm[0].p_cot1 = atof(tmp[8]);
+
+                            ++(reax->sbp[m].fbp_cnt_j);
+                            ++(reax->sbp[k].fbp_cnt_k);
+                            ++(reax->sbp[o].fbp_cnt_i);
                         }
                     }
                 }

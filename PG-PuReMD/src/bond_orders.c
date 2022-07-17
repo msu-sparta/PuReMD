@@ -730,9 +730,9 @@ int BOp( storage * const workspace, reax_list * const bonds, real bo_cut,
 /* Compute the bond order term between atoms i and j,
  * and if this term exceeds the cutoff bo_cut, then adds
  * to the bond list according to the following convention:
- *   * if the far neighbor list is store in half format,
+ *   * if the far neighbor list is stored in half format,
  *      add BOTH atoms to each other's portion of the bond list
- *   * if the far neighbor list is store in full format,
+ *   * if the far neighbor list is stored in full format,
  *      add atom i to atom j's bonds list ONLY */
 int BOp_redundant( storage *workspace, reax_list *bonds, real bo_cut,
          int i, int btop_i, int j, ivec *rel_box, real d, rvec *dvec,

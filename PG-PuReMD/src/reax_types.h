@@ -1035,6 +1035,21 @@ struct single_body_parameters
     real ecore2;
     /**/
     real acore2;
+    /* count of the number of three body parameters for this atom type
+     * where this atom is a center atom (j) in an i-j-k interaction */
+    int thbp_cnt_j;
+    /* count of the number of three body parameters for this atom type
+     * where this atom is an end atom (i) in an i-j-k interaction */
+    int thbp_cnt_i;
+    /* count of the number of four body parameters for this atom type
+     * where this atom is a central atom (j) in an i-j-k-l interaction */
+    int fbp_cnt_j;
+    /* count of the number of four body parameters for this atom type
+     * where this atom is a central atom (k) in an i-j-k-l interaction */
+    int fbp_cnt_k;
+    /* count of the number of four body parameters for this atom type
+     * where this atom is an end atom (i) in an i-j-k-l interaction */
+    int fbp_cnt_i;
 };
 
 
