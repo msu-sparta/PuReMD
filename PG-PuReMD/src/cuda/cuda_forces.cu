@@ -119,12 +119,6 @@ CUDA_DEVICE real Init_Charge_Matrix_Entry_Tab( LR_lookup_table const * const t_L
 }
 
 
-CUDA_GLOBAL void k_disable_hydrogen_bonding( control_params * const control )
-{
-    control->hbond_cut = 0.0;
-}
-
-
 CUDA_GLOBAL void k_init_end_index( int const * const intr_cnt,
         int const * const indices, int * const end_indices, int N )
 {
@@ -1776,7 +1770,7 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
 #endif
     }
 
-    if ( system->numH > 0 && control->hbond_cut > 0.0 && realloc_hbonds == TRUE )
+    if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 && realloc_hbonds == TRUE )
     {
 #if defined(LOG_PERFORMANCE)
         cudaEventRecord( control->time_events[TE_INIT_HBOND_START], control->streams[2] );
@@ -1803,24 +1797,6 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
         cudaEventRecord( control->time_events[TE_INIT_HBOND_STOP], control->streams[2] );
 #endif
     }
-    else if ( step == 0 && (system->numH == 0 || control->hbond_cut <= 0.0) )
-    {
-#if defined(DEBUG_FOCUS)
-        if ( system->numH == 0 )
-        {
-            fprintf( stderr, "[INFO] DISABLING HYDROGEN BOND COMPUTATION: NO HYDROGEN ATOMS FOUND\n" );
-        }
-
-        if ( control->hbond_cut <= 0.0 )
-        {
-            fprintf( stderr, "[INFO] DISABLING HYDROGEN BOND COMPUTATION: BOND CUTOFF LENGTH IS ZERO\n" );
-        }
-#endif
-
-        control->hbond_cut = 0.0;
-        k_disable_hydrogen_bonding <<< 1, 1, 0, control->streams[2] >>>
-            ( (control_params *) control->d_control_params );
-    }
 
     if ( realloc_cm == TRUE )
     {
@@ -1842,7 +1818,7 @@ void Cuda_Estimate_Storages( reax_system *system, control_params *control,
         data->timing.init_bond += (real) (time_elapsed / 1000.0);
 #endif
     }
-    if ( realloc_hbonds == TRUE )
+    if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 && realloc_hbonds == TRUE )
     {
         cudaStreamSynchronize( control->streams[2] );
 
@@ -2040,7 +2016,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
 #endif
     }
 
-    if ( control->hbond_cut > 0.0 && system->numH > 0 && hbonds_done == FALSE )
+    if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 && hbonds_done == FALSE )
     {
 #if defined(LOG_PERFORMANCE)
         cudaEventRecord( control->time_events[TE_INIT_HBOND_START], control->streams[2] );
@@ -2176,7 +2152,7 @@ int Cuda_Init_Forces( reax_system *system, control_params *control,
 #endif
 
 #if !defined(CUDA_ACCUM_ATOMIC)
-        if ( control->hbond_cut > 0.0 && system->numH > 0 )
+        if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 )
         {
 #if defined(LOG_PERFORMANCE)
             cudaEventElapsedTime( &time_elapsed, control->time_events[TE_INIT_HBOND_START],
@@ -2314,7 +2290,7 @@ int Cuda_Init_Forces_No_Charges( reax_system *system, control_params *control,
 #endif
     }
 
-    if ( control->hbond_cut > 0.0 && system->numH > 0 && hbonds_done == FALSE )
+    if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 && hbonds_done == FALSE )
     {
 #if defined(LOG_PERFORMANCE)
         cudaEventRecord( control->time_events[TE_INIT_HBOND_START], control->streams[2] );
@@ -2428,7 +2404,7 @@ int Cuda_Init_Forces_No_Charges( reax_system *system, control_params *control,
 #endif
 
 #if !defined(CUDA_ACCUM_ATOMIC)
-        if ( control->hbond_cut > 0.0 && system->numH > 0 )
+        if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 )
         {
 #if defined(LOG_PERFORMANCE)
             cudaEventElapsedTime( &time_elapsed, control->time_events[TE_INIT_HBOND_START],
@@ -2492,7 +2468,7 @@ int Cuda_Compute_Bonded_Forces( reax_system *system, control_params *control,
         Cuda_Compute_Atom_Energy( system, control, data, workspace, lists,
                 out_control );
 
-        if ( control->hbond_cut > 0.0 && system->numH > 0 )
+        if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 )
         {
             Cuda_Compute_Hydrogen_Bonds( system, control, data, workspace,
                     lists, out_control );
@@ -2643,16 +2619,23 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
                     control->time_events[TE_INIT_CM_STOP] ); 
             cudaEventElapsedTime( &time_elapsed2, control->time_events[TE_INIT_CM_START],
                     control->time_events[TE_INIT_BOND_STOP] ); 
-            cudaEventElapsedTime( &time_elapsed3, control->time_events[TE_INIT_CM_START],
-                    control->time_events[TE_INIT_HBOND_STOP] ); 
+            if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 )
+            {
+                cudaEventElapsedTime( &time_elapsed3, control->time_events[TE_INIT_CM_START],
+                        control->time_events[TE_INIT_HBOND_STOP] ); 
+            }
+            else
+            {
+                time_elapsed4 = 0.0;
+            }
             cudaEventElapsedTime( &time_elapsed4, control->time_events[TE_INIT_BOND_START],
                     control->time_events[TE_INIT_CM_STOP] ); 
             cudaEventElapsedTime( &time_elapsed5, control->time_events[TE_INIT_BOND_START],
                     control->time_events[TE_INIT_BOND_STOP] ); 
-            cudaEventElapsedTime( &time_elapsed6, control->time_events[TE_INIT_BOND_START],
-                    control->time_events[TE_INIT_HBOND_STOP] ); 
-            if ( control->hbond_cut > 0.0 && system->numH > 0 )
+            if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 )
             {
+                cudaEventElapsedTime( &time_elapsed6, control->time_events[TE_INIT_BOND_START],
+                        control->time_events[TE_INIT_HBOND_STOP] ); 
                 cudaEventElapsedTime( &time_elapsed7, control->time_events[TE_INIT_HBOND_START],
                         control->time_events[TE_INIT_CM_STOP] ); 
                 cudaEventElapsedTime( &time_elapsed8, control->time_events[TE_INIT_HBOND_START],
@@ -2662,6 +2645,7 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
             }
             else
             {
+                time_elapsed6 = 0.0;
                 time_elapsed7 = 0.0;
                 time_elapsed8 = 0.0;
                 time_elapsed9 = 0.0;
@@ -2677,7 +2661,7 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
                     control->time_events[TE_INIT_CM_STOP] ); 
             cudaEventElapsedTime( &time_elapsed2, control->time_events[TE_INIT_DIST_START],
                     control->time_events[TE_INIT_BOND_STOP] ); 
-            if ( control->hbond_cut > 0.0 && system->numH > 0 )
+            if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 )
             {
                 cudaEventElapsedTime( &time_elapsed3, control->time_events[TE_INIT_DIST_START],
                         control->time_events[TE_INIT_HBOND_STOP] ); 
@@ -2702,7 +2686,7 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
                 control->time_events[TE_INIT_BOND_STOP] ); 
         data->timing.init_bond += (real) (time_elapsed / 1000.0);
 
-        if ( control->hbond_cut > 0.0 && system->numH > 0 )
+        if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 )
         {
             cudaEventElapsedTime( &time_elapsed, control->time_events[TE_INIT_HBOND_START],
                     control->time_events[TE_INIT_HBOND_STOP] ); 
@@ -2715,7 +2699,7 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
                 control->time_events[TE_BONDS_STOP] ); 
         cudaEventElapsedTime( &time_elapsed3, control->time_events[TE_BOND_ORDER_START],
                 control->time_events[TE_TORSION_STOP] ); 
-        if ( control->hbond_cut > 0.0 && system->numH > 0 )
+        if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 )
         {
             cudaEventElapsedTime( &time_elapsed4, control->time_events[TE_BOND_ORDER_START],
                     control->time_events[TE_HBONDS_STOP] ); 
@@ -2747,9 +2731,12 @@ extern "C" int Cuda_Compute_Forces( reax_system *system, control_params *control
                 control->time_events[TE_TORSION_STOP] ); 
         data->timing.torsion += (real) (time_elapsed / 1000.0);
 
-        cudaEventElapsedTime( &time_elapsed, control->time_events[TE_HBONDS_START],
-                control->time_events[TE_HBONDS_STOP] ); 
-        data->timing.hbonds += (real) (time_elapsed / 1000.0);
+        if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 )
+        {
+            cudaEventElapsedTime( &time_elapsed, control->time_events[TE_HBONDS_START],
+                    control->time_events[TE_HBONDS_STOP] ); 
+            data->timing.hbonds += (real) (time_elapsed / 1000.0);
+        }
 
 #if !defined(USE_FUSED_VDW_COULOMB)
         cudaEventElapsedTime( &time_elapsed, control->time_events[TE_VDW_START],

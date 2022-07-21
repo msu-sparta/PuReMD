@@ -48,21 +48,20 @@ static void Reset_Atoms_HBond_Indices( reax_system * const system, control_param
     int i;
     reax_atom *atom;
 
-    system->numH = 0;
-    if ( control->hbond_cut > 0.0 )
-    {
-        for ( i = 0; i < system->N; ++i )
-        {
-            atom = &system->my_atoms[i];
+    system->num_H_atoms = 0;
 
-            if ( system->reax_param.sbp[ atom->type ].p_hbond == H_ATOM )
-            {
-                atom->Hindex = system->numH++;
-            }
-            else
-            {
-                atom->Hindex = -1;
-            }
+    for ( i = 0; i < system->N; ++i )
+    {
+        atom = &system->my_atoms[i];
+
+        if ( system->reax_param.sbp[atom->type].p_hbond == H_ATOM )
+        {
+            atom->Hindex = system->num_H_atoms;
+            ++(system->num_H_atoms);
+        }
+        else
+        {
+            atom->Hindex = -1;
         }
     }
 }
@@ -231,7 +230,10 @@ void Reset( reax_system * const system, control_params * const control,
         simulation_data * const data, storage * const workspace,
         reax_list ** const lists )
 {
-    Reset_Atoms_HBond_Indices( system, control );
+    if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 )
+    {
+        Reset_Atoms_HBond_Indices( system, control );
+    }
 
     Reset_Simulation_Data( data );
 

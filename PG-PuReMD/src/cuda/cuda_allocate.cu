@@ -311,7 +311,7 @@ void Cuda_Allocate_System( reax_system *system, control_params *control )
             system->total_cap * sizeof(reax_atom), 
             control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
-    sCudaMalloc( (void **) &system->d_numH, sizeof(int), __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &system->d_num_H_atoms, sizeof(int), __FILE__, __LINE__ );
 
     /* list management */
     sCudaMalloc( (void **) &system->d_far_nbrs,
@@ -1134,7 +1134,7 @@ void Cuda_Reallocate_Part2( reax_system *system, control_params *control,
     }
 
     /* hydrogen bonds list */
-    if ( control->hbond_cut > 0.0 && system->numH > 0
+    if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0
             && (Nflag == TRUE || realloc->hbonds == TRUE) )
     {
         Cuda_Reallocate_List( lists[HBONDS], system->total_cap,

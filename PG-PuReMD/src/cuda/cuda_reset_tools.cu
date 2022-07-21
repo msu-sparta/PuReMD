@@ -79,7 +79,7 @@ void Cuda_Reset_Atoms_HBond_Indices( reax_system* system, control_params *contro
             sizeof(int) * system->total_cap, __FILE__, __LINE__ );
     hindex = (int *) workspace->scratch[0];
 #else
-    sCudaMemsetAsync( system->d_numH, 0, sizeof(int), 
+    sCudaMemsetAsync( system->d_num_H_atoms, 0, sizeof(int), 
             control->streams[0], __FILE__, __LINE__ );
 #endif
 
@@ -89,16 +89,16 @@ void Cuda_Reset_Atoms_HBond_Indices( reax_system* system, control_params *contro
 #if !defined(CUDA_ACCUM_ATOMIC)
           hindex, 
 #else
-          system->d_numH,
+          system->d_num_H_atoms,
 #endif
           system->total_cap );
     cudaCheckError( );
 
 #if !defined(CUDA_ACCUM_ATOMIC)
-    Cuda_Reduction_Sum( hindex, system->d_numH, system->N, 0, control->streams[0] );
+    Cuda_Reduction_Sum( hindex, system->d_num_H_atoms, system->N, 0, control->streams[0] );
 #endif
 
-    sCudaMemcpyAsync( &system->numH, system->d_numH, sizeof(int), 
+    sCudaMemcpyAsync( &system->num_H_atoms, system->d_num_H_atoms, sizeof(int), 
             cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
 
     cudaStreamSynchronize( control->streams[0] );
@@ -108,7 +108,10 @@ void Cuda_Reset_Atoms_HBond_Indices( reax_system* system, control_params *contro
 extern "C" void Cuda_Reset( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace, reax_list **lists )
 {
-    Cuda_Reset_Atoms_HBond_Indices( system, control, workspace );
+    if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 )
+    {
+        Cuda_Reset_Atoms_HBond_Indices( system, control, workspace );
+    }
 
     Reset_Simulation_Data( data );
 

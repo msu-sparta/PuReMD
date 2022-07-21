@@ -1442,10 +1442,12 @@ struct reax_system
     int bigN;
     /* dimension of locally owned part of sparse charge matrix */
     int n_cm;
-    /* num. hydrogen atoms */
-    int numH;
-    /* num. hydrogen atoms (GPU) */
-    int *d_numH;
+    /* num. hydrogen atoms (local AND ghost) owned by this process */
+    int num_H_atoms;
+    /* total num. hydrogen atoms in the simulation */
+    int total_H_atoms;
+    /* num. hydrogen atoms (local AND ghost) owned by this process (GPU) */
+    int *d_num_H_atoms;
     /* upper bound of the num. of local atoms owned by this process */
     int local_cap;
     /* upper bound of the num. of local and ghost atoms owned by this process */

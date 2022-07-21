@@ -281,6 +281,8 @@ void Read_Binary_Restart_File( const char * const res_file, reax_system *system,
     Count_Binary_Restart_Atoms( fres, system );
     PreAllocate_Space( system, control, workspace );
 
+    system->total_H_atoms = 0;
+
     /* go back to the start of restart file */
     rewind( fres );
     fread( &res_header, sizeof(restart_header), 1, fres );
@@ -290,6 +292,12 @@ void Read_Binary_Restart_File( const char * const res_file, reax_system *system,
     for ( i = 0; i < system->bigN; ++i )
     {
         fread( &res_atom, sizeof(restart_atom), 1, fres );
+
+        if ( strncmp( "H\0", res_atom.name, 2 ) == 0
+                || strncmp( "h\0", res_atom.name, 2 ) == 0 )
+        {
+            ++(system->total_H_atoms);
+        }
 
         /* if the point is inside my_box, add it to my lists */
         Fit_to_Periodic_Box( &system->big_box, &res_atom.x );
@@ -457,6 +465,8 @@ void Read_Restart_File( const char * const res_file, reax_system *system,
     Count_Restart_Atoms( fres, system );
     PreAllocate_Space( system, control, workspace );
 
+    system->total_H_atoms = 0;
+
     /* go back to the start of file to read actual atom info */
     rewind( fres );
     for ( i = 0; i < 4; i++ )
@@ -487,6 +497,12 @@ void Read_Restart_File( const char * const res_file, reax_system *system,
         v_temp[0] = atof(tmp[6]);
         v_temp[1] = atof(tmp[7]);
         v_temp[2] = atof(tmp[8]);
+
+        if ( strncmp( "H\0", name_temp, 2 ) == 0
+                || strncmp( "h\0", name_temp, 2 ) == 0 )
+        {
+            ++(system->total_H_atoms);
+        }
 
         Fit_to_Periodic_Box( &system->big_box, &x_temp );
 

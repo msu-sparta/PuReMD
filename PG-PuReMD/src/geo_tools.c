@@ -98,6 +98,8 @@ void Read_Geo_File( const char * const geo_file, reax_system * const system,
     Count_Geo_Atoms( geo, system );
     PreAllocate_Space( system, control, workspace );
 
+    system->total_H_atoms = 0;
+
     /* read in my atom info */
     top = 0;
     for ( i = 0; i < system->bigN; ++i )
@@ -105,6 +107,12 @@ void Read_Geo_File( const char * const geo_file, reax_system * const system,
         fscanf( geo, CUSTOM_ATOM_FORMAT,
                 &serial, element, name, &x[0], &x[1], &x[2] );
         element[2] = '\0';
+
+        if ( strncmp( "H\0", element, 2 ) == 0
+                || strncmp( "h\0", element, 2 ) == 0 )
+        {
+            ++(system->total_H_atoms);
+        }
 
         Fit_to_Periodic_Box( &system->big_box, &x );
 
@@ -305,6 +313,8 @@ void Read_PDB_File( const char * const pdb_file, reax_system * const system,
     Count_PDB_Atoms( pdb, system );
     PreAllocate_Space( system, control, workspace );
 
+    system->total_H_atoms = 0;
+
     /* start reading and processing the pdb file */
     fseek( pdb, 0, SEEK_SET );
     c = 0;
@@ -394,6 +404,12 @@ void Read_PDB_File( const char * const pdb_file, reax_system * const system,
                 element[2] = '\0';
                 strncpy( charge, &s1[78], 2 );
                 charge[2] = '\0';
+            }
+
+            if ( strncmp( "H\0", element, 2 ) == 0
+                    || strncmp( "h\0", element, 2 ) == 0 )
+            {
+                ++(system->total_H_atoms);
             }
 
             /* if the point is inside my_box, add it to my lists */
@@ -698,6 +714,8 @@ void Read_BGF( const char * const bgf_file, reax_system * const system,
     system->bigN = n;
     PreAllocate_Space( system, control, workspace );
 
+    system->total_H_atoms = 0;
+
 //    workspace->map_serials = scalloc( MAX_ATOM_ID, sizeof(int),
 //            __FILE__, __LINE__ );
 //    for ( i = 0; i < MAX_ATOM_ID; ++i )
@@ -755,6 +773,12 @@ void Read_BGF( const char * const bgf_file, reax_system * const system,
 //            sscanf( backup, BGF_ATOM_FORMAT, descriptor, serial, atom_name,
 //                    res_name, &chain_id, res_seq, s_x, s_y, s_z, element,
 //                    occupancy, temp_factor, charge );
+
+            if ( strncmp( "H\0", element, 2 ) == 0
+                    || strncmp( "h\0", element, 2 ) == 0 )
+            {
+                ++(system->total_H_atoms);
+            }
 
             Make_Point( strtod( s_x, &endptr ), strtod( s_y, &endptr ),
                         strtod( s_z, &endptr ), &x );

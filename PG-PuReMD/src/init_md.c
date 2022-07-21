@@ -179,17 +179,17 @@ void Init_System( reax_system * const system, control_params * const control,
     Estimate_NT_Atoms( system, mpi_data );
 #endif
 
-    /* estimate numH */
-    system->numH = 0;
-    if ( control->hbond_cut > 0.0 )
+    system->num_H_atoms = 0;
+    if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 )
     {
         for ( i = 0; i < system->N; ++i )
         {
             atom = &system->my_atoms[i];
 
-            if ( system->reax_param.sbp[ atom->type ].p_hbond == H_ATOM )
+            if ( system->reax_param.sbp[atom->type].p_hbond == H_ATOM )
             {
-                atom->Hindex = system->numH++;
+                atom->Hindex = system->num_H_atoms;
+                ++(system->num_H_atoms);
             }
             else
             {
@@ -224,8 +224,8 @@ void Init_System( reax_system * const system, control_params * const control,
              system->my_rank, system->n, system->local_cap );
     fprintf( stderr, "p%d: N=%d, total_cap=%d\n",
              system->my_rank, system->N, system->total_cap );
-    fprintf( stderr, "p%d: numH=%d\n",
-             system->my_rank, system->numH );
+    fprintf( stderr, "p%d: num_H_atoms=%d\n",
+             system->my_rank, system->num_H_atoms );
 #endif
 
     Compute_Total_Mass( system, data, mpi_data->comm_mesh3D );

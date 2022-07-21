@@ -1855,7 +1855,7 @@ void sparse_approx_inverse( reax_system const * const system,
     private(i, pj, pk, ret, N, M, d_i, d_j, mark, local_pos, identity_pos, \
             X, q, q_size, q_top, e_i, e_i_size, D, D_size, \
             m, n, lda, info) \
-    firstprivate(system, A, A_spar_patt, A_app_inv, row_nnz, row_start, col_inds, nz_vals) \
+    firstprivate(system, A, A_spar_patt, A_app_inv, row_nnz, row_start, col_inds, nz_vals, total_entries) \
     shared(stderr)
 #endif
     {
