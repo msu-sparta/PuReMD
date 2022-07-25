@@ -73,7 +73,7 @@ void vdW_Coulomb_Energy( reax_system const * const system,
     real p_vdW1, p_vdW1i;
     real powr_vdW1, powgi_vdW1;
     real r_ij, fn13, exp1, exp2, e_base, de_base;
-    real Tap, dTap, dfn13, CEvd, CEclmb;
+    real tap, dtap, dfn13, CEvd, CEclmb;
     real dr3gamij_1, dr3gamij_3;
     real e_ele, e_vdW, e_core, de_core, e_clb, de_clb;
     rvec temp, ext_press;
@@ -111,22 +111,22 @@ void vdW_Coulomb_Energy( reax_system const * const system,
                 self_coef = (orig_i == orig_j) ? 0.5 : 1.0;
 
                 /* Calculate Taper and its derivative */
-                Tap = workspace->Tap[7] * r_ij
-                    + workspace->Tap[6];
-                Tap = Tap * r_ij + workspace->Tap[5];
-                Tap = Tap * r_ij + workspace->Tap[4];
-                Tap = Tap * r_ij + workspace->Tap[3];
-                Tap = Tap * r_ij + workspace->Tap[2];
-                Tap = Tap * r_ij + workspace->Tap[1];
-                Tap = Tap * r_ij + workspace->Tap[0];
+                tap = workspace->tap_coef[7] * r_ij
+                    + workspace->tap_coef[6];
+                tap = tap * r_ij + workspace->tap_coef[5];
+                tap = tap * r_ij + workspace->tap_coef[4];
+                tap = tap * r_ij + workspace->tap_coef[3];
+                tap = tap * r_ij + workspace->tap_coef[2];
+                tap = tap * r_ij + workspace->tap_coef[1];
+                tap = tap * r_ij + workspace->tap_coef[0];
 
-                dTap = 7.0 * workspace->Tap[7] * r_ij
-                    + 6.0 * workspace->Tap[6];
-                dTap = dTap * r_ij + 5.0 * workspace->Tap[5];
-                dTap = dTap * r_ij + 4.0 * workspace->Tap[4];
-                dTap = dTap * r_ij + 3.0 * workspace->Tap[3];
-                dTap = dTap * r_ij + 2.0 * workspace->Tap[2];
-                dTap = dTap * r_ij + workspace->Tap[1];
+                dtap = workspace->dtap_coef[6] * r_ij
+                    + workspace->dtap_coef[5];
+                dtap = dtap * r_ij + workspace->dtap_coef[4];
+                dtap = dtap * r_ij + workspace->dtap_coef[3];
+                dtap = dtap * r_ij + workspace->dtap_coef[2];
+                dtap = dtap * r_ij + workspace->dtap_coef[1];
+                dtap = dtap * r_ij + workspace->dtap_coef[0];
 
                 /* vdWaals Calculations */
                 if ( system->reax_param.gp.vdw_type == 1
@@ -141,7 +141,7 @@ void vdW_Coulomb_Energy( reax_system const * const system,
                     exp2 = EXP( 0.5 * twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
                     e_base = twbp->D * (exp1 - 2.0 * exp2);
 
-                    e_vdW = self_coef * (e_base * Tap);
+                    e_vdW = self_coef * (e_base * tap);
                     data->my_en.e_vdW += e_vdW;
 
                     dfn13 = POW( r_ij, p_vdW1 - 1.0 )
@@ -155,7 +155,7 @@ void vdW_Coulomb_Energy( reax_system const * const system,
                     exp2 = EXP( 0.5 * twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
                     e_base = twbp->D * (exp1 - 2.0 * exp2);
 
-                    e_vdW = self_coef * (e_base * Tap);
+                    e_vdW = self_coef * (e_base * tap);
                     data->my_en.e_vdW += e_vdW;
 
                     de_base = (twbp->D * twbp->alpha / twbp->r_vdW) * (exp2 - exp1);
@@ -165,8 +165,8 @@ void vdW_Coulomb_Energy( reax_system const * const system,
                 if ( system->reax_param.gp.vdw_type == 2 || system->reax_param.gp.vdw_type == 3 )
                 {
                     e_core = twbp->ecore * EXP( twbp->acore * (1.0 - (r_ij / twbp->rcore)) );
-                    e_vdW += self_coef * (e_core * Tap);
-                    data->my_en.e_vdW += self_coef * (e_core * Tap);
+                    e_vdW += self_coef * (e_core * tap);
+                    data->my_en.e_vdW += self_coef * (e_core * tap);
 
                     de_core = -(twbp->acore / twbp->rcore) * e_core;
                 }
@@ -176,8 +176,8 @@ void vdW_Coulomb_Energy( reax_system const * const system,
                     de_core = 0.0;
                 }
 
-                CEvd = self_coef * ( (de_base + de_core) * Tap
-                        + (e_base + e_core) * dTap );
+                CEvd = self_coef * ( (de_base + de_core) * tap
+                        + (e_base + e_core) * dtap );
 
 #if defined(DEBUG_FOCUS)
                 fprintf( stderr, "%6d%6d%24.12f%24.12f%24.12f%24.12f\n",
@@ -187,15 +187,15 @@ void vdW_Coulomb_Energy( reax_system const * const system,
 #endif
 
                 /* Coulomb Calculations */
-                dr3gamij_1 = r_ij * r_ij * r_ij + POW( twbp->gamma, -3.0 );
+                dr3gamij_1 = r_ij * r_ij * r_ij + twbp->gamma;
                 dr3gamij_3 = CBRT( dr3gamij_1 );
                 e_clb = C_ELE * (system->my_atoms[i].q * system->my_atoms[j].q) / dr3gamij_3;
-                e_ele = self_coef * (e_clb * Tap);
+                e_ele = self_coef * (e_clb * tap);
                 data->my_en.e_ele += e_ele;
 
                 de_clb = -C_ELE * (system->my_atoms[i].q * system->my_atoms[j].q)
                         * (r_ij * r_ij) / POW( dr3gamij_1, 4.0 / 3.0 );
-                CEclmb = self_coef * (de_clb * Tap + e_clb * dTap);
+                CEclmb = self_coef * (de_clb * tap + e_clb * dtap);
 
 #if defined(DEBUG_FOCUS)
                 fprintf( stderr, "%6d%6d%24.12f%24.12f\n",
@@ -234,11 +234,6 @@ void vdW_Coulomb_Energy( reax_system const * const system,
                 }
 
 #if defined(TEST_ENERGY)
-                // fprintf( out_control->evdw,
-                // "%12.9f%12.9f%12.9f%12.9f%12.9f%12.9f%12.9f%12.9f\n",
-                // workspace->Tap[7],workspace->Tap[6],workspace->Tap[5],
-                // workspace->Tap[4],workspace->Tap[3],workspace->Tap[2],
-                // workspace->Tap[1], Tap );
                 //fprintf( out_control->evdw, "%6d%6d%24.15e%24.15e%24.15e\n",
                 fprintf( out_control->evdw, "%6d%6d%12.4f%12.4f%12.4f\n",
                          system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
@@ -406,7 +401,7 @@ void LR_vdW_Coulomb( reax_system const * const system,
     real p_vdW1, p_vdW1i;
     real powr_vdW1, powgi_vdW1;
     real tmp, fn13, exp1, exp2, e_base, de_base;
-    real Tap, dTap, dfn13;
+    real tap, dtap, dfn13;
     real dr3gamij_1, dr3gamij_3;
     real e_core, de_core;
     two_body_parameters *twbp;
@@ -418,22 +413,22 @@ void LR_vdW_Coulomb( reax_system const * const system,
                 system->reax_param.num_atom_types) ];
 
     /* Calculate Taper and its derivative */
-    Tap = workspace->Tap[7] * r_ij
-        + workspace->Tap[6];
-    Tap = Tap * r_ij + workspace->Tap[5];
-    Tap = Tap * r_ij + workspace->Tap[4];
-    Tap = Tap * r_ij + workspace->Tap[3];
-    Tap = Tap * r_ij + workspace->Tap[2];
-    Tap = Tap * r_ij + workspace->Tap[1];
-    Tap = Tap * r_ij + workspace->Tap[0];
+    tap = workspace->tap_coef[7] * r_ij
+        + workspace->tap_coef[6];
+    tap = tap * r_ij + workspace->tap_coef[5];
+    tap = tap * r_ij + workspace->tap_coef[4];
+    tap = tap * r_ij + workspace->tap_coef[3];
+    tap = tap * r_ij + workspace->tap_coef[2];
+    tap = tap * r_ij + workspace->tap_coef[1];
+    tap = tap * r_ij + workspace->tap_coef[0];
 
-    dTap = 7.0 * workspace->Tap[7] * r_ij
-        + 6.0 * workspace->Tap[6];
-    dTap = dTap * r_ij + 5.0 * workspace->Tap[5];
-    dTap = dTap * r_ij + 4.0 * workspace->Tap[4];
-    dTap = dTap * r_ij + 3.0 * workspace->Tap[3];
-    dTap = dTap * r_ij + 2.0 * workspace->Tap[2];
-    dTap = dTap * r_ij + workspace->Tap[1];
+    dtap = workspace->dtap_coef[6] * r_ij
+        + workspace->dtap_coef[5];
+    dtap = dtap * r_ij + workspace->dtap_coef[4];
+    dtap = dtap * r_ij + workspace->dtap_coef[3];
+    dtap = dtap * r_ij + workspace->dtap_coef[2];
+    dtap = dtap * r_ij + workspace->dtap_coef[1];
+    dtap = dtap * r_ij + workspace->dtap_coef[0];
 
     /* vdWaals Calculations */
     if ( system->reax_param.gp.vdw_type == 1
@@ -475,16 +470,16 @@ void LR_vdW_Coulomb( reax_system const * const system,
         de_core = 0.0;
     }
 
-    t->e_vdW = (e_base + e_core) * Tap;
-    t->CEvd = (de_base + de_core) * Tap + (e_base + e_core) * dTap;
+    t->e_vdW = (e_base + e_core) * tap;
+    t->CEvd = (de_base + de_core) * tap + (e_base + e_core) * dtap;
 
     /* Coulomb calculations */
-    dr3gamij_1 = r_ij * r_ij * r_ij + POW( twbp->gamma, -3.0 );
+    dr3gamij_1 = r_ij * r_ij * r_ij + twbp->gamma;
     dr3gamij_3 = CBRT( dr3gamij_1 );
-    tmp = Tap / dr3gamij_3;
+    tmp = tap / dr3gamij_3;
     t->H = EV_to_KCALpMOL * tmp;
     t->e_ele = C_ELE * tmp;
 
-    t->CEclmb = (-C_ELE * (r_ij * r_ij) / POW( dr3gamij_1, 4.0 / 3.0 )) * Tap
-        + (C_ELE / dr3gamij_3) * dTap;
+    t->CEclmb = (-C_ELE * (r_ij * r_ij) / POW( dr3gamij_1, 4.0 / 3.0 )) * tap
+        + (C_ELE / dr3gamij_3) * dtap;
 }

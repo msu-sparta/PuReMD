@@ -29,10 +29,17 @@
 #include "../tool_box.h"
 #include "../vector.h"
 
+#include <cub/util_ptx.cuh>
+#include <cub/warp/warp_reduce.cuh>
+#include <cub/warp/warp_scan.cuh>
 
-CUDA_DEVICE real Cuda_DistSqr_to_Special_Point( rvec cp, rvec x ) 
+
+#define FULL_WARP_MASK (0xFFFFFFFF)
+
+
+CUDA_DEVICE static inline real Cuda_DistSqr_to_Special_Point( rvec cp, rvec x ) 
 {
-    int  i;  
+    int i;  
     real d_sqr = 0.0;
 
     for ( i = 0; i < 3; ++i )
@@ -55,9 +62,8 @@ CUDA_GLOBAL void k_generate_neighbor_lists_full( reax_atom *my_atoms,
 {
     int i, j, k, l, m, itr, num_far, my_num_far;
     real d, cutoff;
-    ivec c, nbrs_x;
-    rvec dvec;
-    reax_atom *atom1, *atom2;
+    ivec c, nbrs_x, rel_box, rel_box2;
+    rvec x, dvec;
 
     l = blockIdx.x * blockDim.x  + threadIdx.x;
 
@@ -66,7 +72,7 @@ CUDA_GLOBAL void k_generate_neighbor_lists_full( reax_atom *my_atoms,
         return;
     }
 
-    atom1 = &my_atoms[l];
+    rvec_Copy( x, my_atoms[l].x );
     num_far = Start_Index( l, &far_nbr_list );
 
     /* map this atom to its grid cell indices */
@@ -74,7 +80,7 @@ CUDA_GLOBAL void k_generate_neighbor_lists_full( reax_atom *my_atoms,
     {
         for ( i = 0; i < 3; ++i )
         {
-            c[i] = (int) ((my_atoms[l].x[i] - my_ext_box.min[i]) * g.inv_len[i]);   
+            c[i] = (int) ((x[i] - my_ext_box.min[i]) * g.inv_len[i]);   
 
             if ( c[i] >= g.native_end[i] )
             {
@@ -90,7 +96,7 @@ CUDA_GLOBAL void k_generate_neighbor_lists_full( reax_atom *my_atoms,
     {
         for ( i = 0; i < 3; ++i )
         {
-            c[i] = (int) ((my_atoms[l].x[i] - my_ext_box.min[i]) * g.inv_len[i]);
+            c[i] = (int) ((x[i] - my_ext_box.min[i]) * g.inv_len[i]);
 
             if ( c[i] < 0 )
             {
@@ -106,7 +112,7 @@ CUDA_GLOBAL void k_generate_neighbor_lists_full( reax_atom *my_atoms,
     i = c[0];
     j = c[1];
     k = c[2];
-
+    ivec_Copy( rel_box, g.rel_box[index_grid_3d(i, j, k, &g)] );
     cutoff = SQR( g.cutoff[index_grid_3d(i, j, k, &g)] );
 
     /* scan neighboring grid cells within cutoff */
@@ -116,21 +122,20 @@ CUDA_GLOBAL void k_generate_neighbor_lists_full( reax_atom *my_atoms,
         ivec_Copy( nbrs_x, g.nbrs_x[index_grid_nbrs(i, j, k, itr, &g)] );
 
         /* if neighboring grid cell is further in the "positive" direction AND within cutoff */
-        if ( //g.str[index_grid_3d(i, j, k, &g)] <= g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] && 
-                Cuda_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)], atom1->x) <= cutoff )
+        if ( Cuda_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)], x) <= cutoff )
         {
+            ivec_Copy( rel_box2, g.rel_box[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] );
+
             /* pick up another atom from the neighbor cell */
             for ( m = g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; 
                     m < g.end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; ++m )
             {
                 /* prevent recounting same pairs within a gcell */
-//                if ( l < m )
                 if ( l != m )
                 {
-                    atom2 = &my_atoms[m];
-                    dvec[0] = atom2->x[0] - atom1->x[0];
-                    dvec[1] = atom2->x[1] - atom1->x[1];
-                    dvec[2] = atom2->x[2] - atom1->x[2];
+                    dvec[0] = my_atoms[m].x[0] - x[0];
+                    dvec[1] = my_atoms[m].x[1] - x[1];
+                    dvec[2] = my_atoms[m].x[2] - x[2];
                     d = rvec_Norm_Sqr( dvec );
 
                     if ( d <= cutoff )
@@ -140,8 +145,8 @@ CUDA_GLOBAL void k_generate_neighbor_lists_full( reax_atom *my_atoms,
                         far_nbr_list.far_nbr_list.d[num_far] = SQRT( d );
                         rvec_Copy( far_nbr_list.far_nbr_list.dvec[num_far], dvec );
                         ivec_ScaledSum( far_nbr_list.far_nbr_list.rel_box[num_far],
-                                1, g.rel_box[ index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g) ], 
-                                -1, g.rel_box[ index_grid_3d(i, j, k, &g) ] );
+                                1, rel_box2, -1, rel_box );
+
                         ++num_far;
                     }
                 }
@@ -163,45 +168,38 @@ CUDA_GLOBAL void k_generate_neighbor_lists_full( reax_atom *my_atoms,
 }
 
 
-//CUDA_GLOBAL void __launch_bounds__ (1024) k_mt_generate_neighbor_lists( reax_atom *my_atoms, 
-CUDA_GLOBAL void k_mt_generate_neighbor_lists( reax_atom *my_atoms, 
-        simulation_box my_ext_box, grid g, reax_list far_nbr_list, int n, int N )
+/* Generate far neighbor lists in full format
+ * by scanning the atoms list and applying cutoffs */
+CUDA_GLOBAL void k_generate_neighbor_lists_full_opt( reax_atom *my_atoms, 
+        simulation_box my_ext_box, grid g, reax_list far_nbr_list,
+        int n, int N, int *far_nbrs, int *max_far_nbrs, int *realloc_far_nbrs )
 {
-    extern __shared__ int __nbr[];
-    bool nbrgen;
-    int __THREADS_PER_ATOM__, thread_id, group_id, lane_id, my_bucket;
-    int *tnbr, *nbrssofar;
-    int max, leader, loopcount, iterations;
-    int i, j, k, l, m, itr, num_far, ll;
-    real d, cutoff, cutoff_ji;
-    ivec c, nbrs_x;
-    rvec dvec;
-    reax_atom *atom1, *atom2;
+    extern __shared__ cub::WarpScan<int>::TempStorage temp1[];
+    int i, j, k, l, m, itr, num_far, my_num_far, lane_id, itr2;
+    int start, end, offset, flag;
+    real d, cutoff;
+    ivec c, nbrs_x, rel_box, rel_box2;
+    rvec x, dvec;
 
-    __THREADS_PER_ATOM__ = NB_KER_THREADS_PER_ATOM;
-    thread_id = blockIdx.x * blockDim.x + threadIdx.x;
-    group_id = thread_id / __THREADS_PER_ATOM__;
+    l = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
 
-    if ( group_id >= N )
+    if ( l >= N )
     {
         return;
     }
 
-    lane_id = thread_id & (__THREADS_PER_ATOM__ - 1); 
-    my_bucket = threadIdx.x / __THREADS_PER_ATOM__;
-    tnbr = __nbr;
-    nbrssofar = __nbr + blockDim.x;
-    l = group_id;
-    atom1 = &my_atoms[l];
+    lane_id = (blockIdx.x * blockDim.x + threadIdx.x) % warpSize; 
+
+    rvec_Copy( x, my_atoms[l].x );
     num_far = Start_Index( l, &far_nbr_list );
 
-    //get the coordinates of the atom and 
-    //compute the grid cell
+    /* map this atom to its grid cell indices */
     if ( l < n )
     {
-        for ( i = 0; i < 3; i++ )
+        for ( i = 0; i < 3; ++i )
         {
-            c[i] = (int)((my_atoms[l].x[i] - my_ext_box.min[i]) * g.inv_len[i]);
+            c[i] = (int) ((x[i] - my_ext_box.min[i]) * g.inv_len[i]);   
+
             if ( c[i] >= g.native_end[i] )
             {
                 c[i] = g.native_end[i] - 1;
@@ -214,9 +212,10 @@ CUDA_GLOBAL void k_mt_generate_neighbor_lists( reax_atom *my_atoms,
     }
     else
     {
-        for ( i = 0; i < 3; i++ )
+        for ( i = 0; i < 3; ++i )
         {
-            c[i] = (int)((my_atoms[l].x[i] - my_ext_box.min[i]) * g.inv_len[i]);
+            c[i] = (int) ((x[i] - my_ext_box.min[i]) * g.inv_len[i]);
+
             if ( c[i] < 0 )
             {
                 c[i] = 0;
@@ -231,170 +230,85 @@ CUDA_GLOBAL void k_mt_generate_neighbor_lists( reax_atom *my_atoms,
     i = c[0];
     j = c[1];
     k = c[2];
+    ivec_Copy( rel_box, g.rel_box[index_grid_3d(i, j, k, &g)] );
+    cutoff = SQR( g.cutoff[index_grid_3d(i, j, k, &g)] );
 
-    tnbr[threadIdx.x] = 0;
-    if ( lane_id == 0 )
-    {
-        nbrssofar[my_bucket] = 0;
-    }
-    __syncthreads( );
-
+    /* scan neighboring grid cells within cutoff */
     itr = 0;
     while ( g.nbrs_x[index_grid_nbrs(i, j, k, itr, &g)][0] >= 0 )
     { 
-        tnbr[threadIdx.x] = 0;
-        nbrgen = false;
-
         ivec_Copy( nbrs_x, g.nbrs_x[index_grid_nbrs(i, j, k, itr, &g)] );
 
-        cutoff = SQR( g.cutoff[index_grid_3d(i, j, k, &g)] );
-        cutoff_ji = SQR( g.cutoff[index_grid_3d( nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] );
-
-        if ( (g.str[index_grid_3d(i, j, k, &g)] <= g.str[index_grid_3d( nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] 
-                && Cuda_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)], atom1->x) <= cutoff) 
-                || (g.str[index_grid_3d(i, j, k, &g)] >= g.str[index_grid_3d( nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] 
-                && Cuda_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)], atom1->x) <= cutoff_ji) )
+        /* if neighboring grid cell is further in the "positive" direction AND within cutoff */
+        if ( Cuda_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)], x) <= cutoff )
         {
-            max = g.end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]
-                    - g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)];
-            tnbr[threadIdx.x] = 0;
-            nbrgen = false;
-            m = lane_id  + g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; //0-31
-            loopcount = max / __THREADS_PER_ATOM__ + ((max % __THREADS_PER_ATOM__) == 0 ? 0 : 1);
-            iterations = 0;
+            start = g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)];
+            end = g.end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)];
+            ivec_Copy( rel_box2, g.rel_box[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] );
 
-            // pick up another atom from the neighbor cell
-            while ( iterations < loopcount )
+            /* pick up another atom from the neighbor cell */
+            for ( itr2 = 0, m = start + lane_id;
+                    itr2 < (end - start + warpSize - 1); ++itr2 )
             {
-                tnbr[threadIdx.x] = 0;
-                nbrgen = false;
-
-                // prevent recounting same pairs within a gcell 
-                if ( l < m && m < g.end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] )
+                /* prevent recounting same pairs within a gcell */
+                if ( m < end && l != m )
                 {
-                    atom2 = &my_atoms[m];
-                    dvec[0] = atom2->x[0] - atom1->x[0];
-                    dvec[1] = atom2->x[1] - atom1->x[1];
-                    dvec[2] = atom2->x[2] - atom1->x[2];
+                    dvec[0] = my_atoms[m].x[0] - x[0];
+                    dvec[1] = my_atoms[m].x[1] - x[1];
+                    dvec[2] = my_atoms[m].x[2] - x[2];
                     d = rvec_Norm_Sqr( dvec );
-
-                    if ( d <= cutoff )
-                    { 
-                        tnbr [threadIdx.x] = 1;
-                        nbrgen = true;
-                    }
                 }
 
-                if ( l > m && m < g.end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] )
-                {
-                    atom2 = &my_atoms[m];
-                    dvec[0] = atom1->x[0] - atom2->x[0];
-                    dvec[1] = atom1->x[1] - atom2->x[1];
-                    dvec[2] = atom1->x[2] - atom2->x[2];
-                    d = rvec_Norm_Sqr( dvec );
+                offset = (m < end && l != m && d <= cutoff) ? 1 : 0;
+                flag = (offset == 1) ? TRUE : FALSE;
+                cub::WarpScan<int>(temp1[threadIdx.x / warpSize]).ExclusiveSum(offset, offset);
 
-                    if ( d <= cutoff_ji )
-                    {
-                        tnbr [threadIdx.x] = 1;
-                        nbrgen = true;
-                    }
-                } 
-
-                //is neighbor generated
-                if ( nbrgen )
-                {
-                    //do leader selection here
-                    leader = -1;
-                    for ( ll = my_bucket *__THREADS_PER_ATOM__;
-                            ll < (my_bucket) * __THREADS_PER_ATOM__ + __THREADS_PER_ATOM__; ll++ )
-                    {
-                        if ( tnbr[ll] )
-                        {
-                            leader = ll;
-                            break;
-                        }
-                    }
-
-                    //do the reduction;
-                    if ( threadIdx.x == leader )
-                    {
-                        for ( ll = 1; ll < __THREADS_PER_ATOM__; ll++ )
-                        {
-                            tnbr[my_bucket * __THREADS_PER_ATOM__ + ll]
-                                    += tnbr[my_bucket * __THREADS_PER_ATOM__ + (ll-1)];
-                        }
-                    }
+                if ( flag == TRUE )
+                { 
+                    /* commit far neighbor to list */
+                    far_nbr_list.far_nbr_list.nbr[num_far + offset] = m;
+                    far_nbr_list.far_nbr_list.d[num_far + offset] = SQRT( d );
+                    rvec_Copy( far_nbr_list.far_nbr_list.dvec[num_far + offset], dvec );
+                    ivec_ScaledSum( far_nbr_list.far_nbr_list.rel_box[num_far + offset],
+                            1, rel_box2, -1, rel_box );
                 }
 
-                if ( nbrgen )
-                {
-                    far_nbr_list.far_nbr_list.nbr[
-                        num_far + nbrssofar[my_bucket] + tnbr[threadIdx.x] - 1 ] = m;
+                /* get num_far from thread in last lane */
+                num_far = num_far + offset + (flag == TRUE ? 1 : 0);
+                num_far = cub::ShuffleIndex<32>( num_far, warpSize - 1, FULL_WARP_MASK );
 
-                    if ( l < m )
-                    {
-                        dvec[0] = atom2->x[0] - atom1->x[0];
-                        dvec[1] = atom2->x[1] - atom1->x[1];
-                        dvec[2] = atom2->x[2] - atom1->x[2];
-                        d = rvec_Norm_Sqr( dvec );
-                        far_nbr_list.far_nbr_list.d[num_far] = SQRT( d );
-                        rvec_Copy( far_nbr_list.far_nbr_list.dvec[num_far], dvec );
-                        ivec_ScaledSum( far_nbr_list.far_nbr_list.rel_box[num_far],
-                                1, g.rel_box[ index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g) ], 
-                                -1, g.rel_box[ index_grid_3d(i, j, k, &g) ] );
-                    } 
-                    else
-                    {
-                        dvec[0] = atom1->x[0] - atom2->x[0];
-                        dvec[1] = atom1->x[1] - atom2->x[1];
-                        dvec[2] = atom1->x[2] - atom2->x[2];
-                        d = rvec_Norm_Sqr( dvec );
-                        far_nbr_list.far_nbr_list.d[num_far] = SQRT( d );
-                        rvec_Copy( far_nbr_list.far_nbr_list.dvec[num_far], dvec );
-                        /* CHANGE ORIGINAL
-                         * This is a bug in the original code */
-//                        ivec_ScaledSum( far_nbr_list.far_nbr_list.rel_box[num_far],
-//                                1, g.rel_box[ index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g) ], 
-//                                -1, g.rel_box[ index_grid_3d( i, j, k, &g) ] );
-                        ivec_ScaledSum( far_nbr_list.far_nbr_list.rel_box[num_far],
-                                -1, g.rel_box[ index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g) ], 
-                                1, g.rel_box[ index_grid_3d(i, j, k, &g) ] );
-                    }
-
-                    if ( threadIdx.x == leader )
-                    {
-                        nbrssofar[my_bucket] += tnbr[my_bucket *__THREADS_PER_ATOM__ + (__THREADS_PER_ATOM__ - 1)];
-                    }
-                }
-
-                m += __THREADS_PER_ATOM__;
-                iterations++;
-
-                //cleanup
-                nbrgen = false;
-                tnbr[threadIdx.x] = 0;
+                m += warpSize;
             }
         }
+
         ++itr;
-    }
+    }   
 
     if ( lane_id == 0 )
     {
-        Set_End_Index( l, num_far + nbrssofar[my_bucket], &far_nbr_list );
+        Set_End_Index( l, num_far, &far_nbr_list );
+
+        my_num_far = num_far - Start_Index( l, &far_nbr_list );
+
+        /* reallocation check */
+        if ( my_num_far > max_far_nbrs[l] )
+        {
+            *realloc_far_nbrs = TRUE;
+        }
     }
 }
 
 
-/* Estimate the number of far neighbors in full format per atom */
+/* Estimate the number of entries in the far neighbors list in full format
+ * using one thread per atom */
 CUDA_GLOBAL void k_estimate_neighbors_full( reax_atom *my_atoms, 
         simulation_box my_ext_box, grid g, int n, int N, int total_cap,
         int *far_nbrs, int *max_far_nbrs )
 {
     int i, j, k, l, m, itr, num_far;
-    real d, cutoff;
+    real cutoff;
     ivec c, nbrs_x;
-    rvec dvec;
-    reax_atom *atom1, *atom2;
+    rvec dvec, x;
 
     l = blockIdx.x * blockDim.x  + threadIdx.x;
 
@@ -406,7 +320,7 @@ CUDA_GLOBAL void k_estimate_neighbors_full( reax_atom *my_atoms,
     if ( l < N )
     {
         num_far = 0;
-        atom1 = &my_atoms[l];
+        rvec_Copy( x, my_atoms[l].x );
 
         /* get the coordinates of the atom and compute the grid cell
          * if atom is locally owned by processor AND not ghost atom */
@@ -414,7 +328,8 @@ CUDA_GLOBAL void k_estimate_neighbors_full( reax_atom *my_atoms,
         {
             for ( i = 0; i < 3; i++ )
             {
-                c[i] = (int)((my_atoms[l].x[i] - my_ext_box.min[i]) * g.inv_len[i]);   
+                c[i] = (int) ((x[i] - my_ext_box.min[i]) * g.inv_len[i]);   
+
                 if ( c[i] >= g.native_end[i] )
                 {
                     c[i] = g.native_end[i] - 1;
@@ -430,7 +345,8 @@ CUDA_GLOBAL void k_estimate_neighbors_full( reax_atom *my_atoms,
         {
             for ( i = 0; i < 3; i++ )
             {
-                c[i] = (int)((my_atoms[l].x[i] - my_ext_box.min[i]) * g.inv_len[i]);
+                c[i] = (int) ((x[i] - my_ext_box.min[i]) * g.inv_len[i]);
+
                 if ( c[i] < 0 )
                 {
                     c[i] = 0;
@@ -453,24 +369,20 @@ CUDA_GLOBAL void k_estimate_neighbors_full( reax_atom *my_atoms,
         { 
             ivec_Copy( nbrs_x, g.nbrs_x[index_grid_nbrs(i, j, k, itr, &g)] );
 
-            if ( //(g.str[index_grid_3d(i, j, k, &g)] <= g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]) &&  
-                    Cuda_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)], atom1->x) <= cutoff ) 
+            if ( Cuda_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)], x) <= cutoff ) 
             {
                 /* pick up another atom from the neighbor cell */
                 for ( m = g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; 
                         m < g.end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; ++m )
                 {
                     /* prevent recounting same pairs within a gcell */
-//                    if ( l < m )
                     if ( l != m )
                     {
-                        atom2 = &my_atoms[m];
-                        dvec[0] = atom2->x[0] - atom1->x[0];
-                        dvec[1] = atom2->x[1] - atom1->x[1];
-                        dvec[2] = atom2->x[2] - atom1->x[2];
-                        d = rvec_Norm_Sqr( dvec );
+                        dvec[0] = my_atoms[m].x[0] - x[0];
+                        dvec[1] = my_atoms[m].x[1] - x[1];
+                        dvec[2] = my_atoms[m].x[2] - x[2];
 
-                        if( d <= cutoff )
+                        if ( rvec_Norm_Sqr( dvec ) <= cutoff )
                         { 
                             num_far++;
                         }
@@ -488,7 +400,126 @@ CUDA_GLOBAL void k_estimate_neighbors_full( reax_atom *my_atoms,
     }
 
     far_nbrs[l] = num_far;
-    max_far_nbrs[l] = MAX( (int)(num_far * SAFE_ZONE), MIN_NBRS );
+    /* round up to the nearest multiple of 32 to ensure that reads along
+     * rows can be coalesced */
+    max_far_nbrs[l] = MAX( ((int) CEIL( num_far * SAFE_ZONE )
+                + warpSize - 1) / warpSize * warpSize, MIN_NBRS );
+}
+
+
+/* Estimate the number of entries in the far neighbors list in full format
+ * using one warp of threads per atom */
+CUDA_GLOBAL void k_estimate_neighbors_full_opt( reax_atom *my_atoms, 
+        simulation_box my_ext_box, grid g, int n, int N, int total_cap,
+        int *far_nbrs, int *max_far_nbrs )
+{
+    extern __shared__ cub::WarpReduce<int>::TempStorage temp2[];
+    int i, j, k, l, m, itr, num_far, lane_id;
+    real cutoff;
+    ivec c, nbrs_x;
+    rvec dvec, x;
+
+    l = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
+
+    if ( l >= total_cap )
+    {
+        return;
+    }
+
+    lane_id = (blockIdx.x * blockDim.x + threadIdx.x) % warpSize; 
+
+    if ( l < N )
+    {
+        num_far = 0;
+        rvec_Copy( x, my_atoms[l].x );
+
+        /* get the coordinates of the atom and compute the grid cell
+         * if atom is locally owned by processor AND not ghost atom */
+        if ( l < n )
+        {
+            for ( i = 0; i < 3; i++ )
+            {
+                c[i] = (int) ((x[i] - my_ext_box.min[i]) * g.inv_len[i]);   
+
+                if ( c[i] >= g.native_end[i] )
+                {
+                    c[i] = g.native_end[i] - 1;
+                }
+                else if ( c[i] < g.native_str[i] )
+                {
+                    c[i] = g.native_str[i];
+                }
+            }
+        }
+        /* same as above, but for ghost atoms */
+        else
+        {
+            for ( i = 0; i < 3; i++ )
+            {
+                c[i] = (int) ((x[i] - my_ext_box.min[i]) * g.inv_len[i]);
+
+                if ( c[i] < 0 )
+                {
+                    c[i] = 0;
+                }
+                else if ( c[i] >= g.ncells[i] )
+                {
+                    c[i] = g.ncells[i] - 1;
+                }
+            }
+        }
+
+        i = c[0];
+        j = c[1];
+        k = c[2];
+
+        cutoff = SQR( g.cutoff[index_grid_3d(i, j, k, &g)] );
+
+        itr = 0;
+        while ( g.nbrs_x[index_grid_nbrs(i, j, k, itr, &g)][0] >= 0 )
+        { 
+            ivec_Copy( nbrs_x, g.nbrs_x[index_grid_nbrs(i, j, k, itr, &g)] );
+
+            if ( Cuda_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)], x) <= cutoff ) 
+            {
+                /* pick up another atom from the neighbor cell */
+                for ( m = g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] + lane_id; 
+                        m < g.end[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)]; m += warpSize )
+                {
+                    /* prevent recounting same pairs within a gcell */
+                    if ( l != m )
+                    {
+                        dvec[0] = my_atoms[m].x[0] - x[0];
+                        dvec[1] = my_atoms[m].x[1] - x[1];
+                        dvec[2] = my_atoms[m].x[2] - x[2];
+
+                        if ( rvec_Norm_Sqr( dvec ) <= cutoff )
+                        { 
+                            num_far++;
+                        }
+                    }   
+                }
+            }
+
+            ++itr;
+        }
+
+        num_far = cub::WarpReduce<int>(temp2[threadIdx.x / warpSize]).Sum(num_far);
+    }
+    else
+    {
+        /* used to trigger assignment of max_far_nbrs below */
+        num_far = MIN_NBRS;
+    }
+
+    if ( lane_id == 0 )
+    {
+        far_nbrs[l] = num_far;
+        /* round up to the nearest multiple of 32 to ensure that reads along
+         * rows can be coalesced */
+        max_far_nbrs[l] = MAX( ((int) CEIL( num_far * SAFE_ZONE )
+                    + warpSize - 1) / warpSize * warpSize, MIN_NBRS );
+    }
 }
 
 
@@ -508,26 +539,24 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
             control->streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->streams[0] );
 
-    /* one thread per atom implementation */
-    blocks = (system->N / NBRS_BLOCK_SIZE) +
-        ((system->N % NBRS_BLOCK_SIZE) == 0 ? 0 : 1);
+//    blocks = (system->N / NBRS_BLOCK_SIZE) +
+//        ((system->N % NBRS_BLOCK_SIZE) == 0 ? 0 : 1);
+    blocks = (system->N * 32 / NBRS_BLOCK_SIZE) +
+        ((system->N * 32 % NBRS_BLOCK_SIZE) == 0 ? 0 : 1);
 
-    k_generate_neighbor_lists_full <<< blocks, NBRS_BLOCK_SIZE, 0, control->streams[0] >>>
+//    k_generate_neighbor_lists_full <<< blocks, NBRS_BLOCK_SIZE, 0, control->streams[0] >>>
+//        ( system->d_my_atoms, system->my_ext_box,
+//          system->d_my_grid, *(lists[FAR_NBRS]),
+//          system->n, system->N,
+//          system->d_far_nbrs, system->d_max_far_nbrs, system->d_realloc_far_nbrs );
+    k_generate_neighbor_lists_full_opt <<< blocks, NBRS_BLOCK_SIZE,
+                                       sizeof(cub::WarpScan<int>::TempStorage) * (DEF_BLOCK_SIZE / 32),
+                                       control->streams[0] >>>
         ( system->d_my_atoms, system->my_ext_box,
           system->d_my_grid, *(lists[FAR_NBRS]),
           system->n, system->N,
           system->d_far_nbrs, system->d_max_far_nbrs, system->d_realloc_far_nbrs );
     cudaCheckError( );
-
-    /* multiple threads per atom implementation */
-//    blocks = ((system->N * NB_KER_THREADS_PER_ATOM) / NBRS_BLOCK_SIZE) + 
-//        (((system->N * NB_KER_THREADS_PER_ATOM) % NBRS_BLOCK_SIZE) == 0 ? 0 : 1);
-//    k_mt_generate_neighbor_lists <<< blocks, NBRS_BLOCK_SIZE, 
-//        //sizeof(int) * (NBRS_BLOCK_SIZE + NBRS_BLOCK_SIZE / NB_KER_THREADS_PER_ATOM) >>>
-//        sizeof(int) * 2 * NBRS_BLOCK_SIZE, control->streams[0] >>>
-//            ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
-//              *(lists[FAR_NBRS]), system->n, system->N );
-//    cudaCheckError( );
 
     /* check reallocation flag on device */
     sCudaMemcpyAsync( &ret_far_nbr, system->d_realloc_far_nbrs, sizeof(int), 
@@ -558,10 +587,18 @@ void Cuda_Estimate_Num_Neighbors( reax_system *system, control_params *control,
     cudaEventRecord( control->time_events[TE_NBRS_START], control->streams[0] );
 #endif
 
-    blocks = system->total_cap / DEF_BLOCK_SIZE
-        + (system->total_cap % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+//    blocks = system->total_cap / DEF_BLOCK_SIZE
+//        + (system->total_cap % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+    blocks = system->total_cap * 32 / DEF_BLOCK_SIZE
+        + (system->total_cap * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
-    k_estimate_neighbors_full <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
+//    k_estimate_neighbors_full <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
+//        ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
+//          system->n, system->N, system->total_cap,
+//          system->d_far_nbrs, system->d_max_far_nbrs );
+    k_estimate_neighbors_full_opt <<< blocks, DEF_BLOCK_SIZE,
+                                  sizeof(cub::WarpReduce<int>::TempStorage) * (DEF_BLOCK_SIZE / 32),
+                                  control->streams[0] >>>
         ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
           system->n, system->N, system->total_cap,
           system->d_far_nbrs, system->d_max_far_nbrs );

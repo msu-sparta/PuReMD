@@ -538,8 +538,8 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
             reax->tbp[index1].gamma_w = SQRT( reax->sbp[i].gamma_w * reax->sbp[j].gamma_w );
             reax->tbp[index2].gamma_w = SQRT( reax->sbp[j].gamma_w * reax->sbp[i].gamma_w );
 
-            reax->tbp[index1].gamma = SQRT( reax->sbp[i].gamma * reax->sbp[j].gamma );
-            reax->tbp[index2].gamma = SQRT( reax->sbp[j].gamma * reax->sbp[i].gamma );
+            reax->tbp[index1].gamma = POW( SQRT(reax->sbp[i].gamma * reax->sbp[j].gamma), -3.0 );
+            reax->tbp[index2].gamma = POW( SQRT(reax->sbp[j].gamma * reax->sbp[i].gamma), -3.0 );
 
             /* additions for additional vdWaals interaction types - inner core */
             reax->tbp[index1].rcore = SQRT( reax->sbp[i].rcore2 * reax->sbp[j].rcore2 );

@@ -72,7 +72,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_full( reax_atom const * const my_atoms,
     real p_vdW1, p_vdW1i;
     real powr_vdW1, powgi_vdW1;
     real r_ij, fn13, exp1, exp2, e_base, de_base;
-    real Tap, dTap, dfn13, CEvd, CEclmb;
+    real tap, dtap, dfn13, CEvd, CEclmb;
     real dr3gamij_1, dr3gamij_3;
     real e_ele_, e_vdW_, e_core, de_core, e_clb, de_clb;
     rvec temp, f_i;
@@ -110,22 +110,22 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_full( reax_atom const * const my_atoms,
             self_coef = (orig_i == orig_j) ? 0.5 : 1.0;
 
             /* Calculate Taper and its derivative */
-            Tap = workspace.Tap[7] * r_ij
-                + workspace.Tap[6];
-            Tap = Tap * r_ij + workspace.Tap[5];
-            Tap = Tap * r_ij + workspace.Tap[4];
-            Tap = Tap * r_ij + workspace.Tap[3];
-            Tap = Tap * r_ij + workspace.Tap[2];
-            Tap = Tap * r_ij + workspace.Tap[1];
-            Tap = Tap * r_ij + workspace.Tap[0];
+            tap = workspace.tap_coef[7] * r_ij
+                + workspace.tap_coef[6];
+            tap = tap * r_ij + workspace.tap_coef[5];
+            tap = tap * r_ij + workspace.tap_coef[4];
+            tap = tap * r_ij + workspace.tap_coef[3];
+            tap = tap * r_ij + workspace.tap_coef[2];
+            tap = tap * r_ij + workspace.tap_coef[1];
+            tap = tap * r_ij + workspace.tap_coef[0];
 
-            dTap = 7.0 * workspace.Tap[7] * r_ij
-                + 6.0 * workspace.Tap[6];
-            dTap = dTap * r_ij + 5.0 * workspace.Tap[5];
-            dTap = dTap * r_ij + 4.0 * workspace.Tap[4];
-            dTap = dTap * r_ij + 3.0 * workspace.Tap[3];
-            dTap = dTap * r_ij + 2.0 * workspace.Tap[2];
-            dTap = dTap * r_ij + workspace.Tap[1];
+            dtap = workspace.dtap_coef[6] * r_ij
+                + workspace.dtap_coef[5];
+            dtap = dtap * r_ij + workspace.dtap_coef[4];
+            dtap = dtap * r_ij + workspace.dtap_coef[3];
+            dtap = dtap * r_ij + workspace.dtap_coef[2];
+            dtap = dtap * r_ij + workspace.dtap_coef[1];
+            dtap = dtap * r_ij + workspace.dtap_coef[0];
 
             /* vdWaals Calculations */
             if ( gp.vdw_type == 1 || gp.vdw_type == 3 )
@@ -139,7 +139,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_full( reax_atom const * const my_atoms,
                 exp2 = EXP( 0.5 * tbp[tbp_ij].alpha * (1.0 - fn13 / tbp[tbp_ij].r_vdW) );
                 e_base = tbp[tbp_ij].D * (exp1 - 2.0 * exp2);
 
-                e_vdW_ += self_coef * (e_base * Tap);
+                e_vdW_ += self_coef * (e_base * tap);
 
                 dfn13 = POW( r_ij, p_vdW1 - 1.0 )
                     * POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0 );
@@ -152,7 +152,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_full( reax_atom const * const my_atoms,
                 exp2 = EXP( 0.5 * tbp[tbp_ij].alpha * (1.0 - r_ij / tbp[tbp_ij].r_vdW) );
                 e_base = tbp[tbp_ij].D * (exp1 - 2.0 * exp2);
 
-                e_vdW_ += self_coef * (e_base * Tap);
+                e_vdW_ += self_coef * (e_base * tap);
 
                 de_base = (tbp[tbp_ij].D * tbp[tbp_ij].alpha / tbp[tbp_ij].r_vdW) * (exp2 - exp1);
             }
@@ -161,7 +161,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_full( reax_atom const * const my_atoms,
             if ( gp.vdw_type == 2 || gp.vdw_type == 3 )
             {
                 e_core = tbp[tbp_ij].ecore * EXP( tbp[tbp_ij].acore * (1.0 - (r_ij / tbp[tbp_ij].rcore)) );
-                e_vdW_ += self_coef * (e_core * Tap);
+                e_vdW_ += self_coef * (e_core * tap);
 
                 de_core = -(tbp[tbp_ij].acore / tbp[tbp_ij].rcore) * e_core;
             }
@@ -171,19 +171,18 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_full( reax_atom const * const my_atoms,
                 de_core = 0.0;
             }
 
-            CEvd = self_coef * ( (de_base + de_core) * Tap
-                    + (e_base + e_core) * dTap );
+            CEvd = self_coef * ( (de_base + de_core) * tap
+                    + (e_base + e_core) * dtap );
 
             /* Coulomb Calculations */
-            dr3gamij_1 = r_ij * r_ij * r_ij
-                + POW( tbp[tbp_ij].gamma, -3.0 );
+            dr3gamij_1 = r_ij * r_ij * r_ij + tbp[tbp_ij].gamma;
             dr3gamij_3 = CBRT( dr3gamij_1 );
             e_clb = C_ELE * (my_atoms[i].q * my_atoms[j].q) / dr3gamij_3;
-            e_ele_ += self_coef * (e_clb * Tap);
+            e_ele_ += self_coef * (e_clb * tap);
 
             de_clb = -C_ELE * (my_atoms[i].q * my_atoms[j].q)
                     * (r_ij * r_ij) / POW( dr3gamij_1, 4.0 / 3.0 );
-            CEclmb = self_coef * (de_clb * Tap + e_clb * dTap);
+            CEclmb = self_coef * (de_clb * tap + e_clb * dtap);
 
             rvec_Scale( temp, -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
             rvec_Add( f_i, temp );
@@ -219,7 +218,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full( reax_atom const * const my_at
     real p_vdW1, p_vdW1i;
     real powr_vdW1, powgi_vdW1;
     real r_ij, fn13, exp1, exp2, e_base, de_base;
-    real Tap, dTap, dfn13, CEvd, CEclmb;
+    real tap, dtap, dfn13, CEvd, CEclmb;
     real dr3gamij_1, dr3gamij_3;
     real e_ele_, e_vdW_, e_core, de_core, e_clb, de_clb;
     rvec temp, f_i, ext_press_;
@@ -258,22 +257,22 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full( reax_atom const * const my_at
             self_coef = (orig_i == orig_j) ? 0.5 : 1.0;
 
             /* Calculate Taper and its derivative */
-            Tap = workspace.Tap[7] * r_ij
-                + workspace.Tap[6];
-            Tap = Tap * r_ij + workspace.Tap[5];
-            Tap = Tap * r_ij + workspace.Tap[4];
-            Tap = Tap * r_ij + workspace.Tap[3];
-            Tap = Tap * r_ij + workspace.Tap[2];
-            Tap = Tap * r_ij + workspace.Tap[1];
-            Tap = Tap * r_ij + workspace.Tap[0];
+            tap = workspace.tap_coef[7] * r_ij
+                + workspace.tap_coef[6];
+            tap = tap * r_ij + workspace.tap_coef[5];
+            tap = tap * r_ij + workspace.tap_coef[4];
+            tap = tap * r_ij + workspace.tap_coef[3];
+            tap = tap * r_ij + workspace.tap_coef[2];
+            tap = tap * r_ij + workspace.tap_coef[1];
+            tap = tap * r_ij + workspace.tap_coef[0];
 
-            dTap = 7.0 * workspace.Tap[7] * r_ij
-                + 6.0 * workspace.Tap[6];
-            dTap = dTap * r_ij + 5.0 * workspace.Tap[5];
-            dTap = dTap * r_ij + 4.0 * workspace.Tap[4];
-            dTap = dTap * r_ij + 3.0 * workspace.Tap[3];
-            dTap = dTap * r_ij + 2.0 * workspace.Tap[2];
-            dTap = dTap * r_ij + workspace.Tap[1];
+            dtap = workspace.dtap_coef[6] * r_ij
+                + workspace.dtap_coef[5];
+            dtap = dtap * r_ij + workspace.dtap_coef[4];
+            dtap = dtap * r_ij + workspace.dtap_coef[3];
+            dtap = dtap * r_ij + workspace.dtap_coef[2];
+            dtap = dtap * r_ij + workspace.dtap_coef[1];
+            dtap = dtap * r_ij + workspace.dtap_coef[0];
 
             /* vdWaals Calculations */
             if ( gp.vdw_type == 1 || gp.vdw_type == 3 )
@@ -287,7 +286,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full( reax_atom const * const my_at
                 exp2 = EXP( 0.5 * tbp[tbp_ij].alpha * (1.0 - fn13 / tbp[tbp_ij].r_vdW) );
                 e_base = tbp[tbp_ij].D * (exp1 - 2.0 * exp2);
 
-                e_vdW_ += self_coef * (e_base * Tap);
+                e_vdW_ += self_coef * (e_base * tap);
 
                 dfn13 = POW( r_ij, p_vdW1 - 1.0 )
                     * POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0 );
@@ -300,7 +299,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full( reax_atom const * const my_at
                 exp2 = EXP( 0.5 * tbp[tbp_ij].alpha * (1.0 - r_ij / tbp[tbp_ij].r_vdW) );
                 e_base = tbp[tbp_ij].D * (exp1 - 2.0 * exp2);
 
-                e_vdW_ += self_coef * (e_base * Tap);
+                e_vdW_ += self_coef * (e_base * tap);
 
                 de_base = (tbp[tbp_ij].D * tbp[tbp_ij].alpha / tbp[tbp_ij].r_vdW) * (exp2 - exp1);
             }
@@ -309,7 +308,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full( reax_atom const * const my_at
             if ( gp.vdw_type == 2 || gp.vdw_type == 3 )
             {
                 e_core = tbp[tbp_ij].ecore * EXP( tbp[tbp_ij].acore * (1.0 - (r_ij / tbp[tbp_ij].rcore)) );
-                e_vdW_ += self_coef * (e_core * Tap);
+                e_vdW_ += self_coef * (e_core * tap);
 
                 de_core = -(tbp[tbp_ij].acore / tbp[tbp_ij].rcore) * e_core;
             }
@@ -319,19 +318,18 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full( reax_atom const * const my_at
                 de_core = 0.0;
             }
 
-            CEvd = self_coef * ( (de_base + de_core) * Tap
-                    + (e_base + e_core) * dTap );
+            CEvd = self_coef * ( (de_base + de_core) * tap
+                    + (e_base + e_core) * dtap );
 
             /* Coulomb Calculations */
-            dr3gamij_1 = r_ij * r_ij * r_ij
-                + POW( tbp[tbp_ij].gamma, -3.0 );
+            dr3gamij_1 = r_ij * r_ij * r_ij + tbp[tbp_ij].gamma;
             dr3gamij_3 = CBRT( dr3gamij_1 );
             e_clb = C_ELE * (my_atoms[i].q * my_atoms[j].q) / dr3gamij_3;
-            e_ele_ += self_coef * (e_clb * Tap);
+            e_ele_ += self_coef * (e_clb * tap);
 
             de_clb = -C_ELE * (my_atoms[i].q * my_atoms[j].q)
                     * (r_ij * r_ij) / POW( dr3gamij_1, 4.0 / 3.0 );
-            CEclmb = self_coef * (de_clb * Tap + e_clb * dTap);
+            CEclmb = self_coef * (de_clb * tap + e_clb * dtap);
 
             /* for pressure coupling, terms not related to bond order 
                derivatives are added directly into pressure vector/tensor */
@@ -377,7 +375,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_full_opt( reax_atom const * const my_atoms
     real p_vdW1, p_vdW1i;
     real powr_vdW1, powgi_vdW1;
     real r_ij, fn13, exp1, exp2, e_base, de_base;
-    real Tap, dTap, dfn13, CEvd, CEclmb;
+    real tap, dtap, dfn13, CEvd, CEclmb;
     real dr3gamij_1, dr3gamij_3;
     real e_vdW_, e_ele_, e_core, de_core, e_clb, de_clb;
     rvec temp, f_i;
@@ -420,22 +418,22 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_full_opt( reax_atom const * const my_atoms
             self_coef = (orig_i == orig_j) ? 0.5 : 1.0;
 
             /* Calculate Taper and its derivative */
-            Tap = workspace.Tap[7] * r_ij
-                + workspace.Tap[6];
-            Tap = Tap * r_ij + workspace.Tap[5];
-            Tap = Tap * r_ij + workspace.Tap[4];
-            Tap = Tap * r_ij + workspace.Tap[3];
-            Tap = Tap * r_ij + workspace.Tap[2];
-            Tap = Tap * r_ij + workspace.Tap[1];
-            Tap = Tap * r_ij + workspace.Tap[0];
+            tap = workspace.tap_coef[7] * r_ij
+                + workspace.tap_coef[6];
+            tap = tap * r_ij + workspace.tap_coef[5];
+            tap = tap * r_ij + workspace.tap_coef[4];
+            tap = tap * r_ij + workspace.tap_coef[3];
+            tap = tap * r_ij + workspace.tap_coef[2];
+            tap = tap * r_ij + workspace.tap_coef[1];
+            tap = tap * r_ij + workspace.tap_coef[0];
 
-            dTap = 7.0 * workspace.Tap[7] * r_ij
-                + 6.0 * workspace.Tap[6];
-            dTap = dTap * r_ij + 5.0 * workspace.Tap[5];
-            dTap = dTap * r_ij + 4.0 * workspace.Tap[4];
-            dTap = dTap * r_ij + 3.0 * workspace.Tap[3];
-            dTap = dTap * r_ij + 2.0 * workspace.Tap[2];
-            dTap = dTap * r_ij + workspace.Tap[1];
+            dtap = workspace.dtap_coef[6] * r_ij
+                + workspace.dtap_coef[5];
+            dtap = dtap * r_ij + workspace.dtap_coef[4];
+            dtap = dtap * r_ij + workspace.dtap_coef[3];
+            dtap = dtap * r_ij + workspace.dtap_coef[2];
+            dtap = dtap * r_ij + workspace.dtap_coef[1];
+            dtap = dtap * r_ij + workspace.dtap_coef[0];
 
             /* vdWaals Calculations */
             if ( gp.vdw_type == 1 || gp.vdw_type == 3 )
@@ -449,7 +447,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_full_opt( reax_atom const * const my_atoms
                 exp2 = EXP( 0.5 * tbp[tbp_ij].alpha * (1.0 - fn13 / tbp[tbp_ij].r_vdW) );
                 e_base = tbp[tbp_ij].D * (exp1 - 2.0 * exp2);
 
-                e_vdW_ += self_coef * (e_base * Tap);
+                e_vdW_ += self_coef * (e_base * tap);
 
                 dfn13 = POW( r_ij, p_vdW1 - 1.0 )
                     * POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0 );
@@ -462,7 +460,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_full_opt( reax_atom const * const my_atoms
                 exp2 = EXP( 0.5 * tbp[tbp_ij].alpha * (1.0 - r_ij / tbp[tbp_ij].r_vdW) );
                 e_base = tbp[tbp_ij].D * (exp1 - 2.0 * exp2);
 
-                e_vdW_ += self_coef * (e_base * Tap);
+                e_vdW_ += self_coef * (e_base * tap);
 
                 de_base = (tbp[tbp_ij].D * tbp[tbp_ij].alpha / tbp[tbp_ij].r_vdW) * (exp2 - exp1);
             }
@@ -471,7 +469,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_full_opt( reax_atom const * const my_atoms
             if ( gp.vdw_type == 2 || gp.vdw_type == 3 )
             {
                 e_core = tbp[tbp_ij].ecore * EXP( tbp[tbp_ij].acore * (1.0 - (r_ij / tbp[tbp_ij].rcore)) );
-                e_vdW_ += self_coef * (e_core * Tap);
+                e_vdW_ += self_coef * (e_core * tap);
 
                 de_core = -(tbp[tbp_ij].acore / tbp[tbp_ij].rcore) * e_core;
             }
@@ -481,19 +479,18 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_full_opt( reax_atom const * const my_atoms
                 de_core = 0.0;
             }
 
-            CEvd = self_coef * ( (de_base + de_core) * Tap
-                    + (e_base + e_core) * dTap );
+            CEvd = self_coef * ( (de_base + de_core) * tap
+                    + (e_base + e_core) * dtap );
 
             /* Coulomb Calculations */
-            dr3gamij_1 = r_ij * r_ij * r_ij
-                + POW( tbp[tbp_ij].gamma, -3.0 );
+            dr3gamij_1 = r_ij * r_ij * r_ij + tbp[tbp_ij].gamma;
             dr3gamij_3 = CBRT( dr3gamij_1 );
             e_clb = C_ELE * (my_atoms[i].q * my_atoms[j].q) / dr3gamij_3;
-            e_ele_ += self_coef * (e_clb * Tap);
+            e_ele_ += self_coef * (e_clb * tap);
 
             de_clb = -C_ELE * (my_atoms[i].q * my_atoms[j].q)
                     * (r_ij * r_ij) / POW( dr3gamij_1, 4.0 / 3.0 );
-            CEclmb = self_coef * (de_clb * Tap + e_clb * dTap);
+            CEclmb = self_coef * (de_clb * tap + e_clb * dtap);
 
             rvec_Scale( temp, -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
             rvec_Add( f_i, temp );
@@ -543,7 +540,7 @@ CUDA_GLOBAL void k_vdW_energy_type1_full_opt( reax_atom const * const my_atoms,
     real p_vdW1, p_vdW1i;
     real powr_vdW1, powgi_vdW1;
     real r_ij, fn13, exp1, exp2, e_base, de_base;
-    real Tap, dTap, Tap_l[8], dfn13, CEvd;
+    real tap, dtap, tap_coef[8], dtap_coef[7], dfn13, CEvd;
     real e_vdW_;
     rvec temp, f_i;
     int warp_id, lane_id;
@@ -566,10 +563,22 @@ CUDA_GLOBAL void k_vdW_energy_type1_full_opt( reax_atom const * const my_atoms,
     end_i = End_Index( i, &far_nbr_list );
     orig_i = my_atoms[i].orig_id;
 
-    for ( pj = 0; pj < 8; ++pj )
-    {
-        Tap_l[pj] = workspace.Tap[pj];
-    }
+    tap_coef[0] = workspace.tap_coef[0];
+    tap_coef[1] = workspace.tap_coef[1];
+    tap_coef[2] = workspace.tap_coef[2];
+    tap_coef[3] = workspace.tap_coef[3];
+    tap_coef[4] = workspace.tap_coef[4];
+    tap_coef[5] = workspace.tap_coef[5];
+    tap_coef[6] = workspace.tap_coef[6];
+    tap_coef[7] = workspace.tap_coef[7];
+
+    dtap_coef[0] = workspace.dtap_coef[0];
+    dtap_coef[1] = workspace.dtap_coef[1];
+    dtap_coef[2] = workspace.dtap_coef[2];
+    dtap_coef[3] = workspace.dtap_coef[3];
+    dtap_coef[4] = workspace.dtap_coef[4];
+    dtap_coef[5] = workspace.dtap_coef[5];
+    dtap_coef[6] = workspace.dtap_coef[6];
 
     pj = start_i + lane_id;
     while ( pj < end_i )
@@ -588,20 +597,20 @@ CUDA_GLOBAL void k_vdW_energy_type1_full_opt( reax_atom const * const my_atoms,
             self_coef = (orig_i == orig_j) ? 0.5 : 1.0;
 
             /* Calculate Taper and its derivative */
-            Tap = Tap_l[7] * r_ij + Tap_l[6];
-            Tap = Tap * r_ij + Tap_l[5];
-            Tap = Tap * r_ij + Tap_l[4];
-            Tap = Tap * r_ij + Tap_l[3];
-            Tap = Tap * r_ij + Tap_l[2];
-            Tap = Tap * r_ij + Tap_l[1];
-            Tap = Tap * r_ij + Tap_l[0];
+            tap = tap_coef[7] * r_ij + tap_coef[6];
+            tap = tap * r_ij + tap_coef[5];
+            tap = tap * r_ij + tap_coef[4];
+            tap = tap * r_ij + tap_coef[3];
+            tap = tap * r_ij + tap_coef[2];
+            tap = tap * r_ij + tap_coef[1];
+            tap = tap * r_ij + tap_coef[0];
 
-            dTap = 7.0 * Tap_l[7] * r_ij + 6.0 * Tap_l[6];
-            dTap = dTap * r_ij + 5.0 * Tap_l[5];
-            dTap = dTap * r_ij + 4.0 * Tap_l[4];
-            dTap = dTap * r_ij + 3.0 * Tap_l[3];
-            dTap = dTap * r_ij + 2.0 * Tap_l[2];
-            dTap = dTap * r_ij + Tap_l[1];
+            dtap = dtap_coef[6] * r_ij + dtap_coef[5];
+            dtap = dtap * r_ij + dtap_coef[4];
+            dtap = dtap * r_ij + dtap_coef[3];
+            dtap = dtap * r_ij + dtap_coef[2];
+            dtap = dtap * r_ij + dtap_coef[1];
+            dtap = dtap * r_ij + dtap_coef[0];
 
             /* vdWaals Calculations */
             /* shielding */
@@ -613,13 +622,13 @@ CUDA_GLOBAL void k_vdW_energy_type1_full_opt( reax_atom const * const my_atoms,
             exp2 = EXP( 0.5 * tbp[tbp_ij].alpha * (1.0 - fn13 / tbp[tbp_ij].r_vdW) );
             e_base = tbp[tbp_ij].D * (exp1 - 2.0 * exp2);
 
-            e_vdW_ += self_coef * (e_base * Tap);
+            e_vdW_ += self_coef * (e_base * tap);
 
             dfn13 = POW( r_ij, p_vdW1 - 1.0 )
                 * POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0 );
             de_base = (tbp[tbp_ij].D * tbp[tbp_ij].alpha / tbp[tbp_ij].r_vdW) * (exp2 - exp1) * dfn13;
 
-            CEvd = self_coef * (de_base * Tap + e_base * dTap);
+            CEvd = self_coef * (de_base * tap + e_base * dtap);
 
             rvec_Scale( temp, -CEvd / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
             rvec_Add( f_i, temp );
@@ -664,7 +673,7 @@ CUDA_GLOBAL void k_vdW_energy_type2_full_opt( reax_atom const * const my_atoms,
     int start_i, end_i, orig_i, orig_j, tbp_ij;
     real self_coef;
     real r_ij, exp1, exp2, e_base, de_base;
-    real Tap, dTap, Tap_l[8], CEvd;
+    real tap, dtap, tap_coef[8], dtap_coef[7], CEvd;
     real e_vdW_, e_core, de_core;
     rvec temp, f_i;
     int warp_id, lane_id;
@@ -685,10 +694,22 @@ CUDA_GLOBAL void k_vdW_energy_type2_full_opt( reax_atom const * const my_atoms,
     end_i = End_Index( i, &far_nbr_list );
     orig_i = my_atoms[i].orig_id;
 
-    for ( pj = 0; pj < 8; ++pj )
-    {
-        Tap_l[pj] = workspace.Tap[pj];
-    }
+    tap_coef[0] = workspace.tap_coef[0];
+    tap_coef[1] = workspace.tap_coef[1];
+    tap_coef[2] = workspace.tap_coef[2];
+    tap_coef[3] = workspace.tap_coef[3];
+    tap_coef[4] = workspace.tap_coef[4];
+    tap_coef[5] = workspace.tap_coef[5];
+    tap_coef[6] = workspace.tap_coef[6];
+    tap_coef[7] = workspace.tap_coef[7];
+
+    dtap_coef[0] = workspace.dtap_coef[0];
+    dtap_coef[1] = workspace.dtap_coef[1];
+    dtap_coef[2] = workspace.dtap_coef[2];
+    dtap_coef[3] = workspace.dtap_coef[3];
+    dtap_coef[4] = workspace.dtap_coef[4];
+    dtap_coef[5] = workspace.dtap_coef[5];
+    dtap_coef[6] = workspace.dtap_coef[6];
 
     pj = start_i + lane_id;
     while ( pj < end_i )
@@ -707,20 +728,20 @@ CUDA_GLOBAL void k_vdW_energy_type2_full_opt( reax_atom const * const my_atoms,
             self_coef = (orig_i == orig_j) ? 0.5 : 1.0;
 
             /* Calculate Taper and its derivative */
-            Tap = Tap_l[7] * r_ij + Tap_l[6];
-            Tap = Tap * r_ij + Tap_l[5];
-            Tap = Tap * r_ij + Tap_l[4];
-            Tap = Tap * r_ij + Tap_l[3];
-            Tap = Tap * r_ij + Tap_l[2];
-            Tap = Tap * r_ij + Tap_l[1];
-            Tap = Tap * r_ij + Tap_l[0];
+            tap = tap_coef[7] * r_ij + tap_coef[6];
+            tap = tap * r_ij + tap_coef[5];
+            tap = tap * r_ij + tap_coef[4];
+            tap = tap * r_ij + tap_coef[3];
+            tap = tap * r_ij + tap_coef[2];
+            tap = tap * r_ij + tap_coef[1];
+            tap = tap * r_ij + tap_coef[0];
 
-            dTap = 7.0 * Tap_l[7] * r_ij + 6.0 * Tap_l[6];
-            dTap = dTap * r_ij + 5.0 * Tap_l[5];
-            dTap = dTap * r_ij + 4.0 * Tap_l[4];
-            dTap = dTap * r_ij + 3.0 * Tap_l[3];
-            dTap = dTap * r_ij + 2.0 * Tap_l[2];
-            dTap = dTap * r_ij + Tap_l[1];
+            dtap = dtap_coef[6] * r_ij + dtap_coef[5];
+            dtap = dtap * r_ij + dtap_coef[4];
+            dtap = dtap * r_ij + dtap_coef[3];
+            dtap = dtap * r_ij + dtap_coef[2];
+            dtap = dtap * r_ij + dtap_coef[1];
+            dtap = dtap * r_ij + dtap_coef[0];
 
             /* vdWaals Calculations */
             /* no shielding */
@@ -728,18 +749,18 @@ CUDA_GLOBAL void k_vdW_energy_type2_full_opt( reax_atom const * const my_atoms,
             exp2 = EXP( 0.5 * tbp[tbp_ij].alpha * (1.0 - r_ij / tbp[tbp_ij].r_vdW) );
             e_base = tbp[tbp_ij].D * (exp1 - 2.0 * exp2);
 
-            e_vdW_ += self_coef * (e_base * Tap);
+            e_vdW_ += self_coef * (e_base * tap);
 
             de_base = (tbp[tbp_ij].D * tbp[tbp_ij].alpha / tbp[tbp_ij].r_vdW) * (exp2 - exp1);
 
             /* calculate inner core repulsion */
             e_core = tbp[tbp_ij].ecore * EXP( tbp[tbp_ij].acore * (1.0 - (r_ij / tbp[tbp_ij].rcore)) );
-            e_vdW_ += self_coef * (e_core * Tap);
+            e_vdW_ += self_coef * (e_core * tap);
 
             de_core = -(tbp[tbp_ij].acore / tbp[tbp_ij].rcore) * e_core;
 
-            CEvd = self_coef * ((de_base + de_core) * Tap
-                    + (e_base + e_core) * dTap);
+            CEvd = self_coef * ((de_base + de_core) * tap
+                    + (e_base + e_core) * dtap);
 
             rvec_Scale( temp, -CEvd / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
             rvec_Add( f_i, temp );
@@ -786,7 +807,7 @@ CUDA_GLOBAL void k_vdW_energy_type3_full_opt( reax_atom const * const my_atoms,
     real p_vdW1, p_vdW1i;
     real powr_vdW1, powgi_vdW1;
     real r_ij, fn13, exp1, exp2, e_base, de_base;
-    real Tap, dTap, Tap_l[8], dfn13, CEvd;
+    real tap, dtap, tap_coef[8], dtap_coef[7], dfn13, CEvd;
     real e_vdW_, e_core, de_core;
     rvec temp, f_i;
     int warp_id, lane_id;
@@ -809,10 +830,22 @@ CUDA_GLOBAL void k_vdW_energy_type3_full_opt( reax_atom const * const my_atoms,
     end_i = End_Index( i, &far_nbr_list );
     orig_i = my_atoms[i].orig_id;
 
-    for ( pj = 0; pj < 8; ++pj )
-    {
-        Tap_l[pj] = workspace.Tap[pj];
-    }
+    tap_coef[0] = workspace.tap_coef[0];
+    tap_coef[1] = workspace.tap_coef[1];
+    tap_coef[2] = workspace.tap_coef[2];
+    tap_coef[3] = workspace.tap_coef[3];
+    tap_coef[4] = workspace.tap_coef[4];
+    tap_coef[5] = workspace.tap_coef[5];
+    tap_coef[6] = workspace.tap_coef[6];
+    tap_coef[7] = workspace.tap_coef[7];
+
+    dtap_coef[0] = workspace.dtap_coef[0];
+    dtap_coef[1] = workspace.dtap_coef[1];
+    dtap_coef[2] = workspace.dtap_coef[2];
+    dtap_coef[3] = workspace.dtap_coef[3];
+    dtap_coef[4] = workspace.dtap_coef[4];
+    dtap_coef[5] = workspace.dtap_coef[5];
+    dtap_coef[6] = workspace.dtap_coef[6];
 
     pj = start_i + lane_id;
     while ( pj < end_i )
@@ -831,20 +864,20 @@ CUDA_GLOBAL void k_vdW_energy_type3_full_opt( reax_atom const * const my_atoms,
             self_coef = (orig_i == orig_j) ? 0.5 : 1.0;
 
             /* Calculate Taper and its derivative */
-            Tap = Tap_l[7] * r_ij + Tap_l[6];
-            Tap = Tap * r_ij + Tap_l[5];
-            Tap = Tap * r_ij + Tap_l[4];
-            Tap = Tap * r_ij + Tap_l[3];
-            Tap = Tap * r_ij + Tap_l[2];
-            Tap = Tap * r_ij + Tap_l[1];
-            Tap = Tap * r_ij + Tap_l[0];
+            tap = tap_coef[7] * r_ij + tap_coef[6];
+            tap = tap * r_ij + tap_coef[5];
+            tap = tap * r_ij + tap_coef[4];
+            tap = tap * r_ij + tap_coef[3];
+            tap = tap * r_ij + tap_coef[2];
+            tap = tap * r_ij + tap_coef[1];
+            tap = tap * r_ij + tap_coef[0];
 
-            dTap = 7.0 * Tap_l[7] * r_ij + 6.0 * Tap_l[6];
-            dTap = dTap * r_ij + 5.0 * Tap_l[5];
-            dTap = dTap * r_ij + 4.0 * Tap_l[4];
-            dTap = dTap * r_ij + 3.0 * Tap_l[3];
-            dTap = dTap * r_ij + 2.0 * Tap_l[2];
-            dTap = dTap * r_ij + Tap_l[1];
+            dtap = dtap_coef[6] * r_ij + dtap_coef[5];
+            dtap = dtap * r_ij + dtap_coef[4];
+            dtap = dtap * r_ij + dtap_coef[3];
+            dtap = dtap * r_ij + dtap_coef[2];
+            dtap = dtap * r_ij + dtap_coef[1];
+            dtap = dtap * r_ij + dtap_coef[0];
 
             /* vdWaals Calculations */
             /* shielding */
@@ -856,7 +889,7 @@ CUDA_GLOBAL void k_vdW_energy_type3_full_opt( reax_atom const * const my_atoms,
             exp2 = EXP( 0.5 * tbp[tbp_ij].alpha * (1.0 - fn13 / tbp[tbp_ij].r_vdW) );
             e_base = tbp[tbp_ij].D * (exp1 - 2.0 * exp2);
 
-            e_vdW_ += self_coef * (e_base * Tap);
+            e_vdW_ += self_coef * (e_base * tap);
 
             dfn13 = POW( r_ij, p_vdW1 - 1.0 )
                 * POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0 );
@@ -864,12 +897,12 @@ CUDA_GLOBAL void k_vdW_energy_type3_full_opt( reax_atom const * const my_atoms,
 
             /* calculate inner core repulsion */
             e_core = tbp[tbp_ij].ecore * EXP( tbp[tbp_ij].acore * (1.0 - (r_ij / tbp[tbp_ij].rcore)) );
-            e_vdW_ += self_coef * (e_core * Tap);
+            e_vdW_ += self_coef * (e_core * tap);
 
             de_core = -(tbp[tbp_ij].acore / tbp[tbp_ij].rcore) * e_core;
 
-            CEvd = self_coef * ((de_base + de_core) * Tap
-                    + (e_base + e_core) * dTap);
+            CEvd = self_coef * ((de_base + de_core) * tap
+                    + (e_base + e_core) * dtap);
 
             rvec_Scale( temp, -CEvd / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
             rvec_Add( f_i, temp );
@@ -913,7 +946,7 @@ CUDA_GLOBAL void k_coulomb_energy_full_opt( reax_atom const * const my_atoms,
     int start_i, end_i, orig_i, orig_j, tbp_ij;
     real self_coef;
     real r_ij;
-    real Tap, dTap, Tap_l[8], CEclmb;
+    real tap, dtap, tap_coef[8], dtap_coef[7], CEclmb;
     real dr3gamij_1, dr3gamij_3;
     real e_ele_, e_clb, de_clb;
     rvec temp, f_i;
@@ -936,10 +969,22 @@ CUDA_GLOBAL void k_coulomb_energy_full_opt( reax_atom const * const my_atoms,
     end_i = End_Index( i, &far_nbr_list );
     orig_i = my_atoms[i].orig_id;
 
-    for ( pj = 0; pj < 8; ++pj )
-    {
-        Tap_l[pj] = workspace.Tap[pj];
-    }
+    tap_coef[0] = workspace.tap_coef[0];
+    tap_coef[1] = workspace.tap_coef[1];
+    tap_coef[2] = workspace.tap_coef[2];
+    tap_coef[3] = workspace.tap_coef[3];
+    tap_coef[4] = workspace.tap_coef[4];
+    tap_coef[5] = workspace.tap_coef[5];
+    tap_coef[6] = workspace.tap_coef[6];
+    tap_coef[7] = workspace.tap_coef[7];
+
+    dtap_coef[0] = workspace.dtap_coef[0];
+    dtap_coef[1] = workspace.dtap_coef[1];
+    dtap_coef[2] = workspace.dtap_coef[2];
+    dtap_coef[3] = workspace.dtap_coef[3];
+    dtap_coef[4] = workspace.dtap_coef[4];
+    dtap_coef[5] = workspace.dtap_coef[5];
+    dtap_coef[6] = workspace.dtap_coef[6];
 
     pj = start_i + lane_id;
     while ( pj < end_i )
@@ -958,31 +1003,30 @@ CUDA_GLOBAL void k_coulomb_energy_full_opt( reax_atom const * const my_atoms,
             self_coef = (orig_i == orig_j) ? 0.5 : 1.0;
 
             /* Calculate Taper and its derivative */
-            Tap = Tap_l[7] * r_ij + Tap_l[6];
-            Tap = Tap * r_ij + Tap_l[5];
-            Tap = Tap * r_ij + Tap_l[4];
-            Tap = Tap * r_ij + Tap_l[3];
-            Tap = Tap * r_ij + Tap_l[2];
-            Tap = Tap * r_ij + Tap_l[1];
-            Tap = Tap * r_ij + Tap_l[0];
+            tap = tap_coef[7] * r_ij + tap_coef[6];
+            tap = tap * r_ij + tap_coef[5];
+            tap = tap * r_ij + tap_coef[4];
+            tap = tap * r_ij + tap_coef[3];
+            tap = tap * r_ij + tap_coef[2];
+            tap = tap * r_ij + tap_coef[1];
+            tap = tap * r_ij + tap_coef[0];
 
-            dTap = 7.0 * Tap_l[7] * r_ij + 6.0 * Tap_l[6];
-            dTap = dTap * r_ij + 5.0 * Tap_l[5];
-            dTap = dTap * r_ij + 4.0 * Tap_l[4];
-            dTap = dTap * r_ij + 3.0 * Tap_l[3];
-            dTap = dTap * r_ij + 2.0 * Tap_l[2];
-            dTap = dTap * r_ij + Tap_l[1];
+            dtap = dtap_coef[6] * r_ij + dtap_coef[5];
+            dtap = dtap * r_ij + dtap_coef[4];
+            dtap = dtap * r_ij + dtap_coef[3];
+            dtap = dtap * r_ij + dtap_coef[2];
+            dtap = dtap * r_ij + dtap_coef[1];
+            dtap = dtap * r_ij + dtap_coef[0];
 
             /* Coulomb Calculations */
-            dr3gamij_1 = r_ij * r_ij * r_ij
-                + POW( tbp[tbp_ij].gamma, -3.0 );
+            dr3gamij_1 = r_ij * r_ij * r_ij + tbp[tbp_ij].gamma;
             dr3gamij_3 = CBRT( dr3gamij_1 );
             e_clb = C_ELE * (my_atoms[i].q * my_atoms[j].q) / dr3gamij_3;
-            e_ele_ += self_coef * (e_clb * Tap);
+            e_ele_ += self_coef * (e_clb * tap);
 
             de_clb = -C_ELE * (my_atoms[i].q * my_atoms[j].q)
                     * (r_ij * r_ij) / POW( dr3gamij_1, 4.0 / 3.0 );
-            CEclmb = self_coef * (de_clb * Tap + e_clb * dTap);
+            CEclmb = self_coef * (de_clb * tap + e_clb * dtap);
 
             rvec_Scale( temp, -CEclmb / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
             rvec_Add( f_i, temp );
@@ -1028,7 +1072,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full_opt( reax_atom const * const m
     real p_vdW1, p_vdW1i;
     real powr_vdW1, powgi_vdW1;
     real r_ij, fn13, exp1, exp2, e_base, de_base;
-    real Tap, dTap, dfn13, CEvd, CEclmb;
+    real tap, dtap, dfn13, CEvd, CEclmb;
     real dr3gamij_1, dr3gamij_3;
     real e_vdW_, e_ele_, e_core, de_core, e_clb, de_clb;
     rvec temp, f_i, ext_press_;
@@ -1072,22 +1116,22 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full_opt( reax_atom const * const m
             self_coef = (orig_i == orig_j) ? 0.5 : 1.0;
 
             /* Calculate Taper and its derivative */
-            Tap = workspace.Tap[7] * r_ij
-                + workspace.Tap[6];
-            Tap = Tap * r_ij + workspace.Tap[5];
-            Tap = Tap * r_ij + workspace.Tap[4];
-            Tap = Tap * r_ij + workspace.Tap[3];
-            Tap = Tap * r_ij + workspace.Tap[2];
-            Tap = Tap * r_ij + workspace.Tap[1];
-            Tap = Tap * r_ij + workspace.Tap[0];
+            tap = workspace.tap_coef[7] * r_ij
+                + workspace.tap_coef[6];
+            tap = tap * r_ij + workspace.tap_coef[5];
+            tap = tap * r_ij + workspace.tap_coef[4];
+            tap = tap * r_ij + workspace.tap_coef[3];
+            tap = tap * r_ij + workspace.tap_coef[2];
+            tap = tap * r_ij + workspace.tap_coef[1];
+            tap = tap * r_ij + workspace.tap_coef[0];
 
-            dTap = 7.0 * workspace.Tap[7] * r_ij
-                + 6.0 * workspace.Tap[6];
-            dTap = dTap * r_ij + 5.0 * workspace.Tap[5];
-            dTap = dTap * r_ij + 4.0 * workspace.Tap[4];
-            dTap = dTap * r_ij + 3.0 * workspace.Tap[3];
-            dTap = dTap * r_ij + 2.0 * workspace.Tap[2];
-            dTap = dTap * r_ij + workspace.Tap[1];
+            dtap = workspace.dtap_coef[6] * r_ij
+                + workspace.dtap_coef[5];
+            dtap = dtap * r_ij + workspace.dtap_coef[4];
+            dtap = dtap * r_ij + workspace.dtap_coef[3];
+            dtap = dtap * r_ij + workspace.dtap_coef[2];
+            dtap = dtap * r_ij + workspace.dtap_coef[1];
+            dtap = dtap * r_ij + workspace.dtap_coef[0];
 
             /* vdWaals Calculations */
             if ( gp.vdw_type == 1 || gp.vdw_type == 3 )
@@ -1101,7 +1145,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full_opt( reax_atom const * const m
                 exp2 = EXP( 0.5 * tbp[tbp_ij].alpha * (1.0 - fn13 / tbp[tbp_ij].r_vdW) );
                 e_base = tbp[tbp_ij].D * (exp1 - 2.0 * exp2);
 
-                e_vdW_ += self_coef * (e_base * Tap);
+                e_vdW_ += self_coef * (e_base * tap);
 
                 dfn13 = POW( r_ij, p_vdW1 - 1.0 )
                     * POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0 );
@@ -1114,7 +1158,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full_opt( reax_atom const * const m
                 exp2 = EXP( 0.5 * tbp[tbp_ij].alpha * (1.0 - r_ij / tbp[tbp_ij].r_vdW) );
                 e_base = tbp[tbp_ij].D * (exp1 - 2.0 * exp2);
 
-                e_vdW_ += self_coef * (e_base * Tap);
+                e_vdW_ += self_coef * (e_base * tap);
 
                 de_base = (tbp[tbp_ij].D * tbp[tbp_ij].alpha / tbp[tbp_ij].r_vdW) * (exp2 - exp1);
             }
@@ -1123,7 +1167,7 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full_opt( reax_atom const * const m
             if ( gp.vdw_type == 2 || gp.vdw_type == 3 )
             {
                 e_core = tbp[tbp_ij].ecore * EXP( tbp[tbp_ij].acore * (1.0 - (r_ij / tbp[tbp_ij].rcore)) );
-                e_vdW_ += self_coef * (e_core * Tap);
+                e_vdW_ += self_coef * (e_core * tap);
 
                 de_core = -(tbp[tbp_ij].acore / tbp[tbp_ij].rcore) * e_core;
             }
@@ -1133,19 +1177,18 @@ CUDA_GLOBAL void k_vdW_coulomb_energy_virial_full_opt( reax_atom const * const m
                 de_core = 0.0;
             }
 
-            CEvd = self_coef * ( (de_base + de_core) * Tap
-                    + (e_base + e_core) * dTap );
+            CEvd = self_coef * ( (de_base + de_core) * tap
+                    + (e_base + e_core) * dtap );
 
             /* Coulomb Calculations */
-            dr3gamij_1 = r_ij * r_ij * r_ij
-                + POW( tbp[tbp_ij].gamma, -3.0 );
+            dr3gamij_1 = r_ij * r_ij * r_ij + tbp[tbp_ij].gamma;
             dr3gamij_3 = CBRT( dr3gamij_1 );
             e_clb = C_ELE * (my_atoms[i].q * my_atoms[j].q) / dr3gamij_3;
-            e_ele_ += self_coef * (e_clb * Tap);
+            e_ele_ += self_coef * (e_clb * tap);
 
             de_clb = -C_ELE * (my_atoms[i].q * my_atoms[j].q)
                     * (r_ij * r_ij) / POW( dr3gamij_1, 4.0 / 3.0 );
-            CEclmb = self_coef * (de_clb * Tap + e_clb * dTap);
+            CEclmb = self_coef * (de_clb * tap + e_clb * dtap);
 
             /* for pressure coupling, terms not related to bond order 
                derivatives are added directly into pressure vector/tensor */

@@ -158,7 +158,7 @@ static inline real Init_Charge_Matrix_Entry( const reax_system * const system,
         const control_params * const control, const storage * const workspace,
         int i, int j, real r_ij, MATRIX_ENTRY_POSITION pos )
 {
-    real Tap, dr3gamij_1, dr3gamij_3, ret;
+    real tap, dr3gamij_1, dr3gamij_3, ret;
 
     ret = 0.0;
 
@@ -170,26 +170,26 @@ static inline real Init_Charge_Matrix_Entry( const reax_system * const system,
         switch ( pos )
         {
             case OFF_DIAGONAL:
-                Tap = workspace->Tap[7] * r_ij + workspace->Tap[6];
-                Tap = Tap * r_ij + workspace->Tap[5];
-                Tap = Tap * r_ij + workspace->Tap[4];
-                Tap = Tap * r_ij + workspace->Tap[3];
-                Tap = Tap * r_ij + workspace->Tap[2];
-                Tap = Tap * r_ij + workspace->Tap[1];
-                Tap = Tap * r_ij + workspace->Tap[0];
+                tap = workspace->tap_coef[7] * r_ij + workspace->tap_coef[6];
+                tap = tap * r_ij + workspace->tap_coef[5];
+                tap = tap * r_ij + workspace->tap_coef[4];
+                tap = tap * r_ij + workspace->tap_coef[3];
+                tap = tap * r_ij + workspace->tap_coef[2];
+                tap = tap * r_ij + workspace->tap_coef[1];
+                tap = tap * r_ij + workspace->tap_coef[0];
 
                 /* shielding */
                 dr3gamij_1 = r_ij * r_ij * r_ij
-                        + POW( system->reax_param.tbp[
+                        + system->reax_param.tbp[
                                 index_tbp( system->my_atoms[i].type,
                                     system->my_atoms[j].type,
                                     system->reax_param.num_atom_types )
-                        ].gamma, -3.0 );
-                dr3gamij_3 = POW( dr3gamij_1 , 1.0 / 3.0 );
+                        ].gamma;
+                dr3gamij_3 = POW( dr3gamij_1, 1.0 / 3.0 );
 
                 /* i == j: periodic self-interaction term
                  * i != j: general interaction term */
-                ret = ((i == j) ? 0.5 : 1.0) * Tap * EV_to_KCALpMOL / dr3gamij_3;
+                ret = ((i == j) ? 0.5 : 1.0) * tap * EV_to_KCALpMOL / dr3gamij_3;
                 break;
 
             case DIAGONAL:

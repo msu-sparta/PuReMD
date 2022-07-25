@@ -977,7 +977,7 @@ struct single_body_parameters
     real r_vdw;
     /**/
     real epsilon;
-    /**/
+    /* electrostatic shielding parameter */
     real gamma;
     /**/
     real r_pi;
@@ -1115,8 +1115,9 @@ struct two_body_parameters
     /**/
     real acore;
 
-    /* electrostatic parameters,
-     * note: this parameter is gamma^-3 and not gamma */
+    /* electrostatic shielding parameter,
+     * note: this parameter is stored as gamma_{ij}^-3
+     * where gamma_{ij} = \sqrt{gamma_i * gamma_j} */
     real gamma;
 
     /**/
@@ -2360,8 +2361,10 @@ struct storage
     rvec2 *u2;
     rvec2 *w2;
 
-    /* Taper */
-    real Tap[8];
+    /* coefficients of 7-th order polynomial taper function */
+    real tap_coef[8];
+    /* coefficients of 6-th order polynomial taper derivative function */
+    real dtap_coef[8];
 
     /* storage for analysis */
     /**/
