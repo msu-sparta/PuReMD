@@ -148,6 +148,7 @@ CUDA_DEVICE static real Calculate_Omega( const rvec dvec_ij, real r_ij,
 
 CUDA_GLOBAL void k_torsion_angles_part1( reax_atom const * const my_atoms,
         global_parameters gp, single_body_parameters const * const sbp,
+        two_body_parameters const * const tbp, three_body_header const * const thbh,
         four_body_header const * const fbph, control_params const * const control,
         reax_list bond_list, reax_list thb_list, storage workspace, int n, int num_atom_types, 
         real * const e_tor_g, real * const e_con_g )
@@ -210,7 +211,7 @@ CUDA_GLOBAL void k_torsion_angles_part1( reax_atom const * const my_atoms,
             k = pbond_jk->nbr;
             type_k = my_atoms[k].type;
 
-            if ( sbp[type_k].fbp_cnt_k > 0 )
+            if ( tbp[index_tbp(type_j, type_k, num_atom_types)].fbp_cnt_jk > 0 )
             {
                 bo_jk = &pbond_jk->bo_data;
                 BOA_jk = bo_jk->BO - control->thb_cut;
@@ -256,7 +257,7 @@ CUDA_GLOBAL void k_torsion_angles_part1( reax_atom const * const my_atoms,
                             i = p_ijk->thb;
                             type_i = my_atoms[i].type;
 
-                            if ( sbp[type_i].fbp_cnt_i > 0 )
+                            if ( thbh[index_thbp(type_i, type_j, type_k, num_atom_types)].fbp_cnt_ijk > 0 )
                             {
                                 /* pij is pointer to i on j's bond_list */
                                 pij = p_ijk->pthb;
@@ -498,6 +499,7 @@ CUDA_GLOBAL void k_torsion_angles_part1( reax_atom const * const my_atoms,
 
 CUDA_GLOBAL void k_torsion_angles_part1_opt( reax_atom const * const my_atoms,
         global_parameters gp, single_body_parameters const * const sbp,
+        two_body_parameters const * const tbp, three_body_header const * const thbh,
         four_body_header const * const fbph, control_params const * const control,
         reax_list bond_list, reax_list thb_list, storage workspace, int n, int num_atom_types, 
         real * const e_tor_g, real * const e_con_g )
@@ -566,7 +568,7 @@ CUDA_GLOBAL void k_torsion_angles_part1_opt( reax_atom const * const my_atoms,
             k = pbond_jk->nbr;
             type_k = my_atoms[k].type;
 
-            if ( sbp[type_k].fbp_cnt_k > 0 )
+            if ( tbp[index_tbp(type_j, type_k, num_atom_types)].fbp_cnt_jk > 0 )
             {
                 bo_jk = &pbond_jk->bo_data;
                 BOA_jk = bo_jk->BO - control->thb_cut;
@@ -614,7 +616,7 @@ CUDA_GLOBAL void k_torsion_angles_part1_opt( reax_atom const * const my_atoms,
                             i = p_ijk->thb;
                             type_i = my_atoms[i].type;
 
-                            if ( sbp[type_i].fbp_cnt_i > 0 )
+                            if ( thbh[index_thbp(type_i, type_j, type_k, num_atom_types)].fbp_cnt_ijk > 0 )
                             {
                                 pbond_ij = &bond_list.bond_list[pij];
                                 bo_ij = &pbond_ij->bo_data;
@@ -1346,7 +1348,8 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
     {
 //        k_torsion_angles_part1 <<< control->blocks, control->block_size,
 //                               0, control->streams[3] >>>
-//            ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp, system->reax_param.d_fbp,
+//            ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp,
+//              system->reax_param.d_tbp, system->reax_param.d_thbp, system->reax_param.d_fbp,
 //              (control_params *) control->d_control_params, *(lists[BONDS]),
 //              *(lists[THREE_BODIES]), *(workspace->d_workspace), system->n,
 //              system->reax_param.num_atom_types, 
@@ -1364,7 +1367,8 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
         k_torsion_angles_part1_opt <<< blocks, DEF_BLOCK_SIZE,
                                    sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32),
                                    control->streams[3] >>>
-            ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp, system->reax_param.d_fbp,
+            ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp,
+              system->reax_param.d_tbp, system->reax_param.d_thbp, system->reax_param.d_fbp,
               (control_params *) control->d_control_params, *(lists[BONDS]),
               *(lists[THREE_BODIES]), *(workspace->d_workspace), system->n,
               system->reax_param.num_atom_types, 

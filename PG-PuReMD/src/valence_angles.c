@@ -228,7 +228,8 @@ void Valence_Angles( reax_system * const system, control_params * const control,
                 type_i = system->my_atoms[i].type;
                 Set_Start_Index( pi, num_thb_intrs, thb_list );
 
-                if ( system->reax_param.sbp[type_i].thbp_cnt_i > 0 )
+                if ( system->reax_param.tbp[
+                        index_tbp(type_i, type_j, system->reax_param.num_atom_types)].thbp_cnt_ij > 0 )
                 {
                     bo_ij = &pbond_ij->bo_data;
                     BOA_ij = bo_ij->BO - control->thb_cut;
@@ -312,7 +313,7 @@ void Valence_Angles( reax_system * const system, control_params * const control,
                             }
 
                             thbh = &system->reax_param.thbp[
-                                index_thbp( type_i, type_j, type_k, system->reax_param.num_atom_types ) ];
+                                index_thbp(type_i, type_j, type_k, system->reax_param.num_atom_types) ];
 
                             for ( cnt = 0; cnt < thbh->cnt; ++cnt )
                             {

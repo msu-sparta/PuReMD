@@ -145,19 +145,19 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
     reax->sbp = scalloc( reax->num_atom_types, sizeof(single_body_parameters),
             __FILE__, __LINE__ );
 
-    reax->tbp = scalloc( POW(reax->num_atom_types, 2.0), sizeof(two_body_parameters),
+    reax->tbp = scalloc( SQR(reax->num_atom_types), sizeof(two_body_parameters),
             __FILE__, __LINE__ );
 
-    reax->thbp = scalloc( POW(reax->num_atom_types, 3.0), sizeof(three_body_header),
+    reax->thbp = scalloc( CUBE(reax->num_atom_types), sizeof(three_body_header),
             __FILE__, __LINE__ );
 
-    reax->hbp = scalloc( POW(reax->num_atom_types, 3.0), sizeof(hbond_parameters),
+    reax->hbp = scalloc( CUBE(reax->num_atom_types), sizeof(hbond_parameters),
             __FILE__, __LINE__ );
 
-    reax->fbp = scalloc( POW(reax->num_atom_types, 4.0), sizeof(four_body_header),
+    reax->fbp = scalloc( SQR(SQR(reax->num_atom_types)), sizeof(four_body_header),
             __FILE__, __LINE__ );
 
-    tor_flag = scalloc( POW(reax->num_atom_types, 4.0), sizeof(char),
+    tor_flag = scalloc( SQR(SQR(reax->num_atom_types)), sizeof(char),
            __FILE__, __LINE__ );
 
     /* vdWaals type:
@@ -382,10 +382,7 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
         }
 
         reax->sbp[i].thbp_cnt_j = 0;
-        reax->sbp[i].thbp_cnt_i = 0;
         reax->sbp[i].fbp_cnt_j = 0;
-        reax->sbp[i].fbp_cnt_k = 0;
-        reax->sbp[i].fbp_cnt_i = 0;
     }
 
 #if defined(DEBUG_FOCUS)
@@ -403,6 +400,14 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
             reax->sbp[i].valency_val = reax->sbp[i].valency_boc;
         }
     }
+
+    for ( i = 0; i < reax->num_atom_types; i++ )
+        for ( j = 0; j < reax->num_atom_types; j++ )
+            reax->tbp[i * __N + j].thbp_cnt_ij = 0;
+
+    for ( i = 0; i < reax->num_atom_types; i++ )
+        for ( j = 0; j < reax->num_atom_types; j++ )
+            reax->tbp[i * __N + j].fbp_cnt_jk = 0;
 
     /* next line is number of two body combination and some comments */
     if ( fgets( s, MAX_LINE, fp ) == NULL )
@@ -628,18 +633,12 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
     }
 
     /* 3-body parameters -
-       supports multi-well potentials (upto MAX_3BODY_PARAM in mytypes.h) */
+       supports multi-well potentials (upto MAX_3BODY_PARAM in reax_types.h) */
     /* clear entries first */
     for ( i = 0; i < reax->num_atom_types; ++i )
-    {
         for ( j = 0; j < reax->num_atom_types; ++j )
-        {
             for ( k = 0; k < reax->num_atom_types; ++k )
-            {
                 reax->thbp[i * __N * __N + j * __N + k].cnt = 0;
-            }
-        }
-    }
 
     /* next line is number of 3-body params and some comments */
     if ( fgets( s, MAX_LINE, fp ) == NULL )
@@ -703,7 +702,9 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
             reax->thbp[index2].prm[cnt].p_val4 = val;
 
             ++(reax->sbp[k].thbp_cnt_j);
-            ++(reax->sbp[j].thbp_cnt_i);
+            ++(reax->tbp[j * __N + k].thbp_cnt_ij);
+
+            ++(reax->tbp[m * __N + j].thbp_cnt_ij);
         }
     }
 
@@ -711,26 +712,27 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
      * correspond to any type of pair of atoms in 1 and 4
      * position. However, explicit X-Y-Z-W takes precedence over the
      * default description.
-     * supports multi-well potentials (upto MAX_4BODY_PARAM in mytypes.h)
+     * supports multi-well potentials (upto MAX_4BODY_PARAM in reax_types.h)
      * IMPORTANT: for now, directions on how to read multi-entries from ffield
      * is not clear */
 
     /* clear all entries first */
     for ( i = 0; i < reax->num_atom_types; ++i )
-    {
         for ( j = 0; j < reax->num_atom_types; ++j )
-        {
             for ( k = 0; k < reax->num_atom_types; ++k )
-            {
                 for ( m = 0; m < reax->num_atom_types; ++m )
-                {
                     reax->fbp[i * __N * __N * __N + j * __N * __N + k * __N + m].cnt = 0;
+
+    for ( i = 0; i < reax->num_atom_types; ++i )
+        for ( j = 0; j < reax->num_atom_types; ++j )
+            for ( k = 0; k < reax->num_atom_types; ++k )
+                for ( m = 0; m < reax->num_atom_types; ++m )
                     tor_flag[i * __N * __N * __N + j * __N * __N + k * __N + m] = 0;
 
-                }
-            }
-        }
-    }
+    for ( i = 0; i < reax->num_atom_types; ++i )
+        for ( j = 0; j < reax->num_atom_types; ++j )
+            for ( k = 0; k < reax->num_atom_types; ++k )
+                reax->thbp[i * __N * __N + j * __N + k].fbp_cnt_ijk = 0;
 
     /* next line is number of 4-body params and some comments */
     if ( fgets( s, MAX_LINE, fp ) == NULL )
@@ -794,12 +796,12 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
                 reax->fbp[index2].prm[0].p_cot1 = val;
 
                 ++(reax->sbp[k].fbp_cnt_j);
-                ++(reax->sbp[m].fbp_cnt_k);
-                ++(reax->sbp[j].fbp_cnt_i);
+                ++(reax->tbp[k * __N + m].fbp_cnt_jk);
+                ++(reax->thbp[j * __N * __N + k * __N + m].fbp_cnt_ijk);
 
                 ++(reax->sbp[m].fbp_cnt_j);
-                ++(reax->sbp[k].fbp_cnt_k);
-                ++(reax->sbp[n].fbp_cnt_i);
+                ++(reax->tbp[m * __N + n].fbp_cnt_jk);
+                ++(reax->thbp[n * __N * __N + m * __N + k].fbp_cnt_ijk);
             }
         }
         /* This means the entry is of the form 0-X-Y-0 */
@@ -826,8 +828,8 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
                             reax->fbp[index1].prm[0].p_cot1 = atof(tmp[8]);
 
                             ++(reax->sbp[k].fbp_cnt_j);
-                            ++(reax->sbp[m].fbp_cnt_k);
-                            ++(reax->sbp[p].fbp_cnt_i);
+                            ++(reax->tbp[k * __N + m].fbp_cnt_jk);
+                            ++(reax->thbp[p * __N * __N + k * __N + m].fbp_cnt_ijk);
                         }
 
                         if ( tor_flag[index2] == 0 )
@@ -839,8 +841,8 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
                             reax->fbp[index2].prm[0].p_cot1 = atof(tmp[8]);
 
                             ++(reax->sbp[m].fbp_cnt_j);
-                            ++(reax->sbp[k].fbp_cnt_k);
-                            ++(reax->sbp[o].fbp_cnt_i);
+                            ++(reax->tbp[m * __N + k].fbp_cnt_jk);
+                            ++(reax->thbp[o * __N * __N + m * __N + k].fbp_cnt_ijk);
                         }
                     }
                 }

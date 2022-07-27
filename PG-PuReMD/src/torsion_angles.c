@@ -45,7 +45,7 @@
 #define MIN_SINE (1.0e-10)
 
 
-static real Calculate_Omega( const rvec dvec_ij, real r_ij, const rvec dvec_jk, real r_jk,
+static inline real Calculate_Omega( const rvec dvec_ij, real r_ij, const rvec dvec_jk, real r_jk,
         const rvec dvec_kl, real r_kl, const rvec dvec_li, real r_li,
         const three_body_interaction_data * const p_ijk, const three_body_interaction_data * const p_jkl,
         rvec dcos_omega_di, rvec dcos_omega_dj, rvec dcos_omega_dk, rvec dcos_omega_dl )
@@ -223,7 +223,7 @@ void Torsion_Angles( reax_system * const system, control_params * const control,
                 k = pbond_jk->nbr;
                 type_k = system->my_atoms[k].type;
 
-                if ( system->reax_param.sbp[type_k].fbp_cnt_k > 0 )
+                if ( system->reax_param.tbp[index_tbp(type_j, type_k, system->reax_param.num_atom_types)].fbp_cnt_jk > 0 )
                 {
                     bo_jk = &pbond_jk->bo_data;
                     BOA_jk = bo_jk->BO - control->thb_cut;
@@ -233,7 +233,7 @@ void Torsion_Angles( reax_system * const system, control_params * const control,
                      * trying to form a 4-body interaction out of this neighborhood */
                     if ( system->my_atoms[j].orig_id < system->my_atoms[k].orig_id
                             && bo_jk->BO > control->thb_cut
-                            && Num_Entries(pk, thb_list) )
+                            && Num_Entries(pk, thb_list) > 0 )
                     {
                         /* pj points to j on k's list */
                         pj = pbond_jk->sym_index;
@@ -265,7 +265,8 @@ void Torsion_Angles( reax_system * const system, control_params * const control,
                                 i = p_ijk->thb;
                                 type_i = system->my_atoms[i].type;
 
-                                if ( system->reax_param.sbp[type_i].fbp_cnt_i > 0 )
+                                if ( system->reax_param.thbp[
+                                        index_thbp(type_i, type_j, type_k, system->reax_param.num_atom_types)].fbp_cnt_ijk > 0 )
                                 {
                                     /* pij is pointer to i on j's bond_list */
                                     pij = p_ijk->pthb;

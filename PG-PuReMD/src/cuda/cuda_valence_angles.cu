@@ -56,8 +56,8 @@ struct Prod
    atom j, which sits in the middle of the other two atoms i and k. */
 CUDA_GLOBAL void k_valence_angles_part1( reax_atom const * const my_atoms,
         global_parameters gp, single_body_parameters const * const sbp,
-        three_body_header const * const thbh, control_params const * const control,
-        storage workspace, reax_list bond_list,
+        two_body_parameters const * const tbp, three_body_header const * const thbh,
+        control_params const * const control, storage workspace, reax_list bond_list,
         reax_list thb_list, int n, int N, int num_atom_types,
         real * const e_ang_g, real * const e_pen_g, real * const e_coa_g )
 {
@@ -181,7 +181,7 @@ CUDA_GLOBAL void k_valence_angles_part1( reax_atom const * const my_atoms,
             type_i = my_atoms[i].type;
             num_thb_intrs = Start_Index( pi, &thb_list );
 
-            if ( sbp[type_i].thbp_cnt_i > 0 )
+            if ( tbp[index_tbp(type_i, type_j, num_atom_types)].thbp_cnt_ij > 0 )
             {
                 bo_ij = &pbond_ij->bo_data;
                 BOA_ij = bo_ij->BO - control->thb_cut;
@@ -440,8 +440,8 @@ CUDA_GLOBAL void k_valence_angles_part1( reax_atom const * const my_atoms,
    atom j, which sits in the middle of the other two atoms i and k. */
 CUDA_GLOBAL void k_valence_angles_part1_opt( reax_atom const * const my_atoms,
         global_parameters gp, single_body_parameters const * const sbp,
-        three_body_header const * const thbh, control_params const * const control,
-        storage workspace, reax_list bond_list,
+        two_body_parameters const * const tbp, three_body_header const * const thbh,
+        control_params const * const control, storage workspace, reax_list bond_list,
         reax_list thb_list, int n, int N, int num_atom_types,
         real * const e_ang_g, real * const e_pen_g, real * const e_coa_g )
 {
@@ -585,7 +585,7 @@ CUDA_GLOBAL void k_valence_angles_part1_opt( reax_atom const * const my_atoms,
             type_i = my_atoms[i].type;
             num_thb_intrs = Start_Index( pi, &thb_list );
 
-            if ( sbp[type_i].thbp_cnt_i > 0 )
+            if ( tbp[index_tbp(type_i, type_j, num_atom_types)].thbp_cnt_ij > 0 )
             {
                 bo_ij = &pbond_ij->bo_data;
                 BOA_ij = bo_ij->BO - control->thb_cut;
@@ -1563,8 +1563,8 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
         {
 //            k_valence_angles_part1 <<< control->blocks_n, control->block_size_n,
 //                                   0, control->streams[3] >>>
-//                ( system->d_my_atoms, system->reax_param.d_gp,
-//                  system->reax_param.d_sbp, system->reax_param.d_thbp, 
+//                ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp,
+//                  system->reax_param.d_tbp, system->reax_param.d_thbp,
 //                  (control_params *) control->d_control_params,
 //                  *(workspace->d_workspace), *(lists[BONDS]), *(lists[THREE_BODIES]),
 //                  system->n, system->N, system->reax_param.num_atom_types, 
@@ -1584,8 +1584,8 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
                                        (sizeof(cub::WarpScan<int>::TempStorage)
                                         + sizeof(cub::WarpReduce<double>::TempStorage)) * (DEF_BLOCK_SIZE / 32),
                                        control->streams[3] >>>
-                ( system->d_my_atoms, system->reax_param.d_gp,
-                  system->reax_param.d_sbp, system->reax_param.d_thbp, 
+                ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp,
+                  system->reax_param.d_tbp, system->reax_param.d_thbp, 
                   (control_params *) control->d_control_params,
                   *(workspace->d_workspace), *(lists[BONDS]), *(lists[THREE_BODIES]),
                   system->n, system->N, system->reax_param.num_atom_types, 

@@ -406,6 +406,8 @@ void Read_PDB_File( const char * const pdb_file, reax_system * const system,
                 charge[2] = '\0';
             }
 
+            Trim_Spaces( element, sizeof(element) );
+
             if ( strncmp( "H\0", element, 2 ) == 0
                     || strncmp( "h\0", element, 2 ) == 0 )
             {
@@ -426,7 +428,6 @@ void Read_PDB_File( const char * const pdb_file, reax_system * const system,
                 pdb_serial = (int) strtod( &serial[0], &endptr );
                 atom->orig_id = pdb_serial;
 
-                Trim_Spaces( element, sizeof(element) );
                 atom->type = Get_Atom_Type( &system->reax_param, element, sizeof(element) );
                 strncpy( atom->name, atom_name, sizeof(atom->name) - 1 );
                 atom->name[sizeof(atom->name) - 1] = '\0';
@@ -774,6 +775,8 @@ void Read_BGF( const char * const bgf_file, reax_system * const system,
 //                    res_name, &chain_id, res_seq, s_x, s_y, s_z, element,
 //                    occupancy, temp_factor, charge );
 
+            Trim_Spaces( element, sizeof(element) );
+
             if ( strncmp( "H\0", element, 2 ) == 0
                     || strncmp( "h\0", element, 2 ) == 0 )
             {
@@ -803,7 +806,6 @@ void Read_BGF( const char * const bgf_file, reax_system * const system,
                 strncpy( system->my_atoms[atom_cnt].name, atom_name,
                         sizeof(system->my_atoms[atom_cnt].name) - 1 );
                 system->my_atoms[atom_cnt].name[sizeof(system->my_atoms[atom_cnt].name) - 1] = '\0';
-                Trim_Spaces( element, sizeof(element) );
                 system->my_atoms[atom_cnt].type =
                     Get_Atom_Type( &system->reax_param, element, sizeof(element) );
 

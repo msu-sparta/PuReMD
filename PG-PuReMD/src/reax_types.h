@@ -952,7 +952,7 @@ struct global_parameters
     /* global parameters, see above mapping */
     real* l;
     /* van der Waals interaction type, values:
-     * 0: none (???)
+     * 0: none
      * 1: shielded Morse, no inner-wall
      * 2: inner wall, no shielding
      * 3: inner wall + shielding
@@ -985,7 +985,6 @@ struct single_body_parameters
     real valency_e;
     /**/
     real nlp_opt;
-
     /* Line two in field file */
     /**/
     real alpha;
@@ -1005,7 +1004,6 @@ struct single_body_parameters
      *  1: H atom
      *  2: hydrogen bonding atom (e.g., O, S, P, N) */
     int p_hbond;
-
     /* Line three in field file */
     /**/
     real r_pi_pi;
@@ -1019,7 +1017,6 @@ struct single_body_parameters
     real b_o_133;
     /* bond softness for ACKS2 */
     real b_s_acks2;
-
     /* Line four in the field file */
     /**/
     real p_ovun2;
@@ -1038,18 +1035,9 @@ struct single_body_parameters
     /* count of the number of three body parameters for this atom type
      * where this atom is a center atom (j) in an i-j-k interaction */
     int thbp_cnt_j;
-    /* count of the number of three body parameters for this atom type
-     * where this atom is an end atom (i) in an i-j-k interaction */
-    int thbp_cnt_i;
     /* count of the number of four body parameters for this atom type
      * where this atom is a central atom (j) in an i-j-k-l interaction */
     int fbp_cnt_j;
-    /* count of the number of four body parameters for this atom type
-     * where this atom is a central atom (k) in an i-j-k-l interaction */
-    int fbp_cnt_k;
-    /* count of the number of four body parameters for this atom type
-     * where this atom is an end atom (i) in an i-j-k-l interaction */
-    int fbp_cnt_i;
 };
 
 
@@ -1082,7 +1070,6 @@ struct two_body_parameters
     real p_boc4;
     /**/
     real p_boc5;
-
     /* Bond Energy parameters */
     /**/
     real p_be1;
@@ -1094,11 +1081,9 @@ struct two_body_parameters
     real De_p;
     /**/
     real De_pp;
-
     /* Over/Under coordination parameters */
     /**/
     real p_ovun1;
-
     /* Van der Waal interaction parameters */
     /**/
     real D;
@@ -1114,16 +1099,20 @@ struct two_body_parameters
     real ecore;
     /**/
     real acore;
-
     /* electrostatic shielding parameter,
      * note: this parameter is stored as gamma_{ij}^-3
      * where gamma_{ij} = \sqrt{gamma_i * gamma_j} */
     real gamma;
-
     /**/
     real v13cor;
     /**/
     real ovc;
+    /* count of the number of three body parameters for these atom types where
+     * atom i is an end atom and atom j is a center atom in an i-j-k interaction */
+    int thbp_cnt_ij;
+    /* count of the number of four body parameters for these atom types where
+     * atoms j and k are central atoms in an i-j-k-l interaction */
+    int fbp_cnt_jk;
 };
 
 
@@ -1132,12 +1121,18 @@ struct two_body_parameters
 struct three_body_parameters
 {
     /* valence angle */
+    /**/
     real theta_00;
-    real p_val1, p_val2, p_val4, p_val7;
-
+    /**/
+    real p_val1;
+    /**/
+    real p_val2;
+    /**/
+    real p_val4;
+    /**/
+    real p_val7;
     /* penalty */
     real p_pen1;
-
     /* 3-body conjugation */
     real p_coa1;
 };
@@ -1150,6 +1145,10 @@ struct three_body_header
     int cnt;
     /* collection of three body parameters, indexed by atomic types */
     three_body_parameters prm[MAX_3BODY_PARAM];
+    /* count of the number of four body parameters for these atom types where
+     * atom i is an end atom and atoms j and k are central atoms in an
+     * i-j-k-l interaction */
+    int fbp_cnt_ijk;
 };
 
 
