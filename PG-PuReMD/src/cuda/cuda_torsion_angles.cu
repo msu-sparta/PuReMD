@@ -147,9 +147,9 @@ CUDA_DEVICE static real Calculate_Omega( const rvec dvec_ij, real r_ij,
 
 
 CUDA_GLOBAL void k_torsion_angles_part1( reax_atom const * const my_atoms,
-        global_parameters gp, four_body_header const * const fbph,
-        control_params const * const control, reax_list bond_list,
-        reax_list thb_list, storage workspace, int n, int num_atom_types, 
+        global_parameters gp, single_body_parameters const * const sbp,
+        four_body_header const * const fbph, control_params const * const control,
+        reax_list bond_list, reax_list thb_list, storage workspace, int n, int num_atom_types, 
         real * const e_tor_g, real * const e_con_g )
 {
     int i, j, k, l, pi, pj, pk, pl, pij, plk;
@@ -187,307 +187,319 @@ CUDA_GLOBAL void k_torsion_angles_part1( reax_atom const * const my_atoms,
         return;
     }
 
-    p_tor2 = gp.l[23];
-    p_tor3 = gp.l[24];
-    p_tor4 = gp.l[25];
-    p_cot2 = gp.l[27];
-    e_tor_ = 0.0;
-    e_con_ = 0.0;
-    CdDelta_j = 0.0;
-    rvec_MakeZero( f_j );
-
     type_j = my_atoms[j].type;
-    Delta_j = workspace.Delta_boc[j];
-    start_j = Start_Index(j, &bond_list);
-    end_j = End_Index(j, &bond_list);
 
-    for ( pk = start_j; pk < end_j; ++pk )
+    if ( sbp[type_j].fbp_cnt_j > 0 )
     {
-        pbond_jk = &bond_list.bond_list[pk];
-        k = pbond_jk->nbr;
-        bo_jk = &pbond_jk->bo_data;
-        BOA_jk = bo_jk->BO - control->thb_cut;
+        p_tor2 = gp.l[23];
+        p_tor3 = gp.l[24];
+        p_tor4 = gp.l[25];
+        p_cot2 = gp.l[27];
+        e_tor_ = 0.0;
+        e_con_ = 0.0;
+        CdDelta_j = 0.0;
+        rvec_MakeZero( f_j );
 
-        /* see if there are any 3-body interactions involving j and k
-         * where j is the central atom. Otherwise there is no point in
-         * trying to form a 4-body interaction out of this neighborhood */
-        if ( my_atoms[j].orig_id < my_atoms[k].orig_id
-                && bo_jk->BO > control->thb_cut
-                && Num_Entries(pk, &thb_list) > 0 )
+        Delta_j = workspace.Delta_boc[j];
+        start_j = Start_Index(j, &bond_list);
+        end_j = End_Index(j, &bond_list);
+
+        for ( pk = start_j; pk < end_j; ++pk )
         {
-            /* pj points to j on k's list */
-            pj = pbond_jk->sym_index;
+            pbond_jk = &bond_list.bond_list[pk];
+            k = pbond_jk->nbr;
+            type_k = my_atoms[k].type;
 
-            /* do the same check as above:
-             * are there any 3-body interactions
-             * involving k and j where k is the central atom */
-            if ( Num_Entries(pj, &thb_list) > 0 )
+            if ( sbp[type_k].fbp_cnt_k > 0 )
             {
-                type_k = my_atoms[k].type;
-                Delta_k = workspace.Delta_boc[k];
-                r_jk = pbond_jk->d;
-                CdDelta_k = 0.0;
-                Cdbopi_jk = 0.0;
-                Cdbo_jk = 0.0;
-                rvec_MakeZero( f_k );
+                bo_jk = &pbond_jk->bo_data;
+                BOA_jk = bo_jk->BO - control->thb_cut;
 
-                start_pk = Start_Index( pk, &thb_list );
-                end_pk = End_Index( pk, &thb_list );
-                start_pj = Start_Index( pj, &thb_list );
-                end_pj = End_Index( pj, &thb_list );        
-
-                exp_tor2_jk = EXP( -p_tor2 * BOA_jk );
-                exp_cot2_jk = EXP( -p_cot2 * SQR(BOA_jk - 1.5) );
-                exp_tor3_DjDk = EXP( -p_tor3 * (Delta_j + Delta_k) );
-                exp_tor4_DjDk = EXP( p_tor4  * (Delta_j + Delta_k) );
-                exp_tor34_inv = 1.0 / (1.0 + exp_tor3_DjDk + exp_tor4_DjDk);
-                f11_DjDk = (2.0 + exp_tor3_DjDk) * exp_tor34_inv;
-
-                /* pick i up from j-k interaction where j is the central atom */
-                for ( pi = start_pk; pi < end_pk; ++pi )
+                /* see if there are any 3-body interactions involving j and k
+                 * where j is the central atom. Otherwise there is no point in
+                 * trying to form a 4-body interaction out of this neighborhood */
+                if ( my_atoms[j].orig_id < my_atoms[k].orig_id
+                        && bo_jk->BO > control->thb_cut
+                        && Num_Entries(pk, &thb_list) > 0 )
                 {
-                    p_ijk = &thb_list.three_body_list[pi];
-                    /* pij is pointer to i on j's bond_list */
-                    pij = p_ijk->pthb;
-                    pbond_ij = &bond_list.bond_list[pij];
-                    bo_ij = &pbond_ij->bo_data;
+                    /* pj points to j on k's list */
+                    pj = pbond_jk->sym_index;
 
-                    if ( bo_ij->BO > control->thb_cut )
+                    /* do the same check as above:
+                     * are there any 3-body interactions
+                     * involving k and j where k is the central atom */
+                    if ( Num_Entries(pj, &thb_list) > 0 )
                     {
-                        i = p_ijk->thb;
-                        type_i = my_atoms[i].type;
-                        r_ij = pbond_ij->d;
-                        BOA_ij = bo_ij->BO - control->thb_cut;
-                        Cdbo_ij = 0.0;
-                        rvec_MakeZero( f_i );
+                        Delta_k = workspace.Delta_boc[k];
+                        r_jk = pbond_jk->d;
+                        CdDelta_k = 0.0;
+                        Cdbopi_jk = 0.0;
+                        Cdbo_jk = 0.0;
+                        rvec_MakeZero( f_k );
 
-                        theta_ijk = p_ijk->theta;
-                        sin_ijk = SIN( theta_ijk );
-                        cos_ijk = COS( theta_ijk );
-//                        tan_ijk_i = 1.0 / TAN( theta_ijk );
-                        if ( sin_ijk >= 0.0 && sin_ijk <= MIN_SINE )
-                        {
-                            tan_ijk_i = cos_ijk / MIN_SINE;
-                        }
-                        else if ( sin_ijk <= 0.0 && sin_ijk >= -MIN_SINE )
-                        {
-                            tan_ijk_i = cos_ijk / -MIN_SINE;
-                        }
-                        else
-                        {
-                            tan_ijk_i = cos_ijk / sin_ijk;
-                        }
+                        start_pk = Start_Index( pk, &thb_list );
+                        end_pk = End_Index( pk, &thb_list );
+                        start_pj = Start_Index( pj, &thb_list );
+                        end_pj = End_Index( pj, &thb_list );        
 
-                        exp_tor2_ij = EXP( -p_tor2 * BOA_ij );
-                        exp_cot2_ij = EXP( -p_cot2 * SQR(BOA_ij -1.5) );
+                        exp_tor2_jk = EXP( -p_tor2 * BOA_jk );
+                        exp_cot2_jk = EXP( -p_cot2 * SQR(BOA_jk - 1.5) );
+                        exp_tor3_DjDk = EXP( -p_tor3 * (Delta_j + Delta_k) );
+                        exp_tor4_DjDk = EXP( p_tor4  * (Delta_j + Delta_k) );
+                        exp_tor34_inv = 1.0 / (1.0 + exp_tor3_DjDk + exp_tor4_DjDk);
+                        f11_DjDk = (2.0 + exp_tor3_DjDk) * exp_tor34_inv;
 
-                        /* pick l up from j-k interaction where k is the central atom */
-                        for ( pl = start_pj; pl < end_pj; ++pl )
+                        /* pick i up from j-k interaction where j is the central atom */
+                        for ( pi = start_pk; pi < end_pk; ++pi )
                         {
-                            p_jkl = &thb_list.three_body_list[pl];
-                            l = p_jkl->thb;
-                            /* a pointer to l on k's bond_list! */
-                            plk = p_jkl->pthb;
-                            pbond_kl = &bond_list.bond_list[plk];
-                            bo_kl = &pbond_kl->bo_data;
-                            type_l = my_atoms[l].type;
-                            four_body_parameters const * const fbp = &fbph[
-                                index_fbp(type_i, type_j, type_k, type_l, num_atom_types) ].prm[0];
+                            p_ijk = &thb_list.three_body_list[pi];
+                            i = p_ijk->thb;
+                            type_i = my_atoms[i].type;
 
-                            if ( i != l
-                                    && fbph[ index_fbp(type_i, type_j, type_k, type_l, num_atom_types) ].cnt > 0
-                                    && bo_kl->BO > control->thb_cut
-                                    && bo_ij->BO * bo_jk->BO * bo_kl->BO > control->thb_cut )
+                            if ( sbp[type_i].fbp_cnt_i > 0 )
                             {
-                                r_kl = pbond_kl->d;
-                                BOA_kl = bo_kl->BO - control->thb_cut;
+                                /* pij is pointer to i on j's bond_list */
+                                pij = p_ijk->pthb;
+                                pbond_ij = &bond_list.bond_list[pij];
+                                bo_ij = &pbond_ij->bo_data;
 
-                                theta_jkl = p_jkl->theta;
-                                sin_jkl = SIN( theta_jkl );
-                                cos_jkl = COS( theta_jkl );
-//                                tan_jkl_i = 1.0 / TAN( theta_jkl );
-                                if ( sin_jkl >= 0.0 && sin_jkl <= MIN_SINE )
+                                if ( bo_ij->BO > control->thb_cut )
                                 {
-                                    tan_jkl_i = cos_jkl / MIN_SINE;
-                                }
-                                else if ( sin_jkl <= 0.0 && sin_jkl >= -MIN_SINE )
-                                {
-                                    tan_jkl_i = cos_jkl / -MIN_SINE;
-                                }
-                                else
-                                {
-                                    tan_jkl_i = cos_jkl / sin_jkl;
-                                }
+                                    r_ij = pbond_ij->d;
+                                    BOA_ij = bo_ij->BO - control->thb_cut;
+                                    Cdbo_ij = 0.0;
+                                    rvec_MakeZero( f_i );
 
-                                rvec_ScaledSum( dvec_li, 1.0, my_atoms[i].x, 
-                                        -1.0, my_atoms[l].x );
-                                r_li = rvec_Norm( dvec_li );                 
+                                    theta_ijk = p_ijk->theta;
+                                    sin_ijk = SIN( theta_ijk );
+                                    cos_ijk = COS( theta_ijk );
+//                                    tan_ijk_i = 1.0 / TAN( theta_ijk );
+                                    if ( sin_ijk >= 0.0 && sin_ijk <= MIN_SINE )
+                                    {
+                                        tan_ijk_i = cos_ijk / MIN_SINE;
+                                    }
+                                    else if ( sin_ijk <= 0.0 && sin_ijk >= -MIN_SINE )
+                                    {
+                                        tan_ijk_i = cos_ijk / -MIN_SINE;
+                                    }
+                                    else
+                                    {
+                                        tan_ijk_i = cos_ijk / sin_ijk;
+                                    }
 
-                                /* omega and its derivative */
-//                                cos_omega = Calculate_Omega( pbond_ij->dvec, r_ij, pbond_jk->dvec,
-                                omega = Calculate_Omega( pbond_ij->dvec, r_ij, pbond_jk->dvec, r_jk,
-                                        pbond_kl->dvec, r_kl, dvec_li, r_li, p_ijk, p_jkl,
-                                        dcos_omega_di, dcos_omega_dj, dcos_omega_dk, dcos_omega_dl );
+                                    exp_tor2_ij = EXP( -p_tor2 * BOA_ij );
+                                    exp_cot2_ij = EXP( -p_cot2 * SQR(BOA_ij -1.5) );
 
-                                cos_omega = COS( omega );
-                                cos2omega = COS( 2.0 * omega );
-                                cos3omega = COS( 3.0 * omega );
-                                /* end omega calculations */
+                                    /* pick l up from j-k interaction where k is the central atom */
+                                    for ( pl = start_pj; pl < end_pj; ++pl )
+                                    {
+                                        p_jkl = &thb_list.three_body_list[pl];
+                                        l = p_jkl->thb;
+                                        /* a pointer to l on k's bond_list! */
+                                        plk = p_jkl->pthb;
+                                        pbond_kl = &bond_list.bond_list[plk];
+                                        bo_kl = &pbond_kl->bo_data;
+                                        type_l = my_atoms[l].type;
+                                        four_body_parameters const * const fbp = &fbph[
+                                            index_fbp(type_i, type_j, type_k, type_l, num_atom_types) ].prm[0];
 
-                                /* torsion energy */
-                                exp_tor1 = EXP( fbp->p_tor1
-                                        * SQR(2.0 - bo_jk->BO_pi - f11_DjDk) );
-                                exp_tor2_kl = EXP( -p_tor2 * BOA_kl );
-                                exp_cot2_kl = EXP( -p_cot2 * SQR(BOA_kl - 1.5) );
-                                fn10 = (1.0 - exp_tor2_ij) * (1.0 - exp_tor2_jk) * 
-                                    (1.0 - exp_tor2_kl);
+                                        if ( i != l
+                                                && fbph[ index_fbp(type_i, type_j, type_k, type_l, num_atom_types) ].cnt > 0
+                                                && bo_kl->BO > control->thb_cut
+                                                && bo_ij->BO * bo_jk->BO * bo_kl->BO > control->thb_cut )
+                                        {
+                                            r_kl = pbond_kl->d;
+                                            BOA_kl = bo_kl->BO - control->thb_cut;
 
-                                CV = 0.5 * ( fbp->V1 * (1.0 + cos_omega)
-                                        + fbp->V2 * exp_tor1 * (1.0 - cos2omega)
-                                        + fbp->V3 * (1.0 + cos3omega) );
-//                                CV = 0.5 * fbp->V1 * (1.0 + cos_omega)
-//                                    + fbp->V2 * exp_tor1 * (1.0 - SQR(cos_omega))
-//                                    + fbp->V3 * (0.5 + 2.0 * CUBE(cos_omega) - 1.5 * cos_omega);
+                                            theta_jkl = p_jkl->theta;
+                                            sin_jkl = SIN( theta_jkl );
+                                            cos_jkl = COS( theta_jkl );
+//                                            tan_jkl_i = 1.0 / TAN( theta_jkl );
+                                            if ( sin_jkl >= 0.0 && sin_jkl <= MIN_SINE )
+                                            {
+                                                tan_jkl_i = cos_jkl / MIN_SINE;
+                                            }
+                                            else if ( sin_jkl <= 0.0 && sin_jkl >= -MIN_SINE )
+                                            {
+                                                tan_jkl_i = cos_jkl / -MIN_SINE;
+                                            }
+                                            else
+                                            {
+                                                tan_jkl_i = cos_jkl / sin_jkl;
+                                            }
 
-                                e_tor_ += fn10 * sin_ijk * sin_jkl * CV;
+                                            rvec_ScaledSum( dvec_li, 1.0, my_atoms[i].x, 
+                                                    -1.0, my_atoms[l].x );
+                                            r_li = rvec_Norm( dvec_li );                 
 
-                                dfn11 = (-p_tor3 * exp_tor3_DjDk
-                                        + (p_tor3 * exp_tor3_DjDk - p_tor4 * exp_tor4_DjDk)
-                                        * (2.0 + exp_tor3_DjDk) * exp_tor34_inv) * exp_tor34_inv;
+                                            /* omega and its derivative */
+//                                            cos_omega = Calculate_Omega( pbond_ij->dvec, r_ij, pbond_jk->dvec,
+                                            omega = Calculate_Omega( pbond_ij->dvec, r_ij, pbond_jk->dvec, r_jk,
+                                                    pbond_kl->dvec, r_kl, dvec_li, r_li, p_ijk, p_jkl,
+                                                    dcos_omega_di, dcos_omega_dj, dcos_omega_dk, dcos_omega_dl );
 
-                                CEtors1 = sin_ijk * sin_jkl * CV;
+                                            cos_omega = COS( omega );
+                                            cos2omega = COS( 2.0 * omega );
+                                            cos3omega = COS( 3.0 * omega );
+                                            /* end omega calculations */
 
-                                CEtors2 = -fn10 * 2.0 * fbp->p_tor1 * fbp->V2 * exp_tor1
-                                    * (2.0 - bo_jk->BO_pi - f11_DjDk)
-                                    * (1.0 - SQR(cos_omega)) * sin_ijk * sin_jkl; 
-                                CEtors3 = CEtors2 * dfn11;
+                                            /* torsion energy */
+                                            exp_tor1 = EXP( fbp->p_tor1
+                                                    * SQR(2.0 - bo_jk->BO_pi - f11_DjDk) );
+                                            exp_tor2_kl = EXP( -p_tor2 * BOA_kl );
+                                            exp_cot2_kl = EXP( -p_cot2 * SQR(BOA_kl - 1.5) );
+                                            fn10 = (1.0 - exp_tor2_ij) * (1.0 - exp_tor2_jk) * 
+                                                (1.0 - exp_tor2_kl);
 
-                                CEtors4 = CEtors1 * p_tor2 * exp_tor2_ij
-                                    * (1.0 - exp_tor2_jk) * (1.0 - exp_tor2_kl);
-                                CEtors5 = CEtors1 * p_tor2 * (1.0 - exp_tor2_ij)
-                                    * exp_tor2_jk * (1.0 - exp_tor2_kl);
-                                CEtors6 = CEtors1 * p_tor2 * (1.0 - exp_tor2_ij)
-                                    * (1.0 - exp_tor2_jk) * exp_tor2_kl;
+                                            CV = 0.5 * ( fbp->V1 * (1.0 + cos_omega)
+                                                    + fbp->V2 * exp_tor1 * (1.0 - cos2omega)
+                                                    + fbp->V3 * (1.0 + cos3omega) );
+//                                            CV = 0.5 * fbp->V1 * (1.0 + cos_omega)
+//                                                + fbp->V2 * exp_tor1 * (1.0 - SQR(cos_omega))
+//                                                + fbp->V3 * (0.5 + 2.0 * CUBE(cos_omega) - 1.5 * cos_omega);
 
-                                cmn = -fn10 * CV;
-                                CEtors7 = cmn * sin_jkl * tan_ijk_i;
-                                CEtors8 = cmn * sin_ijk * tan_jkl_i;
+                                            e_tor_ += fn10 * sin_ijk * sin_jkl * CV;
 
-                                CEtors9 = fn10 * sin_ijk * sin_jkl
-                                    * (0.5 * fbp->V1 - 2.0 * fbp->V2 * exp_tor1 * cos_omega
-                                            + 1.5 * fbp->V3 * (cos2omega + 2.0 * SQR(cos_omega)));
-//                                CEtors7 = cmn * sin_jkl * cos_ijk;
-//                                CEtors8 = cmn * sin_ijk * cos_jkl;
-//                                CEtors9 = fn10 * sin_ijk * sin_jkl
-//                                    * (0.5 * fbp->V1 - 2.0 * fbp->V2 * exp_tor1 * cos_omega
-//                                            + fbp->V3 * (6.0 * SQR(cos_omega) - 1.50));
-                                /* end  of torsion energy */
+                                            dfn11 = (-p_tor3 * exp_tor3_DjDk
+                                                    + (p_tor3 * exp_tor3_DjDk - p_tor4 * exp_tor4_DjDk)
+                                                    * (2.0 + exp_tor3_DjDk) * exp_tor34_inv) * exp_tor34_inv;
 
-                                /* 4-body conjugation energy */
-                                fn12 = exp_cot2_ij * exp_cot2_jk * exp_cot2_kl;
-                                e_con_ += fbp->p_cot1 * fn12
-                                    * (1.0 + (SQR(cos_omega) - 1.0) * sin_ijk * sin_jkl);
+                                            CEtors1 = sin_ijk * sin_jkl * CV;
 
-                                Cconj = -2.0 * fn12 * fbp->p_cot1 * p_cot2
-                                    * (1.0 + (SQR(cos_omega) - 1.0) * sin_ijk * sin_jkl);
+                                            CEtors2 = -fn10 * 2.0 * fbp->p_tor1 * fbp->V2 * exp_tor1
+                                                * (2.0 - bo_jk->BO_pi - f11_DjDk)
+                                                * (1.0 - SQR(cos_omega)) * sin_ijk * sin_jkl; 
+                                            CEtors3 = CEtors2 * dfn11;
 
-                                CEconj1 = Cconj * (BOA_ij - 1.5);
-                                CEconj2 = Cconj * (BOA_jk - 1.5);
-                                CEconj3 = Cconj * (BOA_kl - 1.5);
+                                            CEtors4 = CEtors1 * p_tor2 * exp_tor2_ij
+                                                * (1.0 - exp_tor2_jk) * (1.0 - exp_tor2_kl);
+                                            CEtors5 = CEtors1 * p_tor2 * (1.0 - exp_tor2_ij)
+                                                * exp_tor2_jk * (1.0 - exp_tor2_kl);
+                                            CEtors6 = CEtors1 * p_tor2 * (1.0 - exp_tor2_ij)
+                                                * (1.0 - exp_tor2_jk) * exp_tor2_kl;
 
-                                CEconj4 = -fbp->p_cot1 * fn12
-                                    * (SQR(cos_omega) - 1.0) * sin_jkl * tan_ijk_i;
-                                CEconj5 = -fbp->p_cot1 * fn12
-                                    * (SQR(cos_omega) - 1.0) * sin_ijk * tan_jkl_i;
-//                                CEconj4 = -fbp->p_cot1 * fn12
-//                                    * (SQR(cos_omega) - 1.0) * sin_jkl * cos_ijk;
-//                                CEconj5 = -fbp->p_cot1 * fn12
-//                                    * (SQR(cos_omega) - 1.0) * sin_ijk * cos_jkl;
-                                CEconj6 = 2.0 * fbp->p_cot1 * fn12
-                                    * cos_omega * sin_ijk * sin_jkl;
-                                /* end 4-body conjugation energy */
+                                            cmn = -fn10 * CV;
+                                            CEtors7 = cmn * sin_jkl * tan_ijk_i;
+                                            CEtors8 = cmn * sin_ijk * tan_jkl_i;
 
-                                /* forces */
-                                Cdbopi_jk += CEtors2;
-                                CdDelta_j += CEtors3;
-                                CdDelta_k += CEtors3;
-                                Cdbo_ij += (CEtors4 + CEconj1);
-                                Cdbo_jk += (CEtors5 + CEconj2);
+                                            CEtors9 = fn10 * sin_ijk * sin_jkl
+                                                * (0.5 * fbp->V1 - 2.0 * fbp->V2 * exp_tor1 * cos_omega
+                                                        + 1.5 * fbp->V3 * (cos2omega + 2.0 * SQR(cos_omega)));
+//                                            CEtors7 = cmn * sin_jkl * cos_ijk;
+//                                            CEtors8 = cmn * sin_ijk * cos_jkl;
+//                                            CEtors9 = fn10 * sin_ijk * sin_jkl
+//                                                * (0.5 * fbp->V1 - 2.0 * fbp->V2 * exp_tor1 * cos_omega
+//                                                        + fbp->V3 * (6.0 * SQR(cos_omega) - 1.50));
+                                            /* end  of torsion energy */
+
+                                            /* 4-body conjugation energy */
+                                            fn12 = exp_cot2_ij * exp_cot2_jk * exp_cot2_kl;
+                                            e_con_ += fbp->p_cot1 * fn12
+                                                * (1.0 + (SQR(cos_omega) - 1.0) * sin_ijk * sin_jkl);
+
+                                            Cconj = -2.0 * fn12 * fbp->p_cot1 * p_cot2
+                                                * (1.0 + (SQR(cos_omega) - 1.0) * sin_ijk * sin_jkl);
+
+                                            CEconj1 = Cconj * (BOA_ij - 1.5);
+                                            CEconj2 = Cconj * (BOA_jk - 1.5);
+                                            CEconj3 = Cconj * (BOA_kl - 1.5);
+
+                                            CEconj4 = -fbp->p_cot1 * fn12
+                                                * (SQR(cos_omega) - 1.0) * sin_jkl * tan_ijk_i;
+                                            CEconj5 = -fbp->p_cot1 * fn12
+                                                * (SQR(cos_omega) - 1.0) * sin_ijk * tan_jkl_i;
+//                                            CEconj4 = -fbp->p_cot1 * fn12
+//                                                * (SQR(cos_omega) - 1.0) * sin_jkl * cos_ijk;
+//                                            CEconj5 = -fbp->p_cot1 * fn12
+//                                                * (SQR(cos_omega) - 1.0) * sin_ijk * cos_jkl;
+                                            CEconj6 = 2.0 * fbp->p_cot1 * fn12
+                                                * cos_omega * sin_ijk * sin_jkl;
+                                            /* end 4-body conjugation energy */
+
+                                            /* forces */
+                                            Cdbopi_jk += CEtors2;
+                                            CdDelta_j += CEtors3;
+                                            CdDelta_k += CEtors3;
+                                            Cdbo_ij += (CEtors4 + CEconj1);
+                                            Cdbo_jk += (CEtors5 + CEconj2);
 #if !defined(CUDA_ACCUM_ATOMIC)
-                                atomicAdd( &pbond_kl->ta_Cdbo, CEtors6 + CEconj3 );
+                                            atomicAdd( &pbond_kl->ta_Cdbo, CEtors6 + CEconj3 );
 #else
-                                atomicAdd( &bo_kl->Cdbo, CEtors6 + CEconj3 );
+                                            atomicAdd( &bo_kl->Cdbo, CEtors6 + CEconj3 );
 #endif
 
-                                /* dcos_theta_ijk */
-                                rvec_ScaledAdd( f_i, CEtors7 + CEconj4, p_ijk->dcos_dk );
-                                rvec_ScaledAdd( f_j, CEtors7 + CEconj4, p_ijk->dcos_dj );
-                                rvec_ScaledAdd( f_k, CEtors7 + CEconj4, p_ijk->dcos_di );
+                                            /* dcos_theta_ijk */
+                                            rvec_ScaledAdd( f_i, CEtors7 + CEconj4, p_ijk->dcos_dk );
+                                            rvec_ScaledAdd( f_j, CEtors7 + CEconj4, p_ijk->dcos_dj );
+                                            rvec_ScaledAdd( f_k, CEtors7 + CEconj4, p_ijk->dcos_di );
 
-                                /* dcos_theta_jkl */
-                                rvec_ScaledAdd( f_j, CEtors8 + CEconj5, p_jkl->dcos_di );
-                                rvec_ScaledAdd( f_k, CEtors8 + CEconj5, p_jkl->dcos_dj );
+                                            /* dcos_theta_jkl */
+                                            rvec_ScaledAdd( f_j, CEtors8 + CEconj5, p_jkl->dcos_di );
+                                            rvec_ScaledAdd( f_k, CEtors8 + CEconj5, p_jkl->dcos_dj );
 #if !defined(CUDA_ACCUM_ATOMIC)
-                                atomic_rvecScaledAdd( pbond_kl->ta_f, CEtors8 + CEconj5, p_jkl->dcos_dk );
+                                            atomic_rvecScaledAdd( pbond_kl->ta_f, CEtors8 + CEconj5, p_jkl->dcos_dk );
 #else
-                                atomic_rvecScaledAdd( workspace.f[l], CEtors8 + CEconj5, p_jkl->dcos_dk );
+                                            atomic_rvecScaledAdd( workspace.f[l], CEtors8 + CEconj5, p_jkl->dcos_dk );
 #endif
 
-                                /* dcos_omega */
-                                rvec_ScaledAdd( f_i, CEtors9 + CEconj6, dcos_omega_di );
-                                rvec_ScaledAdd( f_j, CEtors9 + CEconj6, dcos_omega_dj );
-                                rvec_ScaledAdd( f_k, CEtors9 + CEconj6, dcos_omega_dk );
+                                            /* dcos_omega */
+                                            rvec_ScaledAdd( f_i, CEtors9 + CEconj6, dcos_omega_di );
+                                            rvec_ScaledAdd( f_j, CEtors9 + CEconj6, dcos_omega_dj );
+                                            rvec_ScaledAdd( f_k, CEtors9 + CEconj6, dcos_omega_dk );
 #if !defined(CUDA_ACCUM_ATOMIC)
-                                atomic_rvecScaledAdd( pbond_kl->ta_f, CEtors9 + CEconj6, dcos_omega_dl );
+                                            atomic_rvecScaledAdd( pbond_kl->ta_f, CEtors9 + CEconj6, dcos_omega_dl );
 #else
-                                atomic_rvecScaledAdd( workspace.f[l], CEtors9 + CEconj6, dcos_omega_dl );
+                                            atomic_rvecScaledAdd( workspace.f[l], CEtors9 + CEconj6, dcos_omega_dl );
 #endif
-                            } // pl check ends
-                        } // pl loop ends
+                                        } // pl check ends
+                                    } // pl loop ends
 
 #if !defined(CUDA_ACCUM_ATOMIC)
-                    bo_ij->Cdbo += Cdbo_ij;
-                    atomic_rvecAdd( pbond_ij->ta_f, f_i );
+                                bo_ij->Cdbo += Cdbo_ij;
+                                atomic_rvecAdd( pbond_ij->ta_f, f_i );
 #else
-                    atomicAdd( &bo_ij->Cdbo, Cdbo_ij );
-                    atomic_rvecAdd( workspace.f[i], f_i );
+                                atomicAdd( &bo_ij->Cdbo, Cdbo_ij );
+                                atomic_rvecAdd( workspace.f[i], f_i );
 #endif
-                    } // pi check ends
-                } // pi loop ends
+                                } // pi check ends
+                            }
+                        } // pi loop ends
 
 #if !defined(CUDA_ACCUM_ATOMIC)
-                bo_jk->Cdbopi += Cdbopi_jk;
-                pbond_jk->ta_CdDelta += CdDelta_k;
-                bo_jk->Cdbo += Cdbo_jk;
-                atomic_rvecAdd( pbond_jk->ta_f, f_k );
+                        bo_jk->Cdbopi += Cdbopi_jk;
+                        pbond_jk->ta_CdDelta += CdDelta_k;
+                        bo_jk->Cdbo += Cdbo_jk;
+                        atomic_rvecAdd( pbond_jk->ta_f, f_k );
 #else
-                atomicAdd( &bo_jk->Cdbopi, Cdbopi_jk );
-                atomicAdd( &workspace.CdDelta[k], CdDelta_k );
-                atomicAdd( &bo_jk->Cdbo, Cdbo_jk );
-                atomic_rvecAdd( workspace.f[k], f_k );
+                        atomicAdd( &bo_jk->Cdbopi, Cdbopi_jk );
+                        atomicAdd( &workspace.CdDelta[k], CdDelta_k );
+                        atomicAdd( &bo_jk->Cdbo, Cdbo_jk );
+                        atomic_rvecAdd( workspace.f[k], f_k );
 #endif
-            } // k-j neighbor check ends
-        } // j<k && j-k neighbor check ends
-    } // pk loop ends
+                    } // k-j neighbor check ends
+                } // j<k && j-k neighbor check ends
+            } 
+        } // pk loop ends
 
 #if !defined(CUDA_ACCUM_ATOMIC)
-    workspace.CdDelta[j] += CdDelta_j;
-    rvec_Add( workspace.f[j], f_j );
-    e_tor_g[j] = e_tor_;
-    e_con_g[j] = e_con_;
+        workspace.CdDelta[j] += CdDelta_j;
+        rvec_Add( workspace.f[j], f_j );
+        e_tor_g[j] = e_tor_;
+        e_con_g[j] = e_con_;
 #else
-    atomicAdd( &workspace.CdDelta[j], CdDelta_j );
-    atomic_rvecAdd( workspace.f[j], f_j );
-    atomicAdd( (double *) e_tor_g, (double) e_tor_ );
-    atomicAdd( (double *) e_con_g, (double) e_con_ );
+        atomicAdd( &workspace.CdDelta[j], CdDelta_j );
+        atomic_rvecAdd( workspace.f[j], f_j );
+        atomicAdd( (double *) e_tor_g, (double) e_tor_ );
+        atomicAdd( (double *) e_con_g, (double) e_con_ );
 #endif
+    }
 }
 
 
 CUDA_GLOBAL void k_torsion_angles_part1_opt( reax_atom const * const my_atoms,
-        global_parameters gp, four_body_header const * const fbph,
-        control_params const * const control, reax_list bond_list,
-        reax_list thb_list, storage workspace, int n, int num_atom_types, 
+        global_parameters gp, single_body_parameters const * const sbp,
+        four_body_header const * const fbph, control_params const * const control,
+        reax_list bond_list, reax_list thb_list, storage workspace, int n, int num_atom_types, 
         real * const e_tor_g, real * const e_con_g )
 {
     extern __shared__ cub::WarpReduce<double>::TempStorage temp_d[];
@@ -529,334 +541,346 @@ CUDA_GLOBAL void k_torsion_angles_part1_opt( reax_atom const * const my_atoms,
         return;
     }
 
-    warp_id = threadIdx.x / warpSize;
-    lane_id = thread_id % warpSize;
-    p_tor2 = gp.l[23];
-    p_tor3 = gp.l[24];
-    p_tor4 = gp.l[25];
-    p_cot2 = gp.l[27];
-    e_tor_ = 0.0;
-    e_con_ = 0.0;
-    CdDelta_j = 0.0;
-    rvec_MakeZero( f_j );
-
     type_j = my_atoms[j].type;
-    Delta_j = workspace.Delta_boc[j];
-    start_j = Start_Index(j, &bond_list);
-    end_j = End_Index(j, &bond_list);
 
-    for ( pk = start_j; pk < end_j; ++pk )
+    if ( sbp[type_j].fbp_cnt_j > 0 )
     {
-        pbond_jk = &bond_list.bond_list[pk];
-        k = pbond_jk->nbr;
-        bo_jk = &pbond_jk->bo_data;
-        BOA_jk = bo_jk->BO - control->thb_cut;
+        warp_id = threadIdx.x / warpSize;
+        lane_id = thread_id % warpSize;
+        p_tor2 = gp.l[23];
+        p_tor3 = gp.l[24];
+        p_tor4 = gp.l[25];
+        p_cot2 = gp.l[27];
+        e_tor_ = 0.0;
+        e_con_ = 0.0;
+        CdDelta_j = 0.0;
+        rvec_MakeZero( f_j );
 
-        /* see if there are any 3-body interactions involving j and k
-         * where j is the central atom. Otherwise there is no point in
-         * trying to form a 4-body interaction out of this neighborhood */
-        if ( my_atoms[j].orig_id < my_atoms[k].orig_id
-                && bo_jk->BO > control->thb_cut
-                && Num_Entries(pk, &thb_list) > 0 )
+        Delta_j = workspace.Delta_boc[j];
+        start_j = Start_Index(j, &bond_list);
+        end_j = End_Index(j, &bond_list);
+
+        for ( pk = start_j; pk < end_j; ++pk )
         {
-            /* pj points to j on k's list */
-            pj = pbond_jk->sym_index;
+            pbond_jk = &bond_list.bond_list[pk];
+            k = pbond_jk->nbr;
+            type_k = my_atoms[k].type;
 
-            /* do the same check as above:
-             * are there any 3-body interactions
-             * involving k and j where k is the central atom */
-            if ( Num_Entries(pj, &thb_list) > 0 )
+            if ( sbp[type_k].fbp_cnt_k > 0 )
             {
-                type_k = my_atoms[k].type;
-                Delta_k = workspace.Delta_boc[k];
-                r_jk = pbond_jk->d;
-                CdDelta_k = 0.0;
-                Cdbopi_jk = 0.0;
-                Cdbo_jk = 0.0;
-                rvec_MakeZero( f_k );
+                bo_jk = &pbond_jk->bo_data;
+                BOA_jk = bo_jk->BO - control->thb_cut;
 
-                start_pk = Start_Index( pk, &thb_list );
-                end_pk = End_Index( pk, &thb_list );
-                start_pj = Start_Index( pj, &thb_list );
-                end_pj = End_Index( pj, &thb_list );        
-
-                exp_tor2_jk = EXP( -p_tor2 * BOA_jk );
-                exp_cot2_jk = EXP( -p_cot2 * SQR(BOA_jk - 1.5) );
-                exp_tor3_DjDk = EXP( -p_tor3 * (Delta_j + Delta_k) );
-                exp_tor4_DjDk = EXP( p_tor4  * (Delta_j + Delta_k) );
-                exp_tor34_inv = 1.0 / (1.0 + exp_tor3_DjDk + exp_tor4_DjDk);
-                f11_DjDk = (2.0 + exp_tor3_DjDk) * exp_tor34_inv;
-
-                /* pick i up from j-k interaction where j is the central atom */
-                for ( pi = start_pk; pi < end_pk; ++pi )
+                /* see if there are any 3-body interactions involving j and k
+                 * where j is the central atom. Otherwise there is no point in
+                 * trying to form a 4-body interaction out of this neighborhood */
+                if ( my_atoms[j].orig_id < my_atoms[k].orig_id
+                        && bo_jk->BO > control->thb_cut
+                        && Num_Entries(pk, &thb_list) > 0 )
                 {
-                    p_ijk = &thb_list.three_body_list[pi];
-                    /* pij is pointer to i on j's bond_list */
-                    pij = p_ijk->pthb;
-                    pbond_ij = &bond_list.bond_list[pij];
-                    bo_ij = &pbond_ij->bo_data;
+                    /* pj points to j on k's list */
+                    pj = pbond_jk->sym_index;
 
-                    if ( bo_ij->BO > control->thb_cut )
+                    /* do the same check as above:
+                     * are there any 3-body interactions
+                     * involving k and j where k is the central atom */
+                    if ( Num_Entries(pj, &thb_list) > 0 )
                     {
-                        i = p_ijk->thb;
-                        type_i = my_atoms[i].type;
-                        r_ij = pbond_ij->d;
-                        BOA_ij = bo_ij->BO - control->thb_cut;
-                        Cdbo_ij = 0.0;
-                        rvec_MakeZero( f_i );
+                        Delta_k = workspace.Delta_boc[k];
+                        r_jk = pbond_jk->d;
+                        CdDelta_k = 0.0;
+                        Cdbopi_jk = 0.0;
+                        Cdbo_jk = 0.0;
+                        rvec_MakeZero( f_k );
 
-                        theta_ijk = p_ijk->theta;
-                        sin_ijk = SIN( theta_ijk );
-                        cos_ijk = COS( theta_ijk );
-//                        tan_ijk_i = 1.0 / TAN( theta_ijk );
-                        if ( sin_ijk >= 0.0 && sin_ijk <= MIN_SINE )
-                        {
-                            tan_ijk_i = cos_ijk / MIN_SINE;
-                        }
-                        else if ( sin_ijk <= 0.0 && sin_ijk >= -MIN_SINE )
-                        {
-                            tan_ijk_i = cos_ijk / -MIN_SINE;
-                        }
-                        else
-                        {
-                            tan_ijk_i = cos_ijk / sin_ijk;
-                        }
+                        start_pk = Start_Index( pk, &thb_list );
+                        end_pk = End_Index( pk, &thb_list );
+                        start_pj = Start_Index( pj, &thb_list );
+                        end_pj = End_Index( pj, &thb_list );        
 
-                        exp_tor2_ij = EXP( -p_tor2 * BOA_ij );
-                        exp_cot2_ij = EXP( -p_cot2 * SQR(BOA_ij -1.5) );
+                        exp_tor2_jk = EXP( -p_tor2 * BOA_jk );
+                        exp_cot2_jk = EXP( -p_cot2 * SQR(BOA_jk - 1.5) );
+                        exp_tor3_DjDk = EXP( -p_tor3 * (Delta_j + Delta_k) );
+                        exp_tor4_DjDk = EXP( p_tor4  * (Delta_j + Delta_k) );
+                        exp_tor34_inv = 1.0 / (1.0 + exp_tor3_DjDk + exp_tor4_DjDk);
+                        f11_DjDk = (2.0 + exp_tor3_DjDk) * exp_tor34_inv;
 
-                        /* pick l up from j-k interaction where k is the central atom */
-                        for ( itr = 0, pl = start_pj + lane_id; itr < (end_pj - start_pj + warpSize - 1) / warpSize; ++itr )
+                        /* pick i up from j-k interaction where j is the central atom */
+                        for ( pi = start_pk; pi < end_pk; ++pi )
                         {
-                            if ( pl < end_pj )
+                            p_ijk = &thb_list.three_body_list[pi];
+                            /* pij is pointer to i on j's bond_list */
+                            pij = p_ijk->pthb;
+                            i = p_ijk->thb;
+                            type_i = my_atoms[i].type;
+
+                            if ( sbp[type_i].fbp_cnt_i > 0 )
                             {
-                                p_jkl = &thb_list.three_body_list[pl];
-                                l = p_jkl->thb;
-                                /* a pointer to l on k's bond_list! */
-                                plk = p_jkl->pthb;
-                                pbond_kl = &bond_list.bond_list[plk];
-                                bo_kl = &pbond_kl->bo_data;
-                                type_l = my_atoms[l].type;
-                                four_body_parameters const * const fbp = &fbph[
-                                    index_fbp(type_i, type_j, type_k, type_l, num_atom_types) ].prm[0];
+                                pbond_ij = &bond_list.bond_list[pij];
+                                bo_ij = &pbond_ij->bo_data;
 
-                                if ( i != l
-                                        && fbph[ index_fbp(type_i, type_j, type_k, type_l, num_atom_types) ].cnt > 0
-                                        && bo_kl->BO > control->thb_cut
-                                        && bo_ij->BO * bo_jk->BO * bo_kl->BO > control->thb_cut )
+                                if ( bo_ij->BO > control->thb_cut )
                                 {
-                                    r_kl = pbond_kl->d;
-                                    BOA_kl = bo_kl->BO - control->thb_cut;
+                                    r_ij = pbond_ij->d;
+                                    BOA_ij = bo_ij->BO - control->thb_cut;
+                                    Cdbo_ij = 0.0;
+                                    rvec_MakeZero( f_i );
 
-                                    theta_jkl = p_jkl->theta;
-                                    sin_jkl = SIN( theta_jkl );
-                                    cos_jkl = COS( theta_jkl );
-                                    //tan_jkl_i = 1.0 / TAN( theta_jkl );
-                                    if ( sin_jkl >= 0.0 && sin_jkl <= MIN_SINE )
+                                    theta_ijk = p_ijk->theta;
+                                    sin_ijk = SIN( theta_ijk );
+                                    cos_ijk = COS( theta_ijk );
+//                                    tan_ijk_i = 1.0 / TAN( theta_ijk );
+                                    if ( sin_ijk >= 0.0 && sin_ijk <= MIN_SINE )
                                     {
-                                        tan_jkl_i = cos_jkl / MIN_SINE;
+                                        tan_ijk_i = cos_ijk / MIN_SINE;
                                     }
-                                    else if ( sin_jkl <= 0.0 && sin_jkl >= -MIN_SINE )
+                                    else if ( sin_ijk <= 0.0 && sin_ijk >= -MIN_SINE )
                                     {
-                                        tan_jkl_i = cos_jkl / -MIN_SINE;
+                                        tan_ijk_i = cos_ijk / -MIN_SINE;
                                     }
                                     else
                                     {
-                                        tan_jkl_i = cos_jkl / sin_jkl;
+                                        tan_ijk_i = cos_ijk / sin_ijk;
                                     }
 
-                                    rvec_ScaledSum( dvec_li, 1.0, my_atoms[i].x, 
-                                            -1.0, my_atoms[l].x );
-                                    r_li = rvec_Norm( dvec_li );                 
+                                    exp_tor2_ij = EXP( -p_tor2 * BOA_ij );
+                                    exp_cot2_ij = EXP( -p_cot2 * SQR(BOA_ij -1.5) );
 
-                                    /* omega and its derivative */
-//                                    cos_omega = Calculate_Omega( pbond_ij->dvec, r_ij, pbond_jk->dvec,
-                                    omega = Calculate_Omega( pbond_ij->dvec, r_ij, pbond_jk->dvec, r_jk,
-                                            pbond_kl->dvec, r_kl, dvec_li, r_li, p_ijk, p_jkl,
-                                            dcos_omega_di, dcos_omega_dj, dcos_omega_dk, dcos_omega_dl );
+                                    /* pick l up from j-k interaction where k is the central atom */
+                                    for ( itr = 0, pl = start_pj + lane_id; itr < (end_pj - start_pj + warpSize - 1) / warpSize; ++itr )
+                                    {
+                                        if ( pl < end_pj )
+                                        {
+                                            p_jkl = &thb_list.three_body_list[pl];
+                                            l = p_jkl->thb;
+                                            /* a pointer to l on k's bond_list! */
+                                            plk = p_jkl->pthb;
+                                            pbond_kl = &bond_list.bond_list[plk];
+                                            bo_kl = &pbond_kl->bo_data;
+                                            type_l = my_atoms[l].type;
+                                            four_body_parameters const * const fbp = &fbph[
+                                                index_fbp(type_i, type_j, type_k, type_l, num_atom_types) ].prm[0];
 
-                                    cos_omega = COS( omega );
-                                    cos2omega = COS( 2.0 * omega );
-                                    cos3omega = COS( 3.0 * omega );
-                                    /* end omega calculations */
+                                            if ( i != l
+                                                    && fbph[ index_fbp(type_i, type_j, type_k, type_l, num_atom_types) ].cnt > 0
+                                                    && bo_kl->BO > control->thb_cut
+                                                    && bo_ij->BO * bo_jk->BO * bo_kl->BO > control->thb_cut )
+                                            {
+                                                r_kl = pbond_kl->d;
+                                                BOA_kl = bo_kl->BO - control->thb_cut;
 
-                                    /* torsion energy */
-                                    exp_tor1 = EXP( fbp->p_tor1
-                                            * SQR(2.0 - bo_jk->BO_pi - f11_DjDk) );
-                                    exp_tor2_kl = EXP( -p_tor2 * BOA_kl );
-                                    exp_cot2_kl = EXP( -p_cot2 * SQR(BOA_kl - 1.5) );
-                                    fn10 = (1.0 - exp_tor2_ij) * (1.0 - exp_tor2_jk) * 
-                                        (1.0 - exp_tor2_kl);
+                                                theta_jkl = p_jkl->theta;
+                                                sin_jkl = SIN( theta_jkl );
+                                                cos_jkl = COS( theta_jkl );
+                                                //tan_jkl_i = 1.0 / TAN( theta_jkl );
+                                                if ( sin_jkl >= 0.0 && sin_jkl <= MIN_SINE )
+                                                {
+                                                    tan_jkl_i = cos_jkl / MIN_SINE;
+                                                }
+                                                else if ( sin_jkl <= 0.0 && sin_jkl >= -MIN_SINE )
+                                                {
+                                                    tan_jkl_i = cos_jkl / -MIN_SINE;
+                                                }
+                                                else
+                                                {
+                                                    tan_jkl_i = cos_jkl / sin_jkl;
+                                                }
 
-                                    CV = 0.5 * ( fbp->V1 * (1.0 + cos_omega)
-                                            + fbp->V2 * exp_tor1 * (1.0 - cos2omega)
-                                            + fbp->V3 * (1.0 + cos3omega) );
-//                                    CV = 0.5 * fbp->V1 * (1.0 + cos_omega)
-//                                        + fbp->V2 * exp_tor1 * (1.0 - SQR(cos_omega))
-//                                        + fbp->V3 * (0.5 + 2.0 * CUBE(cos_omega) - 1.5 * cos_omega);
+                                                rvec_ScaledSum( dvec_li, 1.0, my_atoms[i].x, 
+                                                        -1.0, my_atoms[l].x );
+                                                r_li = rvec_Norm( dvec_li );                 
 
-                                    e_tor_ += fn10 * sin_ijk * sin_jkl * CV;
+                                                /* omega and its derivative */
+//                                                cos_omega = Calculate_Omega( pbond_ij->dvec, r_ij, pbond_jk->dvec,
+                                                omega = Calculate_Omega( pbond_ij->dvec, r_ij, pbond_jk->dvec, r_jk,
+                                                        pbond_kl->dvec, r_kl, dvec_li, r_li, p_ijk, p_jkl,
+                                                        dcos_omega_di, dcos_omega_dj, dcos_omega_dk, dcos_omega_dl );
 
-                                    dfn11 = (-p_tor3 * exp_tor3_DjDk
-                                            + (p_tor3 * exp_tor3_DjDk - p_tor4 * exp_tor4_DjDk)
-                                            * (2.0 + exp_tor3_DjDk) * exp_tor34_inv) * exp_tor34_inv;
+                                                cos_omega = COS( omega );
+                                                cos2omega = COS( 2.0 * omega );
+                                                cos3omega = COS( 3.0 * omega );
+                                                /* end omega calculations */
 
-                                    CEtors1 = sin_ijk * sin_jkl * CV;
+                                                /* torsion energy */
+                                                exp_tor1 = EXP( fbp->p_tor1
+                                                        * SQR(2.0 - bo_jk->BO_pi - f11_DjDk) );
+                                                exp_tor2_kl = EXP( -p_tor2 * BOA_kl );
+                                                exp_cot2_kl = EXP( -p_cot2 * SQR(BOA_kl - 1.5) );
+                                                fn10 = (1.0 - exp_tor2_ij) * (1.0 - exp_tor2_jk) * 
+                                                    (1.0 - exp_tor2_kl);
 
-                                    CEtors2 = -fn10 * 2.0 * fbp->p_tor1 * fbp->V2 * exp_tor1
-                                        * (2.0 - bo_jk->BO_pi - f11_DjDk)
-                                        * (1.0 - SQR(cos_omega)) * sin_ijk * sin_jkl; 
-                                    CEtors3 = CEtors2 * dfn11;
+                                                CV = 0.5 * ( fbp->V1 * (1.0 + cos_omega)
+                                                        + fbp->V2 * exp_tor1 * (1.0 - cos2omega)
+                                                        + fbp->V3 * (1.0 + cos3omega) );
+//                                                CV = 0.5 * fbp->V1 * (1.0 + cos_omega)
+//                                                    + fbp->V2 * exp_tor1 * (1.0 - SQR(cos_omega))
+//                                                    + fbp->V3 * (0.5 + 2.0 * CUBE(cos_omega) - 1.5 * cos_omega);
 
-                                    CEtors4 = CEtors1 * p_tor2 * exp_tor2_ij
-                                        * (1.0 - exp_tor2_jk) * (1.0 - exp_tor2_kl);
-                                    CEtors5 = CEtors1 * p_tor2 * (1.0 - exp_tor2_ij)
-                                        * exp_tor2_jk * (1.0 - exp_tor2_kl);
-                                    CEtors6 = CEtors1 * p_tor2 * (1.0 - exp_tor2_ij)
-                                        * (1.0 - exp_tor2_jk) * exp_tor2_kl;
+                                                e_tor_ += fn10 * sin_ijk * sin_jkl * CV;
 
-                                    cmn = -fn10 * CV;
-                                    CEtors7 = cmn * sin_jkl * tan_ijk_i;
-                                    CEtors8 = cmn * sin_ijk * tan_jkl_i;
+                                                dfn11 = (-p_tor3 * exp_tor3_DjDk
+                                                        + (p_tor3 * exp_tor3_DjDk - p_tor4 * exp_tor4_DjDk)
+                                                        * (2.0 + exp_tor3_DjDk) * exp_tor34_inv) * exp_tor34_inv;
 
-                                    CEtors9 = fn10 * sin_ijk * sin_jkl
-                                        * (0.5 * fbp->V1 - 2.0 * fbp->V2 * exp_tor1 * cos_omega
-                                                + 1.5 * fbp->V3 * (cos2omega + 2.0 * SQR(cos_omega)));
-//                                    CEtors7 = cmn * sin_jkl * cos_ijk;
-//                                    CEtors8 = cmn * sin_ijk * cos_jkl;
-//                                    CEtors9 = fn10 * sin_ijk * sin_jkl
-//                                        * (0.5 * fbp->V1 - 2.0 * fbp->V2 * exp_tor1 * cos_omega
-//                                                + fbp->V3 * (6.0 * SQR(cos_omega) - 1.50));
-                                    /* end  of torsion energy */
+                                                CEtors1 = sin_ijk * sin_jkl * CV;
 
-                                    /* 4-body conjugation energy */
-                                    fn12 = exp_cot2_ij * exp_cot2_jk * exp_cot2_kl;
-                                    e_con_ += fbp->p_cot1 * fn12
-                                        * (1.0 + (SQR(cos_omega) - 1.0) * sin_ijk * sin_jkl);
+                                                CEtors2 = -fn10 * 2.0 * fbp->p_tor1 * fbp->V2 * exp_tor1
+                                                    * (2.0 - bo_jk->BO_pi - f11_DjDk)
+                                                    * (1.0 - SQR(cos_omega)) * sin_ijk * sin_jkl; 
+                                                CEtors3 = CEtors2 * dfn11;
 
-                                    Cconj = -2.0 * fn12 * fbp->p_cot1 * p_cot2
-                                        * (1.0 + (SQR(cos_omega) - 1.0) * sin_ijk * sin_jkl);
+                                                CEtors4 = CEtors1 * p_tor2 * exp_tor2_ij
+                                                    * (1.0 - exp_tor2_jk) * (1.0 - exp_tor2_kl);
+                                                CEtors5 = CEtors1 * p_tor2 * (1.0 - exp_tor2_ij)
+                                                    * exp_tor2_jk * (1.0 - exp_tor2_kl);
+                                                CEtors6 = CEtors1 * p_tor2 * (1.0 - exp_tor2_ij)
+                                                    * (1.0 - exp_tor2_jk) * exp_tor2_kl;
 
-                                    CEconj1 = Cconj * (BOA_ij - 1.5);
-                                    CEconj2 = Cconj * (BOA_jk - 1.5);
-                                    CEconj3 = Cconj * (BOA_kl - 1.5);
+                                                cmn = -fn10 * CV;
+                                                CEtors7 = cmn * sin_jkl * tan_ijk_i;
+                                                CEtors8 = cmn * sin_ijk * tan_jkl_i;
 
-                                    CEconj4 = -fbp->p_cot1 * fn12
-                                        * (SQR(cos_omega) - 1.0) * sin_jkl * tan_ijk_i;
-                                    CEconj5 = -fbp->p_cot1 * fn12
-                                        * (SQR(cos_omega) - 1.0) * sin_ijk * tan_jkl_i;
-//                                    CEconj4 = -fbp->p_cot1 * fn12
-//                                        * (SQR(cos_omega) - 1.0) * sin_jkl * cos_ijk;
-//                                    CEconj5 = -fbp->p_cot1 * fn12
-//                                        * (SQR(cos_omega) - 1.0) * sin_ijk * cos_jkl;
-                                    CEconj6 = 2.0 * fbp->p_cot1 * fn12
-                                        * cos_omega * sin_ijk * sin_jkl;
-                                    /* end 4-body conjugation energy */
+                                                CEtors9 = fn10 * sin_ijk * sin_jkl
+                                                    * (0.5 * fbp->V1 - 2.0 * fbp->V2 * exp_tor1 * cos_omega
+                                                            + 1.5 * fbp->V3 * (cos2omega + 2.0 * SQR(cos_omega)));
+//                                                CEtors7 = cmn * sin_jkl * cos_ijk;
+//                                                CEtors8 = cmn * sin_ijk * cos_jkl;
+//                                                CEtors9 = fn10 * sin_ijk * sin_jkl
+//                                                    * (0.5 * fbp->V1 - 2.0 * fbp->V2 * exp_tor1 * cos_omega
+//                                                            + fbp->V3 * (6.0 * SQR(cos_omega) - 1.50));
+                                                /* end  of torsion energy */
 
-                                    /* forces */
-                                    Cdbopi_jk += CEtors2;
-                                    CdDelta_j += CEtors3;
-                                    CdDelta_k += CEtors3;
-                                    Cdbo_ij += (CEtors4 + CEconj1);
-                                    Cdbo_jk += (CEtors5 + CEconj2);
+                                                /* 4-body conjugation energy */
+                                                fn12 = exp_cot2_ij * exp_cot2_jk * exp_cot2_kl;
+                                                e_con_ += fbp->p_cot1 * fn12
+                                                    * (1.0 + (SQR(cos_omega) - 1.0) * sin_ijk * sin_jkl);
+
+                                                Cconj = -2.0 * fn12 * fbp->p_cot1 * p_cot2
+                                                    * (1.0 + (SQR(cos_omega) - 1.0) * sin_ijk * sin_jkl);
+
+                                                CEconj1 = Cconj * (BOA_ij - 1.5);
+                                                CEconj2 = Cconj * (BOA_jk - 1.5);
+                                                CEconj3 = Cconj * (BOA_kl - 1.5);
+
+                                                CEconj4 = -fbp->p_cot1 * fn12
+                                                    * (SQR(cos_omega) - 1.0) * sin_jkl * tan_ijk_i;
+                                                CEconj5 = -fbp->p_cot1 * fn12
+                                                    * (SQR(cos_omega) - 1.0) * sin_ijk * tan_jkl_i;
+//                                                CEconj4 = -fbp->p_cot1 * fn12
+//                                                    * (SQR(cos_omega) - 1.0) * sin_jkl * cos_ijk;
+//                                                CEconj5 = -fbp->p_cot1 * fn12
+//                                                    * (SQR(cos_omega) - 1.0) * sin_ijk * cos_jkl;
+                                                CEconj6 = 2.0 * fbp->p_cot1 * fn12
+                                                    * cos_omega * sin_ijk * sin_jkl;
+                                                /* end 4-body conjugation energy */
+
+                                                /* forces */
+                                                Cdbopi_jk += CEtors2;
+                                                CdDelta_j += CEtors3;
+                                                CdDelta_k += CEtors3;
+                                                Cdbo_ij += (CEtors4 + CEconj1);
+                                                Cdbo_jk += (CEtors5 + CEconj2);
 #if !defined(CUDA_ACCUM_ATOMIC)
-                                    atomicAdd( &pbond_kl->ta_Cdbo, CEtors6 + CEconj3 );
+                                                atomicAdd( &pbond_kl->ta_Cdbo, CEtors6 + CEconj3 );
 #else
-                                    atomicAdd( &bo_kl->Cdbo, CEtors6 + CEconj3 );
+                                                atomicAdd( &bo_kl->Cdbo, CEtors6 + CEconj3 );
 #endif
 
-                                    /* dcos_theta_ijk */
-                                    rvec_ScaledAdd( f_i, CEtors7 + CEconj4, p_ijk->dcos_dk );
-                                    rvec_ScaledAdd( f_j, CEtors7 + CEconj4, p_ijk->dcos_dj );
-                                    rvec_ScaledAdd( f_k, CEtors7 + CEconj4, p_ijk->dcos_di );
+                                                /* dcos_theta_ijk */
+                                                rvec_ScaledAdd( f_i, CEtors7 + CEconj4, p_ijk->dcos_dk );
+                                                rvec_ScaledAdd( f_j, CEtors7 + CEconj4, p_ijk->dcos_dj );
+                                                rvec_ScaledAdd( f_k, CEtors7 + CEconj4, p_ijk->dcos_di );
 
-                                    /* dcos_theta_jkl */
-                                    rvec_ScaledAdd( f_j, CEtors8 + CEconj5, p_jkl->dcos_di );
-                                    rvec_ScaledAdd( f_k, CEtors8 + CEconj5, p_jkl->dcos_dj );
+                                                /* dcos_theta_jkl */
+                                                rvec_ScaledAdd( f_j, CEtors8 + CEconj5, p_jkl->dcos_di );
+                                                rvec_ScaledAdd( f_k, CEtors8 + CEconj5, p_jkl->dcos_dj );
 #if !defined(CUDA_ACCUM_ATOMIC)
-                                    atomic_rvecScaledAdd( pbond_kl->ta_f, CEtors8 + CEconj5, p_jkl->dcos_dk );
+                                                atomic_rvecScaledAdd( pbond_kl->ta_f, CEtors8 + CEconj5, p_jkl->dcos_dk );
 #else
-                                    atomic_rvecScaledAdd( workspace.f[l], CEtors8 + CEconj5, p_jkl->dcos_dk );
+                                                atomic_rvecScaledAdd( workspace.f[l], CEtors8 + CEconj5, p_jkl->dcos_dk );
 #endif
 
-                                    /* dcos_omega */
-                                    rvec_ScaledAdd( f_i, CEtors9 + CEconj6, dcos_omega_di );
-                                    rvec_ScaledAdd( f_j, CEtors9 + CEconj6, dcos_omega_dj );
-                                    rvec_ScaledAdd( f_k, CEtors9 + CEconj6, dcos_omega_dk );
+                                                /* dcos_omega */
+                                                rvec_ScaledAdd( f_i, CEtors9 + CEconj6, dcos_omega_di );
+                                                rvec_ScaledAdd( f_j, CEtors9 + CEconj6, dcos_omega_dj );
+                                                rvec_ScaledAdd( f_k, CEtors9 + CEconj6, dcos_omega_dk );
 #if !defined(CUDA_ACCUM_ATOMIC)
-                                    atomic_rvecScaledAdd( pbond_kl->ta_f, CEtors9 + CEconj6, dcos_omega_dl );
+                                                atomic_rvecScaledAdd( pbond_kl->ta_f, CEtors9 + CEconj6, dcos_omega_dl );
 #else
-                                    atomic_rvecScaledAdd( workspace.f[l], CEtors9 + CEconj6, dcos_omega_dl );
+                                                atomic_rvecScaledAdd( workspace.f[l], CEtors9 + CEconj6, dcos_omega_dl );
 #endif
-                                } // pl check ends
+                                            } // pl check ends
+                                        }
+
+                                        pl += warpSize;
+                                    } // pl loop ends
+
+                                    Cdbo_ij = cub::WarpReduce<double>(temp_d[warp_id]).Sum(Cdbo_ij);
+                                    f_i[0] = cub::WarpReduce<double>(temp_d[warp_id]).Sum(f_i[0]);
+                                    f_i[1] = cub::WarpReduce<double>(temp_d[warp_id]).Sum(f_i[1]);
+                                    f_i[2] = cub::WarpReduce<double>(temp_d[warp_id]).Sum(f_i[2]);
+
+                                    if ( lane_id == 0 )
+                                    {
+#if !defined(CUDA_ACCUM_ATOMIC)
+                                        bo_ij->Cdbo += Cdbo_ij;
+                                        atomic_rvecAdd( pbond_ij->ta_f, f_i );
+#else
+                                        atomicAdd( &bo_ij->Cdbo, Cdbo_ij );
+                                        atomic_rvecAdd( workspace.f[i], f_i );
+#endif
+                                    }
+                                } // pi check ends
                             }
+                        } // pi loop ends
 
-                            pl += warpSize;
-                        } // pl loop ends
-
-                        Cdbo_ij = cub::WarpReduce<double>(temp_d[warp_id]).Sum(Cdbo_ij);
-                        f_i[0] = cub::WarpReduce<double>(temp_d[warp_id]).Sum(f_i[0]);
-                        f_i[1] = cub::WarpReduce<double>(temp_d[warp_id]).Sum(f_i[1]);
-                        f_i[2] = cub::WarpReduce<double>(temp_d[warp_id]).Sum(f_i[2]);
+                        Cdbopi_jk = cub::WarpReduce<double>(temp_d[warp_id]).Sum(Cdbopi_jk);
+                        CdDelta_k = cub::WarpReduce<double>(temp_d[warp_id]).Sum(CdDelta_k);
+                        Cdbo_jk = cub::WarpReduce<double>(temp_d[warp_id]).Sum(Cdbo_jk);
+                        f_k[0] = cub::WarpReduce<double>(temp_d[warp_id]).Sum(f_k[0]);
+                        f_k[1] = cub::WarpReduce<double>(temp_d[warp_id]).Sum(f_k[1]);
+                        f_k[2] = cub::WarpReduce<double>(temp_d[warp_id]).Sum(f_k[2]);
 
                         if ( lane_id == 0 )
                         {
 #if !defined(CUDA_ACCUM_ATOMIC)
-                            bo_ij->Cdbo += Cdbo_ij;
-                            atomic_rvecAdd( pbond_ij->ta_f, f_i );
+                            bo_jk->Cdbopi += Cdbopi_jk;
+                            pbond_jk->ta_CdDelta += CdDelta_k;
+                            bo_jk->Cdbo += Cdbo_jk;
+                            atomic_rvecAdd( pbond_jk->ta_f, f_k );
 #else
-                            atomicAdd( &bo_ij->Cdbo, Cdbo_ij );
-                            atomic_rvecAdd( workspace.f[i], f_i );
+                            atomicAdd( &bo_jk->Cdbopi, Cdbopi_jk );
+                            atomicAdd( &workspace.CdDelta[k], CdDelta_k );
+                            atomicAdd( &bo_jk->Cdbo, Cdbo_jk );
+                            atomic_rvecAdd( workspace.f[k], f_k );
 #endif
                         }
-                    } // pi check ends
-                } // pi loop ends
+                    } // k-j neighbor check ends
+                } // j<k && j-k neighbor check ends
+            }
+        } // pk loop ends
 
-                Cdbopi_jk = cub::WarpReduce<double>(temp_d[warp_id]).Sum(Cdbopi_jk);
-                CdDelta_k = cub::WarpReduce<double>(temp_d[warp_id]).Sum(CdDelta_k);
-                Cdbo_jk = cub::WarpReduce<double>(temp_d[warp_id]).Sum(Cdbo_jk);
-                f_k[0] = cub::WarpReduce<double>(temp_d[warp_id]).Sum(f_k[0]);
-                f_k[1] = cub::WarpReduce<double>(temp_d[warp_id]).Sum(f_k[1]);
-                f_k[2] = cub::WarpReduce<double>(temp_d[warp_id]).Sum(f_k[2]);
+        CdDelta_j = cub::WarpReduce<double>(temp_d[warp_id]).Sum(CdDelta_j);
+        f_j[0] = cub::WarpReduce<double>(temp_d[warp_id]).Sum(f_j[0]);
+        f_j[1] = cub::WarpReduce<double>(temp_d[warp_id]).Sum(f_j[1]);
+        f_j[2] = cub::WarpReduce<double>(temp_d[warp_id]).Sum(f_j[2]);
+        e_tor_ = cub::WarpReduce<double>(temp_d[warp_id]).Sum(e_tor_);
+        e_con_ = cub::WarpReduce<double>(temp_d[warp_id]).Sum(e_con_);
 
-                if ( lane_id == 0 )
-                {
+        if ( lane_id == 0 )
+        {
 #if !defined(CUDA_ACCUM_ATOMIC)
-                    bo_jk->Cdbopi += Cdbopi_jk;
-                    pbond_jk->ta_CdDelta += CdDelta_k;
-                    bo_jk->Cdbo += Cdbo_jk;
-                    atomic_rvecAdd( pbond_jk->ta_f, f_k );
+            workspace.CdDelta[j] += CdDelta_j;
+            rvec_Add( workspace.f[j], f_j );
+            e_tor_g[j] = e_tor_;
+            e_con_g[j] = e_con_;
 #else
-                    atomicAdd( &bo_jk->Cdbopi, Cdbopi_jk );
-                    atomicAdd( &workspace.CdDelta[k], CdDelta_k );
-                    atomicAdd( &bo_jk->Cdbo, Cdbo_jk );
-                    atomic_rvecAdd( workspace.f[k], f_k );
+            atomicAdd( &workspace.CdDelta[j], CdDelta_j );
+            atomic_rvecAdd( workspace.f[j], f_j );
+            atomicAdd( (double *) e_tor_g, (double) e_tor_ );
+            atomicAdd( (double *) e_con_g, (double) e_con_ );
 #endif
-                }
-            } // k-j neighbor check ends
-        } // j<k && j-k neighbor check ends
-    } // pk loop ends
-
-    CdDelta_j = cub::WarpReduce<double>(temp_d[warp_id]).Sum(CdDelta_j);
-    f_j[0] = cub::WarpReduce<double>(temp_d[warp_id]).Sum(f_j[0]);
-    f_j[1] = cub::WarpReduce<double>(temp_d[warp_id]).Sum(f_j[1]);
-    f_j[2] = cub::WarpReduce<double>(temp_d[warp_id]).Sum(f_j[2]);
-    e_tor_ = cub::WarpReduce<double>(temp_d[warp_id]).Sum(e_tor_);
-    e_con_ = cub::WarpReduce<double>(temp_d[warp_id]).Sum(e_con_);
-
-    if ( lane_id == 0 )
-    {
-#if !defined(CUDA_ACCUM_ATOMIC)
-        workspace.CdDelta[j] += CdDelta_j;
-        rvec_Add( workspace.f[j], f_j );
-        e_tor_g[j] = e_tor_;
-        e_con_g[j] = e_con_;
-#else
-        atomicAdd( &workspace.CdDelta[j], CdDelta_j );
-        atomic_rvecAdd( workspace.f[j], f_j );
-        atomicAdd( (double *) e_tor_g, (double) e_tor_ );
-        atomicAdd( (double *) e_con_g, (double) e_con_ );
-#endif
+        }
     }
 }
 
@@ -1322,7 +1346,7 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
     {
 //        k_torsion_angles_part1 <<< control->blocks, control->block_size,
 //                               0, control->streams[3] >>>
-//            ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_fbp,
+//            ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp, system->reax_param.d_fbp,
 //              (control_params *) control->d_control_params, *(lists[BONDS]),
 //              *(lists[THREE_BODIES]), *(workspace->d_workspace), system->n,
 //              system->reax_param.num_atom_types, 
@@ -1340,7 +1364,7 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
         k_torsion_angles_part1_opt <<< blocks, DEF_BLOCK_SIZE,
                                    sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32),
                                    control->streams[3] >>>
-            ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_fbp,
+            ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp, system->reax_param.d_fbp,
               (control_params *) control->d_control_params, *(lists[BONDS]),
               *(lists[THREE_BODIES]), *(workspace->d_workspace), system->n,
               system->reax_param.num_atom_types, 
