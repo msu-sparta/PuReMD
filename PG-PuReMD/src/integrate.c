@@ -80,7 +80,7 @@ int Velocity_Verlet_NVE( reax_system * const system, control_params * const cont
 
     if ( renbr == TRUE && gen_nbr_list == FALSE )
     {
-        ret = Generate_Neighbor_Lists( system, data, workspace, lists );
+        ret = Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
         if ( ret == SUCCESS )
         {
@@ -88,7 +88,7 @@ int Velocity_Verlet_NVE( reax_system * const system, control_params * const cont
         }
         else
         {
-            Estimate_Num_Neighbors( system, data, lists[FAR_NBRS]->format );
+            Estimate_Num_Neighbors( system, control, data, lists[FAR_NBRS]->format );
         }
     }
 
@@ -172,7 +172,7 @@ int Velocity_Verlet_Berendsen_NVT( reax_system * const system, control_params * 
 
     if ( renbr == TRUE && gen_nbr_list == FALSE )
     {
-        ret = Generate_Neighbor_Lists( system, data, workspace, lists );
+        ret = Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
         if ( ret == SUCCESS )
         {
@@ -180,7 +180,7 @@ int Velocity_Verlet_Berendsen_NVT( reax_system * const system, control_params * 
         }
         else
         {
-            Estimate_Num_Neighbors( system, data, lists[FAR_NBRS]->format );
+            Estimate_Num_Neighbors( system, control, data, lists[FAR_NBRS]->format );
         }
     }
 
@@ -294,7 +294,7 @@ int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
 
     if ( renbr == TRUE && gen_nbr_list == FALSE )
     {
-        ret = Generate_Neighbor_Lists( system, data, workspace, lists );
+        ret = Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
         if ( ret == SUCCESS )
         {
@@ -302,7 +302,7 @@ int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
         }
         else
         {
-            Estimate_Num_Neighbors( system, data, lists[FAR_NBRS]->format );
+            Estimate_Num_Neighbors( system, control, data, lists[FAR_NBRS]->format );
         }
     }
 
@@ -415,7 +415,7 @@ int Velocity_Verlet_Berendsen_NPT( reax_system * const system, control_params * 
 
     if ( renbr == TRUE && gen_nbr_list == FALSE )
     {
-        ret = Generate_Neighbor_Lists( system, data, workspace, lists );
+        ret = Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
         if ( ret == SUCCESS )
         {
@@ -423,7 +423,7 @@ int Velocity_Verlet_Berendsen_NPT( reax_system * const system, control_params * 
         }
         else
         {
-            Estimate_Num_Neighbors( system, data, lists[FAR_NBRS]->format );
+            Estimate_Num_Neighbors( system, control, data, lists[FAR_NBRS]->format );
         }
     }
 

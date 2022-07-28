@@ -666,13 +666,13 @@ void Init_Lists( reax_system * const system, control_params * const control,
 #endif
     }
 
-    Estimate_Num_Neighbors( system, data, far_nbr_list_format );
+    Estimate_Num_Neighbors( system, control, data, far_nbr_list_format );
 
     Make_List( system->total_cap, system->total_far_nbrs, TYP_FAR_NEIGHBOR,
             far_nbr_list_format, lists[FAR_NBRS] );
     Init_List_Indices( lists[FAR_NBRS], system->max_far_nbrs );
 
-    ret = Generate_Neighbor_Lists( system, data, workspace, lists );
+    ret = Generate_Neighbor_Lists( system, control, data, workspace, lists );
     if ( ret != SUCCESS )
     {
         fprintf( stderr, "[ERROR] p%d: failed to generate neighbor lists. Terminating...\n", system->my_rank );

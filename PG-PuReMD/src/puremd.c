@@ -382,7 +382,7 @@ int simulate( const void * const handle )
 
         Reset( system, control, data, workspace, lists );
 
-        ret = Generate_Neighbor_Lists( system, data, workspace, lists );
+        ret = Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
         if ( ret != SUCCESS )
         {

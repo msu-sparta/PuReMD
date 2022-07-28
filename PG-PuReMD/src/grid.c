@@ -57,7 +57,7 @@ static void Mark_Grid_Cells( reax_system * const system, grid * const g,
         {
             for ( z = 0; z < g->ncells[2]; z++ )
             {
-                g->cells[ index_grid_3d(x, y, z, g) ].type = 0;
+                g->cells[index_grid_3d(x, y, z, g)].type = 0;
             }
         }
     }
@@ -69,8 +69,8 @@ static void Mark_Grid_Cells( reax_system * const system, grid * const g,
         {
             for ( z = g->native_str[2]; z < g->native_end[2]; z++ )
             {
-                g->cells[ index_grid_3d(x, y, z, g) ].type = NATIVE;
-                ivec_MakeZero( g->rel_box[ index_grid_3d(x, y, z, g) ]);
+                g->cells[index_grid_3d(x, y, z, g)].type = NATIVE;
+                ivec_MakeZero( g->rel_box[index_grid_3d(x, y, z, g)]);
             }
         }
     }
@@ -170,7 +170,7 @@ static void Mark_Grid_Cells( reax_system * const system, grid * const g,
                     {
                         for ( z = str_recv[2]; z < end_recv[2]; ++z )
                         {
-                            ivec_Copy( g->rel_box[ index_grid_3d(x, y, z, g) ], prdc );
+                            ivec_Copy( g->rel_box[index_grid_3d(x, y, z, g)], prdc );
                         }
                     }
                 }
@@ -193,7 +193,7 @@ static void Find_Closest_Point( grid * const g, ivec c1, ivec c2,
 
         if ( d > 0 )
         {
-            closest_point[i] = g->cells[ index_grid_3d_v(c2, g) ].min[i];
+            closest_point[i] = g->cells[index_grid_3d_v(c2, g)].min[i];
         }
         else if ( d == 0 )
         {
@@ -201,7 +201,7 @@ static void Find_Closest_Point( grid * const g, ivec c1, ivec c2,
         }
         else
         {
-            closest_point[i] = g->cells[ index_grid_3d_v(c2, g) ].max[i];
+            closest_point[i] = g->cells[index_grid_3d_v(c2, g)].max[i];
         }
     }
 }
@@ -221,7 +221,7 @@ static void Find_Neighbor_Grid_Cells( grid * const g, control_params * const con
         {
             for ( ci[2] = 0; ci[2] < g->ncells[2]; ci[2]++ )
             {
-                gc = &g->cells[ index_grid_3d_v(ci, g) ];
+                gc = &g->cells[index_grid_3d_v(ci, g)];
                 top = 0;
 
 //#if defined(NEUTRAL_TERRITORY)
@@ -230,17 +230,17 @@ static void Find_Neighbor_Grid_Cells( grid * const g, control_params * const con
 //                if ( gc->type == NATIVE )
 //#endif
 //                {
-                    g->cutoff[ index_grid_3d_v(ci, g) ] = control->vlist_cut;
+                    g->cutoff[index_grid_3d_v(ci, g)] = control->vlist_cut;
 //                }
 //                else
 //                {
-//                    g->cutoff[ index_grid_3d_v(ci, g) ] = control->bond_cut;
+//                    g->cutoff[index_grid_3d_v(ci, g)] = control->bond_cut;
 //                }
 
                 for ( d = 0; d < 3; ++d )
                 {
                     //TODO: investigate which is correct
-//                    span[d] = (int) CEIL( g->cutoff[ index_grid_3d_v(ci, g) ] / g->cell_len[d] );
+//                    span[d] = (int) CEIL( g->cutoff[index_grid_3d_v(ci, g)] / g->cell_len[d] );
                     span[d] = (int) CEIL( control->vlist_cut / g->cell_len[d] );
                     cmin[d] = MAX( ci[d] - span[d], 0 );
                     cmax[d] = MIN( ci[d] + span[d] + 1, g->ncells[d] );
@@ -256,7 +256,7 @@ static void Find_Neighbor_Grid_Cells( grid * const g, control_params * const con
                             ivec_Copy( g->nbrs_x[index_grid_nbrs(ci[0], ci[1], ci[2], top, g)], cj );
 
                             Find_Closest_Point( g, ci, cj,
-                                    g->nbrs_cp[ index_grid_nbrs(ci[0], ci[1], ci[2], top, g) ] );
+                                    g->nbrs_cp[index_grid_nbrs(ci[0], ci[1], ci[2], top, g)] );
 
                             ++top;
                         }
@@ -386,13 +386,13 @@ void Setup_New_Grid( reax_system * const system, control_params * const control,
         {
             for ( k = 0; k < g->ncells[2]; k++ )
             {
-                g->cells[ index_grid_3d(i, j, k, g) ].min[0] = my_ext_box->min[0] + i * g->cell_len[0];
-                g->cells[ index_grid_3d(i, j, k, g) ].min[1] = my_ext_box->min[1] + j * g->cell_len[1];
-                g->cells[ index_grid_3d(i, j, k, g) ].min[2] = my_ext_box->min[2] + k * g->cell_len[2];
+                g->cells[index_grid_3d(i, j, k, g)].min[0] = my_ext_box->min[0] + i * g->cell_len[0];
+                g->cells[index_grid_3d(i, j, k, g)].min[1] = my_ext_box->min[1] + j * g->cell_len[1];
+                g->cells[index_grid_3d(i, j, k, g)].min[2] = my_ext_box->min[2] + k * g->cell_len[2];
 
-                g->cells[ index_grid_3d(i, j, k, g) ].max[0] = my_ext_box->min[0] + (i + 1) * g->cell_len[0];
-                g->cells[ index_grid_3d(i, j, k, g) ].max[1] = my_ext_box->min[1] + (j + 1) * g->cell_len[1];
-                g->cells[ index_grid_3d(i, j, k, g) ].max[2] = my_ext_box->min[2] + (k + 1) * g->cell_len[2];
+                g->cells[index_grid_3d(i, j, k, g)].max[0] = my_ext_box->min[0] + (i + 1) * g->cell_len[0];
+                g->cells[index_grid_3d(i, j, k, g)].max[1] = my_ext_box->min[1] + (j + 1) * g->cell_len[1];
+                g->cells[index_grid_3d(i, j, k, g)].max[2] = my_ext_box->min[2] + (k + 1) * g->cell_len[2];
             }
         }
     }
@@ -467,18 +467,18 @@ void Update_Grid( reax_system * const system, control_params * const control,
             {
                 for ( k = 0; k < g->ncells[2]; k++ )
                 {
-                    g->cells[ index_grid_3d(i, j, k, g) ].min[0] =
+                    g->cells[index_grid_3d(i, j, k, g)].min[0] =
                         my_ext_box->min[0] + i * g->cell_len[0];
-                    g->cells[ index_grid_3d(i, j, k, g) ].min[1] =
+                    g->cells[index_grid_3d(i, j, k, g)].min[1] =
                         my_ext_box->min[1] + j * g->cell_len[1];
-                    g->cells[ index_grid_3d(i, j, k, g) ].min[2] =
+                    g->cells[index_grid_3d(i, j, k, g)].min[2] =
                         my_ext_box->min[2] + k * g->cell_len[2];
 
-                    g->cells[ index_grid_3d(i, j, k, g) ].max[0] =
+                    g->cells[index_grid_3d(i, j, k, g)].max[0] =
                         my_ext_box->min[0] + (i + 1) * g->cell_len[0];
-                    g->cells[ index_grid_3d(i, j, k, g) ].max[1] =
+                    g->cells[index_grid_3d(i, j, k, g)].max[1] =
                         my_ext_box->min[1] + (j + 1) * g->cell_len[1];
-                    g->cells[ index_grid_3d(i, j, k, g) ].max[2] =
+                    g->cells[index_grid_3d(i, j, k, g)].max[2] =
                         my_ext_box->min[2] + (k + 1) * g->cell_len[2];
                 }
             }
@@ -491,7 +491,7 @@ void Update_Grid( reax_system * const system, control_params * const control,
             {
                 for ( ci[2] = 0; ci[2] < g->ncells[2]; ci[2]++ )
                 {
-                    gc = &g->cells[ index_grid_3d_v(ci, g) ];
+                    gc = &g->cells[index_grid_3d_v(ci, g)];
 
                     itr = 0;
                     //while( g->nbrs[itr] != NULL ) {
@@ -571,7 +571,7 @@ void Bin_My_Atoms( reax_system * const system, storage * const workspace )
                 }
             }
 
-            gc = &g->cells[ index_grid_3d_v(c, g) ];
+            gc = &g->cells[index_grid_3d_v(c, g)];
             gc->atoms[ gc->top++ ] = l;
 
 #if defined(DEBUG_FOCUS)
@@ -591,7 +591,7 @@ void Bin_My_Atoms( reax_system * const system, storage * const workspace )
         {
             for ( k = g->native_str[2]; k < g->native_end[2]; k++ )
             {
-                gc = &g->cells[ index_grid_3d(i, j, k, g) ];
+                gc = &g->cells[index_grid_3d(i, j, k, g)];
 
                 if ( max_atoms < gc->top )
                 {
@@ -651,8 +651,8 @@ void Reorder_My_Atoms( reax_system * const system, storage * const workspace )
         x = g->order[i][0];
         y = g->order[i][1];
         z = g->order[i][2];
-        gc = &g->cells[ index_grid_3d(x, y, z, g) ];
-        g->str[ index_grid_3d(x, y, z, g) ] = top;
+        gc = &g->cells[index_grid_3d(x, y, z, g)];
+        g->str[index_grid_3d(x, y, z, g)] = top;
 
         for ( l = 0; l < gc->top; ++l )
         {
@@ -662,7 +662,7 @@ void Reorder_My_Atoms( reax_system * const system, storage * const workspace )
             new_atoms[top].imprt_id = -1;
             ++top;
         }
-        g->end[ index_grid_3d(x, y, z, g) ] = top;
+        g->end[index_grid_3d(x, y, z, g)] = top;
     }
 
     /* deallocate old storage */
@@ -692,10 +692,10 @@ void Reorder_My_Atoms( reax_system * const system, storage * const workspace )
                 system->my_rank, index_grid_3d(x, y, z, g) );
         fprintf( stderr, "p%d: i = %6d, g->start[%6d] = %6d, g->end[%6d] = %6d\n",
                 system->my_rank, i, i, g->str[index_grid_3d(x, y, z, g)],
-                i, g->end[ index_grid_3d(x, y, z, g) ] );
+                i, g->end[index_grid_3d(x, y, z, g)] );
         fflush( stderr );
-        for ( l = g->str[ index_grid_3d(x, y, z, g) ];
-                l < g->end[ index_grid_3d(x, y, z, g) ]; ++l )
+        for ( l = g->str[index_grid_3d(x, y, z, g)];
+                l < g->end[index_grid_3d(x, y, z, g)]; ++l )
         {
             fprintf( stderr, "p%d: atom %6d: x = %10.4f, y = %10.4f, z = %10.4f\n",
                     system->my_rank, system->my_atoms[l].orig_id,
@@ -744,7 +744,7 @@ static void Get_Boundary_Grid_Cell( grid * const g, rvec base, rvec x, grid_cell
 
     ivec_Copy( gc_coord, c );
 
-    *gc = &g->cells[ index_grid_3d_v(c, g) ];
+    *gc = &g->cells[index_grid_3d_v(c, g)];
     rvec_ScaledSum( *cur_min, 1.0, (*gc)->min, -1.0, loosen );
     rvec_Sum( *cur_max, (*gc)->max, loosen );
 
@@ -801,7 +801,7 @@ void Bin_Boundary_Atoms( reax_system * const system )
     rvec_Copy( base, ext_box->min );
 
     Get_Boundary_Grid_Cell( g, base, atoms[start].x, &gc, &cur_min, &cur_max, gc_coord );
-    g->str[ index_grid_3d_v( gc_coord, g ) ] = start;
+    g->str[index_grid_3d_v(gc_coord, g)] = start;
     gc->top = 1;
 
     if ( is_Within_Grid_Cell( atoms[start].x, ext_box->min, ext_box->max ) == FALSE )
@@ -830,7 +830,7 @@ void Bin_Boundary_Atoms( reax_system * const system )
         {
             /* mark the end index for atom indices placed in previous grid cell
              * and get the next grid cell along with its boundaries */
-            g->end[ index_grid_3d_v( gc_coord, g ) ] = i;
+            g->end[index_grid_3d_v(gc_coord, g)] = i;
             Get_Boundary_Grid_Cell( g, base, atoms[i].x, &gc,
                     &cur_min, &cur_max, gc_coord );
 
@@ -848,11 +848,11 @@ void Bin_Boundary_Atoms( reax_system * const system )
 
             /* mark the start index for atom indices placed in new grid cell
              * and record the atom placement */
-            g->str[ index_grid_3d_v( gc_coord, g ) ] = i;
+            g->str[index_grid_3d_v(gc_coord, g)] = i;
             gc->top = 1;
         }
     }
 
     /* mark the end index for atom indices placed in the last grid cell */
-    g->end[ index_grid_3d_v( gc_coord, g ) ] = i;
+    g->end[index_grid_3d_v(gc_coord, g)] = i;
 }

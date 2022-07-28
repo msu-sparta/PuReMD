@@ -56,11 +56,12 @@ CUDA_DEVICE static inline real Cuda_DistSqr_to_Special_Point( rvec cp, rvec x )
 
 /* Generate far neighbor lists in full format
  * by scanning the atoms list and applying cutoffs */
-CUDA_GLOBAL void k_generate_neighbor_lists_full( reax_atom *my_atoms, 
+CUDA_GLOBAL void k_generate_neighbor_lists_full( reax_atom const * const my_atoms, 
         simulation_box my_ext_box, grid g, reax_list far_nbr_list,
-        int n, int N, int *far_nbrs, int *max_far_nbrs, int *realloc_far_nbrs )
+        int n, int N, int * const far_nbrs, int * const max_far_nbrs,
+        int * const realloc_far_nbrs, real cutoff2 )
 {
-    int i, j, k, l, m, itr, num_far, my_num_far;
+    int i, j, k, l, m, itr, num_far, my_num_far, flag;
     real d, cutoff;
     ivec c, nbrs_x, rel_box, rel_box2;
     rvec x, dvec;
@@ -121,7 +122,7 @@ CUDA_GLOBAL void k_generate_neighbor_lists_full( reax_atom *my_atoms,
     { 
         ivec_Copy( nbrs_x, g.nbrs_x[index_grid_nbrs(i, j, k, itr, &g)] );
 
-        /* if neighboring grid cell is further in the "positive" direction AND within cutoff */
+        /* if neighboring grid cell is within cutoff */
         if ( Cuda_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)], x) <= cutoff )
         {
             ivec_Copy( rel_box2, g.rel_box[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)] );
@@ -138,7 +139,18 @@ CUDA_GLOBAL void k_generate_neighbor_lists_full( reax_atom *my_atoms,
                     dvec[2] = my_atoms[m].x[2] - x[2];
                     d = rvec_Norm_Sqr( dvec );
 
-                    if ( d <= cutoff )
+                    /* further restrict ghost-ghost atom interactions
+                     * to bond cut-off distance */
+                    if ( l >= N && m >= N )
+                    {
+                        flag = (d <= cutoff2 ? TRUE : FALSE);
+                    }
+                    else
+                    {
+                        flag = TRUE;
+                    }
+
+                    if ( d <= cutoff && flag == TRUE )
                     { 
                         /* commit far neighbor to list */
                         far_nbr_list.far_nbr_list.nbr[num_far] = m;
@@ -170,9 +182,10 @@ CUDA_GLOBAL void k_generate_neighbor_lists_full( reax_atom *my_atoms,
 
 /* Generate far neighbor lists in full format
  * by scanning the atoms list and applying cutoffs */
-CUDA_GLOBAL void k_generate_neighbor_lists_full_opt( reax_atom *my_atoms, 
+CUDA_GLOBAL void k_generate_neighbor_lists_full_opt( reax_atom const * const my_atoms, 
         simulation_box my_ext_box, grid g, reax_list far_nbr_list,
-        int n, int N, int *far_nbrs, int *max_far_nbrs, int *realloc_far_nbrs )
+        int n, int N, int * const far_nbrs, int * const max_far_nbrs,
+        int * const realloc_far_nbrs, real cutoff2 )
 {
     extern __shared__ cub::WarpScan<int>::TempStorage temp1[];
     int i, j, k, l, m, itr, num_far, my_num_far, lane_id, itr2;
@@ -239,7 +252,7 @@ CUDA_GLOBAL void k_generate_neighbor_lists_full_opt( reax_atom *my_atoms,
     { 
         ivec_Copy( nbrs_x, g.nbrs_x[index_grid_nbrs(i, j, k, itr, &g)] );
 
-        /* if neighboring grid cell is further in the "positive" direction AND within cutoff */
+        /* if neighboring grid cell is within cutoff */
         if ( Cuda_DistSqr_to_Special_Point(g.nbrs_cp[index_grid_nbrs(i, j, k, itr, &g)], x) <= cutoff )
         {
             start = g.str[index_grid_3d(nbrs_x[0], nbrs_x[1], nbrs_x[2], &g)];
@@ -259,7 +272,18 @@ CUDA_GLOBAL void k_generate_neighbor_lists_full_opt( reax_atom *my_atoms,
                     d = rvec_Norm_Sqr( dvec );
                 }
 
-                offset = (m < end && l != m && d <= cutoff) ? 1 : 0;
+                /* further restrict ghost-ghost atom interactions
+                 * to bond cut-off distance */
+                if ( l >= N && m >= N )
+                {
+                    flag = (d <= cutoff2 ? TRUE : FALSE);
+                }
+                else
+                {
+                    flag = TRUE;
+                }
+
+                offset = (m < end && l != m && d <= cutoff && flag == TRUE) ? 1 : 0;
                 flag = (offset == 1) ? TRUE : FALSE;
                 cub::WarpScan<int>(temp1[threadIdx.x / warpSize]).ExclusiveSum(offset, offset);
 
@@ -301,11 +325,11 @@ CUDA_GLOBAL void k_generate_neighbor_lists_full_opt( reax_atom *my_atoms,
 
 /* Estimate the number of entries in the far neighbors list in full format
  * using one thread per atom */
-CUDA_GLOBAL void k_estimate_neighbors_full( reax_atom *my_atoms, 
+CUDA_GLOBAL void k_estimate_neighbors_full( reax_atom const * const my_atoms, 
         simulation_box my_ext_box, grid g, int n, int N, int total_cap,
-        int *far_nbrs, int *max_far_nbrs )
+        int * const far_nbrs, int * const max_far_nbrs, real cutoff2 )
 {
-    int i, j, k, l, m, itr, num_far;
+    int i, j, k, l, m, itr, num_far, flag;
     real cutoff;
     ivec c, nbrs_x;
     rvec dvec, x;
@@ -381,8 +405,20 @@ CUDA_GLOBAL void k_estimate_neighbors_full( reax_atom *my_atoms,
                         dvec[0] = my_atoms[m].x[0] - x[0];
                         dvec[1] = my_atoms[m].x[1] - x[1];
                         dvec[2] = my_atoms[m].x[2] - x[2];
+                        d = rvec_Norm_Sqr( dvec ) 
 
-                        if ( rvec_Norm_Sqr( dvec ) <= cutoff )
+                        /* further restrict ghost-ghost atom interactions
+                         * to bond cut-off distance */
+                        if ( l >= N && m >= N )
+                        {
+                            flag = (d <= cutoff2 ? TRUE : FALSE);
+                        }
+                        else
+                        {
+                            flag = TRUE;
+                        }
+
+                        if ( d <= cutoff && flag == TRUE )
                         { 
                             num_far++;
                         }
@@ -409,12 +445,12 @@ CUDA_GLOBAL void k_estimate_neighbors_full( reax_atom *my_atoms,
 
 /* Estimate the number of entries in the far neighbors list in full format
  * using one warp of threads per atom */
-CUDA_GLOBAL void k_estimate_neighbors_full_opt( reax_atom *my_atoms, 
+CUDA_GLOBAL void k_estimate_neighbors_full_opt( reax_atom const * const my_atoms, 
         simulation_box my_ext_box, grid g, int n, int N, int total_cap,
-        int *far_nbrs, int *max_far_nbrs )
+        int * const far_nbrs, int * const max_far_nbrs, real cutoff2 )
 {
     extern __shared__ cub::WarpReduce<int>::TempStorage temp2[];
-    int i, j, k, l, m, itr, num_far, lane_id;
+    int i, j, k, l, m, itr, num_far, lane_id, flag;
     real cutoff;
     ivec c, nbrs_x;
     rvec dvec, x;
@@ -492,8 +528,20 @@ CUDA_GLOBAL void k_estimate_neighbors_full_opt( reax_atom *my_atoms,
                         dvec[0] = my_atoms[m].x[0] - x[0];
                         dvec[1] = my_atoms[m].x[1] - x[1];
                         dvec[2] = my_atoms[m].x[2] - x[2];
+                        d = rvec_Norm_Sqr( dvec );
 
-                        if ( rvec_Norm_Sqr( dvec ) <= cutoff )
+                        /* further restrict ghost-ghost atom interactions
+                         * to bond cut-off distance */
+                        if ( l >= N && m >= N )
+                        {
+                            flag = (d <= cutoff2 ? TRUE : FALSE);
+                        }
+                        else
+                        {
+                            flag = TRUE;
+                        }
+
+                        if ( d <= cutoff && flag == TRUE )
                         { 
                             num_far++;
                         }
@@ -548,14 +596,16 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
 //        ( system->d_my_atoms, system->my_ext_box,
 //          system->d_my_grid, *(lists[FAR_NBRS]),
 //          system->n, system->N,
-//          system->d_far_nbrs, system->d_max_far_nbrs, system->d_realloc_far_nbrs );
+//          system->d_far_nbrs, system->d_max_far_nbrs,
+//          system->d_realloc_far_nbrs, SQR( control->bond_cut ) );
     k_generate_neighbor_lists_full_opt <<< blocks, NBRS_BLOCK_SIZE,
                                        sizeof(cub::WarpScan<int>::TempStorage) * (DEF_BLOCK_SIZE / 32),
                                        control->streams[0] >>>
         ( system->d_my_atoms, system->my_ext_box,
           system->d_my_grid, *(lists[FAR_NBRS]),
           system->n, system->N,
-          system->d_far_nbrs, system->d_max_far_nbrs, system->d_realloc_far_nbrs );
+          system->d_far_nbrs, system->d_max_far_nbrs, system->d_realloc_far_nbrs,
+          SQR( control->bond_cut ) );
     cudaCheckError( );
 
     /* check reallocation flag on device */
@@ -595,13 +645,13 @@ void Cuda_Estimate_Num_Neighbors( reax_system *system, control_params *control,
 //    k_estimate_neighbors_full <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
 //        ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
 //          system->n, system->N, system->total_cap,
-//          system->d_far_nbrs, system->d_max_far_nbrs );
+//          system->d_far_nbrs, system->d_max_far_nbrs, SQR( control->bond_cut ) );
     k_estimate_neighbors_full_opt <<< blocks, DEF_BLOCK_SIZE,
                                   sizeof(cub::WarpReduce<int>::TempStorage) * (DEF_BLOCK_SIZE / 32),
                                   control->streams[0] >>>
         ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
           system->n, system->N, system->total_cap,
-          system->d_far_nbrs, system->d_max_far_nbrs );
+          system->d_far_nbrs, system->d_max_far_nbrs, SQR( control->bond_cut ) );
     cudaCheckError( );
 
     Cuda_Reduction_Sum( system->d_max_far_nbrs, system->d_total_far_nbrs,

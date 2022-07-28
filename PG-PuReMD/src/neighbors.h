@@ -29,9 +29,11 @@
 extern "C" {
 #endif
 
-int Generate_Neighbor_Lists( reax_system *, simulation_data *, storage *, reax_list ** );
+int Generate_Neighbor_Lists( reax_system * const, control_params const * const,
+        simulation_data * const, storage * const, reax_list ** const );
 
-void Estimate_Num_Neighbors( reax_system *, simulation_data *, int );
+void Estimate_Num_Neighbors( reax_system * const, control_params const * const,
+        simulation_data * const, int );
 
 #ifdef __cplusplus
 }
