@@ -330,7 +330,7 @@ CUDA_GLOBAL void k_estimate_neighbors_full( reax_atom const * const my_atoms,
         int * const far_nbrs, int * const max_far_nbrs, real cutoff2 )
 {
     int i, j, k, l, m, itr, num_far, flag;
-    real cutoff;
+    real d, cutoff;
     ivec c, nbrs_x;
     rvec dvec, x;
 
@@ -405,7 +405,7 @@ CUDA_GLOBAL void k_estimate_neighbors_full( reax_atom const * const my_atoms,
                         dvec[0] = my_atoms[m].x[0] - x[0];
                         dvec[1] = my_atoms[m].x[1] - x[1];
                         dvec[2] = my_atoms[m].x[2] - x[2];
-                        d = rvec_Norm_Sqr( dvec ) 
+                        d = rvec_Norm_Sqr( dvec );
 
                         /* further restrict ghost-ghost atom interactions
                          * to bond cut-off distance */
@@ -451,7 +451,7 @@ CUDA_GLOBAL void k_estimate_neighbors_full_opt( reax_atom const * const my_atoms
 {
     extern __shared__ cub::WarpReduce<int>::TempStorage temp2[];
     int i, j, k, l, m, itr, num_far, lane_id, flag;
-    real cutoff;
+    real d, cutoff;
     ivec c, nbrs_x;
     rvec dvec, x;
 
