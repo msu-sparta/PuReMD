@@ -40,7 +40,7 @@ int Estimate_LU_Fill( const sparse_matrix * const, const real * const );
 void Calculate_Droptol( const sparse_matrix * const,
         real * const, const real );
 
-real jacobi( const sparse_matrix * const, real * const );
+real jacobi( const sparse_matrix * const, real * const, int, int );
 
 real ICHOLT( const sparse_matrix * const, const real * const,
         sparse_matrix * const, sparse_matrix * const );

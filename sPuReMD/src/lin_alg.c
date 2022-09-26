@@ -539,28 +539,58 @@ int Estimate_LU_Fill( const sparse_matrix * const A, const real * const droptol 
  *
  * H: matrix used to compute preconditioner, in CSR format
  * Hdia_inv: computed diagonal inverse preconditioner
+ * cm: charge model selected for generating the charge matrix
+ * N: number of atoms (i.e., charge matrix dimensions for QEq)
  */
-real jacobi( const sparse_matrix * const H, real * const Hdia_inv )
+real jacobi( const sparse_matrix * const H, real * const Hdia_inv,
+        int cm, int N )
 {
     unsigned int i;
     real start;
 
     start = Get_Time( );
 
-#if defined(_OPENMP)
-    #pragma omp parallel for schedule(dynamic,256) \
-    default(none) private(i) firstprivate(H, Hdia_inv)
-#endif
-    for ( i = 0; i < H->n; ++i )
+    if ( cm == QEQ_CM || cm == EE_CM )
     {
-        if ( FABS( H->val[H->start[i + 1] - 1] ) > 1.0e-15 )
+#if defined(_OPENMP)
+        #pragma omp parallel for schedule(dynamic,256) \
+        default(none) private(i) firstprivate(H, Hdia_inv)
+#endif
+        for ( i = 0; i < H->n; ++i )
         {
-            Hdia_inv[i] = 1.0 / H->val[H->start[i + 1] - 1];
+            if ( FABS( H->val[H->start[i + 1] - 1] ) > 1.0e-15 )
+            {
+                Hdia_inv[i] = 1.0 / H->val[H->start[i + 1] - 1];
+            }
+            else
+            {
+                Hdia_inv[i] = 1.0;
+            }
         }
-        else
+    }
+    else if ( cm == ACKS2_CM )
+    {
+#if defined(_OPENMP)
+        #pragma omp parallel for schedule(dynamic,256) \
+        default(none) private(i) firstprivate(H, Hdia_inv, N)
+#endif
+        for ( i = 0; i < H->n; ++i )
         {
-            Hdia_inv[i] = 1.0;
+            if ( i < N && FABS( H->val[H->start[i + 1] - 1] ) > 1.0e-15 )
+            {
+                Hdia_inv[i] = 1.0 / H->val[H->start[i + 1] - 1];
+            }
+            else
+            {
+                Hdia_inv[i] = 1.0;
+            }
         }
+    }
+    else
+    {
+        fprintf( stderr, "[ERROR] Unrecognized charge model (%d). Terminating...\n",
+                cm );
+        exit( INVALID_INPUT );
     }
 
     return Get_Timing_Info( start );

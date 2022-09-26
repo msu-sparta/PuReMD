@@ -530,7 +530,8 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
             break;
 
         case JACOBI_PC:
-            data->timing.cm_solver_pre_comp += jacobi( Hptr, workspace->Hdia_inv );
+            data->timing.cm_solver_pre_comp += jacobi( Hptr, workspace->Hdia_inv,
+                    control->charge_method, system->N );
             break;
 
         case ICHOLT_PC:
@@ -661,7 +662,8 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
             break;
 
         case JACOBI_PC:
-            data->timing.cm_solver_pre_comp += jacobi( Hptr, workspace->Hdia_inv );
+            data->timing.cm_solver_pre_comp += jacobi( Hptr, workspace->Hdia_inv,
+                    control->charge_method, system->N );
             break;
 
         case ICHOLT_PC:
@@ -802,7 +804,8 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
             break;
 
         case JACOBI_PC:
-            data->timing.cm_solver_pre_comp += jacobi( Hptr, workspace->Hdia_inv );
+            data->timing.cm_solver_pre_comp += jacobi( Hptr, workspace->Hdia_inv,
+                    control->charge_method, system->N );
             break;
 
         case ICHOLT_PC:
