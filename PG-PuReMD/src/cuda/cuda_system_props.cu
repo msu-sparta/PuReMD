@@ -19,7 +19,7 @@
 #define FULL_WARP_MASK (0xFFFFFFFF)
 
 
-CUDA_GLOBAL void k_center_of_mass_xcm( single_body_parameters *sbp,
+GPU_GLOBAL void k_center_of_mass_xcm( single_body_parameters *sbp,
         reax_atom *atoms, rvec *xcm_g, size_t n )
 {
     extern __shared__ cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage temp_block[];
@@ -49,7 +49,7 @@ CUDA_GLOBAL void k_center_of_mass_xcm( single_body_parameters *sbp,
      * of the reduction back to global memory */
     if ( threadIdx.x == 0 )
     {
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
         rvec_Copy( xcm_g[blockIdx.x], xcm );
 #else
         atomicAdd( (double *) &xcm_g[0][0], (double) xcm[0] );
@@ -60,7 +60,7 @@ CUDA_GLOBAL void k_center_of_mass_xcm( single_body_parameters *sbp,
 }
 
 
-CUDA_GLOBAL void k_center_of_mass_vcm( single_body_parameters *sbp,
+GPU_GLOBAL void k_center_of_mass_vcm( single_body_parameters *sbp,
         reax_atom *atoms, rvec *vcm_g, size_t n )
 {
     extern __shared__ cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage temp_block[];
@@ -90,7 +90,7 @@ CUDA_GLOBAL void k_center_of_mass_vcm( single_body_parameters *sbp,
      * of the reduction back to global memory */
     if ( threadIdx.x == 0 )
     {
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
         rvec_Copy( vcm_g[blockIdx.x], vcm );
 #else
         atomicAdd( (double *) &vcm_g[0][0], (double) vcm[0] );
@@ -101,7 +101,7 @@ CUDA_GLOBAL void k_center_of_mass_vcm( single_body_parameters *sbp,
 }
 
 
-CUDA_GLOBAL void k_center_of_mass_amcm( single_body_parameters *sbp,
+GPU_GLOBAL void k_center_of_mass_amcm( single_body_parameters *sbp,
         reax_atom *atoms, rvec *amcm_g, size_t n )
 {
     extern __shared__ cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage temp_block[];
@@ -132,7 +132,7 @@ CUDA_GLOBAL void k_center_of_mass_amcm( single_body_parameters *sbp,
      * of the reduction back to global memory */
     if ( threadIdx.x == 0 )
     {
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
         rvec_Copy( amcm_g[blockIdx.x], amcm );
 #else
         atomicAdd( (double *) &amcm_g[0][0], (double) amcm[0] );
@@ -143,7 +143,7 @@ CUDA_GLOBAL void k_center_of_mass_amcm( single_body_parameters *sbp,
 }
 
 
-CUDA_GLOBAL void k_compute_inertial_tensor_blocks( real *input, real *output, size_t n )
+GPU_GLOBAL void k_compute_inertial_tensor_blocks( real *input, real *output, size_t n )
 {
     extern __shared__ real t_s[];
     unsigned int i, index;
@@ -198,7 +198,7 @@ CUDA_GLOBAL void k_compute_inertial_tensor_blocks( real *input, real *output, si
 }
 
 
-CUDA_GLOBAL void k_compute_inertial_tensor_xx_xy( single_body_parameters *sbp,
+GPU_GLOBAL void k_compute_inertial_tensor_xx_xy( single_body_parameters *sbp,
         reax_atom *atoms, real *t_g, real xcm0, real xcm1, real xcm2, size_t n )
 {
     extern __shared__ real xx_xy_s[];
@@ -258,7 +258,7 @@ CUDA_GLOBAL void k_compute_inertial_tensor_xx_xy( single_body_parameters *sbp,
 }
 
 
-CUDA_GLOBAL void k_compute_inertial_tensor_xz_yy( single_body_parameters *sbp,
+GPU_GLOBAL void k_compute_inertial_tensor_xz_yy( single_body_parameters *sbp,
         reax_atom *atoms, real *t_g, real xcm0, real xcm1, real xcm2, size_t n )
 {
     extern __shared__ real xz_yy_s[];
@@ -318,7 +318,7 @@ CUDA_GLOBAL void k_compute_inertial_tensor_xz_yy( single_body_parameters *sbp,
 }
 
 
-CUDA_GLOBAL void k_compute_inertial_tensor_yz_zz( single_body_parameters *sbp,
+GPU_GLOBAL void k_compute_inertial_tensor_yz_zz( single_body_parameters *sbp,
         reax_atom *atoms, real *t_g, real xcm0, real xcm1, real xcm2, size_t n )
 {
     extern __shared__ real yz_zz_s[];
@@ -380,7 +380,7 @@ CUDA_GLOBAL void k_compute_inertial_tensor_yz_zz( single_body_parameters *sbp,
 
 /* Copy the atom masses to a contigous array in global memory
  * for later reduction (sum) */
-CUDA_GLOBAL void k_compute_total_mass( single_body_parameters *sbp, reax_atom *my_atoms, 
+GPU_GLOBAL void k_compute_total_mass( single_body_parameters *sbp, reax_atom *my_atoms, 
         real *M_g, int n )
 {
     unsigned int i;
@@ -396,7 +396,7 @@ CUDA_GLOBAL void k_compute_total_mass( single_body_parameters *sbp, reax_atom *m
 }
 
 
-CUDA_GLOBAL void k_compute_kinetic_energy( single_body_parameters *sbp, reax_atom *my_atoms, 
+GPU_GLOBAL void k_compute_kinetic_energy( single_body_parameters *sbp, reax_atom *my_atoms, 
         real *e_kin_g, int n )
 {
     unsigned int i;
@@ -415,7 +415,7 @@ CUDA_GLOBAL void k_compute_kinetic_energy( single_body_parameters *sbp, reax_ato
 
 
 /* Generate zero atom velocities */
-CUDA_GLOBAL void k_atom_velocities_zero( reax_atom *my_atoms, int n )
+GPU_GLOBAL void k_atom_velocities_zero( reax_atom *my_atoms, int n )
 {
     int i;
 
@@ -432,7 +432,7 @@ CUDA_GLOBAL void k_atom_velocities_zero( reax_atom *my_atoms, int n )
 
 /* Generate random atom velocities according
  * to the prescribed initial temperature */
-CUDA_GLOBAL void k_atom_velocities_random( single_body_parameters *sbp,
+GPU_GLOBAL void k_atom_velocities_random( single_body_parameters *sbp,
         reax_atom *my_atoms, real T, int n )
 {
     int i;
@@ -455,7 +455,7 @@ CUDA_GLOBAL void k_atom_velocities_random( single_body_parameters *sbp,
 }
 
 
-CUDA_GLOBAL void k_compute_pressure( reax_atom *my_atoms, simulation_box *big_box,
+GPU_GLOBAL void k_compute_pressure( reax_atom *my_atoms, simulation_box *big_box,
         rvec *int_press, int n )
 {
     reax_atom *p_atom;
@@ -486,7 +486,7 @@ static void Cuda_Compute_Momentum( reax_system *system, control_params *control,
     rvec *spad;
 
     sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
             sizeof(rvec) * (control->blocks + 1),
 #else
             sizeof(rvec),
@@ -497,65 +497,65 @@ static void Cuda_Compute_Momentum( reax_system *system, control_params *control,
     // xcm
     k_center_of_mass_xcm <<< control->blocks, control->block_size,
                                 sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage),
-                                control->streams[0] >>>
+                                control->cuda_streams[0] >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad, system->n );
     cudaCheckError( );
     
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
     Cuda_Reduction_Sum( spad, &spad[control->blocks], control->blocks,
-            0, control->streams[0] );
+            0, control->cuda_streams[0] );
 #endif
 
     sCudaMemcpyAsync( xcm,
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
             &spad[control->blocks],
 #else
             spad,
 #endif
-            sizeof(rvec), cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
-    cudaStreamSynchronize( control->streams[0] );
+            sizeof(rvec), cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->cuda_streams[0] );
     
     // vcm
     k_center_of_mass_vcm <<< control->blocks, control->block_size,
                          sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage),
-                         control->streams[0] >>>
+                         control->cuda_streams[0] >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad, system->n );
     cudaCheckError( );
     
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
     Cuda_Reduction_Sum( spad, &spad[control->blocks], control->blocks,
-            0 control->streams[0] );
+            0 control->cuda_streams[0] );
 #endif
 
     sCudaMemcpyAsync( vcm,
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
             &spad[control->blocks],
 #else
             spad,
 #endif
-            sizeof(rvec), cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
-    cudaStreamSynchronize( control->streams[0] );
+            sizeof(rvec), cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->cuda_streams[0] );
     
     // amcm
     k_center_of_mass_amcm <<< control->blocks, control->block_size,
                           sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage),
-                          control->streams[0] >>>
+                          control->cuda_streams[0] >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad, system->n );
     cudaCheckError( );
     
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
     Cuda_Reduction_Sum( spad, &spad[control->blocks], control->blocks,
-            0, control->streams[0] );
+            0, control->cuda_streams[0] );
 #endif
 
     sCudaMemcpyAsync( amcm, 
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
             &spad[control->blocks],
 #else
             spad,
 #endif
-            sizeof(rvec), cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
-    cudaStreamSynchronize( control->streams[0] );
+            sizeof(rvec), cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->cuda_streams[0] );
 }
 
 
@@ -568,26 +568,26 @@ static void Cuda_Compute_Inertial_Tensor( reax_system *system, control_params *c
             sizeof(real) * 6 * (control->blocks + 1), __FILE__, __LINE__ );
     spad = (real *) workspace->scratch[0];
     sCudaMemsetAsync( spad, 0, sizeof(real) * 6 * (control->blocks + 1),
-            control->streams[0], __FILE__, __LINE__ );
-    cudaStreamSynchronize( control->streams[0] );
+            control->cuda_streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->cuda_streams[0] );
 
     k_compute_inertial_tensor_xx_xy <<< control->blocks, control->block_size,
-                                sizeof(real) * 2 * (control->block_size / 32),
-                                control->streams[0] >>>
+                                sizeof(real) * 2 * (control->block_size / WARP_SIZE),
+                                control->cuda_streams[0] >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad,
           my_xcm[0], my_xcm[1], my_xcm[2], system->n );
     cudaCheckError( );
 
     k_compute_inertial_tensor_xz_yy <<< control->blocks, control->block_size,
-                                sizeof(real) * 2 * (control->block_size / 32),
-                                control->streams[0] >>>
+                                sizeof(real) * 2 * (control->block_size / WARP_SIZE),
+                                control->cuda_streams[0] >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad,
           my_xcm[0], my_xcm[1], my_xcm[2], system->n );
     cudaCheckError( );
 
     k_compute_inertial_tensor_yz_zz <<< control->blocks, control->block_size,
-                                sizeof(real) * 2 * (control->block_size / 32),
-                                control->streams[0] >>>
+                                sizeof(real) * 2 * (control->block_size / WARP_SIZE),
+                                control->cuda_streams[0] >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad,
           my_xcm[0], my_xcm[1], my_xcm[2], system->n );
     cudaCheckError( );
@@ -595,14 +595,14 @@ static void Cuda_Compute_Inertial_Tensor( reax_system *system, control_params *c
     /* reduction of block-level partial sums for inertial tensor */
     k_compute_inertial_tensor_blocks <<< 1, control->blocks_pow_2,
                                      sizeof(real) * 6 * control->blocks_pow_2,
-                                     control->streams[0] >>>
+                                     control->cuda_streams[0] >>>
         ( spad, &spad[6 * control->blocks], control->blocks );
     cudaCheckError( );
 
     sCudaMemcpyAsync( t, &spad[6 * control->blocks],
         sizeof(real) * 6, cudaMemcpyDeviceToHost,
-        control->streams[0], __FILE__, __LINE__ );
-    cudaStreamSynchronize( control->streams[0] );
+        control->cuda_streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->cuda_streams[0] );
 }
 
 
@@ -633,7 +633,7 @@ void Cuda_Generate_Initial_Velocities( reax_system *system,
             MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
         }
 
-        k_atom_velocities_zero <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
+        k_atom_velocities_zero <<< blocks, DEF_BLOCK_SIZE, 0, control->cuda_streams[0] >>>
             ( system->d_my_atoms, system->n );
     }
     else
@@ -647,7 +647,7 @@ void Cuda_Generate_Initial_Velocities( reax_system *system,
 
         Cuda_Randomize( );
 
-        k_atom_velocities_random <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
+        k_atom_velocities_random <<< blocks, DEF_BLOCK_SIZE, 0, control->cuda_streams[0] >>>
             ( system->reax_param.d_sbp, system->d_my_atoms, T, system->n );
     }
 }
@@ -664,18 +664,18 @@ extern "C" void Cuda_Compute_Kinetic_Energy( reax_system *system,
             sizeof(real) * (system->n + 1), __FILE__, __LINE__ );
     kinetic_energy = (real *) workspace->scratch[0];
 
-    k_compute_kinetic_energy <<< control->blocks, control->block_size, 0, control->streams[0] >>>
+    k_compute_kinetic_energy <<< control->blocks, control->block_size, 0, control->cuda_streams[0] >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, kinetic_energy, system->n );
     cudaCheckError( );
 
     /* note: above kernel sums the kinetic energy contribution within blocks,
      * and this call finishes the global reduction across all blocks */
     Cuda_Reduction_Sum( kinetic_energy, &kinetic_energy[system->n], system->n,
-            0, control->streams[0] );
+            0, control->cuda_streams[0] );
 
     sCudaMemcpyAsync( &data->my_en.e_kin, &kinetic_energy[system->n],
-            sizeof(real), cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
-    cudaStreamSynchronize( control->streams[0] );
+            sizeof(real), cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->cuda_streams[0] );
 
     ret = MPI_Allreduce( &data->my_en.e_kin, &data->sys_en.e_kin,
             1, MPI_DOUBLE, MPI_SUM, comm );
@@ -701,15 +701,15 @@ void Cuda_Compute_Total_Mass( reax_system *system, control_params *control,
             sizeof(real) * (system->n + 1), __FILE__, __LINE__ );
     spad = (real *) workspace->scratch[0];
 
-    k_compute_total_mass <<< control->blocks, control->block_size, 0, control->streams[0]  >>>
+    k_compute_total_mass <<< control->blocks, control->block_size, 0, control->cuda_streams[0]  >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad, system->n );
     cudaCheckError( );
 
-    Cuda_Reduction_Sum( spad, &spad[system->n], system->n, 0, control->streams[0] );
+    Cuda_Reduction_Sum( spad, &spad[system->n], system->n, 0, control->cuda_streams[0] );
 
     sCudaMemcpyAsync( &my_M, &spad[system->n], sizeof(real), 
-            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
-    cudaStreamSynchronize( control->streams[0] );
+            cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->cuda_streams[0] );
 
     ret = MPI_Allreduce( &my_M, &data->M, 1, MPI_DOUBLE, MPI_SUM, comm );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
@@ -848,16 +848,16 @@ void Cuda_Compute_Pressure( reax_system* system, control_params *control,
         spad_rvec = (rvec *) workspace->scratch[0];
 
         k_compute_pressure <<< control->blocks, control->block_size, 0,
-                           control->streams[0] >>>
+                           control->cuda_streams[0] >>>
             ( system->d_my_atoms, system->d_big_box, spad_rvec,
               system->n );
 
         Cuda_Reduction_Sum( spad_rvec, &spad_rvec[system->n], system->n,
-                0, control->streams[0] );
+                0, control->cuda_streams[0] );
 
         sCudaMemcpyAsync( &int_press, &spad_rvec[system->n],
-                sizeof(rvec), cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
-        cudaStreamSynchronize( control->streams[0] );
+                sizeof(rvec), cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
+        cudaStreamSynchronize( control->cuda_streams[0] );
     }
 
     /* sum up internal and external pressure */

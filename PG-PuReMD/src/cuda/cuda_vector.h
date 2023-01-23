@@ -27,7 +27,7 @@
 #include "cuda_random.h"
 
 
-CUDA_DEVICE static inline void cuda_rvec_Random( rvec v )
+GPU_DEVICE static inline void cuda_rvec_Random( rvec v )
 {
 //    v[0] = Cuda_Random( 2.0 ) - 1.0;
 //    v[1] = Cuda_Random( 2.0 ) - 1.0;

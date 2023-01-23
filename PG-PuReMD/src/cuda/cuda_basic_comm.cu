@@ -22,7 +22,7 @@ typedef void (*cuda_coll_unpacker)( void const * const, void * const,
  *  out_atoms: MPI egress buffer
  *  k: number of entries in buffer
  */
-CUDA_GLOBAL void k_int_packer( int const * const dummy, int const * const index,
+GPU_GLOBAL void k_int_packer( int const * const dummy, int const * const index,
         int * const out_atoms, int k )
 {
     unsigned int i;
@@ -46,7 +46,7 @@ CUDA_GLOBAL void k_int_packer( int const * const dummy, int const * const index,
  *  out_atoms: MPI egress buffer
  *  k: number of entries in buffer
  */
-CUDA_GLOBAL void k_real_packer( real const * const dummy, int const * const index,
+GPU_GLOBAL void k_real_packer( real const * const dummy, int const * const index,
         real * const out_atoms, int k )
 {
     unsigned int i;
@@ -70,7 +70,7 @@ CUDA_GLOBAL void k_real_packer( real const * const dummy, int const * const inde
  *  out_atoms: MPI egress buffer
  *  k: number of entries in buffer
  */
-CUDA_GLOBAL void k_rvec_packer( rvec const * const dummy, int const * const index,
+GPU_GLOBAL void k_rvec_packer( rvec const * const dummy, int const * const index,
         rvec * const out_atoms, int k )
 {
     unsigned int i;
@@ -94,7 +94,7 @@ CUDA_GLOBAL void k_rvec_packer( rvec const * const dummy, int const * const inde
  *  out_atoms: MPI egress buffer
  *  k: number of entries in buffer
  */
-CUDA_GLOBAL void k_rvec2_packer( rvec2 const * const dummy, int const * const index,
+GPU_GLOBAL void k_rvec2_packer( rvec2 const * const dummy, int const * const index,
         rvec2 * const out_atoms, int k )
 {
     unsigned int i;
@@ -119,7 +119,7 @@ CUDA_GLOBAL void k_rvec2_packer( rvec2 const * const dummy, int const * const in
  *  buf: buffer to be copied into
  *  k: number of entries in buffer
  */
-CUDA_GLOBAL void k_int_unpacker( int const * const in, int const * const index,
+GPU_GLOBAL void k_int_unpacker( int const * const in, int const * const index,
         int * const buf, int k )
 {
     unsigned int i;
@@ -147,7 +147,7 @@ CUDA_GLOBAL void k_int_unpacker( int const * const in, int const * const index,
  *  buf: buffer to be copied into
  *  k: number of entries in buffer
  */
-CUDA_GLOBAL void k_real_unpacker( real const * const in, int const * const index,
+GPU_GLOBAL void k_real_unpacker( real const * const in, int const * const index,
         real * const buf, int k )
 {
     unsigned int i;
@@ -171,7 +171,7 @@ CUDA_GLOBAL void k_real_unpacker( real const * const in, int const * const index
  *  buf: buffer to be copied into
  *  k: number of entries in buffer
  */
-CUDA_GLOBAL void k_rvec_unpacker( rvec const * const in, int const * const index,
+GPU_GLOBAL void k_rvec_unpacker( rvec const * const in, int const * const index,
         rvec * const buf, int k )
 {
     unsigned int i;
@@ -195,7 +195,7 @@ CUDA_GLOBAL void k_rvec_unpacker( rvec const * const in, int const * const index
  *  buf: buffer to be copied into
  *  k: number of entries in buffer
  */
-CUDA_GLOBAL void k_rvec2_unpacker( rvec2 const * const in, int const * const index,
+GPU_GLOBAL void k_rvec2_unpacker( rvec2 const * const in, int const * const index,
         rvec2 * const buf, int k )
 {
     unsigned int i;

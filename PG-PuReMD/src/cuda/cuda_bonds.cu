@@ -31,7 +31,7 @@
 #include <cub/warp/warp_reduce.cuh>
 
 
-CUDA_GLOBAL void k_bonds( reax_atom *my_atoms, global_parameters gp, 
+GPU_GLOBAL void k_bonds( reax_atom *my_atoms, global_parameters gp, 
         single_body_parameters *sbp, two_body_parameters *tbp, 
         storage p_workspace, reax_list p_bond_list, int n, int num_atom_types, 
         real *e_bond_g )
@@ -134,7 +134,7 @@ CUDA_GLOBAL void k_bonds( reax_atom *my_atoms, global_parameters gp,
 
     atomicAdd( &workspace->CdDelta[i], CdDelta_i );
 
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
     e_bond_g[i] = e_bond_;
 #else
     atomicAdd( (double *) e_bond_g, (double) e_bond_ );
@@ -142,7 +142,7 @@ CUDA_GLOBAL void k_bonds( reax_atom *my_atoms, global_parameters gp,
 }
 
 
-CUDA_GLOBAL void k_bonds_opt( reax_atom *my_atoms, global_parameters gp, 
+GPU_GLOBAL void k_bonds_opt( reax_atom *my_atoms, global_parameters gp, 
         single_body_parameters *sbp, two_body_parameters *tbp, 
         storage p_workspace, reax_list p_bond_list, int n, int num_atom_types, 
         real *e_bond_g )
@@ -261,7 +261,7 @@ CUDA_GLOBAL void k_bonds_opt( reax_atom *my_atoms, global_parameters gp,
     {
         atomicAdd( &workspace->CdDelta[i], CdDelta_i );
 
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
         e_bond_g[i] = e_bond_;
 #else
         atomicAdd( (double *) e_bond_g, (double) e_bond_ );
@@ -276,16 +276,16 @@ void Cuda_Compute_Bonds( reax_system const * const system,
         output_controls const * const out_control )
 {
     int blocks;
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
     int update_energy;
     real *spad;
 #endif
 
 #if defined(LOG_PERFORMANCE)
-    cudaEventRecord( control->time_events[TE_BONDS_START], control->streams[1] );
+    cudaEventRecord( control->cuda_time_events[TE_BONDS_START], control->cuda_streams[1] );
 #endif
 
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
     sCudaCheckMalloc( &workspace->scratch[1], &workspace->scratch_size[1],
             sizeof(real) * system->n, __FILE__, __LINE__ );
 
@@ -294,17 +294,17 @@ void Cuda_Compute_Bonds( reax_system const * const system,
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
 #else
     sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_bond,
-            0, sizeof(real), control->streams[1], __FILE__, __LINE__ );
+            0, sizeof(real), control->cuda_streams[1], __FILE__, __LINE__ );
 #endif
 
-    cudaStreamWaitEvent( control->streams[1], control->stream_events[SE_BOND_ORDER_DONE], 0 );
+    cudaStreamWaitEvent( control->cuda_streams[1], control->cuda_stream_events[SE_BOND_ORDER_DONE], 0 );
 
-//    k_bonds <<< control->blocks, control->block_size, 0, control->streams[1] >>>
+//    k_bonds <<< control->blocks, control->block_size, 0, control->cuda_streams[1] >>>
 //        ( system->d_my_atoms, system->reax_param.d_gp,
 //          system->reax_param.d_sbp, system->reax_param.d_tbp,
 //          *(workspace->d_workspace), *(lists[BONDS]), 
 //          system->n, system->reax_param.num_atom_types,
-//#if !defined(CUDA_ACCUM_ATOMIC)
+//#if !defined(GPU_ACCUM_ATOMIC)
 //          spad
 //#else
 //          &((simulation_data *)data->d_simulation_data)->my_en.e_bond
@@ -312,17 +312,17 @@ void Cuda_Compute_Bonds( reax_system const * const system,
 //        );
 //    cudaCheckError( );
 
-    blocks = system->n * 32 / DEF_BLOCK_SIZE
-        + (system->n * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+    blocks = system->n * WARP_SIZE / DEF_BLOCK_SIZE
+        + (system->n * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
     k_bonds_opt <<< blocks, DEF_BLOCK_SIZE,
-                sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32),
-                control->streams[1] >>>
+                sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+                control->cuda_streams[1] >>>
         ( system->d_my_atoms, system->reax_param.d_gp,
           system->reax_param.d_sbp, system->reax_param.d_tbp,
           *(workspace->d_workspace), *(lists[BONDS]), 
           system->n, system->reax_param.num_atom_types,
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
           spad
 #else
           &((simulation_data *)data->d_simulation_data)->my_en.e_bond
@@ -330,15 +330,15 @@ void Cuda_Compute_Bonds( reax_system const * const system,
         );
     cudaCheckError( );
 
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
     if ( update_energy == TRUE )
     {
         Cuda_Reduction_Sum( spad, &((simulation_data *)data->d_simulation_data)->my_en.e_bond,
-                system->n, 1, control->streams[1] );
+                system->n, 1, control->cuda_streams[1] );
     }
 #endif
 
 #if defined(LOG_PERFORMANCE)
-    cudaEventRecord( control->time_events[TE_BONDS_STOP], control->streams[1] );
+    cudaEventRecord( control->cuda_time_events[TE_BONDS_STOP], control->cuda_streams[1] );
 #endif
 }

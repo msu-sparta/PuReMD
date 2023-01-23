@@ -9,7 +9,7 @@
 #include "../vector.h"
 
 
-CUDA_GLOBAL void k_reset_workspace( storage workspace, int N )
+GPU_GLOBAL void k_reset_workspace( storage workspace, int N )
 {
     int i;
 
@@ -25,7 +25,7 @@ CUDA_GLOBAL void k_reset_workspace( storage workspace, int N )
 }
 
 
-CUDA_GLOBAL void k_reset_hindex( reax_atom *my_atoms, single_body_parameters *sbp,
+GPU_GLOBAL void k_reset_hindex( reax_atom *my_atoms, single_body_parameters *sbp,
         int * hindex, int N )
 {
     int i;
@@ -42,7 +42,7 @@ CUDA_GLOBAL void k_reset_hindex( reax_atom *my_atoms, single_body_parameters *sb
     if ( sbp[ my_atoms[i].type ].p_hbond == H_ATOM
             || sbp[ my_atoms[i].type ].p_hbond == H_BONDING_ATOM )
     {
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
         hindex[i] = 1;
     }
     else
@@ -63,7 +63,7 @@ void Cuda_Reset_Workspace( reax_system *system, control_params *control,
     blocks = system->total_cap / DEF_BLOCK_SIZE
         + ((system->total_cap % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
 
-    k_reset_workspace <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
+    k_reset_workspace <<< blocks, DEF_BLOCK_SIZE, 0, control->cuda_streams[0] >>>
         ( *(workspace->d_workspace), system->total_cap );
     cudaCheckError( );
 }
@@ -72,7 +72,7 @@ void Cuda_Reset_Workspace( reax_system *system, control_params *control,
 void Cuda_Reset_Atoms_HBond_Indices( reax_system* system, control_params *control,
         storage *workspace )
 {
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
     int *hindex;
 
     sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
@@ -80,13 +80,13 @@ void Cuda_Reset_Atoms_HBond_Indices( reax_system* system, control_params *contro
     hindex = (int *) workspace->scratch[0];
 #else
     sCudaMemsetAsync( system->d_num_H_atoms, 0, sizeof(int), 
-            control->streams[0], __FILE__, __LINE__ );
+            control->cuda_streams[0], __FILE__, __LINE__ );
 #endif
 
     k_reset_hindex <<< control->blocks_n, control->block_size_n, 0,
-                   control->streams[0] >>>
+                   control->cuda_streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
           hindex, 
 #else
           system->d_num_H_atoms,
@@ -94,14 +94,14 @@ void Cuda_Reset_Atoms_HBond_Indices( reax_system* system, control_params *contro
           system->total_cap );
     cudaCheckError( );
 
-#if !defined(CUDA_ACCUM_ATOMIC)
-    Cuda_Reduction_Sum( hindex, system->d_num_H_atoms, system->N, 0, control->streams[0] );
+#if !defined(GPU_ACCUM_ATOMIC)
+    Cuda_Reduction_Sum( hindex, system->d_num_H_atoms, system->N, 0, control->cuda_streams[0] );
 #endif
 
     sCudaMemcpyAsync( &system->num_H_atoms, system->d_num_H_atoms, sizeof(int), 
-            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+            cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
 
-    cudaStreamSynchronize( control->streams[0] );
+    cudaStreamSynchronize( control->cuda_streams[0] );
 }
 
 

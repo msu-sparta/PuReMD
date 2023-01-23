@@ -36,6 +36,7 @@
 
 #include <stdlib.h>
 #include <ctype.h>
+#include <float.h>
 #include <limits.h>
 #include <errno.h>
 #include <time.h>
@@ -747,8 +748,8 @@ double sstrtod( const char * const str,
     errno = 0;
     ret = strtod( str, &endptr );
 
-    if ( (errno == ERANGE && (ret == LONG_MAX || ret == LONG_MIN) )
-            || (errno != 0 && ret == 0) )
+    if ( (errno == ERANGE && (ret == DBL_MAX || ret == DBL_MIN) )
+            || (errno != 0 && ret == 0.0) )
     {
         fprintf( stderr, "[ERROR] strtod: invalid string\n" );
         /* strlen safe here only if filename is NULL-terminated

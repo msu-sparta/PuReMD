@@ -192,9 +192,7 @@ if BUILD_GPU
 if USE_CUDA
 SUFFIXES = .cu
 include cuda.am
-endif
 
-if USE_CUDA
 AM_NVCCFLAGS = --compiler-options="$(DEFS) $(AM_CFLAGS) @CFLAGS_EXTRA@ $(CFLAGS)" @NFLAGS@ @NFLAGS_EXTRA@
 endif
 
@@ -328,11 +326,17 @@ EXTRA_DIST += PG-PuReMD/src/cub
 if USE_CUDA
 SUFFIXES = .cu
 include cuda.am
-endif
 
-if USE_CUDA
 AM_NVCCFLAGS = --compiler-options="$(DEFS) $(AM_CFLAGS) -std=c++14 @CFLAGS_EXTRA@ $(CFLAGS) @OMP_CFLAGS@ @M_CFLAGS@" -std=c++14 @NFLAGS@ @NFLAGS_EXTRA@
 endif
+
+if USE_HIP
+SUFFIXES = .cu
+include hip.am
+
+AM_HIPCCFLAGS = $(DEFS) $(AM_CFLAGS) -std=c++14 @CFLAGS_EXTRA@ $(CFLAGS) @OMP_CFLAGS@ @M_CFLAGS@
+endif
+
 
 bin_PROGRAMS = PG-PuReMD/bin/pg-puremd
 PG_PuReMD_bin_pg_puremd_SOURCES = PG-PuReMD/src/allocate.c \
@@ -463,6 +467,66 @@ PG_PuReMD_bin_pg_puremd_SOURCES += PG-PuReMD/src/cuda/cuda_allocate.cu \
 # dummy source to trigger C linking
 nodist_EXTRA_PG_PuReMD_bin_pg_puremd_SOURCES = src/dummy.c
 endif
+if USE_HIP
+PG_PuReMD_bin_pg_puremd_SOURCES += PG-PuReMD/src/hip/hip_allocate.cu \
+				   PG-PuReMD/src/hip/hip_allocate.h \
+				   PG-PuReMD/src/hip/hip_basic_comm.cu \
+				   PG-PuReMD/src/hip/hip_basic_comm.h \
+				   PG-PuReMD/src/hip/hip_bond_orders.cu \
+				   PG-PuReMD/src/hip/hip_bond_orders.h \
+				   PG-PuReMD/src/hip/hip_bonds.cu \
+				   PG-PuReMD/src/hip/hip_bonds.h \
+				   PG-PuReMD/src/hip/hip_box.cu \
+				   PG-PuReMD/src/hip/hip_box.h \
+				   PG-PuReMD/src/hip/hip_charges.cu \
+				   PG-PuReMD/src/hip/hip_charges.h \
+				   PG-PuReMD/src/hip/hip_copy.cu \
+				   PG-PuReMD/src/hip/hip_copy.h \
+				   PG-PuReMD/src/hip/hip_dense_lin_alg.cu \
+				   PG-PuReMD/src/hip/hip_dense_lin_alg.h \
+				   PG-PuReMD/src/hip/hip_environment.cu \
+				   PG-PuReMD/src/hip/hip_environment.h \
+				   PG-PuReMD/src/hip/hip_forces.cu \
+				   PG-PuReMD/src/hip/hip_forces.h \
+				   PG-PuReMD/src/hip/hip_helpers.h \
+				   PG-PuReMD/src/hip/hip_hydrogen_bonds.cu \
+				   PG-PuReMD/src/hip/hip_hydrogen_bonds.h \
+				   PG-PuReMD/src/hip/hip_init_md.cu \
+				   PG-PuReMD/src/hip/hip_init_md.h \
+				   PG-PuReMD/src/hip/hip_integrate.cu \
+				   PG-PuReMD/src/hip/hip_integrate.h \
+				   PG-PuReMD/src/hip/hip_list.cu \
+				   PG-PuReMD/src/hip/hip_list.h \
+				   PG-PuReMD/src/hip/hip_lookup.cu \
+				   PG-PuReMD/src/hip/hip_lookup.h \
+				   PG-PuReMD/src/hip/hip_multi_body.cu \
+				   PG-PuReMD/src/hip/hip_multi_body.h \
+				   PG-PuReMD/src/hip/hip_neighbors.cu \
+				   PG-PuReMD/src/hip/hip_neighbors.h \
+				   PG-PuReMD/src/hip/hip_nonbonded.cu \
+				   PG-PuReMD/src/hip/hip_nonbonded.h \
+				   PG-PuReMD/src/hip/hip_post_evolve.cu \
+				   PG-PuReMD/src/hip/hip_post_evolve.h \
+				   PG-PuReMD/src/hip/hip_random.cu \
+				   PG-PuReMD/src/hip/hip_random.h \
+				   PG-PuReMD/src/hip/hip_reduction.cu \
+				   PG-PuReMD/src/hip/hip_reduction.h \
+				   PG-PuReMD/src/hip/hip_reset_tools.cu \
+				   PG-PuReMD/src/hip/hip_reset_tools.h \
+				   PG-PuReMD/src/hip/hip_spar_lin_alg.cu \
+				   PG-PuReMD/src/hip/hip_spar_lin_alg.h \
+				   PG-PuReMD/src/hip/hip_system_props.cu \
+				   PG-PuReMD/src/hip/hip_system_props.h \
+				   PG-PuReMD/src/hip/hip_torsion_angles.cu \
+				   PG-PuReMD/src/hip/hip_torsion_angles.h \
+				   PG-PuReMD/src/hip/hip_utils.cu \
+				   PG-PuReMD/src/hip/hip_utils.h \
+				   PG-PuReMD/src/hip/hip_valence_angles.cu \
+				   PG-PuReMD/src/hip/hip_valence_angles.h \
+				   PG-PuReMD/src/hip/hip_vector.h
+# dummy source to trigger C linking
+nodist_EXTRA_PG_PuReMD_bin_pg_puremd_SOURCES = src/dummy.c
+endif
 
 PG_PuReMD_bin_pg_puremd_CFLAGS = -std=c11 @CFLAGS_EXTRA@ @OMP_CFLAGS@ @M_CFLAGS@
 PG_PuReMD_bin_pg_puremd_CPPFLAGS = -I PG-PuReMD/src @CPPFLAGS_EXTRA@
@@ -470,6 +534,10 @@ PG_PuReMD_bin_pg_puremd_LDADD = @OMP_LIBS@ @M_LIBS@ @L_LIBS@ -lstdc++
 if USE_CUDA
 PG_PuReMD_bin_pg_puremd_CFLAGS += @CUDA_CFLAGS@
 PG_PuReMD_bin_pg_puremd_LDADD += @CUDA_LIBS@
+endif
+if USE_HIP
+PG_PuReMD_bin_pg_puremd_CFLAGS += @HIP_CFLAGS@
+PG_PuReMD_bin_pg_puremd_LDADD += @HIP_LIBS@
 endif
 endif
 

@@ -10,9 +10,9 @@ static void compute_blocks( int *blocks, int *block_size, int threads )
 }
 
 
-static void compute_nearest_multiple_32( int blocks, int *result )
+static void compute_nearest_multiple_warp( int blocks, int *result )
 {
-    *result = ((blocks + 31) / 32) * 32;
+    *result = ((blocks + WARP_SIZE - 1) / WARP_SIZE) * WARP_SIZE;
 }
 
 
@@ -84,19 +84,19 @@ extern "C" void Cuda_Setup_Environment( reax_system const * const system,
          * 3: (after init dist) van der Waals
          * 4: init CM, CM, Coulomb
          */
-        for ( i = MAX_CUDA_STREAMS - 1; i >= 0; --i )
+        for ( i = MAX_GPU_STREAMS - 1; i >= 0; --i )
         {
-            if ( MAX_CUDA_STREAMS - 1 - i < control->gpu_streams )
+            if ( MAX_GPU_STREAMS - 1 - i < control->gpu_streams )
             {
-                /* all non-CM streams of equal priority */
-                if ( i != MAX_CUDA_STREAMS - 1 )
+                /* all non-CM cuda_streams of equal priority */
+                if ( i != MAX_GPU_STREAMS - 1 )
                 {
-                    ret = cudaStreamCreateWithPriority( &control->streams[i], cudaStreamNonBlocking, least_priority );
+                    ret = cudaStreamCreateWithPriority( &control->cuda_streams[i], cudaStreamNonBlocking, least_priority );
                 }
                 /* CM gets highest priority due to MPI comms and cudaMemcpy's */
                 else
                 {
-                    ret = cudaStreamCreateWithPriority( &control->streams[i], cudaStreamNonBlocking, greatest_priority );
+                    ret = cudaStreamCreateWithPriority( &control->cuda_streams[i], cudaStreamNonBlocking, greatest_priority );
                 }
         
                 if ( ret != cudaSuccess )
@@ -108,7 +108,7 @@ extern "C" void Cuda_Setup_Environment( reax_system const * const system,
             }
             else
             {
-                control->streams[i] = control->streams[MAX_CUDA_STREAMS - 1 - ((MAX_CUDA_STREAMS - 1 - i) % control->gpu_streams)];
+                control->cuda_streams[i] = control->cuda_streams[MAX_GPU_STREAMS - 1 - ((MAX_GPU_STREAMS - 1 - i) % control->gpu_streams)];
             }
         }
     }
@@ -122,11 +122,11 @@ extern "C" void Cuda_Setup_Environment( reax_system const * const system,
          * 4: (after init dist) van der Waals
          * 5: (after init dist) init CM, CM, Coulomb
          */
-        for ( i = MAX_CUDA_STREAMS - 1; i >= 0; --i )
+        for ( i = MAX_GPU_STREAMS - 1; i >= 0; --i )
         {
-            if ( MAX_CUDA_STREAMS - 1 - i < control->gpu_streams )
+            if ( MAX_GPU_STREAMS - 1 - i < control->gpu_streams )
             {
-                ret = cudaStreamCreateWithFlags( &control->streams[i], cudaStreamNonBlocking );
+                ret = cudaStreamCreateWithFlags( &control->cuda_streams[i], cudaStreamNonBlocking );
         
                 if ( ret != cudaSuccess )
                 {
@@ -137,14 +137,14 @@ extern "C" void Cuda_Setup_Environment( reax_system const * const system,
             }
             else
             {
-                control->streams[i] = control->streams[MAX_CUDA_STREAMS - 1 - ((MAX_CUDA_STREAMS - 1 - i) % control->gpu_streams)];
+                control->cuda_streams[i] = control->cuda_streams[MAX_GPU_STREAMS - 1 - ((MAX_GPU_STREAMS - 1 - i) % control->gpu_streams)];
             }
        }
     }
 
-    for ( i = 0; i < CUDA_STREAM_SYNC_EVENT_N; ++i )
+    for ( i = 0; i < GPU_STREAM_SYNC_EVENT_N; ++i )
     {
-        ret = cudaEventCreateWithFlags( &control->stream_events[i], cudaEventDisableTiming );
+        ret = cudaEventCreateWithFlags( &control->cuda_stream_events[i], cudaEventDisableTiming );
 
         if ( ret != cudaSuccess )
         {
@@ -155,9 +155,9 @@ extern "C" void Cuda_Setup_Environment( reax_system const * const system,
     }
 
 #if defined(LOG_PERFORMANCE)
-    for ( i = 0; i < CUDA_TIMING_EVENT_N; ++i )
+    for ( i = 0; i < GPU_TIMING_EVENT_N; ++i )
     {
-        ret = cudaEventCreate( &control->time_events[i] );
+        ret = cudaEventCreate( &control->cuda_time_events[i] );
 
         if ( ret != cudaSuccess )
         {
@@ -176,7 +176,7 @@ extern "C" void Cuda_Setup_Environment( reax_system const * const system,
         exit( CANNOT_INITIALIZE );
     }
 
-    ret_cublas = cublasSetStream( control->cublas_handle, control->streams[5] );
+    ret_cublas = cublasSetStream( control->cublas_handle, control->cuda_streams[5] );
 
     if ( ret_cublas != CUBLAS_STATUS_SUCCESS )
     {
@@ -195,10 +195,10 @@ extern "C" void Cuda_Init_Block_Sizes( reax_system *system,
         control_params *control )
 {
     compute_blocks( &control->blocks, &control->block_size, system->n );
-    compute_nearest_multiple_32( control->blocks, &control->blocks_pow_2 );
+    compute_nearest_multiple_warp( control->blocks, &control->blocks_pow_2 );
 
     compute_blocks( &control->blocks_n, &control->block_size_n, system->N );
-    compute_nearest_multiple_32( control->blocks_n, &control->blocks_pow_2_n );
+    compute_nearest_multiple_warp( control->blocks_n, &control->blocks_pow_2_n );
 }
 
 
@@ -210,11 +210,11 @@ extern "C" void Cuda_Cleanup_Environment( control_params const * const control )
     cublasStatus_t ret_cublas;
 #endif
 
-    for ( i = MAX_CUDA_STREAMS - 1; i >= 0; --i )
+    for ( i = MAX_GPU_STREAMS - 1; i >= 0; --i )
     {
-        if ( MAX_CUDA_STREAMS - 1 - i < control->gpu_streams )
+        if ( MAX_GPU_STREAMS - 1 - i < control->gpu_streams )
         {
-            ret = cudaStreamDestroy( control->streams[i] );
+            ret = cudaStreamDestroy( control->cuda_streams[i] );
     
             if ( ret != cudaSuccess )
             {
@@ -225,9 +225,9 @@ extern "C" void Cuda_Cleanup_Environment( control_params const * const control )
         }
     }
 
-    for ( i = 0; i < CUDA_STREAM_SYNC_EVENT_N; ++i )
+    for ( i = 0; i < GPU_STREAM_SYNC_EVENT_N; ++i )
     {
-        ret = cudaEventDestroy( control->stream_events[i] );
+        ret = cudaEventDestroy( control->cuda_stream_events[i] );
 
         if ( ret != cudaSuccess )
         {
@@ -238,9 +238,9 @@ extern "C" void Cuda_Cleanup_Environment( control_params const * const control )
     }
 
 #if defined(LOG_PERFORMANCE)
-    for ( i = 0; i < CUDA_TIMING_EVENT_N; ++i )
+    for ( i = 0; i < GPU_TIMING_EVENT_N; ++i )
     {
-        ret = cudaEventDestroy( control->time_events[i] );
+        ret = cudaEventDestroy( control->cuda_time_events[i] );
 
         if ( ret != cudaSuccess )
         {

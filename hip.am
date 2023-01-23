@@ -1,0 +1,14 @@
+# NOTE:
+# SUFFIXES is moved outside this file
+# so that one can issue a SUFFIXES += .cu
+# in case SUFFIXES is already defined (like for example
+# in autotroll.am)
+#SUFFIXES = .cpp
+
+AM_V_HIPCC = $(AM_V_HIPCC_@AM_V@)
+AM_V_HIPCC_ = $(AM_V_HIPCC_@AM_DEFAULT_V@)
+AM_V_HIPCC_0 = @echo "  HIPCC    " $@;
+AM_V_HIPCC_1 =
+
+.cu.o:
+	$(AM_V_HIPCC)$(HIPCC) $(AM_HIPCCFLAGS) $(HIPCCFLAGS) -o $@ -c $<

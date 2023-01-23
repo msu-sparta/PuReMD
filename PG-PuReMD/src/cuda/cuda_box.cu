@@ -102,10 +102,10 @@ void Cuda_Scale_Box( reax_system *system, control_params *control,
     Update_Comm( system );
 
     sCudaMemcpyAsync( &system->d_big_box, &system->big_box, sizeof(simulation_box),
-            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
+            cudaMemcpyHostToDevice, control->cuda_streams[0], __FILE__, __LINE__ );
     sCudaMemcpyAsync( &system->d_my_box, &system->my_box, sizeof(simulation_box),
-            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
+            cudaMemcpyHostToDevice, control->cuda_streams[0], __FILE__, __LINE__ );
     sCudaMemcpyAsync( &system->d_my_ext_box, &system->my_ext_box, sizeof(simulation_box),
-            cudaMemcpyHostToDevice, control->streams[0], __FILE__, __LINE__ );
-    cudaStreamSynchronize( control->streams[0] );
+            cudaMemcpyHostToDevice, control->cuda_streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->cuda_streams[0] );
 }

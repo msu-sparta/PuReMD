@@ -19,24 +19,32 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#if !(defined(__REAX_TYPES_H_) || defined(__CUDA_REAX_TYPES_H_))
+#if !(defined(__REAX_TYPES_H_) || defined(__CUDA_REAX_TYPES_H_) || defined(__HIP_REAX_TYPES_H_))
 
 #if defined(__CUDACC__)
   #ifndef __CUDA_REAX_TYPES_H_
     #define __CUDA_REAX_TYPES_H_
-    #define CUDA_HOST __host__
-    #define CUDA_DEVICE __device__
-    #define CUDA_GLOBAL __global__
-    #define CUDA_HOST_DEVICE __host__ __device__
+  #endif
+#elif defined(__HIPCC__)
+  #ifndef __HIP_REAX_TYPES_H_
+    #define __HIP_REAX_TYPES_H_
   #endif
 #else
   #ifndef __REAX_TYPES_H_
     #define __REAX_TYPES_H_
-    #define CUDA_HOST
-    #define CUDA_DEVICE
-    #define CUDA_GLOBAL
-    #define CUDA_HOST_DEVICE
   #endif
+#endif
+
+#if defined(__CUDACC__) || defined(__HIPCC__)
+  #define GPU_HOST __host__
+  #define GPU_DEVICE __device__
+  #define GPU_GLOBAL __global__
+  #define GPU_HOST_DEVICE __host__ __device__
+#else
+  #define GPU_HOST
+  #define GPU_DEVICE
+  #define GPU_GLOBAL
+  #define GPU_HOST_DEVICE
 #endif
 
 #if (defined(HAVE_CONFIG_H) && !defined(__CONFIG_H_))
@@ -46,6 +54,8 @@
 
 /* use cuBLAS for dense linear algebra */
 //#define USE_CUBLAS
+/* use hipBLAS for dense linear algebra */
+//#define USE_HIPBLAS
 
 #include <ctype.h>
 #include <math.h>
@@ -60,6 +70,11 @@
   #include <cuda_runtime.h>
 #if defined(USE_CUBLAS)
   #include <cublas_v2.h>
+#endif
+#elif defined(HAVE_HIP)
+  #include <hip/hip_runtime.h>
+#if defined(USE_HIPBLAS)
+  #include <hipblas.h>
 #endif
 #endif
 
@@ -91,10 +106,10 @@
 /* OpenMPI extensions for CUDA-aware support */
 //#include <mpi-ext.h>
 #if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
-  #define CUDA_DEVICE_PACK
+  #define GPU_DEVICE_PACK
 #endif
 /* aggregate atomic energies and forces using atomic operations */
-#define CUDA_ACCUM_ATOMIC
+#define GPU_ACCUM_ATOMIC
 
 /* disable assertions if NOT compiling with debug support --
  * the definition (or lack thereof) controls how the assert macro is defined */
@@ -307,11 +322,11 @@
 /* min. temperature scaler for atomic positions and velocities in NPT ensembles */
 #define MIN_dT (0.0)
 
-/* ??? */
+/* MPI processor ID of master (root) process */
 #define MASTER_NODE (0)
-/* max neighbors in 3D Cartesian processor grid */
+/* max neighbors in 3D Cartesian MPI processor grid */
 #define MAX_NBRS (6) // (27)
-/* max neighbors in 3D Cartesian processor grid for neutral territory */
+/* max neighbors in 3D Cartesian MPI processor grid for neutral territory */
 #define MAX_NT_NBRS (6)
 /* encoding of relative coordinate (0,0,0) */
 #define MYSELF (13)
@@ -321,7 +336,7 @@
 #define MAX_RETRIES (5)
 
 /**************** RESOURCE CONSTANTS **********************/
-#if defined(HAVE_CUDA)
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
   /* BLOCK SIZES for kernels */
   #define HB_SYM_BLOCK_SIZE (64)
   #define HB_KER_SYM_THREADS_PER_ATOM (16)
@@ -373,8 +388,16 @@
   #endif
 #endif
 
-/* max. num. of active CUDA streams */
-#define MAX_CUDA_STREAMS (6)
+/* max. num. of active CUDA/HIP streams */
+#define MAX_GPU_STREAMS (6)
+
+#if defined(HAVE_CUDA)
+  /* num. threads per warp for CUDA (NVIDIA GPUs) */
+  #define WARP_SIZE (32)
+#elif defined(HAVE_HIP)
+  /* num. threads per warp for HIP (AMD GPUs non-Polaris) */
+  #define WARP_SIZE (64)
+#endif
 
 
 /* ensemble type */
@@ -589,9 +612,9 @@ enum traj_methods
     TF_N = 2,
 };
 
-#if defined(HAVE_CUDA)
-/* CUDA events for synchronizing kernels across different streams */
-enum cuda_stream_sync_events
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
+/* CUDA/HIP events for synchronizing kernels across different streams */
+enum gpu_stream_sync_events
 {
     /* index of event signifying pairwise distances have been calculated */
     SE_INIT_DIST_DONE = 0,
@@ -600,12 +623,12 @@ enum cuda_stream_sync_events
     /* index of event signifying bond orders have been calculated */
     SE_BOND_ORDER_DONE = 2,
     /* total num. of sync events */
-    CUDA_STREAM_SYNC_EVENT_N = 3,
+    GPU_STREAM_SYNC_EVENT_N = 3,
 };
 
 #if defined(LOG_PERFORMANCE)
-/* CUDA events used to determine kernel runtimes */
-enum cuda_timing_events
+/* CUDA/HIP events used to determine kernel runtimes */
+enum gpu_timing_events
 {
    TE_NBRS_START = 0,
    TE_NBRS_STOP = 1,
@@ -635,7 +658,7 @@ enum cuda_timing_events
    TE_VDW_STOP = 25,
    TE_COULOMB_START = 26,
    TE_COULOMB_STOP = 27,
-   CUDA_TIMING_EVENT_N = 28,
+   GPU_TIMING_EVENT_N = 28,
 };
 #endif
 #endif
@@ -885,7 +908,7 @@ struct mpi_datatypes
     /**/
     mpi_out_data out_nt_buffers[MAX_NT_NBRS];
 #endif
-#if defined(HAVE_CUDA)
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
     /* ingress buffer for communications with neighbor 1 along
      * one dimension of the 3D Cartesian topology (GPU) */
     void *d_in1_buffer;
@@ -1216,7 +1239,7 @@ struct reax_interaction
     /* simulation parameters for four body interactions */
     four_body_header *fbp; 
 
-#if defined(HAVE_CUDA)
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
     /* global simulation parameters (GPU), from force field parameters file */
     global_parameters d_gp;
     /* simulation parameters for single body interactions (GPU) */
@@ -1568,7 +1591,7 @@ struct control_params
     int nprocs;
     /* number of GPUs per node, as supplied via control file */
     int gpus_per_node;
-    /* number of CUDA streams per GPU, as supplied via control file */
+    /* number of CUDA/HIP streams per GPU, as supplied via control file */
     int gpu_streams;
     /* MPI processors per each simulation dimension (cartesian topology),
      * as supplied via control file */
@@ -1735,33 +1758,53 @@ struct control_params
 #if defined(HAVE_CUDA)
     /* function pointer for ensemble used to evolve atomic system (GPU) */
     evolve_function Cuda_Evolve;
+#elif defined(HAVE_HIP)
+    /* function pointer for ensemble used to evolve atomic system (GPU) */
+    evolve_function Hip_Evolve;
+#endif
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
     /* control parameters (GPU) */
     void *d_control_params;
-    /* num. CUDA blocks for kernels with 1 thread per atom (local) */
+    /* num. CUDA/HIP blocks for kernels with 1 thread per atom (local) */
     int blocks;
-    /* num. CUDA threads per block for kernels with 1 thread per atom (local) */
+    /* num. CUDA/HIP threads per block for kernels with 1 thread per atom (local) */
     int block_size;
-    /* num. of CUDA blocks rounded up to the nearest power of 2
+    /* num. of CUDA/HIP blocks rounded up to the nearest power of 2
      * for kernels with 1 thread per atom (local) */
     int blocks_pow_2;
-    /* num. CUDA blocks for kernels with 1 thread per atom (local AND ghost) */
+    /* num. CUDA/HIP blocks for kernels with 1 thread per atom (local AND ghost) */
     int blocks_n;
-    /* num. CUDA threads per block for kernels with 1 thread per atom (local AND ghost) */
+    /* num. CUDA/HIP threads per block for kernels with 1 thread per atom (local AND ghost) */
     int block_size_n;
-    /* num. of CUDA blocks rounded up to the nearest power of 2
+    /* num. of CUDA/HIP blocks rounded up to the nearest power of 2
      * for kernels with 1 thread per atom (local AND ghost) */
     int blocks_pow_2_n;
+#if defined(HAVE_CUDA)
     /* CUDA streams */
-    cudaStream_t streams[MAX_CUDA_STREAMS];
+    cudaStream_t cuda_streams[MAX_GPU_STREAMS];
     /* CUDA events for synchronizing streams */
-    cudaEvent_t stream_events[CUDA_STREAM_SYNC_EVENT_N];
+    cudaEvent_t cuda_stream_events[GPU_STREAM_SYNC_EVENT_N];
 #if defined(LOG_PERFORMANCE)
     /* CUDA events for timing */
-    cudaEvent_t time_events[CUDA_TIMING_EVENT_N];
+    cudaEvent_t cuda_time_events[GPU_TIMING_EVENT_N];
 #endif
 #if defined(USE_CUBLAS)
     /* handle to cuBLAS library instance */
     cublasHandle_t cublas_handle;
+#endif
+#elif defined(HAVE_HIP)
+    /* HIP streams */
+    hipStream_t hip_streams[MAX_GPU_STREAMS];
+    /* HIP events for synchronizing streams */
+    hipEvent_t hip_stream_events[GPU_STREAM_SYNC_EVENT_N];
+#if defined(LOG_PERFORMANCE)
+    /* HIP events for timing */
+    hipEvent_t hip_time_events[GPU_TIMING_EVENT_N];
+#endif
+#if defined(USE_HIPBLAS)
+    /* handle to hipBLAS library instance */
+    hipblasHandle_t hipblas_handle;
+#endif
 #endif
 #endif
 };
@@ -2054,7 +2097,7 @@ struct hbond_data
     int scl;
     /* position of neighbor in far neighbor list */
     int ptr;
-#if defined(HAVE_CUDA) && !defined(CUDA_ACCUM_ATOMIC)
+#if (defined(HAVE_CUDA) || defined(HAVE_HIP)) && !defined(GPU_ACCUM_ATOMIC)
     /**/
     int sym_index;
     /**/
@@ -2156,7 +2199,7 @@ struct bond_data
     rvec dvec;
     /* bond order data */
     bond_order_data bo_data;
-#if defined(HAVE_CUDA) && !defined(CUDA_ACCUM_ATOMIC)
+#if (defined(HAVE_CUDA) || defined(HAVE_HIP)) && !defined(GPU_ACCUM_ATOMIC)
     /**/
     real ae_CdDelta;
     /**/
@@ -2178,7 +2221,7 @@ struct bond_data
 
 
 /* Matrix in compressed row storage (CRS) format,
- * with modifications for row end pointer and max entries per row (CUDA optimizations).
+ * with modifications for row end pointer and max entries per row (CUDA/HIP optimizations).
  * See, e.g.,
  *   http://netlib.org/linalg/html_templates/node91.html#SECTION00931100000000000000
  */
@@ -2433,15 +2476,15 @@ struct storage
     reallocate_data realloc;
     /* lookup table for force tabulation */
     LR_lookup_table *LR;
-#if defined(HAVE_CUDA)
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
     /* temporary host workspace */
     void *host_scratch;
     /* size of temporary host workspace, in bytes */
     size_t host_scratch_size;
     /* temporary workspace (GPU) */
-    void *scratch[MAX_CUDA_STREAMS];
+    void *scratch[MAX_GPU_STREAMS];
     /* size of temporary workspace (GPU), in bytes */
-    size_t scratch_size[MAX_CUDA_STREAMS];
+    size_t scratch_size[MAX_GPU_STREAMS];
     /* lookup table for force tabulation (GPU) */
     LR_lookup_table *d_LR;
     /* storage (GPU) */

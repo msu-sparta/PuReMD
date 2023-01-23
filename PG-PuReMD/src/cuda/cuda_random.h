@@ -29,7 +29,7 @@
    large periodicity for generation of pseudo random number. function
    Random returns this random number appropriately scaled so that
    0 <= Random(range) < range */
-CUDA_DEVICE double Cuda_Random( double );
+GPU_DEVICE double Cuda_Random( double );
 
 /* This function seeds the system pseudo random number generator with
    current time. Use this function once in the begining to initialize
@@ -38,7 +38,7 @@ void Cuda_Randomize( );
 
 /* GRandom return random number with gaussian distribution with mean
    and standard deviation "sigma" */
-CUDA_DEVICE double Cuda_GRandom( double, double );
+GPU_DEVICE double Cuda_GRandom( double, double );
 
 
 #endif

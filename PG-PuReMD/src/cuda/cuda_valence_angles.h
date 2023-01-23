@@ -33,7 +33,7 @@ int Cuda_Compute_Valence_Angles( reax_system * const,
 
 
 /* calculates the theta angle between atom triplet i-j-k */
-CUDA_DEVICE static inline void Calculate_Theta( const rvec dvec_ji, real d_ji,
+GPU_DEVICE static inline void Calculate_Theta( const rvec dvec_ji, real d_ji,
         const rvec dvec_jk, real d_jk, real * const theta, real * const cos_theta )
 {
     assert( d_ji > 0.0 );
@@ -55,7 +55,7 @@ CUDA_DEVICE static inline void Calculate_Theta( const rvec dvec_ji, real d_ji,
 
 
 /* calculates the derivative of the cosine of the angle between atom triplet i-j-k */
-CUDA_DEVICE static inline void Calculate_dCos_Theta( const rvec dvec_ji,
+GPU_DEVICE static inline void Calculate_dCos_Theta( const rvec dvec_ji,
         real d_ji, const rvec dvec_jk, real d_jk, rvec * const dcos_theta_di,
         rvec * const dcos_theta_dj, rvec * const dcos_theta_dk )
 {

@@ -40,6 +40,8 @@
 
 #if defined(HAVE_CUDA)
   #include "cuda/cuda_copy.h"
+#elif defined(HAVE_HIP)
+  #include "hip/hip_copy.h"
 #endif
 
 
@@ -118,6 +120,9 @@ void Compute_Total_Energy( reax_system const * const system,
 
 #if defined(HAVE_CUDA)
     Cuda_Copy_Simulation_Data_Device_to_Host( control, data,
+            (simulation_data *) data->d_simulation_data );
+#elif defined(HAVE_HIP)
+    Hip_Copy_Simulation_Data_Device_to_Host( control, data,
             (simulation_data *) data->d_simulation_data );
 #endif
 

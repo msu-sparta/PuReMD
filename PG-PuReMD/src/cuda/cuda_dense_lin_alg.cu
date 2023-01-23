@@ -15,7 +15,7 @@
  * output:
  *  dest: vector copied into
  */
-CUDA_GLOBAL void k_vector_copy( real * const dest, real const * const v,
+GPU_GLOBAL void k_vector_copy( real * const dest, real const * const v,
         unsigned int k )
 {
     unsigned int i;
@@ -39,7 +39,7 @@ CUDA_GLOBAL void k_vector_copy( real * const dest, real const * const v,
  * output:
  *  dest: vector copied into
  */
-CUDA_GLOBAL void k_vector_copy_rvec2( rvec2 * const dest, rvec2 const * const v,
+GPU_GLOBAL void k_vector_copy_rvec2( rvec2 * const dest, rvec2 const * const v,
         unsigned int k )
 {
     unsigned int i;
@@ -56,7 +56,7 @@ CUDA_GLOBAL void k_vector_copy_rvec2( rvec2 * const dest, rvec2 const * const v,
 }
 
 
-CUDA_GLOBAL void k_vector_copy_from_rvec2( real * const dst, rvec2 const * const src,
+GPU_GLOBAL void k_vector_copy_from_rvec2( real * const dst, rvec2 const * const src,
         int index, int n )
 {
     int i;
@@ -72,7 +72,7 @@ CUDA_GLOBAL void k_vector_copy_from_rvec2( real * const dst, rvec2 const * const
 }
 
 
-CUDA_GLOBAL void k_vector_copy_to_rvec2( rvec2 * const dst, real const * const src,
+GPU_GLOBAL void k_vector_copy_to_rvec2( rvec2 * const dst, real const * const src,
         int index, int n )
 {
     int i;
@@ -98,7 +98,7 @@ CUDA_GLOBAL void k_vector_copy_to_rvec2( rvec2 * const dst, real const * const s
  * output:
  *  dest: vector containing the scaled sum
  */
-CUDA_GLOBAL void k_vector_sum( real * const dest, real c, real const * const v,
+GPU_GLOBAL void k_vector_sum( real * const dest, real c, real const * const v,
         real d, real const * const y, unsigned int k )
 {
     unsigned int i;
@@ -114,7 +114,7 @@ CUDA_GLOBAL void k_vector_sum( real * const dest, real c, real const * const v,
 }
 
 
-CUDA_GLOBAL void k_vector_sum_rvec2( rvec2 * const dest, real c0, real c1, rvec2 const * const v, 
+GPU_GLOBAL void k_vector_sum_rvec2( rvec2 * const dest, real c0, real c1, rvec2 const * const v, 
         real d0, real d1, rvec2 const * const y, unsigned int k )
 {
     unsigned int i;
@@ -141,7 +141,7 @@ CUDA_GLOBAL void k_vector_sum_rvec2( rvec2 * const dest, real c0, real c1, rvec2
  * output:
  *  dest: vector to accumulate with the scaled sum
  */
-CUDA_GLOBAL void k_vector_add( real * const dest, real c, real const * const v,
+GPU_GLOBAL void k_vector_add( real * const dest, real c, real const * const v,
         unsigned int k )
 {
     unsigned int i;
@@ -167,7 +167,7 @@ CUDA_GLOBAL void k_vector_add( real * const dest, real c, real const * const v,
  * output:
  *  dest: vector to accumulate with the scaled sum
  */
-CUDA_GLOBAL void k_vector_add_rvec2( rvec2 * const dest, real c0, real c1, rvec2 const * const v,
+GPU_GLOBAL void k_vector_add_rvec2( rvec2 * const dest, real c0, real c1, rvec2 const * const v,
         unsigned int k )
 {
     unsigned int i;
@@ -192,7 +192,7 @@ CUDA_GLOBAL void k_vector_add_rvec2( rvec2 * const dest, real c0, real c1, rvec2
  * output:
  *  dest: vector with the result of the multiplication
  */
-CUDA_GLOBAL void k_vector_mult( real * const dest, real const * const v1,
+GPU_GLOBAL void k_vector_mult( real * const dest, real const * const v1,
         real const * const v2, unsigned k )
 {
     unsigned int i;
@@ -216,7 +216,7 @@ CUDA_GLOBAL void k_vector_mult( real * const dest, real const * const v1,
  * output:
  *  dest: vector with the result of the multiplication
  */
-CUDA_GLOBAL void k_vector_mult_rvec2( rvec2 * const dest, rvec2 const * const v1,
+GPU_GLOBAL void k_vector_mult_rvec2( rvec2 * const dest, rvec2 const * const v1,
         rvec2 const * const v2, unsigned k )
 {
     unsigned int i;

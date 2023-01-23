@@ -21,7 +21,7 @@
 
 #include "cuda_spar_lin_alg.h"
 
-#if defined(CUDA_DEVICE_PACK)
+#if defined(GPU_DEVICE_PACK)
   #include "cuda_basic_comm.h"
 #endif
 #include "cuda_dense_lin_alg.h"
@@ -29,7 +29,7 @@
 #include "cuda_utils.h"
 #include "cuda_reduction.h"
 
-#if !defined(CUDA_DEVICE_PACK)
+#if !defined(GPU_DEVICE_PACK)
   #include "../basic_comm.h"
 #endif
 #include "../comm_tools.h"
@@ -53,7 +53,7 @@ enum preconditioner_type
 
 
 /* Jacobi preconditioner computation */
-CUDA_GLOBAL void k_jacobi_cm_half( int *row_ptr_start,
+GPU_GLOBAL void k_jacobi_cm_half( int *row_ptr_start,
         int *row_ptr_end, int *col_ind, real *vals,
         real * const Hdia_inv, int N )
 {
@@ -81,7 +81,7 @@ CUDA_GLOBAL void k_jacobi_cm_half( int *row_ptr_start,
 
 
 /* Jacobi preconditioner computation */
-CUDA_GLOBAL void k_jacobi_cm_full( int *row_ptr_start,
+GPU_GLOBAL void k_jacobi_cm_full( int *row_ptr_start,
         int *row_ptr_end, int *col_ind, real *vals,
         real * const Hdia_inv, int N )
 {
@@ -118,7 +118,7 @@ CUDA_GLOBAL void k_jacobi_cm_full( int *row_ptr_start,
 }
 
 
-CUDA_GLOBAL void k_dual_jacobi_apply( real const * const Hdia_inv, rvec2 const * const y,
+GPU_GLOBAL void k_dual_jacobi_apply( real const * const Hdia_inv, rvec2 const * const y,
         rvec2 * const x, int n )
 {
     int i;
@@ -135,7 +135,7 @@ CUDA_GLOBAL void k_dual_jacobi_apply( real const * const Hdia_inv, rvec2 const *
 }
 
 
-CUDA_GLOBAL void k_jacobi_apply( real const * const Hdia_inv, real const * const y,
+GPU_GLOBAL void k_jacobi_apply( real const * const Hdia_inv, real const * const y,
         real * const x, int n )
 {
     int i;
@@ -159,7 +159,7 @@ CUDA_GLOBAL void k_jacobi_apply( real const * const Hdia_inv, real const * const
  * x: dense vector, size equal to num. columns in A
  * b (output): dense vector, size equal to num. columns in A
  * N: number of rows in A */
-CUDA_GLOBAL void k_sparse_matvec_half_csr( int *row_ptr_start,
+GPU_GLOBAL void k_sparse_matvec_half_csr( int *row_ptr_start,
         int *row_ptr_end, int *col_ind, real *vals,
         const real * const x, real * const b, int N )
 {
@@ -193,14 +193,14 @@ CUDA_GLOBAL void k_sparse_matvec_half_csr( int *row_ptr_start,
 
 
 /* sparse matrix, dense vector multiplication Ax = b,
- * where warps of 32 threads collaborate to multiply each row
+ * where warps of WARP_SIZE threads collaborate to multiply each row
  *
  * A: symmetric (upper triangular portion only stored) matrix,
  *    stored in CSR format
  * x: dense vector, size equal to num. columns in A
  * b (output): dense vector, size equal to num. columns in A
  * N: number of rows in A */
-CUDA_GLOBAL void k_sparse_matvec_half_opt_csr( int *row_ptr_start,
+GPU_GLOBAL void k_sparse_matvec_half_opt_csr( int *row_ptr_start,
         int *row_ptr_end, int *col_ind, real *vals,
         const real * const x, real * const b, int N )
 {
@@ -264,7 +264,7 @@ CUDA_GLOBAL void k_sparse_matvec_half_opt_csr( int *row_ptr_start,
  * x: dense vector, size equal to num. columns in A
  * b (output): dense vector, size equal to num. columns in A
  * N: number of rows in A */
-CUDA_GLOBAL void k_sparse_matvec_full_csr( int *row_ptr_start,
+GPU_GLOBAL void k_sparse_matvec_full_csr( int *row_ptr_start,
         int *row_ptr_end, int *col_ind, real *vals,
         const real * const x, real * const b, int n )
 {
@@ -294,14 +294,14 @@ CUDA_GLOBAL void k_sparse_matvec_full_csr( int *row_ptr_start,
 
 
 /* sparse matrix, dense vector multiplication Ax = b,
- * where warps of 32 threads collaborate to multiply each row
+ * where warps of WARP_SIZE threads collaborate to multiply each row
  *
  * A: symmetric matrix,
  *    stored in CSR format
  * x: dense vector, size equal to num. columns in A
  * b (output): dense vector, size equal to num. columns in A
  * N: number of rows in A */
-CUDA_GLOBAL void k_sparse_matvec_full_opt_csr( int *row_ptr_start,
+GPU_GLOBAL void k_sparse_matvec_full_opt_csr( int *row_ptr_start,
         int *row_ptr_end, int *col_ind, real *vals,
         const real * const x, real * const b, int n )
 {
@@ -354,7 +354,7 @@ CUDA_GLOBAL void k_sparse_matvec_full_opt_csr( int *row_ptr_start,
  * X: 2 dense vectors, size equal to num. columns in A
  * B (output): 2 dense vectors, size equal to num. columns in A
  * N: number of rows in A */
-CUDA_GLOBAL void k_dual_sparse_matvec_half_csr( int *row_ptr_start,
+GPU_GLOBAL void k_dual_sparse_matvec_half_csr( int *row_ptr_start,
         int *row_ptr_end, int *col_ind, real *vals,
         const rvec2 * const x, rvec2 * const b, int N )
 {
@@ -392,14 +392,14 @@ CUDA_GLOBAL void k_dual_sparse_matvec_half_csr( int *row_ptr_start,
 
 
 /* sparse matrix, dense vector multiplication Ax = b,
- * where warps of 32 threads collaborate to multiply each row
+ * where warps of WARP_SIZE threads collaborate to multiply each row
  *
  * A: symmetric (upper triangular portion only stored) matrix,
  *    stored in CSR format
  * X: 2 dense vectors, size equal to num. columns in A
  * B (output): 2 dense vectors, size equal to num. columns in A
  * N: number of rows in A */
-CUDA_GLOBAL void k_dual_sparse_matvec_half_opt_csr( int *row_ptr_start,
+GPU_GLOBAL void k_dual_sparse_matvec_half_opt_csr( int *row_ptr_start,
         int *row_ptr_end, int *col_ind, real *vals,
         const rvec2 * const x, rvec2 * const b, int N )
 {
@@ -454,7 +454,7 @@ CUDA_GLOBAL void k_dual_sparse_matvec_half_opt_csr( int *row_ptr_start,
 
 
 /* 1 thread per row implementation */
-CUDA_GLOBAL void k_dual_sparse_matvec_full_csr( sparse_matrix A,
+GPU_GLOBAL void k_dual_sparse_matvec_full_csr( sparse_matrix A,
         rvec2 const * const x, rvec2 * const b, int n )
 {
     int i, pj, si, ei;
@@ -484,7 +484,7 @@ CUDA_GLOBAL void k_dual_sparse_matvec_full_csr( sparse_matrix A,
 
 
 /* sparse matrix, dense vector multiplication AX = B,
- * where warps of 32 threads
+ * where warps of WARP_SIZE threads
  * collaborate to multiply each row
  *
  * A: symmetric matrix,
@@ -492,7 +492,7 @@ CUDA_GLOBAL void k_dual_sparse_matvec_full_csr( sparse_matrix A,
  * X: 2 dense vectors, size equal to num. columns in A
  * B (output): 2 dense vectors, size equal to num. columns in A
  * n: number of rows in A */
-CUDA_GLOBAL void k_dual_sparse_matvec_full_opt_csr( int *row_ptr_start,
+GPU_GLOBAL void k_dual_sparse_matvec_full_opt_csr( int *row_ptr_start,
         int *row_ptr_end, int *col_ind, real *vals,
         rvec2 const * const x, rvec2 * const b, int n )
 {
@@ -587,7 +587,7 @@ static void Dual_Sparse_MatVec_Comm_Part1( const reax_system * const system,
         void const * const x, int n, int buf_type, MPI_Datatype mpi_type,
         cudaStream_t s )
 {
-#if !defined(CUDA_DEVICE_PACK)
+#if !defined(GPU_DEVICE_PACK)
     rvec2 *spad;
 
     smalloc_check( &workspace->host_scratch, &workspace->host_scratch_size,
@@ -635,13 +635,13 @@ static void Dual_Sparse_MatVec_local( control_params const * const control,
 //        k_dual_sparse_matvec_half_csr <<< control->blocks, control->block_size, 0, s >>>
 //            ( A->start, A->end, A->j, A->val, x, b, A->n );
 
-        blocks = A->n * 32 / DEF_BLOCK_SIZE
-            + (A->n * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+        blocks = A->n * WARP_SIZE / DEF_BLOCK_SIZE
+            + (A->n * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
         
-        /* 32 threads per row implementation
+        /* WARP_SIZE threads per row implementation
          * using registers to accumulate partial row sums */
         k_dual_sparse_matvec_half_opt_csr <<< blocks, DEF_BLOCK_SIZE,
-                                          sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32), s >>>
+                                          sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE), s >>>
              ( A->start, A->end, A->j, A->val, x, b, A->n );
     }
     else if ( A->format == SYM_FULL_MATRIX || A->format == FULL_MATRIX )
@@ -650,13 +650,13 @@ static void Dual_Sparse_MatVec_local( control_params const * const control,
 //        k_dual_sparse_matvec_full_csr <<< control->blocks, control->block_size, 0, s >>>
 //             ( *A, x, b, A->n );
 
-        blocks = ((A->n * 32) / DEF_BLOCK_SIZE)
-            + (((A->n * 32) % DEF_BLOCK_SIZE) == 0 ? 0 : 1);
+        blocks = ((A->n * WARP_SIZE) / DEF_BLOCK_SIZE)
+            + (((A->n * WARP_SIZE) % DEF_BLOCK_SIZE) == 0 ? 0 : 1);
         
-        /* 32 threads per row implementation
+        /* WARP_SIZE threads per row implementation
          * using registers to accumulate partial row sums */
         k_dual_sparse_matvec_full_opt_csr <<< blocks, DEF_BLOCK_SIZE,
-                                          sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32), s >>>
+                                          sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE), s >>>
                 ( A->start, A->end, A->j, A->val, x, b, A->n );
     }
     cudaCheckError( );
@@ -685,14 +685,14 @@ static void Dual_Sparse_MatVec_Comm_Part2( const reax_system * const system,
         void * const b, int n1, int n2, int buf_type, MPI_Datatype mpi_type,
         cudaStream_t s )
 {
-#if !defined(CUDA_DEVICE_PACK)
+#if !defined(GPU_DEVICE_PACK)
     rvec2 *spad;
 #endif
 
     /* reduction required for symmetric half matrix */
     if ( mat_format == SYM_HALF_MATRIX )
     {
-#if !defined(CUDA_DEVICE_PACK)
+#if !defined(GPU_DEVICE_PACK)
         smalloc_check( &workspace->host_scratch, &workspace->host_scratch_size,
                 sizeof(rvec2) * n1, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
         spad = (rvec2 *) workspace->host_scratch;
@@ -775,7 +775,7 @@ static void Sparse_MatVec_Comm_Part1( const reax_system * const system,
         void const * const x, int n, int buf_type, MPI_Datatype mpi_type,
         cudaStream_t s )
 {
-#if !defined(CUDA_DEVICE_PACK)
+#if !defined(GPU_DEVICE_PACK)
     real *spad;
 
     smalloc_check( &workspace->host_scratch, &workspace->host_scratch_size,
@@ -823,13 +823,13 @@ static void Sparse_MatVec_local( control_params const * const control,
 //        k_sparse_matvec_half_csr <<< control->blocks, control->block_size, 0, s >>>
 //            ( A->start, A->end, A->j, A->val, x, b, A->n );
 
-        blocks = (A->n * 32 / DEF_BLOCK_SIZE)
-            + (A->n * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+        blocks = (A->n * WARP_SIZE / DEF_BLOCK_SIZE)
+            + (A->n * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
-        /* 32 threads per row implementation
+        /* WARP_SIZE threads per row implementation
          * using registers to accumulate partial row sums */
         k_sparse_matvec_half_opt_csr <<< blocks, DEF_BLOCK_SIZE,
-                                     sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32), s >>>
+                                     sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE), s >>>
              ( A->start, A->end, A->j, A->val, x, b, A->n );
     }
     else if ( A->format == SYM_FULL_MATRIX || A->format == FULL_MATRIX )
@@ -838,13 +838,13 @@ static void Sparse_MatVec_local( control_params const * const control,
 //        k_sparse_matvec_full_csr <<< control->blocks, control->block_size, 0, s >>>
 //             ( A->start, A->end, A->j, A->val, x, b, A->n );
 
-        blocks = ((A->n * 32) / DEF_BLOCK_SIZE)
-            + (((A->n * 32) % DEF_BLOCK_SIZE) == 0 ? 0 : 1);
+        blocks = ((A->n * WARP_SIZE) / DEF_BLOCK_SIZE)
+            + (((A->n * WARP_SIZE) % DEF_BLOCK_SIZE) == 0 ? 0 : 1);
 
-        /* 32 threads per row implementation
+        /* WARP_SIZE threads per row implementation
          * using registers to accumulate partial row sums */
         k_sparse_matvec_full_opt_csr <<< blocks, DEF_BLOCK_SIZE,
-                                     sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32), s >>>
+                                     sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE), s >>>
              ( A->start, A->end, A->j, A->val, x, b, A->n );
     }
     cudaCheckError( );
@@ -871,14 +871,14 @@ static void Sparse_MatVec_Comm_Part2( const reax_system * const system,
         void * const b, int n1, int n2, int buf_type, MPI_Datatype mpi_type,
         cudaStream_t s )
 {
-#if !defined(CUDA_DEVICE_PACK)
+#if !defined(GPU_DEVICE_PACK)
     real *spad;
 #endif
 
     /* reduction required for symmetric half matrix */
     if ( mat_format == SYM_HALF_MATRIX )
     {
-#if !defined(CUDA_DEVICE_PACK)
+#if !defined(GPU_DEVICE_PACK)
         smalloc_check( &workspace->host_scratch, &workspace->host_scratch_size,
                 sizeof(real) * n1, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
         spad = (real *) workspace->host_scratch;

@@ -43,7 +43,7 @@
 
 
 //TODO: move k_jacob and jacboi to cuda_lin_alg.cu
-CUDA_GLOBAL void k_jacobi( reax_atom const * const my_atoms,
+GPU_GLOBAL void k_jacobi( reax_atom const * const my_atoms,
         single_body_parameters const * const sbp,
         storage workspace, int n  )
 {
@@ -156,7 +156,7 @@ void Sort_Matrix_Rows( sparse_matrix * const A, storage * const workspace,
 }
 
 
-CUDA_GLOBAL void k_spline_extrapolate_charges_qeq( reax_atom const * const my_atoms,
+GPU_GLOBAL void k_spline_extrapolate_charges_qeq( reax_atom const * const my_atoms,
         single_body_parameters const * const sbp, control_params const * const control,
         storage workspace, int n )
 {
@@ -355,11 +355,9 @@ static void Compute_Preconditioner_QEq( reax_system const * const system,
         simulation_data * const data, storage * const workspace,
         mpi_datatypes * const mpi_data, cudaStream_t s )
 {
-#if defined(HAVE_LAPACKE) || defined(HAVE_LAPACKE_MKL)
-    real time;
-#endif
-
 #if defined(LOG_PERFORMANCE)
+    real time;
+
     time = Get_Time( );
 #endif
 
@@ -404,7 +402,7 @@ static void Compute_Preconditioner_QEq( reax_system const * const system,
 }
 
 
-CUDA_GLOBAL void k_extrapolate_charges_qeq_part2( reax_atom *my_atoms,
+GPU_GLOBAL void k_extrapolate_charges_qeq_part2( reax_atom *my_atoms,
         storage workspace, real u, real *q, int n )
 {
     int i;
@@ -483,7 +481,7 @@ static void Extrapolate_Charges_QEq_Part2( reax_system const * const system,
 }
 
 
-CUDA_GLOBAL void k_update_ghost_atom_charges( reax_atom *my_atoms, real *q,
+GPU_GLOBAL void k_update_ghost_atom_charges( reax_atom *my_atoms, real *q,
         int n, int N )
 {
     int i;

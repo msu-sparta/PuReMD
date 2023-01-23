@@ -77,7 +77,7 @@ static void Cuda_Init_System( reax_system *system, control_params *control,
 void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
         simulation_data *data )
 {
-    Cuda_Allocate_Simulation_Data( data, control->streams[0] );
+    Cuda_Allocate_Simulation_Data( data, control->cuda_streams[0] );
 
     Reset_Simulation_Data( data );
     Reset_Timing( &data->timing );
@@ -221,20 +221,20 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
 
     Cuda_Allocate_Matrix( &workspace->d_workspace->H, system->n,
             system->local_cap, system->total_cm_entries, SYM_FULL_MATRIX,
-            control->streams[0] );
+            control->cuda_streams[0] );
     Cuda_Init_Sparse_Matrix_Indices( system, &workspace->d_workspace->H,
-           control->streams[0] );
+           control->cuda_streams[0] );
 
     Cuda_Make_List( system->total_cap, system->total_bonds,
             TYP_BOND, lists[BONDS] );
-    Cuda_Init_Bond_Indices( system, lists[BONDS], control->streams[0] );
+    Cuda_Init_Bond_Indices( system, lists[BONDS], control->cuda_streams[0] );
 
     if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 )
     {
         Cuda_Make_List( system->total_cap, system->total_hbonds,
                 TYP_HBOND, lists[HBONDS] );
         Cuda_Init_HBond_Indices( system, workspace, lists[HBONDS],
-                control->streams[0] );
+                control->cuda_streams[0] );
     }
 
     /* 3bodies list: since a more accurate estimate of the num.
@@ -271,7 +271,7 @@ extern "C" void Cuda_Initialize( reax_system *system, control_params *control,
 
     Init_MPI_Datatypes( system, workspace, mpi_data );
 
-#if defined(CUDA_DEVICE_PACK)
+#if defined(GPU_DEVICE_PACK)
     if ( MPIX_Query_cuda_support( ) != 1 )
     {
         fprintf( stderr, "[ERROR] CUDA device-side MPI buffer packing/unpacking enabled "
@@ -298,7 +298,7 @@ extern "C" void Cuda_Initialize( reax_system *system, control_params *control,
 
     /* scratch space - set before Cuda_Init_Workspace
      * as Cuda_Init_System utilizes these variables */
-    for ( i = 0; i < MAX_CUDA_STREAMS; ++i )
+    for ( i = 0; i < MAX_GPU_STREAMS; ++i )
     {
         workspace->scratch[i] = NULL;
         workspace->scratch_size[i] = 0;

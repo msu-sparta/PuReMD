@@ -31,7 +31,7 @@
 
 
 /* Compute lone pair term */
-CUDA_GLOBAL void k_atom_energy_part1( reax_atom const * const my_atoms, global_parameters gp,
+GPU_GLOBAL void k_atom_energy_part1( reax_atom const * const my_atoms, global_parameters gp,
         single_body_parameters const * const sbp, storage workspace,
         reax_list bond_list, int n, int num_atom_types, real * const e_lp_g )
 {
@@ -107,7 +107,7 @@ CUDA_GLOBAL void k_atom_energy_part1( reax_atom const * const my_atoms, global_p
     __syncthreads( );
 
     workspace.CdDelta[i] += CdDelta_i;
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
     e_lp_g[i] = e_lp;
 #else
     atomicAdd( (double *) e_lp_g, (double) e_lp );
@@ -116,7 +116,7 @@ CUDA_GLOBAL void k_atom_energy_part1( reax_atom const * const my_atoms, global_p
 
 
 /* Compute lone pair term */
-CUDA_GLOBAL void k_atom_energy_part1_opt( reax_atom const * const my_atoms, global_parameters gp,
+GPU_GLOBAL void k_atom_energy_part1_opt( reax_atom const * const my_atoms, global_parameters gp,
         single_body_parameters const * const sbp, storage workspace,
         reax_list bond_list, int n, int num_atom_types, real * const e_lp_g )
 {
@@ -214,7 +214,7 @@ CUDA_GLOBAL void k_atom_energy_part1_opt( reax_atom const * const my_atoms, glob
     if ( lane_id == 0 )
     {
         workspace.CdDelta[i] += CdDelta_i;
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
         e_lp_g[i] = e_lp;
 #else
         atomicAdd( (double *) e_lp_g, (double) e_lp );
@@ -224,7 +224,7 @@ CUDA_GLOBAL void k_atom_energy_part1_opt( reax_atom const * const my_atoms, glob
 
 
 /* Compute over- and under-coordination terms */
-CUDA_GLOBAL void k_atom_energy_part2( reax_atom const * const my_atoms, global_parameters gp,
+GPU_GLOBAL void k_atom_energy_part2( reax_atom const * const my_atoms, global_parameters gp,
         single_body_parameters const * const sbp, two_body_parameters const * const tbp,
         storage workspace, reax_list bond_list, int n, int num_atom_types,
         real * const e_ov_g, real * const e_un_g )
@@ -293,7 +293,7 @@ CUDA_GLOBAL void k_atom_energy_part2( reax_atom const * const my_atoms, global_p
     DlpVi = 1.0 / (Delta_lpcorr + sbp[type_i].valency + 1.0e-8);
     CEover1 = Delta_lpcorr * DlpVi * inv_exp_ovun2;
 
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
     e_ov_g[i] = sum_ovun1 * CEover1;
 #else
     atomicAdd( (double *) e_ov_g, (double) (sum_ovun1 * CEover1) );
@@ -315,7 +315,7 @@ CUDA_GLOBAL void k_atom_energy_part2( reax_atom const * const my_atoms, global_p
     inv_exp_ovun8 = 1.0 / (1.0 + exp_ovun8);
 
     e_un = -p_ovun5 * (1.0 - exp_ovun6) * inv_exp_ovun2n * inv_exp_ovun8;
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
     e_un_g[i] = e_un;
 #else
     atomicAdd( (double *) e_un_g, (double) e_un );
@@ -330,7 +330,7 @@ CUDA_GLOBAL void k_atom_energy_part2( reax_atom const * const my_atoms, global_p
 
     /* forces */
     // OvCoor - 2nd term, UnCoor - 1st term
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
     workspace.CdDelta[i] += CEover3 + CEunder3;
 #else
     atomicAdd( &workspace.CdDelta[i], CEover3 + CEunder3 );
@@ -346,7 +346,7 @@ CUDA_GLOBAL void k_atom_energy_part2( reax_atom const * const my_atoms, global_p
         // OvCoor-1st 
         atomicAdd( &bo_ij->Cdbo, CEover1 * tbp[tbp_ij].p_ovun1 * tbp[tbp_ij].De_s );
         // OvCoor-3a, UnCoor - 2a
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
         pbond_ij->ae_CdDelta += (CEover4 + CEunder4) * (1.0 - dfvl * workspace.dDelta_lp[j])
             * (bo_ij->BO_pi + bo_ij->BO_pi2);
 #else
@@ -364,7 +364,7 @@ CUDA_GLOBAL void k_atom_energy_part2( reax_atom const * const my_atoms, global_p
 
 
 /* Compute over- and under-coordination terms */
-CUDA_GLOBAL void k_atom_energy_part2_opt( reax_atom const * const my_atoms, global_parameters gp,
+GPU_GLOBAL void k_atom_energy_part2_opt( reax_atom const * const my_atoms, global_parameters gp,
         single_body_parameters const * const sbp, two_body_parameters const * const tbp,
         storage workspace, reax_list bond_list, int n, int num_atom_types,
         real * const e_ov_g, real * const e_un_g )
@@ -455,7 +455,7 @@ CUDA_GLOBAL void k_atom_energy_part2_opt( reax_atom const * const my_atoms, glob
 
     if ( lane_id == 0 )
     {
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
         e_ov_g[i] = sum_ovun1 * CEover1;
 #else
         atomicAdd( (double *) e_ov_g, (double) (sum_ovun1 * CEover1) );
@@ -480,7 +480,7 @@ CUDA_GLOBAL void k_atom_energy_part2_opt( reax_atom const * const my_atoms, glob
     e_un = -p_ovun5 * (1.0 - exp_ovun6) * inv_exp_ovun2n * inv_exp_ovun8;
     if ( lane_id == 0 )
     {
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
         e_un_g[i] = e_un;
 #else
         atomicAdd( (double *) e_un_g, (double) e_un );
@@ -505,7 +505,7 @@ CUDA_GLOBAL void k_atom_energy_part2_opt( reax_atom const * const my_atoms, glob
 
     if ( lane_id == 0 )
     {
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
         workspace.CdDelta[i] += CdDelta_i;
 #else
         atomicAdd( &workspace.CdDelta[i], CdDelta_i );
@@ -524,7 +524,7 @@ CUDA_GLOBAL void k_atom_energy_part2_opt( reax_atom const * const my_atoms, glob
             // OvCoor-1st 
             atomicAdd( &bo_ij->Cdbo, CEover1 * tbp[tbp_ij].p_ovun1 * tbp[tbp_ij].De_s );
             // OvCoor-3a, UnCoor - 2a
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
             pbond_ij->ae_CdDelta += (CEover4 + CEunder4) * (1.0 - dfvl * workspace.dDelta_lp[j])
                 * (bo_ij->BO_pi + bo_ij->BO_pi2);
 #else
@@ -544,9 +544,9 @@ CUDA_GLOBAL void k_atom_energy_part2_opt( reax_atom const * const my_atoms, glob
 }
 
 
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
 /* Traverse bond list and accumulate lone pair contributions from bonded neighbors */
-CUDA_GLOBAL void k_atom_energy_part3( reax_list bond_list, storage workspace, int n )
+GPU_GLOBAL void k_atom_energy_part3( reax_list bond_list, storage workspace, int n )
 {
     int i, pj;
 
@@ -572,16 +572,16 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
         output_controls const * const out_control )
 {
     int blocks;
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
     int update_energy;
     real *spad;
 #endif
 
 #if defined(LOG_PERFORMANCE)
-    cudaEventRecord( control->time_events[TE_LPOVUN_START], control->streams[0] );
+    cudaEventRecord( control->cuda_time_events[TE_LPOVUN_START], control->cuda_streams[0] );
 #endif
 
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
     sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
             sizeof(real) * 3 * system->n, __FILE__, __LINE__ );
 
@@ -590,18 +590,18 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
 #else
     sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_lp,
-            0, sizeof(real), control->streams[0], __FILE__, __LINE__ );
+            0, sizeof(real), control->cuda_streams[0], __FILE__, __LINE__ );
     sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_ov,
-            0, sizeof(real), control->streams[0], __FILE__, __LINE__ );
+            0, sizeof(real), control->cuda_streams[0], __FILE__, __LINE__ );
     sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_un,
-            0, sizeof(real), control->streams[0], __FILE__, __LINE__ );
+            0, sizeof(real), control->cuda_streams[0], __FILE__, __LINE__ );
 #endif
 
-//    k_atom_energy_part1 <<< control->blocks, control->block_size, 0, control->streams[0] >>>
+//    k_atom_energy_part1 <<< control->blocks, control->block_size, 0, control->cuda_streams[0] >>>
 //        ( system->d_my_atoms, system->reax_param.d_gp,
 //          system->reax_param.d_sbp, *(workspace->d_workspace),
 //          *(lists[BONDS]), system->n, system->reax_param.num_atom_types,
-//#if !defined(CUDA_ACCUM_ATOMIC)
+//#if !defined(GPU_ACCUM_ATOMIC)
 //          spad
 //#else
 //          &((simulation_data *)data->d_simulation_data)->my_en.e_lp
@@ -609,16 +609,16 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
 //         );
 //    cudaCheckError( );
 
-    blocks = system->n * 32 / DEF_BLOCK_SIZE
-        + (system->n * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+    blocks = system->n * WARP_SIZE / DEF_BLOCK_SIZE
+        + (system->n * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
     k_atom_energy_part1_opt <<< blocks, DEF_BLOCK_SIZE,
-                            sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32),
-                            control->streams[0] >>>
+                            sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+                            control->cuda_streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_gp,
           system->reax_param.d_sbp, *(workspace->d_workspace),
           *(lists[BONDS]), system->n, system->reax_param.num_atom_types,
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
           spad
 #else
           &((simulation_data *)data->d_simulation_data)->my_en.e_lp
@@ -626,11 +626,11 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
          );
     cudaCheckError( );
 
-//    k_atom_energy_part2 <<< control->blocks, control->block_size, 0, control->streams[0] >>>
+//    k_atom_energy_part2 <<< control->blocks, control->block_size, 0, control->cuda_streams[0] >>>
 //        ( system->d_my_atoms, system->reax_param.d_gp,
 //          system->reax_param.d_sbp, system->reax_param.d_tbp, *(workspace->d_workspace),
 //          *(lists[BONDS]), system->n, system->reax_param.num_atom_types,
-//#if !defined(CUDA_ACCUM_ATOMIC)
+//#if !defined(GPU_ACCUM_ATOMIC)
 //          &spad[system->n], &spad[2 * system->n]
 //#else
 //          &((simulation_data *)data->d_simulation_data)->my_en.e_ov,
@@ -639,16 +639,16 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
 //         );
 //    cudaCheckError( );
 
-    blocks = system->n * 32 / DEF_BLOCK_SIZE
-        + (system->n * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+    blocks = system->n * WARP_SIZE / DEF_BLOCK_SIZE
+        + (system->n * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
     k_atom_energy_part2_opt <<< blocks, DEF_BLOCK_SIZE,
-                            sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32),
-                            control->streams[0] >>>
+                            sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+                            control->cuda_streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_gp,
           system->reax_param.d_sbp, system->reax_param.d_tbp, *(workspace->d_workspace),
           *(lists[BONDS]), system->n, system->reax_param.num_atom_types,
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
           &spad[system->n], &spad[2 * system->n]
 #else
           &((simulation_data *)data->d_simulation_data)->my_en.e_ov,
@@ -657,9 +657,9 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
          );
     cudaCheckError( );
 
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
     k_atom_energy_part3 <<< control->blocks, control->block_size, 0,
-                        control->streams[0] >>>
+                        control->cuda_streams[0] >>>
         ( *(lists[BONDS]), *(workspace->d_workspace), system->n );
     cudaCheckError( );
 
@@ -667,19 +667,19 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
     {
         Cuda_Reduction_Sum( spad,
                 &((simulation_data *)data->d_simulation_data)->my_en.e_lp,
-                system->n, 0, control->streams[0] );
+                system->n, 0, control->cuda_streams[0] );
 
         Cuda_Reduction_Sum( &spad[system->n],
                 &((simulation_data *)data->d_simulation_data)->my_en.e_ov,
-                system->n, 0, control->streams[0] );
+                system->n, 0, control->cuda_streams[0] );
 
         Cuda_Reduction_Sum( &spad[2 * system->n],
                 &((simulation_data *)data->d_simulation_data)->my_en.e_un,
-                system->n, 0, control->streams[0] );
+                system->n, 0, control->cuda_streams[0] );
     }
 #endif
 
 #if defined(LOG_PERFORMANCE)
-    cudaEventRecord( control->time_events[TE_LPOVUN_STOP], control->streams[0] );
+    cudaEventRecord( control->cuda_time_events[TE_LPOVUN_STOP], control->cuda_streams[0] );
 #endif
 }

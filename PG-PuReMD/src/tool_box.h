@@ -242,7 +242,7 @@ static inline real DistSqr_to_Special_Point( rvec cp, rvec x )
 
 
 /************** taken from box.c **************/
-CUDA_HOST_DEVICE static inline void Transform( rvec x1,
+GPU_HOST_DEVICE static inline void Transform( rvec x1,
         simulation_box *box, char flag, rvec x2 )
 {
     int i, j;
@@ -275,7 +275,7 @@ CUDA_HOST_DEVICE static inline void Transform( rvec x1,
 }
 
 
-CUDA_HOST_DEVICE static inline void Transform_to_UnitBox( rvec x1,
+GPU_HOST_DEVICE static inline void Transform_to_UnitBox( rvec x1,
         simulation_box *box, char flag, rvec x2 )
 {
     Transform( x1, box, flag, x2 );

@@ -42,7 +42,7 @@ void Init_List_Indices( reax_list * const, int * const );
 #endif
 
 #if defined(LAMMPS_REAX) || defined(PURE_REAX)
-static inline CUDA_HOST_DEVICE int Num_Entries( int i, const reax_list * const l )
+static inline GPU_HOST_DEVICE int Num_Entries( int i, const reax_list * const l )
 {
     assert( l != NULL );
     assert( 0 <= i && i < l->n );
@@ -50,7 +50,7 @@ static inline CUDA_HOST_DEVICE int Num_Entries( int i, const reax_list * const l
     return l->end_index[i] - l->index[i];
 }
 
-static inline CUDA_HOST_DEVICE int Start_Index( int i, const reax_list * const l )
+static inline GPU_HOST_DEVICE int Start_Index( int i, const reax_list * const l )
 {
     assert( l != NULL );
     assert( 0 <= i && i < l->n );
@@ -58,7 +58,7 @@ static inline CUDA_HOST_DEVICE int Start_Index( int i, const reax_list * const l
     return l->index[i];
 }
 
-static inline CUDA_HOST_DEVICE int End_Index( int i, const reax_list * const l )
+static inline GPU_HOST_DEVICE int End_Index( int i, const reax_list * const l )
 {
     assert( l != NULL );
     assert( 0 <= i && i < l->n );
@@ -66,7 +66,7 @@ static inline CUDA_HOST_DEVICE int End_Index( int i, const reax_list * const l )
     return l->end_index[i];
 }
 
-static inline CUDA_HOST_DEVICE void Set_Start_Index( int i, int val, const reax_list * const l )
+static inline GPU_HOST_DEVICE void Set_Start_Index( int i, int val, const reax_list * const l )
 {
     assert( l != NULL );
     assert( 0 <= i && i < l->n );
@@ -74,7 +74,7 @@ static inline CUDA_HOST_DEVICE void Set_Start_Index( int i, int val, const reax_
     l->index[i] = val;
 }
 
-static inline CUDA_HOST_DEVICE void Set_End_Index( int i, int val, const reax_list * const l )
+static inline GPU_HOST_DEVICE void Set_End_Index( int i, int val, const reax_list * const l )
 {
     assert( l != NULL );
     assert( 0 <= i && i < l->n );

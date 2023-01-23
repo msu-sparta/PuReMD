@@ -21,7 +21,7 @@
 #include "../vector.h"
 
 
-CUDA_GLOBAL void k_velocity_verlet_part1( reax_atom *my_atoms, 
+GPU_GLOBAL void k_velocity_verlet_part1( reax_atom *my_atoms, 
         single_body_parameters *sbp, real dt, int n )
 {
     int i;
@@ -49,7 +49,7 @@ CUDA_GLOBAL void k_velocity_verlet_part1( reax_atom *my_atoms,
 }
 
 
-CUDA_GLOBAL void k_velocity_verlet_part2( reax_atom *my_atoms, 
+GPU_GLOBAL void k_velocity_verlet_part2( reax_atom *my_atoms, 
         single_body_parameters *sbp, real dt, int n )
 {
     int i;
@@ -72,7 +72,7 @@ CUDA_GLOBAL void k_velocity_verlet_part2( reax_atom *my_atoms,
 }
 
 
-CUDA_GLOBAL void k_velocity_verlet_nose_hoover_nvt( reax_atom *my_atoms, 
+GPU_GLOBAL void k_velocity_verlet_nose_hoover_nvt( reax_atom *my_atoms, 
         single_body_parameters *sbp, real dt, int n )
 {
     int i;
@@ -96,7 +96,7 @@ CUDA_GLOBAL void k_velocity_verlet_nose_hoover_nvt( reax_atom *my_atoms,
     rvec_Copy( atom->f_old, atom->f );
 }
 
-CUDA_GLOBAL void k_velocity_verlet_nose_hoover_nvt( reax_atom *my_atoms, rvec * v_const,
+GPU_GLOBAL void k_velocity_verlet_nose_hoover_nvt( reax_atom *my_atoms, rvec * v_const,
         single_body_parameters *sbp, real dt, real v_xi, int n )
 {
     reax_atom *atom;
@@ -121,7 +121,7 @@ CUDA_GLOBAL void k_velocity_verlet_nose_hoover_nvt( reax_atom *my_atoms, rvec * 
 }
 
 
-CUDA_GLOBAL void k_velocity_verlet_nose_hoover_nvt_part3( reax_atom *my_atoms, rvec *v_const,
+GPU_GLOBAL void k_velocity_verlet_nose_hoover_nvt_part3( reax_atom *my_atoms, rvec *v_const,
         single_body_parameters *sbp, real dt, real v_xi_old, real * my_ekin, int n )
 {
     int i;
@@ -143,7 +143,7 @@ CUDA_GLOBAL void k_velocity_verlet_nose_hoover_nvt_part3( reax_atom *my_atoms, r
 }
 
 
-CUDA_GLOBAL void k_scale_velocites_berendsen_nvt( reax_atom *my_atoms, real lambda, int n )
+GPU_GLOBAL void k_scale_velocites_berendsen_nvt( reax_atom *my_atoms, real lambda, int n )
 {
     reax_atom *atom;
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -159,7 +159,7 @@ CUDA_GLOBAL void k_scale_velocites_berendsen_nvt( reax_atom *my_atoms, real lamb
 }
 
 
-CUDA_GLOBAL void k_scale_velocities_npt( reax_atom *my_atoms, real lambda,
+GPU_GLOBAL void k_scale_velocities_npt( reax_atom *my_atoms, real lambda,
         real mu0, real mu1, real mu2, int n )
 {
     int i;
@@ -190,7 +190,7 @@ static void Velocity_Verlet_Part1( reax_system *system, control_params *control,
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_velocity_verlet_part1 <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
+    k_velocity_verlet_part1 <<< blocks, DEF_BLOCK_SIZE, 0, control->cuda_streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, dt, system->n );
     cudaCheckError( );
 }
@@ -203,7 +203,7 @@ static void Velocity_Verlet_Part2( reax_system *system, control_params *control,
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_velocity_verlet_part2 <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
+    k_velocity_verlet_part2 <<< blocks, DEF_BLOCK_SIZE, 0, control->cuda_streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, dt, system->n );
     cudaCheckError( );
 }
@@ -218,7 +218,7 @@ static void Velocity_Verlet_Nose_Hoover_NVT_Part1( reax_system *system,
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
     k_velocity_verlet_nose_hoover_nvt <<< blocks, DEF_BLOCK_SIZE, 0,
-                                      control->streams[0] >>>
+                                      control->cuda_streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, dt, system->n );
     cudaCheckError( );
 }
@@ -232,7 +232,7 @@ static void Velocity_Verlet_Nose_Hoover_NVT_Part2( reax_system *system, control_
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_velocity_verlet_nose_hoover_nvt <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
+    k_velocity_verlet_nose_hoover_nvt <<< blocks, DEF_BLOCK_SIZE, 0, control->cuda_streams[0] >>>
         ( system->d_my_atoms, workspace->v_const,
           system->reax_param.d_sbp, dt, v_xi, system->n );
     cudaCheckError( );
@@ -249,16 +249,16 @@ static real Velocity_Verlet_Nose_Hoover_NVT_Part3( reax_system *system,
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_velocity_verlet_nose_hoover_nvt_part3 <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
+    k_velocity_verlet_nose_hoover_nvt_part3 <<< blocks, DEF_BLOCK_SIZE, 0, control->cuda_streams[0] >>>
         ( system->d_my_atoms, workspace->v_const, system->reax_param.d_sbp,
           dt, v_xi_old, d_my_ekin, system->n );
     cudaCheckError( );
 
-    Cuda_Reduction_Sum( d_my_ekin, d_total_my_ekin, system->n, 0, control->streams[0] );
+    Cuda_Reduction_Sum( d_my_ekin, d_total_my_ekin, system->n, 0, control->cuda_streams[0] );
 
     sCudaMemcpyAsync( &my_ekin, d_total_my_ekin, sizeof(real), 
-            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
-    cudaStreamSynchronize( control->streams[0] );
+            cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->cuda_streams[0] );
 
     return my_ekin;
 }
@@ -273,7 +273,7 @@ static void Cuda_Scale_Velocities_Berendsen_NVT( reax_system *system,
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
     k_scale_velocites_berendsen_nvt <<< blocks, DEF_BLOCK_SIZE,
-                                    0, control->streams[0] >>>
+                                    0, control->cuda_streams[0] >>>
         ( system->d_my_atoms, lambda, system->n );
     cudaCheckError( );
 }
@@ -287,7 +287,7 @@ void Cuda_Scale_Velocities_NPT( reax_system *system, control_params * control,
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_scale_velocities_npt <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
+    k_scale_velocities_npt <<< blocks, DEF_BLOCK_SIZE, 0, control->cuda_streams[0] >>>
         ( system->d_my_atoms, lambda, mu[0], mu[1], mu[2], system->n );
     cudaCheckError( );
 }
@@ -315,7 +315,7 @@ int Cuda_Velocity_Verlet_NVE( reax_system *system, control_params *control,
         Cuda_Copy_Atoms_Device_to_Host( system, control );
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
 
-#if defined(CUDA_DEVICE_PACK)
+#if defined(GPU_DEVICE_PACK)
         if ( renbr == TRUE )
         {
             //TODO: remove once Comm_Atoms ported
@@ -413,7 +413,7 @@ int Cuda_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
         Cuda_Copy_Atoms_Device_to_Host( system, control );
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
 
-#if defined(CUDA_DEVICE_PACK)
+#if defined(GPU_DEVICE_PACK)
         if ( renbr == TRUE )
         {
             //TODO: remove once Comm_Atoms ported
@@ -542,7 +542,7 @@ int Cuda_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* con
         Cuda_Copy_Atoms_Device_to_Host( system, control );
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
 
-#if defined(CUDA_DEVICE_PACK)
+#if defined(GPU_DEVICE_PACK)
         if ( renbr == TRUE )
         {
             //TODO: remove once Comm_Atoms ported
@@ -655,7 +655,7 @@ int Cuda_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* con
         Cuda_Copy_Atoms_Device_to_Host( system, control );
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
 
-#if defined(CUDA_DEVICE_PACK)
+#if defined(GPU_DEVICE_PACK)
         if ( renbr == TRUE )
         {
             //TODO: remove once Comm_Atoms ported

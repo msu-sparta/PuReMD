@@ -73,7 +73,7 @@ void PreAllocate_Space( reax_system * const system, control_params * const contr
     system->local_cap = MAX( (int) CEIL( system->n * SAFE_ZONE ), MIN_CAP );
     system->total_cap = MAX( (int) CEIL( system->N * SAFE_ZONE ), MIN_CAP );
 
-#if defined(DEBUG_FOCUS)||defined(__CUDA_DEBUG_LOG__)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, "p%d: local_cap=%d total_cap=%d\n",
             system->my_rank, system->local_cap, system->total_cap );
 #endif

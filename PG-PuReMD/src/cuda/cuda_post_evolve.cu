@@ -7,7 +7,7 @@
 
 
 /* remove translation and rotational terms from center of mass velocities */
-CUDA_GLOBAL void k_remove_center_of_mass_velocities( reax_atom *my_atoms, 
+GPU_GLOBAL void k_remove_center_of_mass_velocities( reax_atom *my_atoms, 
         simulation_data *data, int n )
 {
     int i;
@@ -34,7 +34,7 @@ extern "C" void Cuda_Remove_CoM_Velocities( reax_system *system,
         control_params *control, simulation_data *data )
 {
     k_remove_center_of_mass_velocities <<< control->blocks, control->block_size,
-                                       0, control->streams[0] >>>
+                                       0, control->cuda_streams[0] >>>
         ( system->d_my_atoms, (simulation_data *)data->d_simulation_data, system->n );
     cudaCheckError( );
 }

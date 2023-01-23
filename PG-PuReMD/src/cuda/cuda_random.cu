@@ -26,7 +26,7 @@
    large periodicity for generation of pseudo random number. function
    Random returns this random number appropriately scaled so that
    0 <= Random(range) < range */
-CUDA_DEVICE double Cuda_Random( double range )
+GPU_DEVICE double Cuda_Random( double range )
 {
     //TODO: use cuRAND
 //    return (random( ) * range) / 2147483647L;
@@ -48,7 +48,7 @@ void Cuda_Randomize( )
 
 /* GRandom return random number with gaussian distribution with mean
    and standard deviation "sigma" */
-CUDA_DEVICE double Cuda_GRandom( double mean, double sigma )
+GPU_DEVICE double Cuda_GRandom( double mean, double sigma )
 {
     double v1 = Cuda_Random(2.0) - 1.0;
     double v2 = Cuda_Random(2.0) - 1.0;

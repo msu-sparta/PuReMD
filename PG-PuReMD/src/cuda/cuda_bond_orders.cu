@@ -12,7 +12,7 @@
 #include <cub/warp/warp_reduce.cuh>
 
 
-CUDA_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
+GPU_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
         storage * const workspace, reax_list * const bond_list, rvec data_ext_press )
 {
     bond_data *nbr_j, *nbr_k;
@@ -54,7 +54,7 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
         nbr_k = &bond_list->bond_list[pk];
         k = nbr_k->nbr;
 
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
         rvec_MakeZero( nbr_k->tf_f );
 #endif
 
@@ -68,7 +68,7 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
         rvec_ScaledAdd( temp, -coef.C3dbopi2, nbr_k->bo_data.dBOp );
 
         /* force */
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
         rvec_Add( nbr_k->tf_f, temp );
 #else
         atomic_rvecAdd( workspace->f[k], temp );
@@ -169,7 +169,7 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
 }
 
 
-CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
+GPU_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
         storage * const workspace, reax_list * const bond_list, rvec * const f_i )
 {
     bond_data *nbr_j, *nbr_k;
@@ -214,7 +214,7 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
         /* 3rd, dBOpi2 */
         rvec_ScaledAdd( temp, -coef.C3dbopi2, nbr_k->bo_data.dBOp );
 
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
         rvec_Add( nbr_k->tf_f, temp );
 #else
         atomic_rvecAdd( workspace->f[nbr_k->nbr], temp );
@@ -293,7 +293,7 @@ CUDA_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
 
 
 /* Initialize arrays */
-CUDA_GLOBAL void k_bond_order_part1( reax_atom const * const my_atoms, 
+GPU_GLOBAL void k_bond_order_part1( reax_atom const * const my_atoms, 
         single_body_parameters const * const sbp, storage workspace, int N )
 {
     int i, type_i;
@@ -315,7 +315,7 @@ CUDA_GLOBAL void k_bond_order_part1( reax_atom const * const my_atoms,
 
 
 /* Main BO calculations */
-CUDA_GLOBAL void k_bond_order_part2( reax_atom const * const my_atoms, global_parameters gp,
+GPU_GLOBAL void k_bond_order_part2( reax_atom const * const my_atoms, global_parameters gp,
         single_body_parameters const * const sbp, two_body_parameters const * const tbp,
         storage workspace, reax_list bond_list, int num_atom_types, int N )
 {
@@ -523,7 +523,7 @@ CUDA_GLOBAL void k_bond_order_part2( reax_atom const * const my_atoms, global_pa
 
 
 /* Main BO calculations */
-CUDA_GLOBAL void k_bond_order_part2_opt( reax_atom const * const my_atoms, global_parameters gp, 
+GPU_GLOBAL void k_bond_order_part2_opt( reax_atom const * const my_atoms, global_parameters gp, 
         single_body_parameters const * const sbp, two_body_parameters const * const tbp, 
         storage workspace, reax_list bond_list, int num_atom_types, int N )
 {
@@ -746,7 +746,7 @@ CUDA_GLOBAL void k_bond_order_part2_opt( reax_atom const * const my_atoms, globa
 
 
 /* Compute sym_index */
-CUDA_GLOBAL void k_bond_order_part3( storage workspace, reax_list bond_list, int N )
+GPU_GLOBAL void k_bond_order_part3( storage workspace, reax_list bond_list, int N )
 {
     int i, j, pj, start_i, end_i, sym_index;
     bond_order_data *bo_ij, *bo_ji;
@@ -787,7 +787,7 @@ CUDA_GLOBAL void k_bond_order_part3( storage workspace, reax_list bond_list, int
 
 
 /* Calculate helper variables */
-CUDA_GLOBAL void k_bond_order_part4( reax_atom const * const my_atoms,
+GPU_GLOBAL void k_bond_order_part4( reax_atom const * const my_atoms,
         global_parameters gp, single_body_parameters const * const sbp,
         storage workspace, int N )
 {
@@ -839,7 +839,7 @@ CUDA_GLOBAL void k_bond_order_part4( reax_atom const * const my_atoms,
 }
 
 
-CUDA_GLOBAL void k_total_forces_part1( storage workspace, reax_list bond_list,
+GPU_GLOBAL void k_total_forces_part1( storage workspace, reax_list bond_list,
         int N )
 {
     int i, pj;
@@ -862,7 +862,7 @@ CUDA_GLOBAL void k_total_forces_part1( storage workspace, reax_list bond_list,
         }
     }
 
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
     rvec_Add( workspace->f[i], f_i );
 #else
     atomic_rvecAdd( workspace.f[i], f_i );
@@ -870,7 +870,7 @@ CUDA_GLOBAL void k_total_forces_part1( storage workspace, reax_list bond_list,
 }
 
 
-CUDA_GLOBAL void k_total_forces_part1_opt( storage workspace, reax_list bond_list,
+GPU_GLOBAL void k_total_forces_part1_opt( storage workspace, reax_list bond_list,
         int N )
 {
     extern __shared__ cub::WarpReduce<double>::TempStorage temp1[];
@@ -909,7 +909,7 @@ CUDA_GLOBAL void k_total_forces_part1_opt( storage workspace, reax_list bond_lis
 
     if ( lane_id == 0 )
     {
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
         rvec_Add( workspace->f[i], f_i );
 #else
         atomic_rvecAdd( workspace.f[i], f_i );
@@ -918,7 +918,7 @@ CUDA_GLOBAL void k_total_forces_part1_opt( storage workspace, reax_list bond_lis
 }
 
 
-CUDA_GLOBAL void k_total_forces_virial_part1( storage workspace, reax_list bond_list,
+GPU_GLOBAL void k_total_forces_virial_part1( storage workspace, reax_list bond_list,
         rvec * const data_ext_press, int N )
 {
     int i, pj;
@@ -941,8 +941,8 @@ CUDA_GLOBAL void k_total_forces_virial_part1( storage workspace, reax_list bond_
 }
 
 
-#if !defined(CUDA_ACCUM_ATOMIC)
-CUDA_GLOBAL void k_total_forces_part1_2( reax_list bond_list, storage workspace, int N )
+#if !defined(GPU_ACCUM_ATOMIC)
+GPU_GLOBAL void k_total_forces_part1_2( reax_list bond_list, storage workspace, int N )
 {
     int i, pk;
     bond_data *nbr_k, *nbr_k_sym;
@@ -965,7 +965,7 @@ CUDA_GLOBAL void k_total_forces_part1_2( reax_list bond_list, storage workspace,
 #endif
 
 
-CUDA_GLOBAL void k_total_forces_part2( reax_atom * const my_atoms, int n,
+GPU_GLOBAL void k_total_forces_part2( reax_atom * const my_atoms, int n,
         storage workspace )
 {
     int i;
@@ -989,13 +989,13 @@ void Cuda_Compute_Bond_Orders( reax_system const * const system,
     int blocks;
 
 #if defined(LOG_PERFORMANCE)
-    cudaEventRecord( control->time_events[TE_BOND_ORDER_START], control->streams[0] );
+    cudaEventRecord( control->cuda_time_events[TE_BOND_ORDER_START], control->cuda_streams[0] );
 #endif
 
-    cudaStreamWaitEvent( control->streams[0], control->stream_events[SE_INIT_BOND_DONE], 0 );
+    cudaStreamWaitEvent( control->cuda_streams[0], control->cuda_stream_events[SE_INIT_BOND_DONE], 0 );
 
     k_bond_order_part1 <<< control->blocks_n, control->block_size_n, 0,
-                       control->streams[0] >>>
+                       control->cuda_streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
           *(workspace->d_workspace), system->N );
     cudaCheckError( );
@@ -1006,32 +1006,32 @@ void Cuda_Compute_Bond_Orders( reax_system const * const system,
 //          *(lists[BONDS]), system->reax_param.num_atom_types, system->N );
 //    cudaCheckError( );
 
-    blocks = system->N * 32 / DEF_BLOCK_SIZE
-        + (system->N * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+    blocks = system->N * WARP_SIZE / DEF_BLOCK_SIZE
+        + (system->N * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
     k_bond_order_part2_opt <<< blocks, DEF_BLOCK_SIZE,
-                       sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32),
-                       control->streams[0] >>>
+                       sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+                       control->cuda_streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp, 
           system->reax_param.d_tbp, *(workspace->d_workspace), 
           *(lists[BONDS]), system->reax_param.num_atom_types, system->N );
     cudaCheckError( );
 
     k_bond_order_part3 <<< control->blocks_n, control->block_size_n, 0,
-                       control->streams[0] >>>
+                       control->cuda_streams[0] >>>
         ( *(workspace->d_workspace), *(lists[BONDS]), system->N );
     cudaCheckError( );
 
     k_bond_order_part4 <<< control->blocks_n, control->block_size_n, 0,
-                       control->streams[0] >>>
+                       control->cuda_streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp, 
          *(workspace->d_workspace), system->N );
     cudaCheckError( );
 
-    cudaEventRecord( control->stream_events[SE_BOND_ORDER_DONE], control->streams[0] );
+    cudaEventRecord( control->cuda_stream_events[SE_BOND_ORDER_DONE], control->cuda_streams[0] );
 
 #if defined(LOG_PERFORMANCE)
-    cudaEventRecord( control->time_events[TE_BOND_ORDER_STOP], control->streams[0] );
+    cudaEventRecord( control->cuda_time_events[TE_BOND_ORDER_STOP], control->cuda_streams[0] );
 #endif
 }
 
@@ -1046,16 +1046,16 @@ void Cuda_Total_Forces_Part1( reax_system const * const system,
     if ( control->virial == 0 )
     {
 //        k_total_forces_part1 <<< control->blocks_n, control->block_size_n, 0,
-//                             control->streams[0] >>>
+//                             control->cuda_streams[0] >>>
 //            ( *(workspace->d_workspace), *(lists[BONDS]), system->N );
 //        cudaCheckError( );
 
-        blocks = system->N * 32 / DEF_BLOCK_SIZE
-            + ((system->N * 32 % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+        blocks = system->N * WARP_SIZE / DEF_BLOCK_SIZE
+            + ((system->N * WARP_SIZE % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
         k_total_forces_part1_opt <<< blocks, DEF_BLOCK_SIZE,
-                                 sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / 32),
-                                 control->streams[0] >>>
+                                 sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+                                 control->cuda_streams[0] >>>
             ( *(workspace->d_workspace), *(lists[BONDS]), system->N );
         cudaCheckError( );
     }
@@ -1065,29 +1065,29 @@ void Cuda_Total_Forces_Part1( reax_system const * const system,
                 sizeof(rvec) * 2 * system->N, __FILE__, __LINE__ );
         spad_rvec = (rvec *) workspace->scratch[0];
         sCudaMemsetAsync( spad_rvec, 0, sizeof(rvec) * 2 * system->N,
-                control->streams[0], __FILE__, __LINE__ );
-        cudaStreamSynchronize( control->streams[0] );
+                control->cuda_streams[0], __FILE__, __LINE__ );
+        cudaStreamSynchronize( control->cuda_streams[0] );
 
         blocks = system->N / DEF_BLOCK_SIZE
             + ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
         k_total_forces_virial_part1 <<< blocks, DEF_BLOCK_SIZE, 0,
-                                    control->streams[0] >>>
+                                    control->cuda_streams[0] >>>
             ( *(workspace->d_workspace), *(lists[BONDS]), spad_rvec, system->N );
         cudaCheckError( );
 
         Cuda_Reduction_Sum( spad_rvec,
                 &((simulation_data *)data->d_simulation_data)->my_ext_press,
-                system->N, 0, control->streams[0] );
+                system->N, 0, control->cuda_streams[0] );
     }
 
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
     blocks = system->N / DEF_BLOCK_SIZE
         + ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
     /* post processing for the atomic forces */
     k_total_forces_part1_2 <<< blocks, DEF_BLOCK_SIZE, 0,
-                            control->streams[0] >>>
+                            control->cuda_streams[0] >>>
         ( *(lists[BONDS]), *(workspace->d_workspace), system->N );
     cudaCheckError( ); 
 #endif
@@ -1102,7 +1102,7 @@ void Cuda_Total_Forces_Part2( reax_system * const system,
     blocks = system->n / DEF_BLOCK_SIZE
         + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-    k_total_forces_part2 <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
+    k_total_forces_part2 <<< blocks, DEF_BLOCK_SIZE, 0, control->cuda_streams[0] >>>
         ( system->d_my_atoms, system->n, *(workspace->d_workspace) );
     cudaCheckError( ); 
 }

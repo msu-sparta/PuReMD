@@ -41,7 +41,7 @@ extern "C"  {
  *  k: number of entries in v
  * output: TRUE if all entries are sufficiently close to zero, FALSE otherwise
  */
-CUDA_HOST_DEVICE static inline int Vector_isZero( real const * const v, int k )
+GPU_HOST_DEVICE static inline int Vector_isZero( real const * const v, int k )
 {
     int i, ret;
 
@@ -70,7 +70,7 @@ CUDA_HOST_DEVICE static inline int Vector_isZero( real const * const v, int k )
  * output:
  *  dest: vector copied into
  */
-CUDA_HOST_DEVICE static inline void Vector_Copy( real * const dest, real const * const v, int k )
+GPU_HOST_DEVICE static inline void Vector_Copy( real * const dest, real const * const v, int k )
 {
     int i;
 
@@ -91,7 +91,7 @@ CUDA_HOST_DEVICE static inline void Vector_Copy( real * const dest, real const *
  * output:
  *  dest: vector copied into
  */
-CUDA_HOST_DEVICE static inline void Vector_Copy_rvec2( rvec2 * const dest, rvec2 const * const v, int k )
+GPU_HOST_DEVICE static inline void Vector_Copy_rvec2( rvec2 * const dest, rvec2 const * const v, int k )
 {
     int i;
 
@@ -105,7 +105,7 @@ CUDA_HOST_DEVICE static inline void Vector_Copy_rvec2( rvec2 * const dest, rvec2
 }
 
 
-CUDA_HOST_DEVICE static inline void Vector_Copy_From_rvec2( real * const dst, rvec2 const * const src,
+GPU_HOST_DEVICE static inline void Vector_Copy_From_rvec2( real * const dst, rvec2 const * const src,
         int index, int k )
 {
     int i;
@@ -120,7 +120,7 @@ CUDA_HOST_DEVICE static inline void Vector_Copy_From_rvec2( real * const dst, rv
 }
 
 
-CUDA_HOST_DEVICE static inline void Vector_Copy_To_rvec2( rvec2 * const dst, real const * const src,
+GPU_HOST_DEVICE static inline void Vector_Copy_To_rvec2( rvec2 * const dst, real const * const src,
         int index, int k )
 {
     int i;
@@ -145,7 +145,7 @@ CUDA_HOST_DEVICE static inline void Vector_Copy_To_rvec2( rvec2 * const dst, rea
  * output:
  *  dest: vector containing the scaled sum
  */
-CUDA_HOST_DEVICE static inline void Vector_Sum( real * const dest, real c,
+GPU_HOST_DEVICE static inline void Vector_Sum( real * const dest, real c,
         real const * const v, real d, real const * const y, int k )
 {
     int i;
@@ -169,7 +169,7 @@ CUDA_HOST_DEVICE static inline void Vector_Sum( real * const dest, real c,
  * output:
  *  dest: vector containing the scaled sum
  */
-CUDA_HOST_DEVICE static inline void Vector_Sum_rvec2( rvec2 * const dest, real c0, real c1,
+GPU_HOST_DEVICE static inline void Vector_Sum_rvec2( rvec2 * const dest, real c0, real c1,
         rvec2 const * const v, real d0, real d1, rvec2 const * const y, int k )
 {
     int i;
@@ -194,7 +194,7 @@ CUDA_HOST_DEVICE static inline void Vector_Sum_rvec2( rvec2 * const dest, real c
  * output:
  *  dest: vector to accumulate with the scaled sum
  */
-CUDA_HOST_DEVICE static inline void Vector_Add( real * const dest, real c,
+GPU_HOST_DEVICE static inline void Vector_Add( real * const dest, real c,
         real const * const v, int k )
 {
     int i;
@@ -218,7 +218,7 @@ CUDA_HOST_DEVICE static inline void Vector_Add( real * const dest, real c,
  * output:
  *  dest: vector to accumulate with the scaled sum
  */
-CUDA_HOST_DEVICE static inline void Vector_Add_rvec2( rvec2 * const dest, real c0, real c1,
+GPU_HOST_DEVICE static inline void Vector_Add_rvec2( rvec2 * const dest, real c0, real c1,
         rvec2 const * const v, int k )
 {
     int i;
@@ -242,7 +242,7 @@ CUDA_HOST_DEVICE static inline void Vector_Add_rvec2( rvec2 * const dest, real c
  * output:
  *  dot: inner product of the two vector
  */
-CUDA_HOST_DEVICE static inline real Dot_local( real const * const v1,
+GPU_HOST_DEVICE static inline real Dot_local( real const * const v1,
         real const * const v2, int k )
 {
     int i;
@@ -270,7 +270,7 @@ CUDA_HOST_DEVICE static inline real Dot_local( real const * const v1,
  * output:
  *  dot: inner product of the two vectors
  */
-CUDA_HOST_DEVICE static inline void Dot_local_rvec2( rvec2 const * const v1,
+GPU_HOST_DEVICE static inline void Dot_local_rvec2( rvec2 const * const v1,
         rvec2 const * const v2, int k, real * const sum1, real * const sum2 )
 {
     int i;
@@ -288,7 +288,7 @@ CUDA_HOST_DEVICE static inline void Dot_local_rvec2( rvec2 const * const v1,
 }
 
 
-CUDA_HOST_DEVICE static inline void Vector_Print( FILE * const fout,
+GPU_HOST_DEVICE static inline void Vector_Print( FILE * const fout,
         char const * const vname, real const * const v, int k )
 {
     int i;
@@ -304,7 +304,7 @@ CUDA_HOST_DEVICE static inline void Vector_Print( FILE * const fout,
 }
 
 
-CUDA_HOST_DEVICE static inline void rvec_Copy( rvec dest, const rvec src )
+GPU_HOST_DEVICE static inline void rvec_Copy( rvec dest, const rvec src )
 {
     dest[0] = src[0];
     dest[1] = src[1];
@@ -312,7 +312,7 @@ CUDA_HOST_DEVICE static inline void rvec_Copy( rvec dest, const rvec src )
 }
 
 
-CUDA_HOST_DEVICE static inline void rvec_Scale( rvec ret, real c, const rvec v )
+GPU_HOST_DEVICE static inline void rvec_Scale( rvec ret, real c, const rvec v )
 {
     ret[0] = c * v[0];
     ret[1] = c * v[1];
@@ -320,7 +320,7 @@ CUDA_HOST_DEVICE static inline void rvec_Scale( rvec ret, real c, const rvec v )
 }
 
 
-CUDA_HOST_DEVICE static inline void rvec_Add( rvec ret, const rvec v )
+GPU_HOST_DEVICE static inline void rvec_Add( rvec ret, const rvec v )
 {
     ret[0] += v[0];
     ret[1] += v[1];
@@ -328,7 +328,7 @@ CUDA_HOST_DEVICE static inline void rvec_Add( rvec ret, const rvec v )
 }
 
 
-CUDA_HOST_DEVICE static inline void rvec_ScaledAdd( rvec ret, real c, const rvec v )
+GPU_HOST_DEVICE static inline void rvec_ScaledAdd( rvec ret, real c, const rvec v )
 {
     ret[0] += c * v[0];
     ret[1] += c * v[1];
@@ -336,7 +336,7 @@ CUDA_HOST_DEVICE static inline void rvec_ScaledAdd( rvec ret, real c, const rvec
 }
 
 
-CUDA_HOST_DEVICE static inline void rvec_Sum( rvec ret, const rvec v1, const rvec v2 )
+GPU_HOST_DEVICE static inline void rvec_Sum( rvec ret, const rvec v1, const rvec v2 )
 {
     ret[0] = v1[0] + v2[0];
     ret[1] = v1[1] + v2[1];
@@ -344,7 +344,7 @@ CUDA_HOST_DEVICE static inline void rvec_Sum( rvec ret, const rvec v1, const rve
 }
 
 
-CUDA_HOST_DEVICE static inline void rvec_ScaledSum( rvec ret, real c1, const rvec v1,
+GPU_HOST_DEVICE static inline void rvec_ScaledSum( rvec ret, real c1, const rvec v1,
         real c2, const rvec v2 )
 {
     ret[0] = c1 * v1[0] + c2 * v2[0];
@@ -353,20 +353,20 @@ CUDA_HOST_DEVICE static inline void rvec_ScaledSum( rvec ret, real c1, const rve
 }
 
 
-CUDA_HOST_DEVICE static inline real rvec_Dot( const rvec v1, const rvec v2 )
+GPU_HOST_DEVICE static inline real rvec_Dot( const rvec v1, const rvec v2 )
 {
     return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
 }
 
 
-CUDA_HOST_DEVICE static inline real rvec_ScaledDot( real c1, const rvec v1,
+GPU_HOST_DEVICE static inline real rvec_ScaledDot( real c1, const rvec v1,
         real c2, const rvec v2 )
 {
     return (c1 * c2) * (v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2]);
 }
 
 
-CUDA_HOST_DEVICE static inline void rvec_Multiply( rvec r, const rvec v1, const rvec v2 )
+GPU_HOST_DEVICE static inline void rvec_Multiply( rvec r, const rvec v1, const rvec v2 )
 {
     r[0] = v1[0] * v2[0];
     r[1] = v1[1] * v2[1];
@@ -374,7 +374,7 @@ CUDA_HOST_DEVICE static inline void rvec_Multiply( rvec r, const rvec v1, const 
 }
 
 
-CUDA_HOST_DEVICE static inline void rvec_iMultiply( rvec r, const ivec v1, const rvec v2 )
+GPU_HOST_DEVICE static inline void rvec_iMultiply( rvec r, const ivec v1, const rvec v2 )
 {
     r[0] = v1[0] * v2[0];
     r[1] = v1[1] * v2[1];
@@ -382,7 +382,7 @@ CUDA_HOST_DEVICE static inline void rvec_iMultiply( rvec r, const ivec v1, const
 }
 
 
-CUDA_HOST_DEVICE static inline void rvec_Divide( rvec r, const rvec v1, const rvec v2 )
+GPU_HOST_DEVICE static inline void rvec_Divide( rvec r, const rvec v1, const rvec v2 )
 {
     r[0] = v1[0] / v2[0];
     r[1] = v1[1] / v2[1];
@@ -390,7 +390,7 @@ CUDA_HOST_DEVICE static inline void rvec_Divide( rvec r, const rvec v1, const rv
 }
 
 
-CUDA_HOST_DEVICE static inline void rvec_iDivide( rvec r, const rvec v1, const ivec v2 )
+GPU_HOST_DEVICE static inline void rvec_iDivide( rvec r, const rvec v1, const ivec v2 )
 {
     r[0] = v1[0] / v2[0];
     r[1] = v1[1] / v2[1];
@@ -398,7 +398,7 @@ CUDA_HOST_DEVICE static inline void rvec_iDivide( rvec r, const rvec v1, const i
 }
 
 
-CUDA_HOST_DEVICE static inline void rvec_Invert( rvec r, const rvec v )
+GPU_HOST_DEVICE static inline void rvec_Invert( rvec r, const rvec v )
 {
     r[0] = 1.0 / v[0];
     r[1] = 1.0 / v[1];
@@ -406,7 +406,7 @@ CUDA_HOST_DEVICE static inline void rvec_Invert( rvec r, const rvec v )
 }
 
 
-CUDA_HOST_DEVICE static inline void rvec_Cross( rvec ret,
+GPU_HOST_DEVICE static inline void rvec_Cross( rvec ret,
         const rvec v1, const rvec v2 )
 {
     int i;
@@ -419,7 +419,7 @@ CUDA_HOST_DEVICE static inline void rvec_Cross( rvec ret,
 }
 
 
-CUDA_HOST_DEVICE static inline void rvec_OuterProduct( rtensor r,
+GPU_HOST_DEVICE static inline void rvec_OuterProduct( rtensor r,
         const rvec v1, const rvec v2 )
 {
     int i, j;
@@ -434,19 +434,19 @@ CUDA_HOST_DEVICE static inline void rvec_OuterProduct( rtensor r,
 }
 
 
-CUDA_HOST_DEVICE static inline real rvec_Norm_Sqr( rvec v )
+GPU_HOST_DEVICE static inline real rvec_Norm_Sqr( rvec v )
 {
     return SQR(v[0]) + SQR(v[1]) + SQR(v[2]);
 }
 
 
-CUDA_HOST_DEVICE static inline real rvec_Norm( rvec v )
+GPU_HOST_DEVICE static inline real rvec_Norm( rvec v )
 {
     return SQRT(SQR(v[0]) + SQR(v[1]) + SQR(v[2]));
 }
 
 
-CUDA_HOST_DEVICE static inline int rvec_isZero( rvec v )
+GPU_HOST_DEVICE static inline int rvec_isZero( rvec v )
 {
     if ( FABS(v[0]) > ALMOST_ZERO ||
             FABS(v[1]) > ALMOST_ZERO ||
@@ -459,7 +459,7 @@ CUDA_HOST_DEVICE static inline int rvec_isZero( rvec v )
 }
 
 
-CUDA_HOST_DEVICE static inline void rvec_MakeZero( rvec v )
+GPU_HOST_DEVICE static inline void rvec_MakeZero( rvec v )
 {
     v[0] = 0.0;
     v[1] = 0.0;
@@ -477,7 +477,7 @@ static inline void rvec_Random( rvec v )
 #endif
 
 
-CUDA_HOST_DEVICE static inline void rtensor_Multiply( rtensor ret,
+GPU_HOST_DEVICE static inline void rtensor_Multiply( rtensor ret,
         const rtensor m1, const rtensor m2 )
 {
     int i, j, k;
@@ -527,7 +527,7 @@ CUDA_HOST_DEVICE static inline void rtensor_Multiply( rtensor ret,
 }
 
 
-CUDA_HOST_DEVICE static inline void rtensor_MatVec( rvec ret,
+GPU_HOST_DEVICE static inline void rtensor_MatVec( rvec ret,
         const rtensor m, const rvec v )
 {
     int i;
@@ -557,7 +557,7 @@ CUDA_HOST_DEVICE static inline void rtensor_MatVec( rvec ret,
 }
 
 
-CUDA_HOST_DEVICE static inline void rtensor_Scale( rtensor ret,
+GPU_HOST_DEVICE static inline void rtensor_Scale( rtensor ret,
         real c, const rtensor m )
 {
     int i, j;
@@ -572,7 +572,7 @@ CUDA_HOST_DEVICE static inline void rtensor_Scale( rtensor ret,
 }
 
 
-CUDA_HOST_DEVICE static inline void rtensor_Add( rtensor ret,
+GPU_HOST_DEVICE static inline void rtensor_Add( rtensor ret,
         const rtensor t )
 {
     int i, j;
@@ -587,7 +587,7 @@ CUDA_HOST_DEVICE static inline void rtensor_Add( rtensor ret,
 }
 
 
-CUDA_HOST_DEVICE static inline void rtensor_ScaledAdd( rtensor ret,
+GPU_HOST_DEVICE static inline void rtensor_ScaledAdd( rtensor ret,
         real c, const rtensor t )
 {
     int i, j;
@@ -602,7 +602,7 @@ CUDA_HOST_DEVICE static inline void rtensor_ScaledAdd( rtensor ret,
 }
 
 
-CUDA_HOST_DEVICE static inline void rtensor_Sum( rtensor ret,
+GPU_HOST_DEVICE static inline void rtensor_Sum( rtensor ret,
         const rtensor t1, const rtensor t2 )
 {
     int i, j;
@@ -617,7 +617,7 @@ CUDA_HOST_DEVICE static inline void rtensor_Sum( rtensor ret,
 }
 
 
-CUDA_HOST_DEVICE static inline void rtensor_ScaledSum( rtensor ret,
+GPU_HOST_DEVICE static inline void rtensor_ScaledSum( rtensor ret,
         real c1, const rtensor t1, real c2, const rtensor t2 )
 {
     int i, j;
@@ -632,7 +632,7 @@ CUDA_HOST_DEVICE static inline void rtensor_ScaledSum( rtensor ret,
 }
 
 
-CUDA_HOST_DEVICE static inline void rtensor_Copy( rtensor ret,
+GPU_HOST_DEVICE static inline void rtensor_Copy( rtensor ret,
         const rtensor t )
 {
     int i, j;
@@ -647,7 +647,7 @@ CUDA_HOST_DEVICE static inline void rtensor_Copy( rtensor ret,
 }
 
 
-CUDA_HOST_DEVICE static inline void rtensor_Identity( rtensor t )
+GPU_HOST_DEVICE static inline void rtensor_Identity( rtensor t )
 {
     t[0][0] = 1.0;
     t[0][1] = 0.0;
@@ -661,7 +661,7 @@ CUDA_HOST_DEVICE static inline void rtensor_Identity( rtensor t )
 }
 
 
-CUDA_HOST_DEVICE static inline void rtensor_MakeZero( rtensor t )
+GPU_HOST_DEVICE static inline void rtensor_MakeZero( rtensor t )
 {
     t[0][0] = 0.0;
     t[0][1] = 0.0;
@@ -675,7 +675,7 @@ CUDA_HOST_DEVICE static inline void rtensor_MakeZero( rtensor t )
 }
 
 
-CUDA_HOST_DEVICE static inline void rtensor_Transpose( rtensor ret,
+GPU_HOST_DEVICE static inline void rtensor_Transpose( rtensor ret,
         const rtensor t )
 {
     int i, j;
@@ -690,7 +690,7 @@ CUDA_HOST_DEVICE static inline void rtensor_Transpose( rtensor ret,
 }
 
 
-CUDA_HOST_DEVICE static inline real rtensor_Det( const rtensor t )
+GPU_HOST_DEVICE static inline real rtensor_Det( const rtensor t )
 {
     return t[0][0] * (t[1][1] * t[2][2] - t[1][2] * t[2][1] )
             + t[0][1] * (t[1][2] * t[2][0] - t[1][0] * t[2][2] )
@@ -698,13 +698,13 @@ CUDA_HOST_DEVICE static inline real rtensor_Det( const rtensor t )
 }
 
 
-CUDA_HOST_DEVICE static inline real rtensor_Trace( rtensor t )
+GPU_HOST_DEVICE static inline real rtensor_Trace( rtensor t )
 {
     return t[0][0] + t[1][1] + t[2][2];
 }
 
 
-CUDA_HOST_DEVICE static inline void Print_rTensor( FILE * const fp,
+GPU_HOST_DEVICE static inline void Print_rTensor( FILE * const fp,
         const rtensor t )
 {
     int i, j;
@@ -723,7 +723,7 @@ CUDA_HOST_DEVICE static inline void Print_rTensor( FILE * const fp,
 }
 
 
-CUDA_HOST_DEVICE static inline void ivec_MakeZero( ivec v )
+GPU_HOST_DEVICE static inline void ivec_MakeZero( ivec v )
 {
     v[0] = 0;
     v[1] = 0;
@@ -731,7 +731,7 @@ CUDA_HOST_DEVICE static inline void ivec_MakeZero( ivec v )
 }
 
 
-CUDA_HOST_DEVICE static inline void ivec_Copy( ivec dest, const ivec src )
+GPU_HOST_DEVICE static inline void ivec_Copy( ivec dest, const ivec src )
 {
     dest[0] = src[0];
     dest[1] = src[1];
@@ -739,7 +739,7 @@ CUDA_HOST_DEVICE static inline void ivec_Copy( ivec dest, const ivec src )
 }
 
 
-CUDA_HOST_DEVICE static inline void ivec_Scale( ivec dest, real C, const ivec src )
+GPU_HOST_DEVICE static inline void ivec_Scale( ivec dest, real C, const ivec src )
 {
     dest[0] = (int) (C * src[0]);
     dest[1] = (int) (C * src[1]);
@@ -747,7 +747,7 @@ CUDA_HOST_DEVICE static inline void ivec_Scale( ivec dest, real C, const ivec sr
 }
 
 
-CUDA_HOST_DEVICE static inline void ivec_rScale( ivec dest, real C, const rvec src )
+GPU_HOST_DEVICE static inline void ivec_rScale( ivec dest, real C, const rvec src )
 {
     dest[0] = (int) (C * src[0]);
     dest[1] = (int) (C * src[1]);
@@ -755,7 +755,7 @@ CUDA_HOST_DEVICE static inline void ivec_rScale( ivec dest, real C, const rvec s
 }
 
 
-CUDA_HOST_DEVICE static inline int ivec_isZero( const ivec v )
+GPU_HOST_DEVICE static inline int ivec_isZero( const ivec v )
 {
     if ( v[0] != 0 || v[1] != 0 || v[2] != 0 )
     {
@@ -766,7 +766,7 @@ CUDA_HOST_DEVICE static inline int ivec_isZero( const ivec v )
 }
 
 
-CUDA_HOST_DEVICE static inline int ivec_isEqual( const ivec v1, const ivec v2 )
+GPU_HOST_DEVICE static inline int ivec_isEqual( const ivec v1, const ivec v2 )
 {
     if ( v1[0] != v2[0] || v1[1] != v2[1] || v1[2] != v2[2] )
     {
@@ -777,7 +777,7 @@ CUDA_HOST_DEVICE static inline int ivec_isEqual( const ivec v1, const ivec v2 )
 }
 
 
-CUDA_HOST_DEVICE static inline void ivec_Sum( ivec dest, const ivec v1, const ivec v2 )
+GPU_HOST_DEVICE static inline void ivec_Sum( ivec dest, const ivec v1, const ivec v2 )
 {
     dest[0] = v1[0] + v2[0];
     dest[1] = v1[1] + v2[1];
@@ -785,7 +785,7 @@ CUDA_HOST_DEVICE static inline void ivec_Sum( ivec dest, const ivec v1, const iv
 }
 
 
-CUDA_HOST_DEVICE static inline void ivec_ScaledSum( ivec dest,
+GPU_HOST_DEVICE static inline void ivec_ScaledSum( ivec dest,
         int k1, const ivec v1, int k2, const ivec v2 )
 {
     dest[0] = k1 * v1[0] + k2 * v2[0];
@@ -794,7 +794,7 @@ CUDA_HOST_DEVICE static inline void ivec_ScaledSum( ivec dest,
 }
 
 
-CUDA_HOST_DEVICE static inline void ivec_Add( ivec dest, const ivec v )
+GPU_HOST_DEVICE static inline void ivec_Add( ivec dest, const ivec v )
 {
     dest[0] += v[0];
     dest[1] += v[1];
@@ -802,7 +802,7 @@ CUDA_HOST_DEVICE static inline void ivec_Add( ivec dest, const ivec v )
 }
 
 
-CUDA_HOST_DEVICE static inline void ivec_ScaledAdd( ivec dest,
+GPU_HOST_DEVICE static inline void ivec_ScaledAdd( ivec dest,
         int k, const ivec v )
 {
     dest[0] += k * v[0];
@@ -812,7 +812,7 @@ CUDA_HOST_DEVICE static inline void ivec_ScaledAdd( ivec dest,
 
 
 
-CUDA_HOST_DEVICE static inline void ivec_Max( ivec res,
+GPU_HOST_DEVICE static inline void ivec_Max( ivec res,
         const ivec v1, const ivec v2 )
 {
     res[0] = MAX( v1[0], v2[0] );
@@ -821,7 +821,7 @@ CUDA_HOST_DEVICE static inline void ivec_Max( ivec res,
 }
 
 
-CUDA_HOST_DEVICE static inline void ivec_Max3( ivec res,
+GPU_HOST_DEVICE static inline void ivec_Max3( ivec res,
         const ivec v1, const ivec v2, const ivec v3 )
 {
     res[0] = MAX3( v1[0], v2[0], v3[0] );

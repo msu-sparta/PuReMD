@@ -4,7 +4,7 @@
 #include "../reax_types.h"
 
 
-CUDA_DEVICE static inline int Cuda_strncmp( const char * a,
+GPU_DEVICE static inline int Cuda_strncmp( const char * a,
         const char * b, int len )
 {
     int i, ret;
@@ -35,7 +35,7 @@ CUDA_DEVICE static inline int Cuda_strncmp( const char * a,
 
 
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 600
-CUDA_DEVICE static inline double atomicAdd( double* address, double val )
+GPU_DEVICE static inline double atomicAdd( double* address, double val )
 {
     unsigned long long int *address_as_ull, old, assumed;
 
@@ -55,7 +55,7 @@ CUDA_DEVICE static inline double atomicAdd( double* address, double val )
 #endif
 
 
-CUDA_DEVICE static inline void atomic_rvecAdd( rvec ret, rvec v )
+GPU_DEVICE static inline void atomic_rvecAdd( rvec ret, rvec v )
 {
     atomicAdd( &ret[0], v[0] );
     atomicAdd( &ret[1], v[1] );
@@ -63,7 +63,7 @@ CUDA_DEVICE static inline void atomic_rvecAdd( rvec ret, rvec v )
 }
 
 
-CUDA_DEVICE static inline void atomic_rvecScaledAdd( rvec ret, real c, rvec v )
+GPU_DEVICE static inline void atomic_rvecScaledAdd( rvec ret, real c, rvec v )
 {
     atomicAdd( &ret[0], c * v[0] );
     atomicAdd( &ret[1], c * v[1] );

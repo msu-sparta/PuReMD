@@ -29,7 +29,7 @@
  * The block-level sums are written to global memory pointed to by results
  *  in accordance to their block IDs.
  */
-CUDA_GLOBAL void k_reduction_rvec( rvec *input, rvec *results, size_t n )
+GPU_GLOBAL void k_reduction_rvec( rvec *input, rvec *results, size_t n )
 {
     extern __shared__ cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage temp_block[];
     rvec data;
@@ -56,7 +56,7 @@ CUDA_GLOBAL void k_reduction_rvec( rvec *input, rvec *results, size_t n )
      * of the reduction back to global memory */
     if ( threadIdx.x == 0 )
     {
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
         rvec_Copy( results[blockIdx.x], data_s[0] );
 #else
         atomicAdd( (double *) &results[0][0], (double) data[0] );
@@ -67,7 +67,7 @@ CUDA_GLOBAL void k_reduction_rvec( rvec *input, rvec *results, size_t n )
 }
 
 
-CUDA_GLOBAL void k_reduction_rvec2( rvec2 *input, rvec2 *results, size_t n )
+GPU_GLOBAL void k_reduction_rvec2( rvec2 *input, rvec2 *results, size_t n )
 {
     extern __shared__ cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage temp_block[];
     unsigned int i;
@@ -94,7 +94,7 @@ CUDA_GLOBAL void k_reduction_rvec2( rvec2 *input, rvec2 *results, size_t n )
      * of the reduction back to global memory */
     if ( threadIdx.x == 0 )
     {
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
         results[blockIdx.x][0] = data[0];
         results[blockIdx.x][1] = data[1];
 #else
@@ -114,8 +114,8 @@ CUDA_GLOBAL void k_reduction_rvec2( rvec2 *input, rvec2 *results, size_t n )
  */
 void Cuda_Reduction_Sum( int *d_array, int *d_dest, size_t n, int s_index, cudaStream_t s )
 {
-    static void *d_temp_storage[MAX_CUDA_STREAMS] = { NULL };
-    static size_t temp_storage_bytes[MAX_CUDA_STREAMS] = { 0 };
+    static void *d_temp_storage[MAX_GPU_STREAMS] = { NULL };
+    static size_t temp_storage_bytes[MAX_GPU_STREAMS] = { 0 };
     void *temp = NULL;
     size_t temp_bytes = 0;
 
@@ -143,8 +143,8 @@ void Cuda_Reduction_Sum( int *d_array, int *d_dest, size_t n, int s_index, cudaS
  */
 void Cuda_Reduction_Sum( real *d_array, real *d_dest, size_t n, int s_index, cudaStream_t s )
 {
-    static void *d_temp_storage[MAX_CUDA_STREAMS] = { NULL };
-    static size_t temp_storage_bytes[MAX_CUDA_STREAMS] = { 0 };
+    static void *d_temp_storage[MAX_GPU_STREAMS] = { NULL };
+    static size_t temp_storage_bytes[MAX_GPU_STREAMS] = { 0 };
     void *temp = NULL;
     size_t temp_bytes = 0;
 
@@ -195,15 +195,15 @@ void Cuda_Reduction_Sum( rvec *d_array, rvec *d_dest, size_t n,
 //    sCudaFree( d_temp_storage, __FILE__, __LINE__ );
 
     int blocks;
-#if !defined(CUDA_ACCUM_ATOMIC)
-    static rvec *temp[MAX_CUDA_STREAMS] = { NULL };
-    static size_t temp_size[MAX_CUDA_STREAMS] = { 0 };
+#if !defined(GPU_ACCUM_ATOMIC)
+    static rvec *temp[MAX_GPU_STREAMS] = { NULL };
+    static size_t temp_size[MAX_GPU_STREAMS] = { 0 };
 #endif
 
     blocks = n / DEF_BLOCK_SIZE
         + ((n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
     sCudaCheckMalloc( &temp[s_index], &temp_size[s_index],
             sizeof(rvec) * blocks, __FILE__, __LINE__ );
 #else
@@ -213,7 +213,7 @@ void Cuda_Reduction_Sum( rvec *d_array, rvec *d_dest, size_t n,
     k_reduction_rvec <<< blocks, DEF_BLOCK_SIZE,
                      sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage), s >>> 
         ( d_array,
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
           temp[s_index],
 #else
           d_dest,
@@ -221,8 +221,8 @@ void Cuda_Reduction_Sum( rvec *d_array, rvec *d_dest, size_t n,
           n );
     cudaCheckError( ); 
 
-#if !defined(CUDA_ACCUM_ATOMIC)
-    k_reduction_rvec <<< 1, ((blocks + 31) / 32) * 32,
+#if !defined(GPU_ACCUM_ATOMIC)
+    k_reduction_rvec <<< 1, ((blocks + WARP_SIZE - 1) / WARP_SIZE) * WARP_SIZE,
                      sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage), s >>>
         ( temp[s_index], d_dest, blocks );
     cudaCheckError( ); 
@@ -241,15 +241,15 @@ void Cuda_Reduction_Sum( rvec2 *d_array, rvec2 *d_dest, size_t n,
         int s_index, cudaStream_t s )
 {
     int blocks;
-#if !defined(CUDA_ACCUM_ATOMIC)
-    static rvec2 *temp[MAX_CUDA_STREAMS] = { NULL };
-    static size_t temp_size[MAX_CUDA_STREAMS] = { 0 };
+#if !defined(GPU_ACCUM_ATOMIC)
+    static rvec2 *temp[MAX_GPU_STREAMS] = { NULL };
+    static size_t temp_size[MAX_GPU_STREAMS] = { 0 };
 #endif
 
     blocks = n / DEF_BLOCK_SIZE
         + ((n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
     sCudaCheckMalloc( &temp[s_index], &temp_size[s_index],
             sizeof(rvec2) * blocks, __FILE__, __LINE__ );
 #else
@@ -259,7 +259,7 @@ void Cuda_Reduction_Sum( rvec2 *d_array, rvec2 *d_dest, size_t n,
     k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE,
                      sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage), s >>> 
         ( d_array,
-#if !defined(CUDA_ACCUM_ATOMIC)
+#if !defined(GPU_ACCUM_ATOMIC)
           temp[s_index],
 #else
           d_dest,
@@ -267,8 +267,8 @@ void Cuda_Reduction_Sum( rvec2 *d_array, rvec2 *d_dest, size_t n,
           n );
     cudaCheckError( ); 
 
-#if !defined(CUDA_ACCUM_ATOMIC)
-    k_reduction_rvec2 <<< 1, ((blocks + 31) / 32) * 32,
+#if !defined(GPU_ACCUM_ATOMIC)
+    k_reduction_rvec2 <<< 1, ((blocks + WARP_SIZE - 1) / WARP_SIZE) * WARP_SIZE,
                      sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage), s >>>
         ( temp[s_index], d_dest, blocks );
     cudaCheckError( ); 
@@ -282,8 +282,8 @@ void Cuda_Reduction_Sum( rvec2 *d_array, rvec2 *d_dest, size_t n,
  * d_dest: device array to hold result of scan */
 void Cuda_Scan_Excl_Sum( int *d_src, int *d_dest, size_t n, int s_index, cudaStream_t s )
 {
-    static void *d_temp_storage[MAX_CUDA_STREAMS] = { NULL };
-    static size_t temp_storage_bytes[MAX_CUDA_STREAMS] = { 0 };
+    static void *d_temp_storage[MAX_GPU_STREAMS] = { NULL };
+    static size_t temp_storage_bytes[MAX_GPU_STREAMS] = { 0 };
     void *temp = NULL;
     size_t temp_bytes = 0;
 

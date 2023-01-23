@@ -24,6 +24,7 @@ To build, the following versions of software are required:
 - C++ compiler with support for the c++14 standard or newer (CUDA, MPI+CUDA versions)
 - MPI v2+ compliant library (MPI, MPI+CUDA versions)
 - CUDA v6.0+ (CUDA, MPI+CUDA versions)
+- RocM v5.4+ (HIP, MPI+HIP versions)
 - zlib v1.2.x or newer
 
 ```bash
@@ -39,7 +40,7 @@ run ./configure --help and consult the documentation. An example of building the
 is given below.
 
 ```bash
-./configure --enable-openmp=no --enable-mpi-gpu=yes
+./configure --enable-openmp=no --enable-mpi-cuda=yes
 ```
 
 ## Developer
@@ -55,6 +56,7 @@ To build, the following versions of software are required:
 - C++ compiler with support for the c++14 standard or newer (CUDA, MPI+CUDA versions)
 - MPI v2+ compliant library (MPI, MPI+CUDA versions)
 - CUDA v6.0+ (CUDA, MPI+CUDA versions)
+- RocM v5.4+ (HIP, MPI+HIP versions)
 - zlib v1.2.x or newer
 
 Instructions:

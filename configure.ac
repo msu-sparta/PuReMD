@@ -45,15 +45,19 @@ AC_ARG_ENABLE([mpi-old],
 AC_ARG_ENABLE([gpu],
 	      [AS_HELP_STRING([--enable-gpu],
 			      [enable CUDA (single GPU) support @<:@default: no@:>@])],
-	      [pack_gpu_enabled=${enableval}], [pack_gpu_enabled=no])
+	      [pack_cuda_enabled=${enableval}], [pack_cuda_enabled=no])
 AC_ARG_ENABLE([mpi],
 	      [AS_HELP_STRING([--enable-mpi],
 			      [enable MPI support @<:@default: no@:>@])],
 	      [pack_mpi_enabled=${enableval}], [pack_mpi_enabled=no])
-AC_ARG_ENABLE([mpi-gpu],
-	      [AS_HELP_STRING([--enable-mpi-gpu],
+AC_ARG_ENABLE([mpi-cuda],
+	      [AS_HELP_STRING([--enable-mpi-cuda],
 			      [enable MPI+CUDA (multi GPU) support @<:@default: no@:>@])],
-	      [pack_mpi_gpu_enabled=${enableval}], [pack_mpi_gpu_enabled=no])
+	      [pack_mpi_cuda_enabled=${enableval}], [pack_mpi_cuda_enabled=no])
+AC_ARG_ENABLE([mpi-hip],
+	      [AS_HELP_STRING([--enable-mpi-hip],
+			      [enable MPI+HIP (multi GPU) support @<:@default: no@:>@])],
+	      [pack_mpi_hip_enabled=${enableval}], [pack_mpi_hip_enabled=no])
 
 # Build standalone PuReMD code.
 AC_ARG_ENABLE([puremd-standalone],
@@ -143,7 +147,7 @@ AC_PROG_CXXCPP
 AC_CONFIG_HEADERS([common/include/config.h])
 
 # sPuReMD
-if test "x${pack_mpi_enabled}" != "xyes" && test "x${pack_mpi_gpu_enabled}" != "xyes" && { test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "xyes"; }; then
+if test "x${pack_mpi_enabled}" != "xyes" && test "x${pack_mpi_cuda_enabled}" != "xyes" && { test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "xyes"; }; then
 	if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" != "xyes"; then
 		BUILD_OPENMP="no"
 	else
@@ -349,11 +353,11 @@ if test "x${pack_mpi_enabled}" != "xyes" && test "x${pack_mpi_gpu_enabled}" != "
 
 	AC_LANG_POP([C])
 fi
-AM_CONDITIONAL([BUILD_S_OMP], [test "x${pack_mpi_enabled}" != "xyes" && test "x${pack_mpi_gpu_enabled}" != "xyes" && { test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "xyes"; }])
+AM_CONDITIONAL([BUILD_S_OMP], [test "x${pack_mpi_enabled}" != "xyes" && test "x${pack_mpi_cuda_enabled}" != "xyes" && { test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "xyes"; }])
 
 
 # PuReMD-GPU
-if test "x${pack_gpu_enabled}" = "xyes"; then
+if test "x${pack_cuda_enabled}" = "xyes"; then
 	BUILD_GPU="yes"
 
 	AC_LANG_PUSH([C])
@@ -458,7 +462,7 @@ if test "x${pack_gpu_enabled}" = "xyes"; then
 
 	AC_LANG_POP([C])
 fi
-AM_CONDITIONAL([BUILD_GPU], [test "x${pack_gpu_enabled}" = "xyes"])
+AM_CONDITIONAL([BUILD_GPU], [test "x${pack_cuda_enabled}" = "xyes"])
 
 
 # PuReMD
@@ -630,16 +634,11 @@ AM_CONDITIONAL([BUILD_MPI], [test "x${pack_mpi_old_enabled}" = "xyes"])
 
 
 # PG-PuReMD
-if test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" = "xyes"; then
+if test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_cuda_enabled}" = "xyes" || test "x${pack_mpi_hip_enabled}" = "xyes"; then
 	if test "x${pack_openmp_enabled}" = "xyes"; then
 		BUILD_OPENMP_MPI="yes"
 	else
 		BUILD_OPENMP_MPI="no"
-	fi
-	if test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" != "xyes"; then
-		export BUILD_GPU="no"
-	else
-		export BUILD_GPU="yes"
 	fi
 
 	AC_LANG_PUSH([C])
@@ -818,7 +817,7 @@ if test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" = "xy
 	AC_LANG_PUSH([C++])
 
 	# Check for CUDA support.
-	if test "x${BUILD_GPU}" = "xyes"; then
+	if test "x${pack_mpi_cuda_enabled}" = "xyes"; then
 		CONFIGURE_HEADLINE([ CUDA support ])
 		# macro in m4/ax_cuda.m4
 		#   sets the following variables with AC_SUBST: 
@@ -848,12 +847,39 @@ if test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" = "xy
 	AC_SUBST([NFLAGS_EXTRA])
 
 	if test "x${BUILD_GPROF}" = "xyes"; then
-		if test "x${BUILD_GPU}" = "xyes"; then
+		if test "x${pack_mpi_cuda_enabled}" = "xyes"; then
 			NFLAGS_EXTRA+=" --generate-line-info"
 		fi
 	fi
 
 	AC_ARG_VAR(NVCCFLAGS,[nvcc compiler flags])
+
+	# Check for HIP support.
+	if test "x${pack_mpi_hip_enabled}" = "xyes"; then
+		CONFIGURE_HEADLINE([ HIP support ])
+		# macro in m4/ax_hip.m4
+		#   sets the following variables with AC_SUBST: 
+		#	HIP_CFLAGS: HIP header file include path
+		# 	HIP_LIBS: HIP library file include path and link the HIP driver and runtime libraries
+		#	HIPCC: path to the nvcc compiler wrapper
+		#	HIPCCFLAGS: flags directly passed to hipcc
+		#   defines:
+		#	--with-hip=(path|yes|no) for non-standard HIP installation directory
+		#   other actions:
+		#	+ appends HIP_CFLAGS to CPPFLAGS after defining
+		#	+ appends HIP_LIBS to LIBS after defining
+		AX_HIP
+
+		# set host compiler to specified C++ compiler
+		NFLAGS_EXTRA+=" --compiler-bindir=${CXX}"
+		if test "x${BUILD_DEBUG}" = "xyes"; then
+			NFLAGS_EXTRA+=" --debug --device-debug"
+
+		fi
+		AC_DEFINE([HAVE_HIP], [1], [Define to 1 if you have HIP support enabled.])
+	else
+		AM_CONDITIONAL(USE_HIP, test "x" = "xyes")
+	fi
 
 	AS_IF([test "x${puremd_standalone}" = "xyes"],
 	      [AC_DEFINE([PURE_REAX], [1], [Define to 1 to build standalone PuReMD code.])])
@@ -871,9 +897,10 @@ if test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" = "xy
 
 	AC_LANG_POP([C++])
 fi
-AM_CONDITIONAL([BUILD_MPI_GPU], [test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" = "xyes"])
+AM_CONDITIONAL([BUILD_MPI_GPU], [test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_cuda_enabled}" = "xyes" || test "x${pack_mpi_hip_enabled}" = "xyes"])
 # Moved from m4/ax_cuda.am to avoid conditionally calling inside AX_CUDA
-AM_CONDITIONAL(USE_CUDA, [test "x${pack_gpu_enabled}" = "xyes" || test "x${pack_mpi_gpu_enabled}" = "xyes"])
+AM_CONDITIONAL(USE_CUDA, [test "x${pack_cuda_enabled}" = "xyes" || test "x${pack_mpi_cuda_enabled}" = "xyes"])
+AM_CONDITIONAL(USE_HIP, [test "x${pack_mpi_hip_enabled}" = "xyes"])
 
 
 # Tests using Google C++ testing framework (gtest)

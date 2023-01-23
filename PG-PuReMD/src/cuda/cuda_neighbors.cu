@@ -37,7 +37,7 @@
 #define FULL_WARP_MASK (0xFFFFFFFF)
 
 
-CUDA_DEVICE static inline real Cuda_DistSqr_to_Special_Point( rvec cp, rvec x ) 
+GPU_DEVICE static inline real Cuda_DistSqr_to_Special_Point( rvec cp, rvec x ) 
 {
     int i;  
     real d_sqr = 0.0;
@@ -56,7 +56,7 @@ CUDA_DEVICE static inline real Cuda_DistSqr_to_Special_Point( rvec cp, rvec x )
 
 /* Generate far neighbor lists in full format
  * by scanning the atoms list and applying cutoffs */
-CUDA_GLOBAL void k_generate_neighbor_lists_full( reax_atom const * const my_atoms, 
+GPU_GLOBAL void k_generate_neighbor_lists_full( reax_atom const * const my_atoms, 
         simulation_box my_ext_box, grid g, reax_list far_nbr_list,
         int n, int N, int * const far_nbrs, int * const max_far_nbrs,
         int * const realloc_far_nbrs, real cutoff2 )
@@ -182,7 +182,7 @@ CUDA_GLOBAL void k_generate_neighbor_lists_full( reax_atom const * const my_atom
 
 /* Generate far neighbor lists in full format
  * by scanning the atoms list and applying cutoffs */
-CUDA_GLOBAL void k_generate_neighbor_lists_full_opt( reax_atom const * const my_atoms, 
+GPU_GLOBAL void k_generate_neighbor_lists_full_opt( reax_atom const * const my_atoms, 
         simulation_box my_ext_box, grid g, reax_list far_nbr_list,
         int n, int N, int * const far_nbrs, int * const max_far_nbrs,
         int * const realloc_far_nbrs, real cutoff2 )
@@ -299,7 +299,7 @@ CUDA_GLOBAL void k_generate_neighbor_lists_full_opt( reax_atom const * const my_
 
                 /* get num_far from thread in last lane */
                 num_far = num_far + offset + (flag == TRUE ? 1 : 0);
-                num_far = cub::ShuffleIndex<32>( num_far, warpSize - 1, FULL_WARP_MASK );
+                num_far = cub::ShuffleIndex<WARP_SIZE>( num_far, warpSize - 1, FULL_WARP_MASK );
 
                 m += warpSize;
             }
@@ -325,7 +325,7 @@ CUDA_GLOBAL void k_generate_neighbor_lists_full_opt( reax_atom const * const my_
 
 /* Estimate the number of entries in the far neighbors list in full format
  * using one thread per atom */
-CUDA_GLOBAL void k_estimate_neighbors_full( reax_atom const * const my_atoms, 
+GPU_GLOBAL void k_estimate_neighbors_full( reax_atom const * const my_atoms, 
         simulation_box my_ext_box, grid g, int n, int N, int total_cap,
         int * const far_nbrs, int * const max_far_nbrs, real cutoff2 )
 {
@@ -436,7 +436,7 @@ CUDA_GLOBAL void k_estimate_neighbors_full( reax_atom const * const my_atoms,
     }
 
     far_nbrs[l] = num_far;
-    /* round up to the nearest multiple of 32 to ensure that reads along
+    /* round up to the nearest multiple of WARP_SIZE to ensure that reads along
      * rows can be coalesced */
     max_far_nbrs[l] = MAX( ((int) CEIL( num_far * SAFE_ZONE )
                 + warpSize - 1) / warpSize * warpSize, MIN_NBRS );
@@ -445,7 +445,7 @@ CUDA_GLOBAL void k_estimate_neighbors_full( reax_atom const * const my_atoms,
 
 /* Estimate the number of entries in the far neighbors list in full format
  * using one warp of threads per atom */
-CUDA_GLOBAL void k_estimate_neighbors_full_opt( reax_atom const * const my_atoms, 
+GPU_GLOBAL void k_estimate_neighbors_full_opt( reax_atom const * const my_atoms, 
         simulation_box my_ext_box, grid g, int n, int N, int total_cap,
         int * const far_nbrs, int * const max_far_nbrs, real cutoff2 )
 {
@@ -563,7 +563,7 @@ CUDA_GLOBAL void k_estimate_neighbors_full_opt( reax_atom const * const my_atoms
     if ( lane_id == 0 )
     {
         far_nbrs[l] = num_far;
-        /* round up to the nearest multiple of 32 to ensure that reads along
+        /* round up to the nearest multiple of WARP_SIZE to ensure that reads along
          * rows can be coalesced */
         max_far_nbrs[l] = MAX( ((int) CEIL( num_far * SAFE_ZONE )
                     + warpSize - 1) / warpSize * warpSize, MIN_NBRS );
@@ -577,30 +577,30 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
 {
     int blocks, ret, ret_far_nbr;
 #if defined(LOG_PERFORMANCE)
-    cudaEventRecord( control->time_events[TE_NBRS_START], control->streams[0] );
+    cudaEventRecord( control->cuda_time_events[TE_NBRS_START], control->cuda_streams[0] );
 #endif
 
     /* reset reallocation flag on device */
     /* careful: this wrapper around cudaMemset(...) performs a byte-wide assignment
      * to the provided literal */
     sCudaMemsetAsync( system->d_realloc_far_nbrs, FALSE, sizeof(int), 
-            control->streams[0], __FILE__, __LINE__ );
-    cudaStreamSynchronize( control->streams[0] );
+            control->cuda_streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->cuda_streams[0] );
 
 //    blocks = (system->N / NBRS_BLOCK_SIZE) +
 //        ((system->N % NBRS_BLOCK_SIZE) == 0 ? 0 : 1);
-    blocks = (system->N * 32 / NBRS_BLOCK_SIZE) +
-        ((system->N * 32 % NBRS_BLOCK_SIZE) == 0 ? 0 : 1);
+    blocks = (system->N * WARP_SIZE / NBRS_BLOCK_SIZE) +
+        ((system->N * WARP_SIZE % NBRS_BLOCK_SIZE) == 0 ? 0 : 1);
 
-//    k_generate_neighbor_lists_full <<< blocks, NBRS_BLOCK_SIZE, 0, control->streams[0] >>>
+//    k_generate_neighbor_lists_full <<< blocks, NBRS_BLOCK_SIZE, 0, control->cuda_streams[0] >>>
 //        ( system->d_my_atoms, system->my_ext_box,
 //          system->d_my_grid, *(lists[FAR_NBRS]),
 //          system->n, system->N,
 //          system->d_far_nbrs, system->d_max_far_nbrs,
 //          system->d_realloc_far_nbrs, SQR( control->bond_cut ) );
     k_generate_neighbor_lists_full_opt <<< blocks, NBRS_BLOCK_SIZE,
-                                       sizeof(cub::WarpScan<int>::TempStorage) * (DEF_BLOCK_SIZE / 32),
-                                       control->streams[0] >>>
+                                       sizeof(cub::WarpScan<int>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+                                       control->cuda_streams[0] >>>
         ( system->d_my_atoms, system->my_ext_box,
           system->d_my_grid, *(lists[FAR_NBRS]),
           system->n, system->N,
@@ -610,14 +610,14 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
 
     /* check reallocation flag on device */
     sCudaMemcpyAsync( &ret_far_nbr, system->d_realloc_far_nbrs, sizeof(int), 
-            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
-    cudaStreamSynchronize( control->streams[0] );
+            cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
+    cudaStreamSynchronize( control->cuda_streams[0] );
 
     ret = (ret_far_nbr == FALSE) ? SUCCESS : FAILURE;
     workspace->d_workspace->realloc.far_nbrs = ret_far_nbr;
 
 #if defined(LOG_PERFORMANCE)
-    cudaEventRecord( control->time_events[TE_NBRS_STOP], control->streams[0] );
+    cudaEventRecord( control->cuda_time_events[TE_NBRS_STOP], control->cuda_streams[0] );
 #endif
 
     return ret;
@@ -634,40 +634,40 @@ void Cuda_Estimate_Num_Neighbors( reax_system *system, control_params *control,
 #if defined(LOG_PERFORMANCE)
     float time_elapsed;
 
-    cudaEventRecord( control->time_events[TE_NBRS_START], control->streams[0] );
+    cudaEventRecord( control->cuda_time_events[TE_NBRS_START], control->cuda_streams[0] );
 #endif
 
 //    blocks = system->total_cap / DEF_BLOCK_SIZE
 //        + (system->total_cap % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-    blocks = system->total_cap * 32 / DEF_BLOCK_SIZE
-        + (system->total_cap * 32 % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+    blocks = system->total_cap * WARP_SIZE / DEF_BLOCK_SIZE
+        + (system->total_cap * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
 
-//    k_estimate_neighbors_full <<< blocks, DEF_BLOCK_SIZE, 0, control->streams[0] >>>
+//    k_estimate_neighbors_full <<< blocks, DEF_BLOCK_SIZE, 0, control->cuda_streams[0] >>>
 //        ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
 //          system->n, system->N, system->total_cap,
 //          system->d_far_nbrs, system->d_max_far_nbrs, SQR( control->bond_cut ) );
     k_estimate_neighbors_full_opt <<< blocks, DEF_BLOCK_SIZE,
-                                  sizeof(cub::WarpReduce<int>::TempStorage) * (DEF_BLOCK_SIZE / 32),
-                                  control->streams[0] >>>
+                                  sizeof(cub::WarpReduce<int>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+                                  control->cuda_streams[0] >>>
         ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
           system->n, system->N, system->total_cap,
           system->d_far_nbrs, system->d_max_far_nbrs, SQR( control->bond_cut ) );
     cudaCheckError( );
 
     Cuda_Reduction_Sum( system->d_max_far_nbrs, system->d_total_far_nbrs,
-            system->total_cap, 0, control->streams[0] );
+            system->total_cap, 0, control->cuda_streams[0] );
     sCudaMemcpyAsync( &system->total_far_nbrs, system->d_total_far_nbrs, sizeof(int), 
-            cudaMemcpyDeviceToHost, control->streams[0], __FILE__, __LINE__ );
+            cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
 
 #if defined(LOG_PERFORMANCE)
-    cudaEventRecord( control->time_events[TE_NBRS_STOP], control->streams[0] );
+    cudaEventRecord( control->cuda_time_events[TE_NBRS_STOP], control->cuda_streams[0] );
 #endif
 
-    cudaStreamSynchronize( control->streams[0] );
+    cudaStreamSynchronize( control->cuda_streams[0] );
 
 #if defined(LOG_PERFORMANCE)
-    cudaEventElapsedTime( &time_elapsed, control->time_events[TE_NBRS_START],
-            control->time_events[TE_NBRS_STOP] ); 
+    cudaEventElapsedTime( &time_elapsed, control->cuda_time_events[TE_NBRS_START],
+            control->cuda_time_events[TE_NBRS_STOP] ); 
     data->timing.nbrs += (real) (time_elapsed / 1000.0);
 #endif
 }

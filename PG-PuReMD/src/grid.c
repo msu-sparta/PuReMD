@@ -616,7 +616,7 @@ void Bin_My_Atoms( reax_system * const system, storage * const workspace )
     {
         workspace->realloc.gcell_atoms = MAX( (int) CEIL( max_atoms * SAFE_ZONE ),
                 MIN_GCELL_POPL );
-#if defined(HAVE_CUDA)
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
         workspace->d_workspace->realloc.gcell_atoms = MAX( (int) CEIL( max_atoms * SAFE_ZONE ),
                 MIN_GCELL_POPL );
 #endif
@@ -624,7 +624,7 @@ void Bin_My_Atoms( reax_system * const system, storage * const workspace )
     else
     {
         workspace->realloc.gcell_atoms = -1;
-#if defined(HAVE_CUDA)
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
         workspace->d_workspace->realloc.gcell_atoms = -1;
 #endif
     }
