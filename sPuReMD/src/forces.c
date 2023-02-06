@@ -1606,11 +1606,13 @@ static void Estimate_Storages_CM( reax_system const * const system,
             {
                 for ( i = 0; i < system->num_molec_charge_constraints; ++i )
                 {
+                    /* extra +1 for zeros on the diagonal */
                     Htop += system->molec_charge_constraint_ranges[2 * i + 1]
-                        - system->molec_charge_constraint_ranges[2 * i] + 1;
+                        - system->molec_charge_constraint_ranges[2 * i] + 2;
                 }
                 for ( i = 0; i < system->num_custom_charge_constraints; ++i )
                 {
+                    /* +1 for zeros on the diagonal */
                     Htop += system->custom_charge_constraint_count[i] + 1;
                 }
             }
