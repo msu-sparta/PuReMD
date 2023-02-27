@@ -590,7 +590,7 @@ static void Dual_Sparse_MatVec_Comm_Part1( const reax_system * const system,
 {
 #if !defined(GPU_DEVICE_PACK)
     sHipHostAllocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
-            sizeof(rvec2) * n, hipHostAllocPortable, TRUE, SAFE_ZONE,
+            sizeof(rvec2) * n, hipHostMallocPortable, TRUE, SAFE_ZONE,
             __FILE__, __LINE__ );
 
     sHipMemcpyAsync( workspace->host_scratch, (void *) x, sizeof(rvec2) * n,
@@ -689,7 +689,7 @@ static void Dual_Sparse_MatVec_Comm_Part2( const reax_system * const system,
     {
 #if !defined(GPU_DEVICE_PACK)
         sHipHostAllocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
-                sizeof(rvec2) * n1, hipHostAllocPortable, TRUE, SAFE_ZONE,
+                sizeof(rvec2) * n1, hipHostMallocPortable, TRUE, SAFE_ZONE,
                 __FILE__, __LINE__ );
 
         sHipMemcpyAsync( workspace->host_scratch, b, sizeof(rvec2) * n1,
@@ -772,7 +772,7 @@ static void Sparse_MatVec_Comm_Part1( const reax_system * const system,
 {
 #if !defined(GPU_DEVICE_PACK)
     sHipHostAllocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
-            sizeof(real) * n, hipHostAllocPortable, TRUE, SAFE_ZONE,
+            sizeof(real) * n, hipHostMallocPortable, TRUE, SAFE_ZONE,
             __FILE__, __LINE__ );
 
     sHipMemcpyAsync( workspace->host_scratch, (void *) x, sizeof(real) * n,
@@ -869,7 +869,7 @@ static void Sparse_MatVec_Comm_Part2( const reax_system * const system,
     {
 #if !defined(GPU_DEVICE_PACK)
         sHipHostAllocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
-                sizeof(real) * n1, hipHostAllocPortable, TRUE, SAFE_ZONE,
+                sizeof(real) * n1, hipHostMallocPortable, TRUE, SAFE_ZONE,
                 __FILE__, __LINE__ );
 
         sHipMemcpyAsync( workspace->host_scratch, b, sizeof(real) * n1,

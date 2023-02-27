@@ -43,7 +43,7 @@ extern "C" void * sHipHostAllocWrapper( size_t n, const char * const filename, i
         exit( INSUFFICIENT_MEMORY );
     }
 
-    sHipHostAlloc( &ptr, n, hipHostAllocPortable, filename, line );
+    sHipHostAlloc( &ptr, n, hipHostMallocPortable, filename, line );
 
     return ptr;
 }
@@ -63,7 +63,7 @@ extern "C" void * sHipHostReallocWrapper( void *ptr, size_t cur_size, size_t new
         exit( INSUFFICIENT_MEMORY );
     }
 
-    sHipHostAlloc( &new_ptr, new_size, hipHostAllocPortable, filename, line );
+    sHipHostAlloc( &new_ptr, new_size, hipHostMallocPortable, filename, line );
 
     if ( cur_size != 0 )
     {
@@ -81,7 +81,7 @@ extern "C" void * sHipHostCallocWrapper( size_t n, size_t size,
 {
     void *ptr;
 
-    sHipHostAlloc( &ptr, n * size, hipHostAllocPortable, filename, line );
+    sHipHostAlloc( &ptr, n * size, hipHostMallocPortable, filename, line );
 
     memset( ptr, 0, n * size );
 

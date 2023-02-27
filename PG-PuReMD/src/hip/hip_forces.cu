@@ -2834,7 +2834,7 @@ static void Hip_Compute_Total_Force( reax_system *system, control_params *contro
         reax_list **lists, mpi_datatypes *mpi_data )
 {
     sHipHostAllocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
-            sizeof(rvec) * system->N, hipHostAllocPortable, TRUE, SAFE_ZONE,
+            sizeof(rvec) * system->N, hipHostMallocPortable, TRUE, SAFE_ZONE,
             __FILE__, __LINE__ );
     memset( workspace->host_scratch, 0, sizeof(rvec) * system->N );
 
