@@ -4,6 +4,22 @@
 #include "../reax_types.h"
 
 
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
+void * sHipHostAllocWrapper( size_t, const char * const, int );
+
+void * sHipHostReallocWrapper( void *, size_t, size_t, const char * const, int );
+
+void * sHipHostCallocWrapper( size_t, size_t, const char * const, int );
+
+void sHipFreeHostWrapper( void *, const char * const, int );
+
+#ifdef __cplusplus
+}
+#endif
+
 void Hip_Allocate_System( reax_system *, control_params * );
 
 void Hip_Allocate_Grid( reax_system *, control_params * );

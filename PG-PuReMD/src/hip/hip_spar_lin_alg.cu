@@ -589,21 +589,19 @@ static void Dual_Sparse_MatVec_Comm_Part1( const reax_system * const system,
         hipStream_t s )
 {
 #if !defined(GPU_DEVICE_PACK)
-    rvec2 *spad;
+    sHipHostAllocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
+            sizeof(rvec2) * n, hipHostAllocPortable, TRUE, SAFE_ZONE,
+            __FILE__, __LINE__ );
 
-    smalloc_check( &workspace->host_scratch, &workspace->host_scratch_size,
-            sizeof(rvec2) * n, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
-    spad = (rvec2 *) workspace->host_scratch;
-
-    sHipMemcpyAsync( spad, (void *) x, sizeof(rvec2) * n,
+    sHipMemcpyAsync( workspace->host_scratch, (void *) x, sizeof(rvec2) * n,
             hipMemcpyDeviceToHost, s, __FILE__, __LINE__ );
 
     hipStreamSynchronize( s );
 
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
-    Dist( system, mpi_data, spad, buf_type, mpi_type );
+    Dist( system, mpi_data, workspace->host_scratch, buf_type, mpi_type );
 
-    sHipMemcpyAsync( (void *) x, spad, sizeof(rvec2) * n,
+    sHipMemcpyAsync( (void *) x, workspace->host_scratch, sizeof(rvec2) * n,
             hipMemcpyHostToDevice, s, __FILE__, __LINE__ );
 #else
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
@@ -686,26 +684,22 @@ static void Dual_Sparse_MatVec_Comm_Part2( const reax_system * const system,
         void * const b, int n1, int n2, int buf_type, MPI_Datatype mpi_type,
         hipStream_t s )
 {
-#if !defined(GPU_DEVICE_PACK)
-    rvec2 *spad;
-#endif
-
     /* reduction required for symmetric half matrix */
     if ( mat_format == SYM_HALF_MATRIX )
     {
 #if !defined(GPU_DEVICE_PACK)
-        smalloc_check( &workspace->host_scratch, &workspace->host_scratch_size,
-                sizeof(rvec2) * n1, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
-        spad = (rvec2 *) workspace->host_scratch;
+        sHipHostAllocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
+                sizeof(rvec2) * n1, hipHostAllocPortable, TRUE, SAFE_ZONE,
+                __FILE__, __LINE__ );
 
-        sHipMemcpyAsync( spad, b, sizeof(rvec2) * n1,
+        sHipMemcpyAsync( workspace->host_scratch, b, sizeof(rvec2) * n1,
                 hipMemcpyDeviceToHost, s, __FILE__, __LINE__ );
 
         hipStreamSynchronize( s );
 
-        Coll( system, mpi_data, spad, buf_type, mpi_type );
+        Coll( system, mpi_data, workspace->host_scratch, buf_type, mpi_type );
 
-        sHipMemcpyAsync( b, spad, sizeof(rvec2) * n2, hipMemcpyHostToDevice,
+        sHipMemcpyAsync( b, workspace->host_scratch, sizeof(rvec2) * n2, hipMemcpyHostToDevice,
                 s, __FILE__, __LINE__ );
 #else
         Hip_Coll( system, mpi_data, b, buf_type, mpi_type, s );
@@ -777,21 +771,19 @@ static void Sparse_MatVec_Comm_Part1( const reax_system * const system,
         hipStream_t s )
 {
 #if !defined(GPU_DEVICE_PACK)
-    real *spad;
+    sHipHostAllocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
+            sizeof(real) * n, hipHostAllocPortable, TRUE, SAFE_ZONE,
+            __FILE__, __LINE__ );
 
-    smalloc_check( &workspace->host_scratch, &workspace->host_scratch_size,
-            sizeof(real) * n, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
-    spad = (real *) workspace->host_scratch;
-
-    sHipMemcpyAsync( spad, (void *) x, sizeof(real) * n,
+    sHipMemcpyAsync( workspace->host_scratch, (void *) x, sizeof(real) * n,
             hipMemcpyDeviceToHost, s, __FILE__, __LINE__ );
 
     hipStreamSynchronize( s );
 
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
-    Dist( system, mpi_data, spad, buf_type, mpi_type );
+    Dist( system, mpi_data, workspace->host_scratch, buf_type, mpi_type );
 
-    sHipMemcpyAsync( (void *) x, spad, sizeof(real) * n,
+    sHipMemcpyAsync( (void *) x, workspace->host_scratch, sizeof(real) * n,
             hipMemcpyHostToDevice, s, __FILE__, __LINE__ );
 #else
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
@@ -872,26 +864,22 @@ static void Sparse_MatVec_Comm_Part2( const reax_system * const system,
         void * const b, int n1, int n2, int buf_type, MPI_Datatype mpi_type,
         hipStream_t s )
 {
-#if !defined(GPU_DEVICE_PACK)
-    real *spad;
-#endif
-
     /* reduction required for symmetric half matrix */
     if ( mat_format == SYM_HALF_MATRIX )
     {
 #if !defined(GPU_DEVICE_PACK)
-        smalloc_check( &workspace->host_scratch, &workspace->host_scratch_size,
-                sizeof(real) * n1, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
-        spad = (real *) workspace->host_scratch;
+        sHipHostAllocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
+                sizeof(real) * n1, hipHostAllocPortable, TRUE, SAFE_ZONE,
+                __FILE__, __LINE__ );
 
-        sHipMemcpyAsync( spad, b, sizeof(real) * n1,
+        sHipMemcpyAsync( workspace->host_scratch, b, sizeof(real) * n1,
                 hipMemcpyDeviceToHost, s, __FILE__, __LINE__ );
 
         hipStreamSynchronize( s );
 
-        Coll( system, mpi_data, spad, buf_type, mpi_type );
+        Coll( system, mpi_data, workspace->host_scratch, buf_type, mpi_type );
 
-        sHipMemcpyAsync( b, spad, sizeof(real) * n2,
+        sHipMemcpyAsync( b, workspace->host_scratch, sizeof(real) * n2,
                 hipMemcpyHostToDevice, s, __FILE__, __LINE__ );
 #else
         Hip_Coll( system, mpi_data, b, buf_type, mpi_type, s );

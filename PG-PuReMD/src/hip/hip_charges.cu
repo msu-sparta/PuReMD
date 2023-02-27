@@ -60,6 +60,145 @@ GPU_GLOBAL void k_jacobi( reax_atom const * const my_atoms,
 }
 
 
+GPU_GLOBAL void k_spline_extrapolate_charges_qeq( reax_atom const * const my_atoms,
+        single_body_parameters const * const sbp, control_params const * const control,
+        storage workspace, int n )
+{
+    int i;
+    real s_tmp, t_tmp;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= n )
+    {
+        return;
+    }
+
+    /* RHS vectors for linear system */
+    workspace.b_s[i] = -1.0 * sbp[ my_atoms[i].type ].chi;
+    workspace.b_t[i] = -1.0;
+#if defined(DUAL_SOLVER)
+    workspace.b[i][0] = -1.0 * sbp[ my_atoms[i].type ].chi;
+    workspace.b[i][1] = -1.0;
+#endif
+
+    /* no extrapolation, previous solution as initial guess */
+    if ( control->cm_init_guess_extrap1 == 0 )
+    {
+        s_tmp = my_atoms[i].s[0];
+    }
+    /* linear */
+    else if ( control->cm_init_guess_extrap1 == 1 )
+    {
+        s_tmp = 2.0 * my_atoms[i].s[0] - my_atoms[i].s[1];
+    }
+    /* quadratic */
+    else if ( control->cm_init_guess_extrap1 == 2 )
+    {
+        s_tmp = my_atoms[i].s[2] + 3.0 * (my_atoms[i].s[0] - my_atoms[i].s[1]);
+    }
+    /* cubic */
+    else if ( control->cm_init_guess_extrap1 == 3 )
+    {
+        s_tmp = 4.0 * (my_atoms[i].s[0] + my_atoms[i].s[2])
+            - (6.0 * my_atoms[i].s[1] + my_atoms[i].s[3]);
+    }
+    else
+    {
+        s_tmp = 0.0;
+    }
+
+    /* no extrapolation, previous solution as initial guess */
+    if ( control->cm_init_guess_extrap1 == 0 )
+    {
+        t_tmp = my_atoms[i].t[0];
+    }
+    /* linear */
+    else if ( control->cm_init_guess_extrap1 == 1 )
+    {
+        t_tmp = 2.0 * my_atoms[i].t[0] - my_atoms[i].t[1];
+    }
+    /* quadratic */
+    else if ( control->cm_init_guess_extrap1 == 2 )
+    {
+        t_tmp = my_atoms[i].t[2] + 3.0 * (my_atoms[i].t[0] - my_atoms[i].t[1]);
+    }
+    /* cubic */
+    else if ( control->cm_init_guess_extrap1 == 3 )
+    {
+        t_tmp = 4.0 * (my_atoms[i].t[0] + my_atoms[i].t[2])
+            - (6.0 * my_atoms[i].t[1] + my_atoms[i].t[3]);
+    }
+    else
+    {
+        t_tmp = 0.0;
+    }
+
+#if defined(DUAL_SOLVER)
+    workspace.x[i][0] = s_tmp;
+    workspace.x[i][1] = t_tmp;
+#else
+    workspace.s[i] = s_tmp;
+    workspace.t[i] = t_tmp;
+#endif
+}
+
+
+GPU_GLOBAL void k_extrapolate_charges_qeq_part2( reax_atom *my_atoms,
+        storage workspace, real u, real *q, int n )
+{
+    int i;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= n )
+    {
+        return;
+    }
+
+    /* compute charge based on s & t */
+#if defined(DUAL_SOLVER)
+    my_atoms[i].q = workspace.x[i][0] - u * workspace.x[i][1];
+#else
+    my_atoms[i].q = workspace.s[i] - u * workspace.t[i];
+#endif
+    q[i] = my_atoms[i].q;
+
+    my_atoms[i].s[3] = my_atoms[i].s[2];
+    my_atoms[i].s[2] = my_atoms[i].s[1];
+    my_atoms[i].s[1] = my_atoms[i].s[0];
+#if defined(DUAL_SOLVER)
+    my_atoms[i].s[0] = workspace.x[i][0];
+#else
+    my_atoms[i].s[0] = workspace.s[i];
+#endif
+
+    my_atoms[i].t[3] = my_atoms[i].t[2];
+    my_atoms[i].t[2] = my_atoms[i].t[1];
+    my_atoms[i].t[1] = my_atoms[i].t[0];
+#if defined(DUAL_SOLVER)
+    my_atoms[i].t[0] = workspace.x[i][1];
+#else
+    my_atoms[i].t[0] = workspace.t[i];
+#endif
+}
+
+
+GPU_GLOBAL void k_update_ghost_atom_charges( reax_atom *my_atoms, real *q,
+        int n, int N )
+{
+    int i;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= (N - n) )
+    {
+        return;
+    }
+
+    my_atoms[n + i].q = q[i];
+}
+
 
 static void jacobi( reax_system const * const system,
         control_params const * const control, storage const * const workspace,
@@ -153,90 +292,6 @@ void Sort_Matrix_Rows( sparse_matrix * const A, storage * const workspace,
     sHipFree( d_temp_storage, __FILE__, __LINE__ );
     sfree( start, __FILE__, __LINE__ );
     sfree( end, __FILE__, __LINE__ );
-}
-
-
-GPU_GLOBAL void k_spline_extrapolate_charges_qeq( reax_atom const * const my_atoms,
-        single_body_parameters const * const sbp, control_params const * const control,
-        storage workspace, int n )
-{
-    int i;
-    real s_tmp, t_tmp;
-
-    i = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if ( i >= n )
-    {
-        return;
-    }
-
-    /* RHS vectors for linear system */
-    workspace.b_s[i] = -1.0 * sbp[ my_atoms[i].type ].chi;
-    workspace.b_t[i] = -1.0;
-#if defined(DUAL_SOLVER)
-    workspace.b[i][0] = -1.0 * sbp[ my_atoms[i].type ].chi;
-    workspace.b[i][1] = -1.0;
-#endif
-
-    /* no extrapolation, previous solution as initial guess */
-    if ( control->cm_init_guess_extrap1 == 0 )
-    {
-        s_tmp = my_atoms[i].s[0];
-    }
-    /* linear */
-    else if ( control->cm_init_guess_extrap1 == 1 )
-    {
-        s_tmp = 2.0 * my_atoms[i].s[0] - my_atoms[i].s[1];
-    }
-    /* quadratic */
-    else if ( control->cm_init_guess_extrap1 == 2 )
-    {
-        s_tmp = my_atoms[i].s[2] + 3.0 * (my_atoms[i].s[0] - my_atoms[i].s[1]);
-    }
-    /* cubic */
-    else if ( control->cm_init_guess_extrap1 == 3 )
-    {
-        s_tmp = 4.0 * (my_atoms[i].s[0] + my_atoms[i].s[2])
-            - (6.0 * my_atoms[i].s[1] + my_atoms[i].s[3]);
-    }
-    else
-    {
-        s_tmp = 0.0;
-    }
-
-    /* no extrapolation, previous solution as initial guess */
-    if ( control->cm_init_guess_extrap1 == 0 )
-    {
-        t_tmp = my_atoms[i].t[0];
-    }
-    /* linear */
-    else if ( control->cm_init_guess_extrap1 == 1 )
-    {
-        t_tmp = 2.0 * my_atoms[i].t[0] - my_atoms[i].t[1];
-    }
-    /* quadratic */
-    else if ( control->cm_init_guess_extrap1 == 2 )
-    {
-        t_tmp = my_atoms[i].t[2] + 3.0 * (my_atoms[i].t[0] - my_atoms[i].t[1]);
-    }
-    /* cubic */
-    else if ( control->cm_init_guess_extrap1 == 3 )
-    {
-        t_tmp = 4.0 * (my_atoms[i].t[0] + my_atoms[i].t[2])
-            - (6.0 * my_atoms[i].t[1] + my_atoms[i].t[3]);
-    }
-    else
-    {
-        t_tmp = 0.0;
-    }
-
-#if defined(DUAL_SOLVER)
-    workspace.x[i][0] = s_tmp;
-    workspace.x[i][1] = t_tmp;
-#else
-    workspace.s[i] = s_tmp;
-    workspace.t[i] = t_tmp;
-#endif
 }
 
 
@@ -402,46 +457,6 @@ static void Compute_Preconditioner_QEq( reax_system const * const system,
 }
 
 
-GPU_GLOBAL void k_extrapolate_charges_qeq_part2( reax_atom *my_atoms,
-        storage workspace, real u, real *q, int n )
-{
-    int i;
-
-    i = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if ( i >= n )
-    {
-        return;
-    }
-
-    /* compute charge based on s & t */
-#if defined(DUAL_SOLVER)
-    my_atoms[i].q = workspace.x[i][0] - u * workspace.x[i][1];
-#else
-    my_atoms[i].q = workspace.s[i] - u * workspace.t[i];
-#endif
-    q[i] = my_atoms[i].q;
-
-    my_atoms[i].s[3] = my_atoms[i].s[2];
-    my_atoms[i].s[2] = my_atoms[i].s[1];
-    my_atoms[i].s[1] = my_atoms[i].s[0];
-#if defined(DUAL_SOLVER)
-    my_atoms[i].s[0] = workspace.x[i][0];
-#else
-    my_atoms[i].s[0] = workspace.s[i];
-#endif
-
-    my_atoms[i].t[3] = my_atoms[i].t[2];
-    my_atoms[i].t[2] = my_atoms[i].t[1];
-    my_atoms[i].t[1] = my_atoms[i].t[0];
-#if defined(DUAL_SOLVER)
-    my_atoms[i].t[0] = workspace.x[i][1];
-#else
-    my_atoms[i].t[0] = workspace.t[i];
-#endif
-}
-
-
 static void Extrapolate_Charges_QEq_Part2( reax_system const * const system,
         control_params const * const control, storage * const workspace,
         real * const q, real u, hipStream_t s )
@@ -478,22 +493,6 @@ static void Extrapolate_Charges_QEq_Part2( reax_system const * const system,
 
     hipStreamSynchronize( s );
 #endif
-}
-
-
-GPU_GLOBAL void k_update_ghost_atom_charges( reax_atom *my_atoms, real *q,
-        int n, int N )
-{
-    int i;
-
-    i = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if ( i >= (N - n) )
-    {
-        return;
-    }
-
-    my_atoms[n + i].q = q[i];
 }
 
 
@@ -537,7 +536,7 @@ static void Calculate_Charges_QEq( reax_system const * const system,
         mpi_datatypes * const mpi_data, hipStream_t s )
 {
     int ret;
-    real u, *q;
+    real u;
     rvec2 my_sum, all_sum;
 #if defined(DUAL_SOLVER)
     rvec2 *spad;
@@ -578,28 +577,40 @@ static void Calculate_Charges_QEq( reax_system const * const system,
     u = all_sum[0] / all_sum[1];
 
 #if !defined(OMPI_HAVE_MPI_EXT_ROCM) || !OMPI_HAVE_MPI_EXT_ROCM
-    smalloc_check( &workspace->host_scratch, &workspace->host_scratch_size,
-            sizeof(real) * system->N, TRUE, SAFE_ZONE,
+    sHipHostAllocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
+            sizeof(real) * system->N, hipHostAllocPortable, TRUE, SAFE_ZONE,
             __FILE__, __LINE__ );
-    q = (real *) workspace->host_scratch;
 #else
     sHipCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
             sizeof(real) * system->N, __FILE__, __LINE__ );
-    q = (real *) workspace->scratch[5];
 #endif
 
     /* derive atomic charges from pseudo-charges
      * and set up extrapolation for next time step */
-    Extrapolate_Charges_QEq_Part2( system, control, workspace, q, u, s );
+    Extrapolate_Charges_QEq_Part2( system, control, workspace,
+#if !defined(OMPI_HAVE_MPI_EXT_ROCM) || !OMPI_HAVE_MPI_EXT_ROCM
+            (real *) workspace->host_scratch,
+#else
+            (real *) workspace->scratch[5],
+#endif
+            u, s );
 
 #if !defined(OMPI_HAVE_MPI_EXT_ROCM) || !OMPI_HAVE_MPI_EXT_ROCM
-    Dist( system, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE );
+    Dist( system, mpi_data, workspace->host_scratch, REAL_PTR_TYPE,
+            MPI_DOUBLE );
 #else
-    Hip_Dist( system, workspace, mpi_data, q, REAL_PTR_TYPE, MPI_DOUBLE, s );
+    Hip_Dist( system, workspace, mpi_data, workspace->scratch[5],
+            REAL_PTR_TYPE, MPI_DOUBLE, s );
 #endif
 
     /* copy atomic charges to ghost atoms in case of ownership transfer */
-    Update_Ghost_Atom_Charges( system, control, workspace, q, s );
+    Update_Ghost_Atom_Charges( system, control, workspace,
+#if !defined(OMPI_HAVE_MPI_EXT_ROCM) || !OMPI_HAVE_MPI_EXT_ROCM
+            (real *) workspace->host_scratch,
+#else
+            (real *) workspace->scratch[5],
+#endif
+            s );
 }
 
 
