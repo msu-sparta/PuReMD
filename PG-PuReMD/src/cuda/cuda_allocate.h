@@ -4,6 +4,22 @@
 #include "../reax_types.h"
 
 
+#ifdef __cplusplus
+extern "C"  {
+#endif
+
+void * sCudaHostAllocWrapper( size_t, const char * const, int );
+
+void * sCudaHostReallocWrapper( void *, size_t, size_t, const char * const, int );
+
+void * sCudaHostCallocWrapper( size_t, size_t, const char * const, int );
+
+void sCudaFreeHostWrapper( void *, const char * const, int );
+
+#ifdef __cplusplus
+}
+#endif
+
 void Cuda_Allocate_System( reax_system *, control_params * );
 
 void Cuda_Allocate_Grid( reax_system *, control_params * );

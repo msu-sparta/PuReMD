@@ -641,7 +641,7 @@ void Reorder_My_Atoms( reax_system * const system, storage * const workspace )
     reax_atom *old_atom, *new_atoms;
 
     /* allocate storage space for est_N */
-    new_atoms = smalloc( sizeof(reax_atom) * system->total_cap,
+    new_atoms = smalloc_pinned( sizeof(reax_atom) * system->total_cap,
             __FILE__, __LINE__ );
     top = 0;
     g = &system->my_grid;
@@ -666,7 +666,7 @@ void Reorder_My_Atoms( reax_system * const system, storage * const workspace )
     }
 
     /* deallocate old storage */
-    sfree( system->my_atoms, __FILE__, __LINE__ );
+    sfree_pinned( system->my_atoms, __FILE__, __LINE__ );
 
     /* start using clustered storages */
     system->my_atoms = new_atoms;

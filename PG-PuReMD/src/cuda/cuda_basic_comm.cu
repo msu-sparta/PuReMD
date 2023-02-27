@@ -17,13 +17,13 @@ typedef void (*cuda_coll_unpacker)( void const * const, void * const,
 /* copy integer entries from buffer to MPI egress buffer
  *
  * arguments:
- *  dummy: buffer containing data to be copied
+ *  src: buffer containing data to be copied
+ *  dest: MPI egress buffer
  *  index: indices for buffer to be copied into the MPI egress buffer
- *  out_atoms: MPI egress buffer
  *  k: number of entries in buffer
  */
-GPU_GLOBAL void k_int_packer( int const * const dummy, int const * const index,
-        int * const out_atoms, int k )
+GPU_GLOBAL void k_int_packer( int const * const src, int * const dest,
+        int const * const index, int k )
 {
     unsigned int i;
 
@@ -34,20 +34,20 @@ GPU_GLOBAL void k_int_packer( int const * const dummy, int const * const index,
         return;
     }
 
-    out_atoms[i] = dummy[ index[i] ];
+    dest[i] = src[index[i]];
 }
 
 
 /* copy double precision entries from buffer to MPI egress buffer
  *
  * arguments:
- *  dummy: buffer containing data to be copied
+ *  src: buffer containing data to be copied
+ *  dest: MPI egress buffer
  *  index: indices for buffer to be copied into the MPI egress buffer
- *  out_atoms: MPI egress buffer
  *  k: number of entries in buffer
  */
-GPU_GLOBAL void k_real_packer( real const * const dummy, int const * const index,
-        real * const out_atoms, int k )
+GPU_GLOBAL void k_real_packer( real const * const src, real * const dest,
+        int const * const index, int k )
 {
     unsigned int i;
 
@@ -58,20 +58,20 @@ GPU_GLOBAL void k_real_packer( real const * const dummy, int const * const index
         return;
     }
 
-    out_atoms[i] = dummy[ index[i] ];
+    dest[i] = src[index[i]];
 }
 
 
 /* copy rvec entries from buffer to MPI egress buffer
  *
  * arguments:
- *  dummy: buffer containing data to be copied
+ *  src: buffer containing data to be copied
+ *  dest: MPI egress buffer
  *  index: indices for buffer to be copied into the MPI egress buffer
- *  out_atoms: MPI egress buffer
  *  k: number of entries in buffer
  */
-GPU_GLOBAL void k_rvec_packer( rvec const * const dummy, int const * const index,
-        rvec * const out_atoms, int k )
+GPU_GLOBAL void k_rvec_packer( rvec const * const src, rvec * const dest,
+        int const * const index, int k )
 {
     unsigned int i;
 
@@ -82,20 +82,20 @@ GPU_GLOBAL void k_rvec_packer( rvec const * const dummy, int const * const index
         return;
     }
 
-    rvec_Copy( out_atoms[i], dummy[ index[i] ] );
+    rvec_Copy( dest[i], src[index[i]] );
 }
 
 
 /* copy rvec2 entries from buffer to MPI egress buffer
  *
  * arguments:
- *  dummy: buffer containing data to be copied
+ *  src: buffer containing data to be copied
+ *  dest: MPI egress buffer
  *  index: indices for buffer to be copied into the MPI egress buffer
- *  out_atoms: MPI egress buffer
  *  k: number of entries in buffer
  */
-GPU_GLOBAL void k_rvec2_packer( rvec2 const * const dummy, int const * const index,
-        rvec2 * const out_atoms, int k )
+GPU_GLOBAL void k_rvec2_packer( rvec2 const * const src, rvec2 * const dest,
+        int const * const index, int k )
 {
     unsigned int i;
 
@@ -106,21 +106,21 @@ GPU_GLOBAL void k_rvec2_packer( rvec2 const * const dummy, int const * const ind
         return;
     }
 
-    out_atoms[i][0] = dummy[ index[i] ][0];
-    out_atoms[i][1] = dummy[ index[i] ][1];
+    dest[i][0] = src[index[i]][0];
+    dest[i][1] = src[index[i]][1];
 }
 
 
 /* copy integer entries from MPI ingress buffer to buffer
  *
  * arguments:
- *  in: MPI ingress buffer containing data to be copied
+ *  src: MPI ingress buffer containing data to be copied
+ *  dest: buffer to be copied into
  *  index: indices for buffer to be copied into
- *  buf: buffer to be copied into
  *  k: number of entries in buffer
  */
-GPU_GLOBAL void k_int_unpacker( int const * const in, int const * const index,
-        int * const buf, int k )
+GPU_GLOBAL void k_int_unpacker( int const * const src, int * const dest,
+        int const * const index, int k )
 {
     unsigned int i;
 
@@ -131,24 +131,20 @@ GPU_GLOBAL void k_int_unpacker( int const * const in, int const * const index,
         return;
     }
 
-    //TODO: used in SAI, purpose?
-    if ( buf[ index[i] ] == -1 && in[i] != -1 )
-    {
-        buf[ index[i] ] = in[i];
-    }
+    dest[index[i]] = src[i];
 }
 
 
 /* copy double precision entries from MPI ingress buffer to buffer
  *
  * arguments:
- *  in: MPI ingress buffer containing data to be copied
+ *  src: MPI ingress buffer containing data to be copied
+ *  dest: buffer to be copied into
  *  index: indices for buffer to be copied into
- *  buf: buffer to be copied into
  *  k: number of entries in buffer
  */
-GPU_GLOBAL void k_real_unpacker( real const * const in, int const * const index,
-        real * const buf, int k )
+GPU_GLOBAL void k_real_unpacker( real const * const src, real * const dest,
+        int const * const index, int k )
 {
     unsigned int i;
 
@@ -159,20 +155,20 @@ GPU_GLOBAL void k_real_unpacker( real const * const in, int const * const index,
         return;
     }
 
-    buf[ index[i] ] += in[i];
+    dest[index[i]] += src[i];
 }
 
 
 /* copy rvec entries from MPI ingress buffer to buffer
  *
  * arguments:
- *  in: MPI ingress buffer containing data to be copied
+ *  src: MPI ingress buffer containing data to be copied
+ *  dest: buffer to be copied into
  *  index: indices for buffer to be copied into
- *  buf: buffer to be copied into
  *  k: number of entries in buffer
  */
-GPU_GLOBAL void k_rvec_unpacker( rvec const * const in, int const * const index,
-        rvec * const buf, int k )
+GPU_GLOBAL void k_rvec_unpacker( rvec const * const src, rvec * const dest,
+        int const * const index, int k )
 {
     unsigned int i;
 
@@ -183,20 +179,20 @@ GPU_GLOBAL void k_rvec_unpacker( rvec const * const in, int const * const index,
         return;
     }
 
-    rvec_Add( buf[ index[i] ], in[i] );
+    rvec_Add( dest[index[i]], src[i] );
 }
 
 
 /* copy rvec2 entries from MPI ingress buffer to buffer
  *
  * arguments:
- *  in: MPI ingress buffer containing data to be copied
+ *  src: MPI ingress buffer containing data to be copied
+ *  dest: buffer to be copied into
  *  index: indices for buffer to be copied into
- *  buf: buffer to be copied into
  *  k: number of entries in buffer
  */
-GPU_GLOBAL void k_rvec2_unpacker( rvec2 const * const in, int const * const index,
-        rvec2 * const buf, int k )
+GPU_GLOBAL void k_rvec2_unpacker( rvec2 const * const src, rvec2 * const dest,
+        int const * const index, int k )
 {
     unsigned int i;
 
@@ -207,12 +203,12 @@ GPU_GLOBAL void k_rvec2_unpacker( rvec2 const * const in, int const * const inde
         return;
     }
 
-    buf[ index[i] ][0] += in[i][0];
-    buf[ index[i] ][1] += in[i][1];
+    dest[index[i]][0] += src[i][0];
+    dest[index[i]][1] += src[i][1];
 }
 
 
-static void int_packer( void const * const dummy, mpi_out_data * const out_buf,
+static void int_packer( void const * const src, mpi_out_data * const out_buf,
        cudaStream_t s )
 {
     int blocks;
@@ -221,14 +217,14 @@ static void int_packer( void const * const dummy, mpi_out_data * const out_buf,
         + ((out_buf->cnt % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
     k_int_packer <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
-        ( (int *) dummy, out_buf->index, (int *) out_buf->out_atoms, out_buf->cnt );
+        ( (int *) src, (int *) out_buf->out_atoms, out_buf->index, out_buf->cnt );
     cudaCheckError( );
 
     cudaStreamSynchronize( s );
 }
 
 
-static void real_packer( void const * const dummy, mpi_out_data * const out_buf,
+static void real_packer( void const * const src, mpi_out_data * const out_buf,
        cudaStream_t s )
 {
     int blocks;
@@ -237,14 +233,14 @@ static void real_packer( void const * const dummy, mpi_out_data * const out_buf,
         + ((out_buf->cnt % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
     k_real_packer <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
-        ( (real *) dummy, out_buf->index, (real *) out_buf->out_atoms, out_buf->cnt );
+        ( (real *) src, (real *) out_buf->out_atoms, out_buf->index, out_buf->cnt );
     cudaCheckError( );
 
     cudaStreamSynchronize( s );
 }
 
 
-static void rvec_packer( void const * const dummy, mpi_out_data * const out_buf,
+static void rvec_packer( void const * const src, mpi_out_data * const out_buf,
        cudaStream_t s )
 {
     int blocks;
@@ -253,14 +249,14 @@ static void rvec_packer( void const * const dummy, mpi_out_data * const out_buf,
         + ((out_buf->cnt % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
     k_rvec_packer <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
-        ( (rvec *) dummy, out_buf->index, (rvec *) out_buf->out_atoms, out_buf->cnt );
+        ( (rvec *) src, (rvec *) out_buf->out_atoms, out_buf->index, out_buf->cnt );
     cudaCheckError( );
 
     cudaStreamSynchronize( s );
 }
 
 
-static void rvec2_packer( void const * const dummy, mpi_out_data * const out_buf,
+static void rvec2_packer( void const * const src, mpi_out_data * const out_buf,
        cudaStream_t s )
 {
     int blocks;
@@ -269,7 +265,7 @@ static void rvec2_packer( void const * const dummy, mpi_out_data * const out_buf
         + ((out_buf->cnt % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
     k_rvec2_packer <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
-        ( (rvec2 *) dummy, out_buf->index, (rvec2 *) out_buf->out_atoms, out_buf->cnt );
+        ( (rvec2 *) src, (rvec2 *) out_buf->out_atoms, out_buf->index, out_buf->cnt );
     cudaCheckError( );
 
     cudaStreamSynchronize( s );
@@ -285,7 +281,7 @@ static void int_unpacker( void const * const dummy_in, void * const dummy_buf,
         + ((out_buf->cnt % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
     k_int_unpacker <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
-        ( (int *) dummy_in, out_buf->index, (int *) dummy_buf, out_buf->cnt );
+        ( (int *) dummy_in, (int *) dummy_buf, out_buf->index, out_buf->cnt );
     cudaCheckError( );
 
     cudaStreamSynchronize( s );
@@ -301,7 +297,7 @@ static void real_unpacker( void const * const dummy_in, void * const dummy_buf,
         + ((out_buf->cnt % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
     k_real_unpacker <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
-        ( (real *) dummy_in, out_buf->index, (real *) dummy_buf, out_buf->cnt );
+        ( (real *) dummy_in, (real *) dummy_buf, out_buf->index, out_buf->cnt );
     cudaCheckError( );
 
     cudaStreamSynchronize( s );
@@ -317,7 +313,7 @@ static void rvec_unpacker( void const * const dummy_in, void * const dummy_buf,
         + ((out_buf->cnt % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
     k_rvec_unpacker <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
-        ( (rvec *) dummy_in, out_buf->index, (rvec *) dummy_buf, out_buf->cnt );
+        ( (rvec *) dummy_in, (rvec *) dummy_buf, out_buf->index, out_buf->cnt );
     cudaCheckError( );
 
     cudaStreamSynchronize( s );
@@ -333,7 +329,7 @@ static void rvec2_unpacker( void const * const dummy_in, void * const dummy_buf,
         + ((out_buf->cnt % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
     k_rvec2_unpacker <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
-        ( (rvec2 *) dummy_in, out_buf->index, (rvec2 *) dummy_buf, out_buf->cnt );
+        ( (rvec2 *) dummy_in, (rvec2 *) dummy_buf, out_buf->index, out_buf->cnt );
     cudaCheckError( );
 
     cudaStreamSynchronize( s );

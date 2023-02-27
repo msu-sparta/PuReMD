@@ -30,6 +30,80 @@ GPU_GLOBAL void k_init_nbrs( ivec *nbrs, int N )
 }
 
 
+extern "C" void * sCudaHostAllocWrapper( size_t n, const char * const filename, int line )
+{
+    void *ptr;
+
+    if ( n == 0 )
+    {
+        fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array\n",
+                n );
+        fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
+                line, (int) strlen(filename), filename );
+        exit( INSUFFICIENT_MEMORY );
+    }
+
+    sCudaHostAlloc( &ptr, n, cudaHostAllocPortable, filename, line );
+
+    return ptr;
+}
+
+
+extern "C" void * sCudaHostReallocWrapper( void *ptr, size_t cur_size, size_t new_size,
+        const char * const filename, int line )
+{
+    void *new_ptr;
+
+    if ( new_size == 0 )
+    {
+        fprintf( stderr, "[ERROR] sCudaHostReallocWrapper: failed to reallocate %zu bytes for array\n",
+                new_size );
+        fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
+                line, (int) strlen(filename), filename );
+        exit( INSUFFICIENT_MEMORY );
+    }
+
+    sCudaHostAlloc( &new_ptr, new_size, cudaHostAllocPortable, filename, line );
+
+    if ( cur_size != 0 )
+    {
+        sCudaMemcpy( new_ptr, ptr, cur_size, cudaMemcpyHostToHost, filename, line );
+
+        sCudaFreeHost( ptr, filename, line );
+    }
+
+    return new_ptr;
+}
+
+
+extern "C" void * sCudaHostCallocWrapper( size_t n, size_t size,
+        const char * const filename, int line )
+{
+    void *ptr;
+
+    sCudaHostAlloc( &ptr, n * size, cudaHostAllocPortable, filename, line );
+
+    memset( ptr, 0, n * size );
+
+    return ptr;
+}
+
+
+extern "C" void sCudaFreeHostWrapper( void *ptr, const char * const filename,
+        int line )
+{
+    if ( ptr == NULL )
+    {
+        fprintf( stderr, "[WARNING] trying to free the already NULL pointer\n" );
+        fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
+                line, (int) strlen(filename), filename );
+        return;
+    }
+
+    sCudaFreeHost( ptr, filename, line );
+}
+
+
 static void Cuda_Reallocate_List( reax_list *list, size_t n, size_t max_intrs,
         int type )
 {

@@ -107,10 +107,6 @@ void Init_Output_Files( reax_system *system, control_params *control,
             sprintf( temp, "%s.log", control->sim_name );
             out_control->log = sfopen( temp, "w", __FILE__, __LINE__ );
 
-//            fprintf( out_control->log, "%6s%8s%8s%8s%8s%8s%8s%8s%8s%8s\n",
-//                     "step", "total", "comm", "nbrs", "init", "bonded", "nonb",
-//                     "charges", "siters", "retries" );
-
             fprintf( out_control->log, "%6s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s\n",
                      "step", "total", "comm", "nbrs", "init",
                      "init_dist", "init_cm", "init_bond", "init_hbond",
@@ -118,7 +114,6 @@ void Init_Output_Files( reax_system *system, control_params *control,
                      "cm", "cm_sort", "cm_iters", "cm_p_comp", "cm_p_app",
                      "cm_comm", "cm_allr", "cm_spmv", "cm_vec_ops", "cm_orthog", "cm_t_solve",
                      "retries" );
-
 #if defined(DEBUG)
             fflush( out_control->log );
 #endif
@@ -1172,7 +1167,7 @@ void Output_Results( reax_system *system, control_params *control,
         output_controls *out_control, mpi_datatypes *mpi_data )
 {
 #if defined(LOG_PERFORMANCE)
-    int ret;
+    int i, ret;
     real my_timings[26], total_timings[26], t_elapsed, denom;
 #endif
 
@@ -1213,9 +1208,19 @@ void Output_Results( reax_system *system, control_params *control,
             my_timings[24] = data->timing.cm_solver_orthog;
             my_timings[25] = data->timing.cm_solver_tri_solve;
 
-            ret = MPI_Reduce( my_timings, total_timings, 26, MPI_DOUBLE,
-                    MPI_SUM, MASTER_NODE, MPI_COMM_WORLD );
-            Check_MPI_Error( ret, __FILE__, __LINE__ );
+            if ( control->nprocs > 1 )
+            {
+                ret = MPI_Reduce( my_timings, total_timings, 26, MPI_DOUBLE,
+                        MPI_SUM, MASTER_NODE, MPI_COMM_WORLD );
+                Check_MPI_Error( ret, __FILE__, __LINE__ );
+            }
+            else
+            {
+                for ( i = 0; i < 26; ++i )
+                {
+                    total_timings[i] = my_timings[i];
+                }
+            }
 
             if ( system->my_rank == MASTER_NODE )
             {
@@ -1340,7 +1345,6 @@ void Output_Results( reax_system *system, control_params *control,
                         data->timing.cm_solver_orthog * denom,
                         data->timing.cm_solver_tri_solve * denom,
                         data->timing.num_retries * denom );
-
 #if defined(DEBUG)
                 fflush( out_control->log );
 #endif

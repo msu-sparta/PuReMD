@@ -364,7 +364,7 @@ void Init_System( reax_system * const system )
 #endif
 
     Reallocate_System_Part1( system, system->local_cap );
-    Reallocate_System_Part2( system, system->total_cap );
+    Reallocate_System_Part2( system, 0, system->total_cap );
 }
 
 
@@ -814,7 +814,7 @@ static void Finalize_System( reax_system * const system, control_params * const 
     sfree( system->cm_entries, __FILE__, __LINE__ );
     sfree( system->max_cm_entries, __FILE__, __LINE__ );
 
-    sfree( system->my_atoms, __FILE__, __LINE__ );
+    sfree_pinned( system->my_atoms, __FILE__, __LINE__ );
 }
 
 

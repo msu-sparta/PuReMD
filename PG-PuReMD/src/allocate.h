@@ -35,7 +35,7 @@ void PreAllocate_Space( reax_system * const, control_params * const, storage * c
 
 void Reallocate_System_Part1( reax_system * const, int );
 
-void Reallocate_System_Part2( reax_system * const, int );
+void Reallocate_System_Part2( reax_system * const, int, int );
 
 void Allocate_Workspace_Part1( reax_system * const,
         control_params * const, storage * const, int );

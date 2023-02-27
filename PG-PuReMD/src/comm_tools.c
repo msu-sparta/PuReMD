@@ -408,7 +408,8 @@ static void Unpack_Transfer_Message( reax_system * const system,
     if ( end + cnt > system->total_cap )
     {
         /* need space for my_atoms now, other reallocations will trigger in Reallocate */
-        system->my_atoms = srealloc( system->my_atoms,
+        system->my_atoms = srealloc_pinned( system->my_atoms,
+                sizeof(reax_atom) * MAX( system->total_cap, end ),
                 sizeof(reax_atom) * (end + cnt), __FILE__, __LINE__ );
     }
 
@@ -523,7 +524,8 @@ void Unpack_Exchange_Message( reax_system * const system, int end,
     if ( end + cnt > system->total_cap )
     {
         /* need space for my_atoms now, other reallocations will trigger in Reallocate */
-        system->my_atoms = srealloc( system->my_atoms,
+        system->my_atoms = srealloc_pinned( system->my_atoms,
+                sizeof(reax_atom) * MAX( system->total_cap, end ),
                 sizeof(reax_atom) * (end + cnt), __FILE__, __LINE__ );
     }
 

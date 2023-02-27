@@ -78,7 +78,7 @@ void PreAllocate_Space( reax_system * const system, control_params * const contr
             system->my_rank, system->local_cap, system->total_cap );
 #endif
 
-    system->my_atoms = scalloc( system->total_cap, sizeof(reax_atom),
+    system->my_atoms = scalloc_pinned( system->total_cap, sizeof(reax_atom),
             __FILE__, __LINE__ );
 
     /* space for keeping restriction info, if any */
@@ -102,10 +102,14 @@ void Reallocate_System_Part1( reax_system * const system, int local_cap )
 
 
 
-void Reallocate_System_Part2( reax_system * const system, int total_cap )
+void Reallocate_System_Part2( reax_system * const system, int total_cap_old,
+        int total_cap )
 {
-    system->my_atoms = srealloc( system->my_atoms, sizeof(reax_atom) * total_cap,
-            __FILE__, __LINE__ );
+    system->my_atoms = srealloc_pinned( system->my_atoms,
+            sizeof(reax_atom) * total_cap_old,
+            sizeof(reax_atom) * total_cap, __FILE__, __LINE__ );
+//    system->my_atoms = srealloc( system->my_atoms, sizeof(reax_atom) * total_cap,
+//            __FILE__, __LINE__ );
 
     /* list management */
     system->far_nbrs = srealloc( system->far_nbrs, sizeof(int) * total_cap,
@@ -695,7 +699,7 @@ int Estimate_GCell_Population( reax_system * const system, MPI_Comm comm )
     {
         for ( d = 0; d < 3; ++d )
         {
-            c[d] = (int)((atoms[l].x[d] - my_ext_box->min[d]) * g->inv_len[d]);
+            c[d] = (int) ((atoms[l].x[d] - my_ext_box->min[d]) * g->inv_len[d]);
 
             if ( c[d] >= g->native_end[d] )
             {
@@ -916,8 +920,7 @@ void Reallocate_Part2( reax_system * const system, control_params * const contro
         simulation_data * const data, storage * const workspace, reax_list ** const lists,
         mpi_datatypes * const mpi_data )
 {
-    int nflag, Nflag;
-    int renbr;
+    int nflag, Nflag, renbr, total_cap_old;
     reallocate_data * const realloc = &workspace->realloc;
     sparse_matrix * const H = &workspace->H;
 
@@ -947,6 +950,7 @@ void Reallocate_Part2( reax_system * const system, control_params * const contro
             || (FALSE && system->N <= (int) CEIL( LOOSE_ZONE * system->total_cap )) )
     {
         Nflag = TRUE;
+        total_cap_old = system->total_cap;
         system->total_cap = (int) CEIL( system->N * SAFE_ZONE );
     }
 
@@ -960,7 +964,7 @@ void Reallocate_Part2( reax_system * const system, control_params * const contro
 
     if ( Nflag == TRUE )
     {
-        Reallocate_System_Part2( system, system->total_cap );
+        Reallocate_System_Part2( system, total_cap_old, system->total_cap );
 
         Deallocate_Workspace_Part2( control, workspace );
         Allocate_Workspace_Part2( system, control, workspace, system->total_cap );

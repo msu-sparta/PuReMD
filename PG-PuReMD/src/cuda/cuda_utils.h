@@ -6,7 +6,11 @@
 
 void sCudaMalloc( void **, size_t, const char * const, int );
 
+void sCudaHostAlloc( void **, size_t, unsigned int, const char * const, int );
+
 void sCudaFree( void *, const char * const, int );
+
+void sCudaFreeHost( void *, const char * const, int );
 
 void sCudaMemset( void *, int, size_t, const char * const, int );
 
@@ -19,6 +23,12 @@ void sCudaMemcpy( void * const, void const * const, size_t,
 
 void sCudaMemcpyAsync( void * const, void const * const, size_t,
         enum cudaMemcpyKind, cudaStream_t, const char * const, int );
+
+void sCudaHostAllocCheck( void **, size_t *, size_t, unsigned int, int, real,
+        const char * const, int );
+
+void sCudaHostReallocCheck( void **, size_t *, size_t, unsigned int, int, real,
+        const char * const, int );
 
 
 #define cudaCheckError() __cudaCheckError( __FILE__, __LINE__ )

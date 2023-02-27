@@ -41,6 +41,10 @@
 #include <errno.h>
 #include <time.h>
 
+#if defined(HAVE_CUDA)
+  #include "cuda/cuda_allocate.h"
+#endif
+
 /* base 10 for result of string-to-integer conversion */
 #define INTBASE (10)
 
@@ -371,6 +375,40 @@ void * smalloc( size_t n, const char * const filename, int line )
 }
 
 
+/* Safe wrapper with malloc-like functionality using pinned memory
+ *
+ * n: num. of bytes to allocated
+ * filename: source filename of caller
+ * line: source line of caller
+ *
+ * returns: ptr to allocated memory
+ * */
+void * smalloc_pinned( size_t n, const char * const filename, int line )
+{
+    void *ptr;
+
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "[INFO] requesting allocation of %zu bytes of pinned memory at line %d in file %.*s\n",
+            n, line, (int) strlen(filename), filename );
+    fflush( stderr );
+#endif
+
+#if defined(HAVE_CUDA)
+    ptr = sCudaHostAllocWrapper( n, filename, line );
+#else
+    //TODO: use pinned memory for host-only functionality
+    ptr = smalloc( n, filename, line );
+#endif
+
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "[INFO] address: %p [SMALLOC_PINNED]\n", (void *) ptr );
+    fflush( stderr );
+#endif
+
+    return ptr;
+}
+
+
 /* Safe wrapper around libc realloc
  *
  * n: num. of bytes to reallocated
@@ -420,6 +458,42 @@ void * srealloc( void *ptr, size_t n, const char * const filename, int line )
 }
 
 
+/* Safe wrapper with realloc-like functionality using pinned memory
+ *
+ * cur_size: num. of bytes currently allocated
+ * new_size: num. of bytes to reallocated
+ * filename: source filename of caller
+ * line: source line of caller
+ *
+ * returns: ptr to reallocated memory
+ * */
+void * srealloc_pinned( void *ptr, size_t cur_size, size_t new_size,
+        const char * const filename, int line )
+{
+    void *new_ptr;
+
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "[INFO] requesting reallocation of %zu bytes of pinned memory at line %d in file %.*s\n",
+            new_size, line, (int) strlen(filename), filename );
+    fflush( stderr );
+#endif
+
+#if defined(HAVE_CUDA)
+    new_ptr = sCudaHostReallocWrapper( ptr, cur_size, new_size, filename, line );
+#else
+    //TODO: use pinned memory for host-only functionality
+    new_ptr = srealloc( ptr, new_size, filename, line );
+#endif
+
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "[INFO] address: %p [SREALLOC_PINNED]\n", (void *) new_ptr );
+    fflush( stderr );
+#endif
+
+    return new_ptr;
+}
+
+
 /* Safe wrapper around libc calloc
  *
  * n: num. of elements to allocated (each of size bytes)
@@ -461,6 +535,41 @@ void * scalloc( size_t n, size_t size, const char * const filename, int line )
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "[INFO] address: %p [SCALLOC]\n", (void *) ptr );
+    fflush( stderr );
+#endif
+
+    return ptr;
+}
+
+
+/* Safe wrapper with calloc-like functionality using pinned memory
+ *
+ * n: num. of elements to allocated (each of size bytes)
+ * size: num. of bytes per element
+ * filename: source filename of caller
+ * line: source line of caller
+ *
+ * returns: ptr to allocated memory, all bits initialized to zeros
+ * */
+void * scalloc_pinned( size_t n, size_t size, const char * const filename, int line )
+{
+    void *ptr;
+
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "[INFO] requesting allocation of %zu bytes of zeroed pinned memory at line %d in file %.*s\n",
+            n * size, line, (int) strlen(filename), filename );
+    fflush( stderr );
+#endif
+
+#if defined(HAVE_CUDA)
+    ptr = sCudaHostCallocWrapper( n, size, filename, line );
+#else
+    //TODO: use pinned memory for host-only functionality
+    ptr = scalloc( n, size, filename, line );
+#endif
+
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "[INFO] address: %p [SCALLOC_PINNED]\n", (void *) ptr );
     fflush( stderr );
 #endif
 
@@ -578,6 +687,31 @@ void sfree( void *ptr, const char * const filename, int line )
 #endif
 
     free( ptr );
+}
+
+
+/* Safe wrapper with free-like functionality for pinned memory
+ *
+ * ptr: pointer to dynamically allocated memory which will be deallocated
+ * filename: source filename of caller
+ * line: source line of caller
+ * */
+void sfree_pinned( void *ptr, const char * const filename, int line )
+{
+#if defined(DEBUG_FOCUS)
+    fprintf( stderr, "[INFO] trying to free pinned pointer at line %d in file %.*s\n",
+            line, (int) strlen(filename), filename );
+    fflush( stderr );
+    fprintf( stderr, "[INFO] address: %p [SFREE_PINNED]\n", (void *) ptr );
+    fflush( stderr );
+#endif
+
+#if defined(HAVE_CUDA)
+    sCudaFreeHostWrapper( ptr, filename, line );
+#else
+    //TODO: use pinned memory for host-only functionality
+    sfree( ptr, filename, line );
+#endif
 }
 
 

@@ -588,21 +588,19 @@ static void Dual_Sparse_MatVec_Comm_Part1( const reax_system * const system,
         cudaStream_t s )
 {
 #if !defined(GPU_DEVICE_PACK)
-    rvec2 *spad;
+    sCudaHostAllocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
+            sizeof(rvec2) * n, cudaHostAllocPortable, TRUE, SAFE_ZONE,
+            __FILE__, __LINE__ );
 
-    smalloc_check( &workspace->host_scratch, &workspace->host_scratch_size,
-            sizeof(rvec2) * n, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
-    spad = (rvec2 *) workspace->host_scratch;
-
-    sCudaMemcpyAsync( spad, (void *) x, sizeof(rvec2) * n,
+    sCudaMemcpyAsync( workspace->host_scratch, (void *) x, sizeof(rvec2) * n,
             cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
 
     cudaStreamSynchronize( s );
 
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
-    Dist( system, mpi_data, spad, buf_type, mpi_type );
+    Dist( system, mpi_data, workspace->host_scratch, buf_type, mpi_type );
 
-    sCudaMemcpyAsync( (void *) x, spad, sizeof(rvec2) * n,
+    sCudaMemcpyAsync( (void *) x, workspace->host_scratch, sizeof(rvec2) * n,
             cudaMemcpyHostToDevice, s, __FILE__, __LINE__ );
 #else
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
@@ -685,26 +683,22 @@ static void Dual_Sparse_MatVec_Comm_Part2( const reax_system * const system,
         void * const b, int n1, int n2, int buf_type, MPI_Datatype mpi_type,
         cudaStream_t s )
 {
-#if !defined(GPU_DEVICE_PACK)
-    rvec2 *spad;
-#endif
-
     /* reduction required for symmetric half matrix */
     if ( mat_format == SYM_HALF_MATRIX )
     {
 #if !defined(GPU_DEVICE_PACK)
-        smalloc_check( &workspace->host_scratch, &workspace->host_scratch_size,
-                sizeof(rvec2) * n1, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
-        spad = (rvec2 *) workspace->host_scratch;
+        sCudaHostAllocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
+                sizeof(rvec2) * n1, cudaHostAllocPortable, TRUE, SAFE_ZONE,
+                __FILE__, __LINE__ );
 
-        sCudaMemcpyAsync( spad, b, sizeof(rvec2) * n1,
+        sCudaMemcpyAsync( workspace->host_scratch, b, sizeof(rvec2) * n1,
                 cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
 
         cudaStreamSynchronize( s );
 
-        Coll( system, mpi_data, spad, buf_type, mpi_type );
+        Coll( system, mpi_data, workspace->host_scratch, buf_type, mpi_type );
 
-        sCudaMemcpyAsync( b, spad, sizeof(rvec2) * n2, cudaMemcpyHostToDevice,
+        sCudaMemcpyAsync( b, workspace->host_scratch, sizeof(rvec2) * n2, cudaMemcpyHostToDevice,
                 s, __FILE__, __LINE__ );
 #else
         Cuda_Coll( system, mpi_data, b, buf_type, mpi_type, s );
@@ -776,21 +770,19 @@ static void Sparse_MatVec_Comm_Part1( const reax_system * const system,
         cudaStream_t s )
 {
 #if !defined(GPU_DEVICE_PACK)
-    real *spad;
+    sCudaHostAllocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
+            sizeof(real) * n, cudaHostAllocPortable, TRUE, SAFE_ZONE,
+            __FILE__, __LINE__ );
 
-    smalloc_check( &workspace->host_scratch, &workspace->host_scratch_size,
-            sizeof(real) * n, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
-    spad = (real *) workspace->host_scratch;
-
-    sCudaMemcpyAsync( spad, (void *) x, sizeof(real) * n,
+    sCudaMemcpyAsync( workspace->host_scratch, (void *) x, sizeof(real) * n,
             cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
 
     cudaStreamSynchronize( s );
 
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
-    Dist( system, mpi_data, spad, buf_type, mpi_type );
+    Dist( system, mpi_data, workspace->host_scratch, buf_type, mpi_type );
 
-    sCudaMemcpyAsync( (void *) x, spad, sizeof(real) * n,
+    sCudaMemcpyAsync( (void *) x, workspace->host_scratch, sizeof(real) * n,
             cudaMemcpyHostToDevice, s, __FILE__, __LINE__ );
 #else
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
@@ -871,26 +863,22 @@ static void Sparse_MatVec_Comm_Part2( const reax_system * const system,
         void * const b, int n1, int n2, int buf_type, MPI_Datatype mpi_type,
         cudaStream_t s )
 {
-#if !defined(GPU_DEVICE_PACK)
-    real *spad;
-#endif
-
     /* reduction required for symmetric half matrix */
     if ( mat_format == SYM_HALF_MATRIX )
     {
 #if !defined(GPU_DEVICE_PACK)
-        smalloc_check( &workspace->host_scratch, &workspace->host_scratch_size,
-                sizeof(real) * n1, TRUE, SAFE_ZONE, __FILE__, __LINE__ );
-        spad = (real *) workspace->host_scratch;
+        sCudaHostAllocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
+                sizeof(real) * n1, cudaHostAllocPortable, TRUE, SAFE_ZONE,
+                __FILE__, __LINE__ );
 
-        sCudaMemcpyAsync( spad, b, sizeof(real) * n1,
+        sCudaMemcpyAsync( workspace->host_scratch, b, sizeof(real) * n1,
                 cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
 
         cudaStreamSynchronize( s );
 
-        Coll( system, mpi_data, spad, buf_type, mpi_type );
+        Coll( system, mpi_data, workspace->host_scratch, buf_type, mpi_type );
 
-        sCudaMemcpyAsync( b, spad, sizeof(real) * n2,
+        sCudaMemcpyAsync( b, workspace->host_scratch, sizeof(real) * n2,
                 cudaMemcpyHostToDevice, s, __FILE__, __LINE__ );
 #else
         Cuda_Coll( system, mpi_data, b, buf_type, mpi_type, s );

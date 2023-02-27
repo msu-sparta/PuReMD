@@ -2832,13 +2832,10 @@ static void Cuda_Compute_Total_Force( reax_system *system, control_params *contr
         simulation_data *data, storage *workspace,
         reax_list **lists, mpi_datatypes *mpi_data )
 {
-    rvec *f;
-
-    smalloc_check( &workspace->host_scratch, &workspace->host_scratch_size,
-            sizeof(rvec) * system->N, TRUE, SAFE_ZONE,
+    sCudaHostAllocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
+            sizeof(rvec) * system->N, cudaHostAllocPortable, TRUE, SAFE_ZONE,
             __FILE__, __LINE__ );
-    f = (rvec *) workspace->host_scratch;
-    memset( f, 0, sizeof(rvec) * system->N );
+    memset( workspace->host_scratch, 0, sizeof(rvec) * system->N );
 
     Cuda_Total_Forces_Part1( system, control, data, workspace, lists );
 
@@ -2846,14 +2843,17 @@ static void Cuda_Compute_Total_Force( reax_system *system, control_params *contr
      * based on the neighbors information each processor has had.
      * final values of force on each atom needs to be computed by adding up
      * all partially-final pieces */
-    sCudaMemcpyAsync( f, workspace->d_workspace->f, sizeof(rvec) * system->N,
-            cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
+    sCudaMemcpyAsync( workspace->host_scratch, workspace->d_workspace->f,
+            sizeof(rvec) * system->N, cudaMemcpyDeviceToHost,
+            control->cuda_streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->cuda_streams[0] );
 
-    Coll( system, mpi_data, f, RVEC_PTR_TYPE, mpi_data->mpi_rvec );
+    Coll( system, mpi_data, workspace->host_scratch, RVEC_PTR_TYPE,
+            mpi_data->mpi_rvec );
 
-    sCudaMemcpyAsync( workspace->d_workspace->f, f, sizeof(rvec) * system->N,
-            cudaMemcpyHostToDevice, control->cuda_streams[0], __FILE__, __LINE__ );
+    sCudaMemcpyAsync( workspace->d_workspace->f, workspace->host_scratch,
+            sizeof(rvec) * system->N, cudaMemcpyHostToDevice,
+            control->cuda_streams[0], __FILE__, __LINE__ );
 
     Cuda_Total_Forces_Part2( system, control, workspace );
 }
