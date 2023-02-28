@@ -8,13 +8,13 @@
 extern "C"  {
 #endif
 
-void * sHipHostAllocWrapper( size_t, const char * const, int );
+void * sHipHostMallocWrapper( size_t, const char * const, int );
 
 void * sHipHostReallocWrapper( void *, size_t, size_t, const char * const, int );
 
 void * sHipHostCallocWrapper( size_t, size_t, const char * const, int );
 
-void sHipFreeHostWrapper( void *, const char * const, int );
+void sHipHostFreeWrapper( void *, const char * const, int );
 
 #ifdef __cplusplus
 }

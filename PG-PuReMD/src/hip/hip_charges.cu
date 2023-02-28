@@ -577,8 +577,8 @@ static void Calculate_Charges_QEq( reax_system const * const system,
     u = all_sum[0] / all_sum[1];
 
 #if !defined(OMPI_HAVE_MPI_EXT_ROCM) || !OMPI_HAVE_MPI_EXT_ROCM
-    sHipHostAllocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
-            sizeof(real) * system->N, hipHostMallocPortable, TRUE, SAFE_ZONE,
+    sHipHostMallocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
+            sizeof(real) * system->N, hipHostMallocNumaUser | hipHostMallocPortable, TRUE, SAFE_ZONE,
             __FILE__, __LINE__ );
 #else
     sHipCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],

@@ -6,11 +6,11 @@
 
 void sHipMalloc( void **, size_t, const char * const, int );
 
-void sHipHostAlloc( void **, size_t, unsigned int, const char * const, int );
+void sHipHostMalloc( void **, size_t, unsigned int, const char * const, int );
 
 void sHipFree( void *, const char * const, int );
 
-void sHipFreeHost( void *, const char * const, int );
+void sHipHostFree( void *, const char * const, int );
 
 void sHipMemset( void *, int, size_t, const char * const, int );
 
@@ -24,7 +24,7 @@ void sHipMemcpy( void * const, void const * const, size_t,
 void sHipMemcpyAsync( void * const, void const * const, size_t,
         enum hipMemcpyKind, hipStream_t, const char * const, int );
 
-void sHipHostAllocCheck( void **, size_t *, size_t, unsigned int, int, real,
+void sHipHostMallocCheck( void **, size_t *, size_t, unsigned int, int, real,
         const char * const, int );
 
 void sHipHostReallocCheck( void **, size_t *, size_t, unsigned int, int, real,

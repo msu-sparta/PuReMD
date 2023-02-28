@@ -43,6 +43,8 @@
 
 #if defined(HAVE_CUDA)
   #include "cuda/cuda_allocate.h"
+#elif defined(HAVE_HIP)
+  #include "hip/hip_allocate.h"
 #endif
 
 /* base 10 for result of string-to-integer conversion */
@@ -395,6 +397,8 @@ void * smalloc_pinned( size_t n, const char * const filename, int line )
 
 #if defined(HAVE_CUDA)
     ptr = sCudaHostAllocWrapper( n, filename, line );
+#elif defined(HAVE_HIP)
+    ptr = sHipHostMallocWrapper( n, filename, line );
 #else
     //TODO: use pinned memory for host-only functionality
     ptr = smalloc( n, filename, line );
@@ -480,6 +484,8 @@ void * srealloc_pinned( void *ptr, size_t cur_size, size_t new_size,
 
 #if defined(HAVE_CUDA)
     new_ptr = sCudaHostReallocWrapper( ptr, cur_size, new_size, filename, line );
+#elif defined(HAVE_HIP)
+    new_ptr = sHipHostReallocWrapper( ptr, cur_size, new_size, filename, line );
 #else
     //TODO: use pinned memory for host-only functionality
     new_ptr = srealloc( ptr, new_size, filename, line );
@@ -563,6 +569,8 @@ void * scalloc_pinned( size_t n, size_t size, const char * const filename, int l
 
 #if defined(HAVE_CUDA)
     ptr = sCudaHostCallocWrapper( n, size, filename, line );
+#elif defined(HAVE_HIP)
+    ptr = sHipHostCallocWrapper( n, size, filename, line );
 #else
     //TODO: use pinned memory for host-only functionality
     ptr = scalloc( n, size, filename, line );
@@ -708,6 +716,8 @@ void sfree_pinned( void *ptr, const char * const filename, int line )
 
 #if defined(HAVE_CUDA)
     sCudaFreeHostWrapper( ptr, filename, line );
+#elif defined(HAVE_HIP)
+    sHipHostFreeWrapper( ptr, filename, line );
 #else
     //TODO: use pinned memory for host-only functionality
     sfree( ptr, filename, line );

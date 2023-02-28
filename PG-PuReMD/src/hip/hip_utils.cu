@@ -46,7 +46,7 @@ void sHipMalloc( void **ptr, size_t size, const char * const filename,
 }
 
 
-/* Safe wrapper around hipHostAlloc
+/* Safe wrapper around hipHostMalloc
  *
  * ptr: pointer to allocated device memory
  * size: reqested allocation size in bytes
@@ -54,7 +54,7 @@ void sHipMalloc( void **ptr, size_t size, const char * const filename,
  * filename: NULL-terminated source filename where function call originated
  * line: line of source file where function call originated
  */
-void sHipHostAlloc( void **ptr, size_t size, unsigned int flags, const char * const filename,
+void sHipHostMalloc( void **ptr, size_t size, unsigned int flags, const char * const filename,
         int line )
 {
     int rank;
@@ -63,19 +63,19 @@ void sHipHostAlloc( void **ptr, size_t size, unsigned int flags, const char * co
 #if defined(DEBUG_FOCUS)
     MPI_Comm_rank( MPI_COMM_WORLD, &rank );
 
-    fprintf( stderr, "[INFO] sHipHostAlloc: requesting %zu bytes at line %d in file %.*s on MPI processor %d\n",
+    fprintf( stderr, "[INFO] sHipHostMalloc: requesting %zu bytes at line %d in file %.*s on MPI processor %d\n",
             size, line, (int) strlen(filename), filename, rank );
     fflush( stderr );
 #endif
 
-    ret = hipHostAlloc( ptr, size, flags );
+    ret = hipHostMalloc( ptr, size, flags );
 
     if ( ret != hipSuccess )
     {
         MPI_Comm_rank( MPI_COMM_WORLD, &rank );
         const char *str = hipGetErrorString( ret );
 
-        fprintf( stderr, "[ERROR] HIP error: hipHostAlloc failure\n" );
+        fprintf( stderr, "[ERROR] HIP error: hipHostMalloc failure\n" );
         fprintf( stderr, "  [INFO] At line %d in file %.*s on MPI processor %d\n",
                 line, (int) strlen(filename), filename, rank );
         fprintf( stderr, "  [INFO] Error code: %d\n", ret );
@@ -85,7 +85,7 @@ void sHipHostAlloc( void **ptr, size_t size, unsigned int flags, const char * co
     }  
 
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "[INFO] sHipHostAlloc: granted memory at address %p with flags %u at line %d in file %.*s on MPI processor %d\n",
+    fprintf( stderr, "[INFO] sHipHostMalloc: granted memory at address %p with flags %u at line %d in file %.*s on MPI processor %d\n",
             *ptr, flags, line, (int) strlen(filename), filename, rank );
     fflush( stderr );
 #endif
@@ -139,13 +139,13 @@ void sHipFree( void *ptr, const char * const filename, int line )
 }
 
 
-/* Safe wrapper around hipFreeHost
+/* Safe wrapper around hipHostFree
  *
  * ptr: device pointer to memory to free
  * filename: NULL-terminated source filename where function call originated
  * line: line of source file where function call originated
  */
-void sHipFreeHost( void *ptr, const char * const filename, int line )
+void sHipHostFree( void *ptr, const char * const filename, int line )
 {
     int rank;
     hipError_t ret;
@@ -161,19 +161,19 @@ void sHipFreeHost( void *ptr, const char * const filename, int line )
 #if defined(DEBUG_FOCUS)
     MPI_Comm_rank( MPI_COMM_WORLD, &rank );
 
-    fprintf( stderr, "[INFO] sHipFreeHost: freeing ptr at line %d in file %.*s on MPI processor %d\n",
+    fprintf( stderr, "[INFO] sHipHostFree: freeing ptr at line %d in file %.*s on MPI processor %d\n",
             line, (int) strlen(filename), filename, rank );
     fflush( stderr );
 #endif
 
-    ret = hipFreeHost( ptr );
+    ret = hipHostFree( ptr );
 
     if ( ret != hipSuccess )
     {
         MPI_Comm_rank( MPI_COMM_WORLD, &rank );
         const char *str = hipGetErrorString( ret );
 
-        fprintf( stderr, "[WARNING] HIP error: hipFreeHost failure\n" );
+        fprintf( stderr, "[WARNING] HIP error: hipHostFree failure\n" );
         fprintf( stderr, "  [INFO] At line %d in file %.*s on MPI processor %d\n",
                 line, (int) strlen(filename), filename, rank );
         fprintf( stderr, "  [INFO] Error code: %d\n", ret );
@@ -371,7 +371,7 @@ void sHipMemcpyAsync( void * const dest, void const * const src, size_t count,
  * filename: NULL-terminated source filename where function call originated
  * line: line of source file where function call originated
  * */
-void sHipHostAllocCheck( void **ptr, size_t *cur_size, size_t new_size,
+void sHipHostMallocCheck( void **ptr, size_t *cur_size, size_t new_size,
         unsigned int flags, int over_alloc, real over_alloc_factor,
         const char * const filename, int line )
 {
@@ -384,14 +384,14 @@ void sHipHostAllocCheck( void **ptr, size_t *cur_size, size_t new_size,
     
         MPI_Comm_rank( MPI_COMM_WORLD, &rank );
     
-        fprintf( stderr, "[INFO] sHipHostAllocCheck: requesting %zu bytes (%zu currently allocated) with flags %u at line %d in file %.*s on MPI processor %d\n",
+        fprintf( stderr, "[INFO] sHipHostMallocCheck: requesting %zu bytes (%zu currently allocated) with flags %u at line %d in file %.*s on MPI processor %d\n",
                 new_size, *cur_size, flags, line, (int) strlen(filename), filename, rank );
         fflush( stderr );
 #endif
 
         if ( *cur_size != 0 )
         {
-            sHipFreeHost( *ptr, filename, line );
+            sHipHostFree( *ptr, filename, line );
         }
 
         if ( over_alloc == TRUE )
@@ -403,7 +403,7 @@ void sHipHostAllocCheck( void **ptr, size_t *cur_size, size_t new_size,
             *cur_size = new_size;
         }
 
-        sHipHostAlloc( ptr, *cur_size, flags, filename, line );
+        sHipHostMalloc( ptr, *cur_size, flags, filename, line );
     }
 }
 
@@ -455,14 +455,14 @@ void sHipHostReallocCheck( void **ptr, size_t *cur_size, size_t new_size,
             *cur_size = new_size;
         }
 
-        sHipHostAlloc( ptr, *cur_size, flags, filename, line );
+        sHipHostMalloc( ptr, *cur_size, flags, filename, line );
 
         if ( old_ptr_size != 0 )
         {
             sHipMemcpy( *ptr, old_ptr, old_ptr_size, hipMemcpyHostToHost,
                     __FILE__, __LINE__ );
 
-            sHipFreeHost( old_ptr, filename, line );
+            sHipHostFree( old_ptr, filename, line );
         }
     }
 }

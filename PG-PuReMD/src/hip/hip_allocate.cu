@@ -30,7 +30,7 @@ GPU_GLOBAL void k_init_nbrs( ivec *nbrs, int N )
 }
 
 
-extern "C" void * sHipHostAllocWrapper( size_t n, const char * const filename, int line )
+extern "C" void * sHipHostMallocWrapper( size_t n, const char * const filename, int line )
 {
     void *ptr;
 
@@ -43,7 +43,7 @@ extern "C" void * sHipHostAllocWrapper( size_t n, const char * const filename, i
         exit( INSUFFICIENT_MEMORY );
     }
 
-    sHipHostAlloc( &ptr, n, hipHostMallocPortable, filename, line );
+    sHipHostMalloc( &ptr, n, hipHostMallocNumaUser | hipHostMallocPortable, filename, line );
 
     return ptr;
 }
@@ -63,13 +63,13 @@ extern "C" void * sHipHostReallocWrapper( void *ptr, size_t cur_size, size_t new
         exit( INSUFFICIENT_MEMORY );
     }
 
-    sHipHostAlloc( &new_ptr, new_size, hipHostMallocPortable, filename, line );
+    sHipHostMalloc( &new_ptr, new_size, hipHostMallocNumaUser | hipHostMallocPortable, filename, line );
 
     if ( cur_size != 0 )
     {
         sHipMemcpy( new_ptr, ptr, cur_size, hipMemcpyHostToHost, filename, line );
 
-        sHipFreeHost( ptr, filename, line );
+        sHipHostFree( ptr, filename, line );
     }
 
     return new_ptr;
@@ -81,7 +81,7 @@ extern "C" void * sHipHostCallocWrapper( size_t n, size_t size,
 {
     void *ptr;
 
-    sHipHostAlloc( &ptr, n * size, hipHostMallocPortable, filename, line );
+    sHipHostMalloc( &ptr, n * size, hipHostMallocNumaUser | hipHostMallocPortable, filename, line );
 
     memset( ptr, 0, n * size );
 
@@ -89,7 +89,7 @@ extern "C" void * sHipHostCallocWrapper( size_t n, size_t size,
 }
 
 
-extern "C" void sHipFreeHostWrapper( void *ptr, const char * const filename,
+extern "C" void sHipHostFreeWrapper( void *ptr, const char * const filename,
         int line )
 {
     if ( ptr == NULL )
@@ -100,7 +100,7 @@ extern "C" void sHipFreeHostWrapper( void *ptr, const char * const filename,
         return;
     }
 
-    sHipFreeHost( ptr, filename, line );
+    sHipHostFree( ptr, filename, line );
 }
 
 
