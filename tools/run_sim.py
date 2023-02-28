@@ -243,6 +243,7 @@ restart_freq            0                       ! 0: do not output any restart f
                     # total number of MPI processes
                     str(reduce(mul,
                         map(int, param_dict['proc_by_dim'].split(':')), 1)),
+                ] + mpi_cmd_extra[0].split() + [
                 ] + binary.split() + [
                     self.__geo_file,
                     self.__ffield_file,
