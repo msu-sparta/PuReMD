@@ -113,8 +113,8 @@ void Reset_Pressures( simulation_data * const data )
 
 void Reset_Simulation_Data( simulation_data * const data )
 {
-    Reset_Energies( &data->my_en );
-    Reset_Energies( &data->sys_en );
+    Reset_Energies( data->my_en );
+    Reset_Energies( data->sys_en );
     Reset_Temperatures( data );
     Reset_Pressures( data );
 }

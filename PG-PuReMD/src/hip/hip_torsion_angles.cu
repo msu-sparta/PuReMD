@@ -1319,9 +1319,9 @@ void Hip_Compute_Torsion_Angles( reax_system const * const system,
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
 #else
-    sHipMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_tor,
+    sHipMemsetAsync( &data->d_my_en->e_tor,
             0, sizeof(real), control->hip_streams[3], __FILE__, __LINE__ );
-    sHipMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_con,
+    sHipMemsetAsync( &data->d_my_en->e_con,
             0, sizeof(real), control->hip_streams[3], __FILE__, __LINE__ );
     if ( control->virial == 1 )
     {
@@ -1341,8 +1341,7 @@ void Hip_Compute_Torsion_Angles( reax_system const * const system,
 #if !defined(GPU_ACCUM_ATOMIC)
               spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
 #else
-              &((simulation_data *)data->d_simulation_data)->my_en.e_tor,
-              &((simulation_data *)data->d_simulation_data)->my_en.e_con,
+              &data->d_my_en->e_tor, &data->d_my_en->e_con,
               &((simulation_data *)data->d_simulation_data)->my_ext_press
 #endif
             );
@@ -1359,8 +1358,7 @@ void Hip_Compute_Torsion_Angles( reax_system const * const system,
 //#if !defined(GPU_ACCUM_ATOMIC)
 //              spad, &spad[system->n]
 //#else
-//              &((simulation_data *)data->d_simulation_data)->my_en.e_tor,
-//              &((simulation_data *)data->d_simulation_data)->my_en.e_con
+//              &data->d_my_en->e_tor, &data->d_my_en->e_con
 //#endif
 //            );
 
@@ -1378,8 +1376,7 @@ void Hip_Compute_Torsion_Angles( reax_system const * const system,
 #if !defined(GPU_ACCUM_ATOMIC)
               spad, &spad[system->n]
 #else
-              &((simulation_data *)data->d_simulation_data)->my_en.e_tor,
-              &((simulation_data *)data->d_simulation_data)->my_en.e_con
+              &data->d_my_en->e_tor, &data->d_my_en->e_con
 #endif
             );
     }
@@ -1389,12 +1386,10 @@ void Hip_Compute_Torsion_Angles( reax_system const * const system,
     if ( update_energy == TRUE )
     {
         Hip_Reduction_Sum( spad,
-                &((simulation_data *)data->d_simulation_data)->my_en.e_tor,
-                system->n, 3, control->hip_streams[3] );
+                &data->d_my_en->e_tor, system->n, 3, control->hip_streams[3] );
 
         Hip_Reduction_Sum( &spad[system->n],
-                &((simulation_data *)data->d_simulation_data)->my_en.e_con,
-                system->n, 3, control->hip_streams[3] );
+                &data->d_my_en->e_con, system->n, 3, control->hip_streams[3] );
     }
 
     if ( control->virial == 1 )

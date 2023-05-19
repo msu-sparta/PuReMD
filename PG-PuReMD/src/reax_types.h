@@ -2013,10 +2013,10 @@ struct simulation_data
     rtensor kinetic;
     /* hydrodynamic virial */
     rtensor virial;
-    /**/
-    energy_data my_en;
-    /**/
-    energy_data sys_en;
+    /* energies for ReaxFF potential terms and system (partials for this processor) */
+    energy_data *my_en;
+    /* energies for ReaxFF potential terms and system (for the entire system) */
+    energy_data *sys_en;
     /* number of degrees of freedom */
     real N_f;
     /**/
@@ -2045,6 +2045,8 @@ struct simulation_data
     /* struct containing timing of various simulation functions */
     reax_timing timing;
 
+    /* energies for ReaxFF potential terms and system (partials for this processor) (GPU) */
+    energy_data *d_my_en;
     /* struct containing timing of various simulation functions (GPU) */
     reax_timing d_timing;
     /**/
@@ -2406,7 +2408,7 @@ struct storage
     /* coefficients of 7-th order polynomial taper function */
     real tap_coef[8];
     /* coefficients of 6-th order polynomial taper derivative function */
-    real dtap_coef[8];
+    real dtap_coef[7];
 
     /* storage for analysis */
     /**/
@@ -2473,7 +2475,7 @@ struct storage
     rvec *f_all;
 #endif
     /**/
-    reallocate_data realloc;
+    reallocate_data *realloc;
     /* lookup table for force tabulation */
     LR_lookup_table *LR;
 #if defined(HAVE_CUDA) || defined(HAVE_HIP)

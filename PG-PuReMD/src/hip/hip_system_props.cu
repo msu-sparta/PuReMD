@@ -536,15 +536,15 @@ extern "C" void Hip_Compute_Kinetic_Energy( reax_system *system,
     Hip_Reduction_Sum( kinetic_energy, &kinetic_energy[system->n], system->n,
             0, control->hip_streams[0] );
 
-    sHipMemcpyAsync( &data->my_en.e_kin, &kinetic_energy[system->n],
+    sHipMemcpyAsync( &data->my_en->e_kin, &kinetic_energy[system->n],
             sizeof(real), hipMemcpyDeviceToHost, control->hip_streams[0], __FILE__, __LINE__ );
     hipStreamSynchronize( control->hip_streams[0] );
 
-    ret = MPI_Allreduce( &data->my_en.e_kin, &data->sys_en.e_kin,
+    ret = MPI_Allreduce( &data->my_en->e_kin, &data->sys_en->e_kin,
             1, MPI_DOUBLE, MPI_SUM, comm );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-    data->therm.T = (2.0 * data->sys_en.e_kin) / (data->N_f * K_B);
+    data->therm.T = (2.0 * data->sys_en->e_kin) / (data->N_f * K_B);
 
     /* avoid T being an absolute zero, might cause F.P.E! */
     if ( FABS(data->therm.T) < ALMOST_ZERO )
@@ -732,7 +732,7 @@ void Hip_Compute_Pressure( reax_system* system, control_params *control,
     Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     /* kinetic contribution */
-    data->kin_press = 2.0 * (E_CONV * data->sys_en.e_kin)
+    data->kin_press = 2.0 * (E_CONV * data->sys_en->e_kin)
         / (3.0 * big_box->V * P_CONV);
 
     /* Calculate total pressure in each direction */

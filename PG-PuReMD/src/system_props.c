@@ -84,22 +84,22 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data,
     rvec p;
     real m;
 
-    data->my_en.e_kin = 0.0;
+    data->my_en->e_kin = 0.0;
 
     for ( i = 0; i < system->n; i++ )
     {
         m = system->reax_param.sbp[system->my_atoms[i].type].mass;
 
         rvec_Scale( p, m, system->my_atoms[i].v );
-        data->my_en.e_kin += rvec_Dot( p, system->my_atoms[i].v );
+        data->my_en->e_kin += rvec_Dot( p, system->my_atoms[i].v );
     }
-    data->my_en.e_kin *= 0.5;
+    data->my_en->e_kin *= 0.5;
 
-    ret = MPI_Allreduce( &data->my_en.e_kin, &data->sys_en.e_kin, 1, MPI_DOUBLE,
+    ret = MPI_Allreduce( &data->my_en->e_kin, &data->sys_en->e_kin, 1, MPI_DOUBLE,
             MPI_SUM, comm );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-    data->therm.T = (2.0 * data->sys_en.e_kin) / (data->N_f * K_B);
+    data->therm.T = (2.0 * data->sys_en->e_kin) / (data->N_f * K_B);
 
     /* avoid T being an absolute zero, might cause F.P.E! */
     if ( FABS(data->therm.T) < ALMOST_ZERO )
@@ -116,7 +116,7 @@ void Compute_Total_Energy( reax_system const * const system,
     real my_en[14], sys_en[14];
 
     //TODO: remove this is an UGLY fix
-    my_en[13] = data->my_en.e_kin;
+    my_en[13] = data->my_en->e_kin;
 
 #if defined(HAVE_CUDA)
     Cuda_Copy_Simulation_Data_Device_to_Host( control, data,
@@ -126,56 +126,56 @@ void Compute_Total_Energy( reax_system const * const system,
             (simulation_data *) data->d_simulation_data );
 #endif
 
-    my_en[0] = data->my_en.e_bond;
-    my_en[1] = data->my_en.e_ov;
-    my_en[2] = data->my_en.e_un;
-    my_en[3] = data->my_en.e_lp;
-    my_en[4] = data->my_en.e_ang;
-    my_en[5] = data->my_en.e_pen;
-    my_en[6] = data->my_en.e_coa;
-    my_en[7] = data->my_en.e_hb;
-    my_en[8] = data->my_en.e_tor;
-    my_en[9] = data->my_en.e_con;
-    my_en[10] = data->my_en.e_vdW;
-    my_en[11] = data->my_en.e_ele;
-    my_en[12] = data->my_en.e_pol;
-//    my_en[13] = data->my_en.e_kin;
+    my_en[0] = data->my_en->e_bond;
+    my_en[1] = data->my_en->e_ov;
+    my_en[2] = data->my_en->e_un;
+    my_en[3] = data->my_en->e_lp;
+    my_en[4] = data->my_en->e_ang;
+    my_en[5] = data->my_en->e_pen;
+    my_en[6] = data->my_en->e_coa;
+    my_en[7] = data->my_en->e_hb;
+    my_en[8] = data->my_en->e_tor;
+    my_en[9] = data->my_en->e_con;
+    my_en[10] = data->my_en->e_vdW;
+    my_en[11] = data->my_en->e_ele;
+    my_en[12] = data->my_en->e_pol;
+//    my_en[13] = data->my_en->e_kin;
 
     ret = MPI_Reduce( my_en, sys_en, 14, MPI_DOUBLE, MPI_SUM, MASTER_NODE, comm );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-    data->my_en.e_pot = data->my_en.e_bond
-        + data->my_en.e_ov + data->my_en.e_un  + data->my_en.e_lp
-        + data->my_en.e_ang + data->my_en.e_pen + data->my_en.e_coa
-        + data->my_en.e_hb + data->my_en.e_tor + data->my_en.e_con
-        + data->my_en.e_vdW + data->my_en.e_ele + data->my_en.e_pol;
+    data->my_en->e_pot = data->my_en->e_bond
+        + data->my_en->e_ov + data->my_en->e_un  + data->my_en->e_lp
+        + data->my_en->e_ang + data->my_en->e_pen + data->my_en->e_coa
+        + data->my_en->e_hb + data->my_en->e_tor + data->my_en->e_con
+        + data->my_en->e_vdW + data->my_en->e_ele + data->my_en->e_pol;
 
-    data->my_en.e_tot = data->my_en.e_pot + E_CONV * data->my_en.e_kin;
+    data->my_en->e_tot = data->my_en->e_pot + E_CONV * data->my_en->e_kin;
 
     if ( system->my_rank == MASTER_NODE )
     {
-        data->sys_en.e_bond = sys_en[0];
-        data->sys_en.e_ov = sys_en[1];
-        data->sys_en.e_un = sys_en[2];
-        data->sys_en.e_lp = sys_en[3];
-        data->sys_en.e_ang = sys_en[4];
-        data->sys_en.e_pen = sys_en[5];
-        data->sys_en.e_coa = sys_en[6];
-        data->sys_en.e_hb = sys_en[7];
-        data->sys_en.e_tor = sys_en[8];
-        data->sys_en.e_con = sys_en[9];
-        data->sys_en.e_vdW = sys_en[10];
-        data->sys_en.e_ele = sys_en[11];
-        data->sys_en.e_pol = sys_en[12];
-        data->sys_en.e_kin = sys_en[13];
+        data->sys_en->e_bond = sys_en[0];
+        data->sys_en->e_ov = sys_en[1];
+        data->sys_en->e_un = sys_en[2];
+        data->sys_en->e_lp = sys_en[3];
+        data->sys_en->e_ang = sys_en[4];
+        data->sys_en->e_pen = sys_en[5];
+        data->sys_en->e_coa = sys_en[6];
+        data->sys_en->e_hb = sys_en[7];
+        data->sys_en->e_tor = sys_en[8];
+        data->sys_en->e_con = sys_en[9];
+        data->sys_en->e_vdW = sys_en[10];
+        data->sys_en->e_ele = sys_en[11];
+        data->sys_en->e_pol = sys_en[12];
+        data->sys_en->e_kin = sys_en[13];
 
-        data->sys_en.e_pot = data->sys_en.e_bond
-            + data->sys_en.e_ov + data->sys_en.e_un  + data->sys_en.e_lp
-            + data->sys_en.e_ang + data->sys_en.e_pen + data->sys_en.e_coa
-            + data->sys_en.e_hb + data->sys_en.e_tor + data->sys_en.e_con
-            + data->sys_en.e_vdW + data->sys_en.e_ele + data->sys_en.e_pol;
+        data->sys_en->e_pot = data->sys_en->e_bond
+            + data->sys_en->e_ov + data->sys_en->e_un  + data->sys_en->e_lp
+            + data->sys_en->e_ang + data->sys_en->e_pen + data->sys_en->e_coa
+            + data->sys_en->e_hb + data->sys_en->e_tor + data->sys_en->e_con
+            + data->sys_en->e_vdW + data->sys_en->e_ele + data->sys_en->e_pol;
 
-        data->sys_en.e_tot = data->sys_en.e_pot + E_CONV * data->sys_en.e_kin;
+        data->sys_en->e_tot = data->sys_en->e_pot + E_CONV * data->sys_en->e_kin;
     }
 }
 
@@ -331,19 +331,19 @@ void Compute_Center_of_Mass( reax_system *system, simulation_data *data,
 
 void Check_Energy( simulation_data* data )
 {
-    if ( !isfinite(data->my_en.e_pol) )
+    if ( !isfinite(data->my_en->e_pol) )
     {
         fprintf( stderr, "[ERROR] NaN or infinite detected for polarization energy. Terminating...\n" );
         exit( NUMERIC_BREAKDOWN );
     }
 
-    if ( !isfinite(data->my_en.e_pot) )
+    if ( !isfinite(data->my_en->e_pot) )
     {
         fprintf( stderr, "[ERROR] NaN or infinite detected for potential energy. Terminating...\n" );
         exit( NUMERIC_BREAKDOWN );
     }
 
-    if ( !isfinite(data->my_en.e_tot) )
+    if ( !isfinite(data->my_en->e_tot) )
     {
         fprintf( stderr, "[ERROR] NaN or infinite detected for total energy. Terminating...\n" );
         exit( NUMERIC_BREAKDOWN );
@@ -421,7 +421,7 @@ void Compute_Pressure( reax_system* system, control_params *control,
 #endif
 
     /* kinetic contribution */
-    data->kin_press = 2.0 * (E_CONV * data->sys_en.e_kin)
+    data->kin_press = 2.0 * (E_CONV * data->sys_en->e_kin)
         / (3.0 * big_box->V * P_CONV);
 
     /* Calculate total pressure in each direction */
@@ -453,7 +453,7 @@ void Compute_Pressure_Isotropic_Klein( reax_system* system,
 
   // IMPORTANT: This function assumes that current kinetic energy and
   // the center of mass of the system is already computed before.
-  data->iso_bar.P = 2.0 * data->my_en.e_kin;
+  data->iso_bar.P = 2.0 * data->my_en->e_kin;
 
   for( i = 0; i < system->N; ++i ) {
     p_atom = &( system->my_atoms[i] );

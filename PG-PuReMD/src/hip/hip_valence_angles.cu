@@ -1464,7 +1464,7 @@ static int Hip_Estimate_Storage_Three_Body( reax_system * const system,
                     system->total_bonds );
         }
 
-        workspace->d_workspace->realloc.thbody = TRUE;
+        workspace->d_workspace->realloc->thbody = TRUE;
         ret = FAILURE;
     }
 
@@ -1531,11 +1531,11 @@ int Hip_Compute_Valence_Angles( reax_system * const system,
         Hip_Init_Three_Body_Indices( control, thbody, system->total_thbodies_indices, lists );
 
 #if defined(GPU_ACCUM_ATOMIC)
-        sHipMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_ang,
+        sHipMemsetAsync( &data->d_my_en->e_ang,
                 0, sizeof(real), control->hip_streams[3], __FILE__, __LINE__ );
-        sHipMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_pen,
+        sHipMemsetAsync( &data->d_my_en->e_pen,
                 0, sizeof(real), control->hip_streams[3], __FILE__, __LINE__ );
-        sHipMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_coa,
+        sHipMemsetAsync( &data->d_my_en->e_coa,
                 0, sizeof(real), control->hip_streams[3], __FILE__, __LINE__ );
         sHipMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_ext_press,
                 0, sizeof(rvec), control->hip_streams[3], __FILE__, __LINE__ );
@@ -1553,9 +1553,7 @@ int Hip_Compute_Valence_Angles( reax_system * const system,
 #if !defined(GPU_ACCUM_ATOMIC)
                   spad, &spad[system->N], &spad[2 * system->N], (rvec *) (&spad[3 * system->N])
 #else
-                  &((simulation_data *)data->d_simulation_data)->my_en.e_ang,
-                  &((simulation_data *)data->d_simulation_data)->my_en.e_pen,
-                  &((simulation_data *)data->d_simulation_data)->my_en.e_coa,
+                  &data->d_my_en->e_ang, &data->d_my_en->e_pen, &data->d_my_en->e_coa,
                   &((simulation_data *)data->d_simulation_data)->my_ext_press
 #endif
                 );
@@ -1572,9 +1570,7 @@ int Hip_Compute_Valence_Angles( reax_system * const system,
 //#if !defined(GPU_ACCUM_ATOMIC)
 //                  spad, &spad[system->N], &spad[2 * system->N]
 //#else
-//                  &((simulation_data *)data->d_simulation_data)->my_en.e_ang,
-//                  &((simulation_data *)data->d_simulation_data)->my_en.e_pen,
-//                  &((simulation_data *)data->d_simulation_data)->my_en.e_coa
+//                  &data->d_my_en->e_ang, &data->d_my_en->e_pen, &data->d_my_en->e_coa
 //#endif
 //                );
 
@@ -1593,9 +1589,7 @@ int Hip_Compute_Valence_Angles( reax_system * const system,
 #if !defined(GPU_ACCUM_ATOMIC)
                   spad, &spad[system->N], &spad[2 * system->N]
 #else
-                  &((simulation_data *)data->d_simulation_data)->my_en.e_ang,
-                  &((simulation_data *)data->d_simulation_data)->my_en.e_pen,
-                  &((simulation_data *)data->d_simulation_data)->my_en.e_coa
+                  &data->d_my_en->e_ang, &data->d_my_en->e_pen, &data->d_my_en->e_coa
 #endif
                 );
         }
@@ -1605,16 +1599,13 @@ int Hip_Compute_Valence_Angles( reax_system * const system,
         if ( update_energy == TRUE )
         {
             Hip_Reduction_Sum( spad,
-                    &((simulation_data *)data->d_simulation_data)->my_en.e_ang,
-                    system->N, 3, control->hip_streams[3] );
+                    &data->d_my_en->e_ang, system->N, 3, control->hip_streams[3] );
 
             Hip_Reduction_Sum( &spad[system->N],
-                    &((simulation_data *)data->d_simulation_data)->my_en.e_pen,
-                    system->N, 3, control->hip_streams[3] );
+                    &data->d_my_en->e_pen, system->N, 3, control->hip_streams[3] );
 
             Hip_Reduction_Sum( &spad[2 * system->N],
-                    &((simulation_data *)data->d_simulation_data)->my_en.e_coa,
-                    system->N, 3, control->hip_streams[3] );
+                    &data->d_my_en->e_coa, system->N, 3, control->hip_streams[3] );
         }
 
         if ( control->virial == 1 )

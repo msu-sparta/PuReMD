@@ -1463,7 +1463,7 @@ static int Cuda_Estimate_Storage_Three_Body( reax_system * const system,
                     system->total_bonds );
         }
 
-        workspace->d_workspace->realloc.thbody = TRUE;
+        workspace->d_workspace->realloc->thbody = TRUE;
         ret = FAILURE;
     }
 
@@ -1530,11 +1530,11 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
         Cuda_Init_Three_Body_Indices( control, thbody, system->total_thbodies_indices, lists );
 
 #if defined(GPU_ACCUM_ATOMIC)
-        sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_ang,
+        sCudaMemsetAsync( &data->d_my_en->e_ang,
                 0, sizeof(real), control->cuda_streams[3], __FILE__, __LINE__ );
-        sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_pen,
+        sCudaMemsetAsync( &data->d_my_en->e_pen,
                 0, sizeof(real), control->cuda_streams[3], __FILE__, __LINE__ );
-        sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_coa,
+        sCudaMemsetAsync( &data->d_my_en->e_coa,
                 0, sizeof(real), control->cuda_streams[3], __FILE__, __LINE__ );
         sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_ext_press,
                 0, sizeof(rvec), control->cuda_streams[3], __FILE__, __LINE__ );
@@ -1552,9 +1552,7 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
 #if !defined(GPU_ACCUM_ATOMIC)
                   spad, &spad[system->N], &spad[2 * system->N], (rvec *) (&spad[3 * system->N])
 #else
-                  &((simulation_data *)data->d_simulation_data)->my_en.e_ang,
-                  &((simulation_data *)data->d_simulation_data)->my_en.e_pen,
-                  &((simulation_data *)data->d_simulation_data)->my_en.e_coa,
+                  &data->d_my_en->e_ang, &data->d_my_en->e_pen, &data->d_my_en->e_coa,
                   &((simulation_data *)data->d_simulation_data)->my_ext_press
 #endif
                 );
@@ -1571,9 +1569,7 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
 //#if !defined(GPU_ACCUM_ATOMIC)
 //                  spad, &spad[system->N], &spad[2 * system->N]
 //#else
-//                  &((simulation_data *)data->d_simulation_data)->my_en.e_ang,
-//                  &((simulation_data *)data->d_simulation_data)->my_en.e_pen,
-//                  &((simulation_data *)data->d_simulation_data)->my_en.e_coa
+//                  &data->d_my_en->e_ang, &data->d_my_en->e_pen, &data->d_my_en->e_coa
 //#endif
 //                );
 
@@ -1592,9 +1588,7 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
 #if !defined(GPU_ACCUM_ATOMIC)
                   spad, &spad[system->N], &spad[2 * system->N]
 #else
-                  &((simulation_data *)data->d_simulation_data)->my_en.e_ang,
-                  &((simulation_data *)data->d_simulation_data)->my_en.e_pen,
-                  &((simulation_data *)data->d_simulation_data)->my_en.e_coa
+                  &data->d_my_en->e_ang, &data->d_my_en->e_pen, &data->d_my_en->e_coa
 #endif
                 );
         }
@@ -1604,16 +1598,13 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
         if ( update_energy == TRUE )
         {
             Cuda_Reduction_Sum( spad,
-                    &((simulation_data *)data->d_simulation_data)->my_en.e_ang,
-                    system->N, 3, control->cuda_streams[3] );
+                    &data->d_my_en->e_ang, system->N, 3, control->cuda_streams[3] );
 
             Cuda_Reduction_Sum( &spad[system->N],
-                    &((simulation_data *)data->d_simulation_data)->my_en.e_pen,
-                    system->N, 3, control->cuda_streams[3] );
+                    &data->d_my_en->e_pen, system->N, 3, control->cuda_streams[3] );
 
             Cuda_Reduction_Sum( &spad[2 * system->N],
-                    &((simulation_data *)data->d_simulation_data)->my_en.e_coa,
-                    system->N, 3, control->cuda_streams[3] );
+                    &data->d_my_en->e_coa, system->N, 3, control->cuda_streams[3] );
         }
 
         if ( control->virial == 1 )

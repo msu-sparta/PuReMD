@@ -2171,7 +2171,7 @@ int Hip_Init_Forces( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace,
         reax_list **lists, output_controls *out_control ) 
 {
-    int renbr, blocks, ret, realloc_cm, realloc_bonds, realloc_hbonds;
+    int renbr, blocks, ret;
     static int dist_done = FALSE, cm_done = FALSE, bonds_done = FALSE, hbonds_done = FALSE;
 #if defined(LOG_PERFORMANCE)
     float time_elapsed;
@@ -2386,30 +2386,33 @@ int Hip_Init_Forces( reax_system *system, control_params *control,
     /* check reallocation flags on device */
     if ( cm_done == FALSE )
     {
-        sHipMemcpyAsync( &realloc_cm, system->d_realloc_cm_entries, sizeof(int), 
+        sHipMemcpyAsync( &workspace->d_workspace->realloc->cm,
+                system->d_realloc_cm_entries, sizeof(int), 
                 hipMemcpyDeviceToHost, control->hip_streams[5], __FILE__, __LINE__ );
     }
     else
     {
-        realloc_cm = FALSE;
+        workspace->d_workspace->realloc->cm = FALSE;
     }
     if ( bonds_done == FALSE )
     {
-        sHipMemcpyAsync( &realloc_bonds, system->d_realloc_bonds, sizeof(int), 
+        sHipMemcpyAsync( &workspace->d_workspace->realloc->bonds,
+                system->d_realloc_bonds, sizeof(int), 
                 hipMemcpyDeviceToHost, control->hip_streams[1], __FILE__, __LINE__ );
     }
     else
     {
-        realloc_bonds = FALSE;
+        workspace->d_workspace->realloc->bonds = FALSE;
     }
     if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 && hbonds_done == FALSE )
     {
-        sHipMemcpyAsync( &realloc_hbonds, system->d_realloc_hbonds, sizeof(int), 
+        sHipMemcpyAsync( &workspace->d_workspace->realloc->hbonds,
+                system->d_realloc_hbonds, sizeof(int), 
                 hipMemcpyDeviceToHost, control->hip_streams[2], __FILE__, __LINE__ );
     }
     else
     {
-        realloc_hbonds = FALSE;
+        workspace->d_workspace->realloc->hbonds = FALSE;
     }
 
     hipStreamSynchronize( control->hip_streams[0] );
@@ -2417,10 +2420,12 @@ int Hip_Init_Forces( reax_system *system, control_params *control,
     hipStreamSynchronize( control->hip_streams[1] );
     hipStreamSynchronize( control->hip_streams[2] );
 
-    ret = (realloc_cm == FALSE && realloc_bonds == FALSE && realloc_hbonds == FALSE
+    ret = (workspace->d_workspace->realloc->cm == FALSE
+            && workspace->d_workspace->realloc->bonds == FALSE
+            && workspace->d_workspace->realloc->hbonds == FALSE
             ? SUCCESS : FAILURE);
 
-    if ( realloc_cm == FALSE )
+    if ( workspace->d_workspace->realloc->cm == FALSE )
     {
         cm_done = TRUE;
     }
@@ -2432,7 +2437,7 @@ int Hip_Init_Forces( reax_system *system, control_params *control,
         data->timing.init_cm += (real) (time_elapsed / 1000.0);
     }
 #endif
-    if ( realloc_bonds == FALSE )
+    if ( workspace->d_workspace->realloc->bonds == FALSE )
     {
         bonds_done = TRUE;
     }
@@ -2444,7 +2449,7 @@ int Hip_Init_Forces( reax_system *system, control_params *control,
         data->timing.init_bond += (real) (time_elapsed / 1000.0);
     }
 #endif
-    if ( realloc_hbonds == FALSE )
+    if ( workspace->d_workspace->realloc->hbonds == FALSE )
     {
         hbonds_done = TRUE;
     }
@@ -2517,13 +2522,10 @@ int Hip_Init_Forces( reax_system *system, control_params *control,
     else
     {
         Hip_Estimate_Storages( system, control, data, workspace, lists,
-               realloc_cm, realloc_bonds, realloc_hbonds,
+               workspace->d_workspace->realloc->cm,
+               workspace->d_workspace->realloc->bonds,
+               workspace->d_workspace->realloc->hbonds,
                data->step - data->prev_steps );
-
-        /* schedule reallocations after updating allocation sizes */
-        workspace->d_workspace->realloc.cm = realloc_cm;
-        workspace->d_workspace->realloc.bonds = realloc_bonds;
-        workspace->d_workspace->realloc.hbonds = realloc_hbonds;
     }
 
     return ret;
@@ -2534,7 +2536,7 @@ int Hip_Init_Forces_No_Charges( reax_system *system, control_params *control,
         simulation_data *data, storage *workspace,
         reax_list **lists, output_controls *out_control ) 
 {
-    int renbr, blocks, ret, realloc_bonds, realloc_hbonds;
+    int renbr, blocks, ret;
     static int dist_done = FALSE, bonds_done = FALSE, hbonds_done = FALSE;
 #if defined(LOG_PERFORMANCE)
     float time_elapsed;
@@ -2665,31 +2667,34 @@ int Hip_Init_Forces_No_Charges( reax_system *system, control_params *control,
     /* check reallocation flags on device */
     if ( bonds_done == FALSE )
     {
-        sHipMemcpyAsync( &realloc_bonds, system->d_realloc_bonds, sizeof(int), 
+        sHipMemcpyAsync( &workspace->d_workspace->realloc->bonds,
+                system->d_realloc_bonds, sizeof(int), 
                 hipMemcpyDeviceToHost, control->hip_streams[1], __FILE__, __LINE__ );
     }
     else
     {
-        realloc_bonds = FALSE;
+        workspace->d_workspace->realloc->bonds = FALSE;
     }
     if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 && hbonds_done == FALSE )
     {
-        sHipMemcpyAsync( &realloc_hbonds, system->d_realloc_hbonds, sizeof(int), 
+        sHipMemcpyAsync( &workspace->d_workspace->realloc->hbonds,
+                system->d_realloc_hbonds, sizeof(int), 
                 hipMemcpyDeviceToHost, control->hip_streams[2], __FILE__, __LINE__ );
     }
     else
     {
-        realloc_hbonds = FALSE;
+        workspace->d_workspace->realloc->hbonds = FALSE;
     }
 
     hipStreamSynchronize( control->hip_streams[0] );
     hipStreamSynchronize( control->hip_streams[1] );
     hipStreamSynchronize( control->hip_streams[2] );
 
-    ret = (realloc_bonds == FALSE && realloc_hbonds == FALSE
+    ret = (workspace->d_workspace->realloc->bonds == FALSE
+            && workspace->d_workspace->realloc->hbonds == FALSE
             ? SUCCESS : FAILURE);
 
-    if ( realloc_bonds == FALSE )
+    if ( workspace->d_workspace->realloc->bonds == FALSE )
     {
         bonds_done = TRUE;
     }
@@ -2701,7 +2706,7 @@ int Hip_Init_Forces_No_Charges( reax_system *system, control_params *control,
         data->timing.init_bond += (real) (time_elapsed / 1000.0);
     }
 #endif
-    if ( realloc_hbonds == FALSE )
+    if ( workspace->d_workspace->realloc->hbonds == FALSE )
     {
         hbonds_done = TRUE;
     }
@@ -2773,12 +2778,9 @@ int Hip_Init_Forces_No_Charges( reax_system *system, control_params *control,
     else
     {
         Hip_Estimate_Storages( system, control, data, workspace, lists,
-               FALSE, realloc_bonds, realloc_hbonds,
+               FALSE, workspace->d_workspace->realloc->bonds,
+               workspace->d_workspace->realloc->hbonds,
                data->step - data->prev_steps );
-
-        /* schedule reallocations after updating allocation sizes */
-        workspace->d_workspace->realloc.bonds = realloc_bonds;
-        workspace->d_workspace->realloc.hbonds = realloc_hbonds;
     }
 
     return ret;

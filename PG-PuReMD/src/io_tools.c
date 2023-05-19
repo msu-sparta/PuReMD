@@ -114,7 +114,7 @@ void Init_Output_Files( reax_system *system, control_params *control,
                      "cm", "cm_sort", "cm_iters", "cm_p_comp", "cm_p_app",
                      "cm_comm", "cm_allr", "cm_spmv", "cm_vec_ops", "cm_orthog", "cm_t_solve",
                      "retries" );
-#if defined(DEBUG)
+#if defined(DEBUG) || defined(DEBUG_FOCUS)
             fflush( out_control->log );
 #endif
 #endif
@@ -1258,35 +1258,35 @@ void Output_Results( reax_system *system, control_params *control,
 #if !defined(DEBUG) && !defined(DEBUG_FOCUS)
                 fprintf( out_control->out,
                          "%-6d%14.2f%14.2f%14.2f%11.2f%13.2f%13.5f\n",
-                         data->step, data->sys_en.e_tot, data->sys_en.e_pot,
-                         E_CONV * data->sys_en.e_kin, data->therm.T,
+                         data->step, data->sys_en->e_tot, data->sys_en->e_pot,
+                         E_CONV * data->sys_en->e_kin, data->therm.T,
                          system->big_box.V, data->iso_bar.P );
 
                 fprintf( out_control->pot,
                          "%-6d%14.2f%14.2f%14.2f%14.2f%14.2f%14.2f%14.2f%14.2f%14.2f%14.2f%14.2f\n",
                          data->step,
-                         data->sys_en.e_bond,
-                         data->sys_en.e_ov + data->sys_en.e_un,  data->sys_en.e_lp,
-                         data->sys_en.e_ang + data->sys_en.e_pen, data->sys_en.e_coa,
-                         data->sys_en.e_hb,
-                         data->sys_en.e_tor, data->sys_en.e_con,
-                         data->sys_en.e_vdW, data->sys_en.e_ele, data->sys_en.e_pol);
+                         data->sys_en->e_bond,
+                         data->sys_en->e_ov + data->sys_en->e_un,  data->sys_en->e_lp,
+                         data->sys_en->e_ang + data->sys_en->e_pen, data->sys_en->e_coa,
+                         data->sys_en->e_hb,
+                         data->sys_en->e_tor, data->sys_en->e_con,
+                         data->sys_en->e_vdW, data->sys_en->e_ele, data->sys_en->e_pol);
 #else
                 fprintf( out_control->out,
                         "%-6d%24.15f%24.15f%24.15f%13.5f%16.5f%13.5f\n",
-                        data->step, data->sys_en.e_tot, data->sys_en.e_pot,
-                        E_CONV * data->sys_en.e_kin, data->therm.T,
+                        data->step, data->sys_en->e_tot, data->sys_en->e_pot,
+                        E_CONV * data->sys_en->e_kin, data->therm.T,
                         system->big_box.V, data->iso_bar.P );
 
                 fprintf( out_control->pot,
                         "%-6d%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f\n",
                         data->step,
-                        data->sys_en.e_bond,
-                        data->sys_en.e_ov + data->sys_en.e_un,  data->sys_en.e_lp,
-                        data->sys_en.e_ang + data->sys_en.e_pen, data->sys_en.e_coa,
-                        data->sys_en.e_hb,
-                        data->sys_en.e_tor, data->sys_en.e_con,
-                        data->sys_en.e_vdW, data->sys_en.e_ele, data->sys_en.e_pol);
+                        data->sys_en->e_bond,
+                        data->sys_en->e_ov + data->sys_en->e_un,  data->sys_en->e_lp,
+                        data->sys_en->e_ang + data->sys_en->e_pen, data->sys_en->e_coa,
+                        data->sys_en->e_hb,
+                        data->sys_en->e_tor, data->sys_en->e_con,
+                        data->sys_en->e_vdW, data->sys_en->e_ele, data->sys_en->e_pol);
 
                 fflush( out_control->out );
                 fflush( out_control->pot );

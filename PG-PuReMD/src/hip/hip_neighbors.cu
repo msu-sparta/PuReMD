@@ -576,7 +576,7 @@ extern "C" int Hip_Generate_Neighbor_Lists( reax_system *system,
         control_params *control, simulation_data *data, storage *workspace,
         reax_list **lists )
 {
-    int blocks, ret, ret_far_nbr;
+    int blocks, ret;
 #if defined(LOG_PERFORMANCE)
     hipEventRecord( control->hip_time_events[TE_NBRS_START], control->hip_streams[0] );
 #endif
@@ -610,12 +610,12 @@ extern "C" int Hip_Generate_Neighbor_Lists( reax_system *system,
     hipCheckError( );
 
     /* check reallocation flag on device */
-    sHipMemcpyAsync( &ret_far_nbr, system->d_realloc_far_nbrs, sizeof(int), 
+    sHipMemcpyAsync( &workspace->d_workspace->realloc->far_nbrs,
+            system->d_realloc_far_nbrs, sizeof(int), 
             hipMemcpyDeviceToHost, control->hip_streams[0], __FILE__, __LINE__ );
     hipStreamSynchronize( control->hip_streams[0] );
 
-    ret = (ret_far_nbr == FALSE) ? SUCCESS : FAILURE;
-    workspace->d_workspace->realloc.far_nbrs = ret_far_nbr;
+    ret = (workspace->d_workspace->realloc->far_nbrs == FALSE) ? SUCCESS : FAILURE;
 
 #if defined(LOG_PERFORMANCE)
     hipEventRecord( control->hip_time_events[TE_NBRS_STOP], control->hip_streams[0] );

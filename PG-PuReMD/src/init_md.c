@@ -249,6 +249,9 @@ void Init_System( reax_system * const system, control_params * const control,
 void Init_Simulation_Data( reax_system * const system, control_params * const control,
         simulation_data * const data, mpi_datatypes * const mpi_data )
 {
+    data->my_en = smalloc( sizeof(energy_data), __FILE__, __LINE__ );
+    data->sys_en = smalloc( sizeof(energy_data), __FILE__, __LINE__ );
+
     Reset_Simulation_Data( data );
     Reset_Timing( &data->timing );
 
@@ -280,7 +283,7 @@ void Init_Simulation_Data( reax_system * const system, control_params * const co
         if ( !control->restart || (control->restart && control->random_vel) )
         {
             data->therm.G_xi = control->Tau_T
-                * (2.0 * data->sys_en.e_kin - data->N_f * K_B * control->T );
+                * (2.0 * data->sys_en->e_kin - data->N_f * K_B * control->T );
             data->therm.v_xi = data->therm.G_xi * control->dt;
             data->therm.v_xi_old = 0;
             data->therm.xi = 0;
@@ -321,7 +324,7 @@ void Init_Simulation_Data( reax_system * const system, control_params * const co
 //        if( !control->restart )
 //        {
 //            data->therm.G_xi = control->Tau_T
-//                * (2.0 * data->my_en.e_Kin - data->N_f * K_B * control->T );
+//                * (2.0 * data->my_en->e_kin - data->N_f * K_B * control->T );
 //            data->therm.v_xi = data->therm.G_xi * control->dt;
 //            data->iso_bar.eps = (1.0 / 3.0) * LOG(system->box.volume);
 //            data->inv_W = 1.0
@@ -371,6 +374,9 @@ void Init_System( reax_system * const system )
 void Init_Simulation_Data( reax_system * const system, control_params * const control,
         simulation_data * const data )
 {
+    data->my_en = smalloc( sizeof(energy_data), __FILE__, __LINE__ );
+    data->sys_en = smalloc( sizeof(energy_data), __FILE__, __LINE__ );
+
     Reset_Simulation_Data( data );
     Reset_Timing( &data->timing );
 
@@ -440,12 +446,12 @@ void Init_Workspace( reax_system * const system, control_params * const control,
     Allocate_Workspace_Part1( system, control, workspace, system->local_cap );
     Allocate_Workspace_Part2( system, control, workspace, system->total_cap );
 
-    workspace->realloc.far_nbrs = FALSE;
-    workspace->realloc.cm = FALSE;
-    workspace->realloc.hbonds = FALSE;
-    workspace->realloc.bonds = FALSE;
-    workspace->realloc.thbody = FALSE;
-    workspace->realloc.gcell_atoms = 0;
+    workspace->realloc->far_nbrs = FALSE;
+    workspace->realloc->cm = FALSE;
+    workspace->realloc->hbonds = FALSE;
+    workspace->realloc->bonds = FALSE;
+    workspace->realloc->thbody = FALSE;
+    workspace->realloc->gcell_atoms = 0;
 
     if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
@@ -741,6 +747,9 @@ void Initialize( reax_system * const system, control_params * const control,
 
     Init_Simulation_Data( system, control, data, mpi_data );
 
+    /* early allocation before Init_Workspace for Bin_My_Atoms inside Init_System */
+    workspace->realloc = smalloc( sizeof(reallocate_data), __FILE__, __LINE__ );
+
     Init_System( system, control, data, workspace, mpi_data );
     /* reset for step 0 */
     Reset_Simulation_Data( data );
@@ -767,6 +776,9 @@ void Initialize( reax_system * const system, control_params * const control,
         mpi_datatypes * const mpi_data )
 {
     Init_Simulation_Data( system, control, data );
+
+    /* early allocation before Init_Workspace for Bin_My_Atoms inside Init_System */
+    workspace->realloc = smalloc( sizeof(reallocate_data), __FILE__, __LINE__ );
 
     Init_System( system );
     /* reset for step 0 */
@@ -821,6 +833,8 @@ static void Finalize_System( reax_system * const system, control_params * const 
 static void Finalize_Simulation_Data( reax_system * const system, control_params * const control,
         simulation_data * const data, output_controls * const out_control )
 {
+    sfree( data->my_en, __FILE__, __LINE__ );
+    sfree( data->sys_en, __FILE__, __LINE__ );
 }
 
 
@@ -1014,6 +1028,8 @@ static void Finalize_Workspace( reax_system * const system, control_params * con
         sfree( workspace->restricted, __FILE__, __LINE__ );
         sfree( workspace->restricted_list, __FILE__, __LINE__ );
     }
+
+    sfree( workspace->realloc , __FILE__, __LINE__ );
 
 #if defined(TEST_FORCES)
     sfree( workspace->dDelta, __FILE__, __LINE__ );

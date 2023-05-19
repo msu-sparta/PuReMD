@@ -338,9 +338,7 @@ static void Deallocate_Workspace_Part2( control_params * const control,
 void Allocate_Workspace_Part1( reax_system * const system, control_params * const control,
         storage * const workspace, int local_cap )
 {
-    int local_rvec;
-
-    local_rvec = sizeof(rvec) * local_cap;
+    const size_t local_rvec = sizeof(rvec) * local_cap;
 
     /* integrator storage */
     if ( control->ensemble == nhNVT )
@@ -377,10 +375,8 @@ void Allocate_Workspace_Part1( reax_system * const system, control_params * cons
 void Allocate_Workspace_Part2( reax_system * const system, control_params * const control,
         storage * const workspace, int total_cap )
 {
-    int total_real, total_rvec;
-
-    total_real = sizeof(real) * total_cap;
-    total_rvec = sizeof(rvec) * total_cap;
+    const size_t total_real = sizeof(real) * total_cap;
+    const size_t total_rvec = sizeof(rvec) * total_cap;
 
     /* bond order related storage  */
     workspace->total_bond_order = smalloc( total_real, __FILE__, __LINE__ );
@@ -889,7 +885,7 @@ void Reallocate_Part1( reax_system * const system, control_params * const contro
         mpi_datatypes * const mpi_data )
 {
     int i, j, k, renbr;
-    reallocate_data * const realloc = &workspace->realloc;
+    reallocate_data * const realloc = workspace->realloc;
     grid * const g = &system->my_grid;
 
     renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
@@ -921,7 +917,7 @@ void Reallocate_Part2( reax_system * const system, control_params * const contro
         mpi_datatypes * const mpi_data )
 {
     int nflag, Nflag, renbr, total_cap_old;
-    reallocate_data * const realloc = &workspace->realloc;
+    reallocate_data * const realloc = workspace->realloc;
     sparse_matrix * const H = &workspace->H;
 
     renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;

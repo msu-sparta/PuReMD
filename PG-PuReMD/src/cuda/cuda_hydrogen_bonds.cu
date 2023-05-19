@@ -759,7 +759,7 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
 #else
-    sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_hb,
+    sCudaMemsetAsync( &data->d_my_en->e_hb,
             0, sizeof(real), control->cuda_streams[2], __FILE__, __LINE__ );
     if ( control->virial == 1 )
     {
@@ -783,7 +783,7 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
 #if !defined(GPU_ACCUM_ATOMIC)
                   spad, (rvec *) (&spad[system->n])
 #else
-                  &((simulation_data *)data->d_simulation_data)->my_en.e_hb,
+                  &data->d_my_en->e_hb,
                   &((simulation_data *)data->d_simulation_data)->my_ext_press
 #endif
                 );
@@ -801,7 +801,7 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
 //#if !defined(GPU_ACCUM_ATOMIC)
 //                  spad
 //#else
-//                  &((simulation_data *)data->d_simulation_data)->my_en.e_hb
+//                  &data->d_my_en->e_hb
 //#endif
 //                );
 //        cudaCheckError( );
@@ -821,7 +821,7 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
 #if !defined(GPU_ACCUM_ATOMIC)
                   spad
 #else
-                  &((simulation_data *)data->d_simulation_data)->my_en.e_hb
+                  &data->d_my_en->e_hb
 #endif
                 );
         cudaCheckError( );
@@ -831,7 +831,7 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
     if ( update_energy == TRUE )
     {
         Cuda_Reduction_Sum( spad,
-                &((simulation_data *)data->d_simulation_data)->my_en.e_hb,
+                &data->d_my_en->e_hb,
                 system->n, 2, control->cuda_streams[2] );
     }
 

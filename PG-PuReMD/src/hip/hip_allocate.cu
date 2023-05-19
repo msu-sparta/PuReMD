@@ -367,7 +367,7 @@ void Hip_Allocate_Grid_Cell_Atoms( reax_system *system, control_params *control,
         sHipMemcpyAsync( &local_cell, &device->cells[i], sizeof(grid_cell),
                 hipMemcpyDeviceToHost, control->hip_streams[0], __FILE__, __LINE__ );
         hipStreamSynchronize( control->hip_streams[0] );
-        sHipMalloc( (void **)&local_cell.atoms, sizeof(int) * cap, 
+        sHipMalloc( (void **) &local_cell.atoms, sizeof(int) * cap, 
                 __FILE__, __LINE__ );
         sHipMemcpyAsync( &local_cell, &device->cells[i], sizeof(grid_cell),
                 hipMemcpyHostToDevice, control->hip_streams[0], __FILE__, __LINE__ );
@@ -469,8 +469,10 @@ void Hip_Allocate_Simulation_Data( simulation_data *data, hipStream_t s )
 {
     sHipMalloc( (void **) &data->d_simulation_data,
             sizeof(simulation_data), __FILE__, __LINE__ );
+    sHipMalloc( (void **) &data->d_my_en,
+            sizeof(energy_data), __FILE__, __LINE__ );
 
-    sHipMemsetAsync( data->d_simulation_data, FALSE, sizeof(simulation_data), 
+    sHipMemsetAsync( data->d_simulation_data, FALSE, sizeof(simulation_data),
             s, __FILE__, __LINE__ );
 
     hipStreamSynchronize( s );
@@ -1099,7 +1101,7 @@ void Hip_Reallocate_Part1( reax_system *system, control_params *control,
     reallocate_data *realloc;
     grid *g;
 
-    realloc = &workspace->d_workspace->realloc;
+    realloc = workspace->d_workspace->realloc;
     g = &system->my_grid;
     renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
 
@@ -1136,7 +1138,7 @@ void Hip_Reallocate_Part2( reax_system *system, control_params *control,
     reallocate_data *realloc;
     sparse_matrix *H;
 
-    realloc = &workspace->d_workspace->realloc;
+    realloc = workspace->d_workspace->realloc;
     H = &workspace->d_workspace->H;
     renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
 

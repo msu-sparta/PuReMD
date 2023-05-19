@@ -49,14 +49,14 @@ static void Compute_Polarization_Energy( reax_system const * const system,
     int i, type_i;
     real q;
 
-    data->my_en.e_pol = 0.0;
+    data->my_en->e_pol = 0.0;
 
     for ( i = 0; i < system->n; i++ )
     {
         q = system->my_atoms[i].q;
         type_i = system->my_atoms[i].type;
 
-        data->my_en.e_pol += KCALpMOL_to_EV * (system->reax_param.sbp[type_i].chi * q
+        data->my_en->e_pol += KCALpMOL_to_EV * (system->reax_param.sbp[type_i].chi * q
                 + (system->reax_param.sbp[type_i].eta / 2.0) * SQR(q));
     }
 }
@@ -142,7 +142,7 @@ void vdW_Coulomb_Energy( reax_system const * const system,
                     e_base = twbp->D * (exp1 - 2.0 * exp2);
 
                     e_vdW = self_coef * (e_base * tap);
-                    data->my_en.e_vdW += e_vdW;
+                    data->my_en->e_vdW += e_vdW;
 
                     dfn13 = POW( r_ij, p_vdW1 - 1.0 )
                         * POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0 );
@@ -156,7 +156,7 @@ void vdW_Coulomb_Energy( reax_system const * const system,
                     e_base = twbp->D * (exp1 - 2.0 * exp2);
 
                     e_vdW = self_coef * (e_base * tap);
-                    data->my_en.e_vdW += e_vdW;
+                    data->my_en->e_vdW += e_vdW;
 
                     de_base = (twbp->D * twbp->alpha / twbp->r_vdW) * (exp2 - exp1);
                 }
@@ -166,7 +166,7 @@ void vdW_Coulomb_Energy( reax_system const * const system,
                 {
                     e_core = twbp->ecore * EXP( twbp->acore * (1.0 - (r_ij / twbp->rcore)) );
                     e_vdW += self_coef * (e_core * tap);
-                    data->my_en.e_vdW += self_coef * (e_core * tap);
+                    data->my_en->e_vdW += self_coef * (e_core * tap);
 
                     de_core = -(twbp->acore / twbp->rcore) * e_core;
                 }
@@ -191,7 +191,7 @@ void vdW_Coulomb_Energy( reax_system const * const system,
                 dr3gamij_3 = CBRT( dr3gamij_1 );
                 e_clb = C_ELE * (system->my_atoms[i].q * system->my_atoms[j].q) / dr3gamij_3;
                 e_ele = self_coef * (e_clb * tap);
-                data->my_en.e_ele += e_ele;
+                data->my_en->e_ele += e_ele;
 
                 de_clb = -C_ELE * (system->my_atoms[i].q * system->my_atoms[j].q)
                         * (r_ij * r_ij) / POW( dr3gamij_1, 4.0 / 3.0 );
@@ -237,12 +237,12 @@ void vdW_Coulomb_Energy( reax_system const * const system,
                 //fprintf( out_control->evdw, "%6d%6d%24.15e%24.15e%24.15e\n",
                 fprintf( out_control->evdw, "%6d%6d%12.4f%12.4f%12.4f\n",
                          system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
-                         r_ij, e_vdW, data->my_en.e_vdW );
+                         r_ij, e_vdW, data->my_en->e_vdW );
                 //fprintf(out_control->ecou,"%6d%6d%24.15e%24.15e%24.15e%24.15e%24.15e\n",
                 fprintf( out_control->ecou, "%6d%6d%12.4f%12.4f%12.4f%12.4f%12.4f\n",
                          system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
                          r_ij, system->my_atoms[i].q, system->my_atoms[j].q,
-                         e_ele, data->my_en.e_ele );
+                         e_ele, data->my_en->e_ele );
 #endif
 
 #if defined(TEST_FORCES)
@@ -329,8 +329,8 @@ void Tabulated_vdW_Coulomb_Energy( reax_system const * const system,
                     e_ele = LR_Lookup_Entry( t, r_ij, LR_E_CLMB );
                     e_ele *= self_coef * system->my_atoms[i].q * system->my_atoms[j].q;
 
-                    data->my_en.e_vdW += e_vdW;
-                    data->my_en.e_ele += e_ele;
+                    data->my_en->e_vdW += e_vdW;
+                    data->my_en->e_ele += e_ele;
                 }
 
                 CEvd = LR_Lookup_Entry( t, r_ij, LR_CE_VDW );
@@ -365,12 +365,12 @@ void Tabulated_vdW_Coulomb_Energy( reax_system const * const system,
                 //fprintf( out_control->evdw, "%6d%6d%24.15e%24.15e%24.15e\n",
                 fprintf( out_control->evdw, "%6d%6d%12.4f%12.4f%12.4f\n",
                          system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
-                         r_ij, e_vdW, data->my_en.e_vdW );
+                         r_ij, e_vdW, data->my_en->e_vdW );
                 //fprintf(out_control->ecou,"%6d%6d%24.15e%24.15e%24.15e%24.15e%24.15e\n",
                 fprintf( out_control->ecou, "%6d%6d%12.4f%12.4f%12.4f%12.4f%12.4f\n",
                          system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
                          r_ij, system->my_atoms[i].q, system->my_atoms[j].q,
-                         e_ele, data->my_en.e_ele );
+                         e_ele, data->my_en->e_ele );
 #endif
 
 #if defined(TEST_FORCES)

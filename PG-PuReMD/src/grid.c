@@ -614,18 +614,18 @@ void Bin_My_Atoms( reax_system * const system, storage * const workspace )
     /* check if current num. of max atoms per grid cell is safe */
     if ( max_atoms >= (int) CEIL( g->max_atoms * DANGER_ZONE ) )
     {
-        workspace->realloc.gcell_atoms = MAX( (int) CEIL( max_atoms * SAFE_ZONE ),
+        workspace->realloc->gcell_atoms = MAX( (int) CEIL( max_atoms * SAFE_ZONE ),
                 MIN_GCELL_POPL );
 #if defined(HAVE_CUDA) || defined(HAVE_HIP)
-        workspace->d_workspace->realloc.gcell_atoms = MAX( (int) CEIL( max_atoms * SAFE_ZONE ),
+        workspace->d_workspace->realloc->gcell_atoms = MAX( (int) CEIL( max_atoms * SAFE_ZONE ),
                 MIN_GCELL_POPL );
 #endif
     }
     else
     {
-        workspace->realloc.gcell_atoms = -1;
+        workspace->realloc->gcell_atoms = -1;
 #if defined(HAVE_CUDA) || defined(HAVE_HIP)
-        workspace->d_workspace->realloc.gcell_atoms = -1;
+        workspace->d_workspace->realloc->gcell_atoms = -1;
 #endif
     }
 }

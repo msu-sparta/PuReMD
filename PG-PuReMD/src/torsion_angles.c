@@ -372,7 +372,7 @@ void Torsion_Angles( reax_system * const system, control_params * const control,
 //                                                    + fbp->V3 * (0.5 + 2.0 * CUBE(cos_omega) - 1.5 * cos_omega);
 
                                                 e_tor = fn10 * sin_ijk * sin_jkl * CV;
-                                                data->my_en.e_tor += e_tor;
+                                                data->my_en->e_tor += e_tor;
 
                                                 dfn11 = (-p_tor3 * exp_tor3_DjDk
                                                         + (p_tor3 * exp_tor3_DjDk - p_tor4 * exp_tor4_DjDk)
@@ -410,7 +410,7 @@ void Torsion_Angles( reax_system * const system, control_params * const control,
                                                 fn12 = exp_cot2_ij * exp_cot2_jk * exp_cot2_kl;
                                                 e_con = fbp->p_cot1 * fn12
                                                     * (1.0 + (SQR(cos_omega) - 1.0) * sin_ijk * sin_jkl);
-                                                data->my_en.e_con += e_con;
+                                                data->my_en->e_con += e_con;
 
                                                 Cconj = -2.0 * fn12 * fbp->p_cot1 * p_cot2
                                                     * (1.0 + (SQR(cos_omega) - 1.0) * sin_ijk * sin_jkl);
@@ -543,7 +543,7 @@ void Torsion_Angles( reax_system * const system, control_params * const control,
                                                         "%6d%6d%6d%6d%12.4f%12.4f%12.4f%12.4f\n",
                                                         system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
                                                         system->my_atoms[k].orig_id, system->my_atoms[l].orig_id,
-                                                        RAD2DEG(omega), BOA_jk, e_tor, data->my_en.e_tor );
+                                                        RAD2DEG(omega), BOA_jk, e_tor, data->my_en->e_tor );
 
                                                 fprintf( out_control->econ,
                                                         //"%6d%6d%6d%6d%24.15e%24.15e%24.15e%24.15e%24.15e%24.15e\n",
@@ -551,7 +551,7 @@ void Torsion_Angles( reax_system * const system, control_params * const control,
                                                         system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
                                                         system->my_atoms[k].orig_id, system->my_atoms[l].orig_id,
                                                         RAD2DEG(omega), BOA_ij, BOA_jk, BOA_kl,
-                                                        e_con, data->my_en.e_con );
+                                                        e_con, data->my_en->e_con );
 #endif
 
 #if defined(TEST_FORCES)
@@ -631,7 +631,7 @@ void Torsion_Angles( reax_system * const system, control_params * const control,
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "[INFO] Torsion_Angles: num_frb_intrs = %d\n", num_frb_intrs );
     fprintf( stderr, "[INFO] Torsion_Angles: e_tor = %g, e_con = %g\n",
-             data->my_en.e_tor, data->my_en.e_con );
+             data->my_en->e_tor, data->my_en->e_con );
 
 //    fprintf( stderr, "[INFO] Torsion_Angles: ext_press = (%23.15e %23.15e %23.15e)\n",
 //             data->ext_press[0], data->ext_press[1], data->ext_press[2] );

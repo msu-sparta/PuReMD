@@ -378,7 +378,7 @@ void Valence_Angles( reax_system * const system, control_params * const control,
                                 CEval8 = CEval4 / sin_theta;
 
                                 e_ang = f7_ij * f7_jk * f8_Dj * expval12theta;
-                                data->my_en.e_ang += e_ang;
+                                data->my_en->e_ang += e_ang;
 
                                 /* calculate penalty for double bonds in valency angles */
                                 p_pen1 = thbp->p_pen1;
@@ -394,7 +394,7 @@ void Valence_Angles( reax_system * const system, control_params * const control,
                                             + p_pen4 * exp_pen4 )) / SQR( trm_pen34 );
 
                                 e_pen = p_pen1 * f9_Dj * exp_pen2ij * exp_pen2jk;
-                                data->my_en.e_pen += e_pen;
+                                data->my_en->e_pen += e_pen;
 
                                 CEpen1 = e_pen * Cf9j / f9_Dj;
                                 temp = -2.0 * p_pen2 * e_pen;
@@ -411,7 +411,7 @@ void Valence_Angles( reax_system * const system, control_params * const control,
                                     * EXP( -p_coa3 * SQR(workspace->total_bond_order[i] - BOA_ij) )
                                     * EXP( -p_coa3 * SQR(workspace->total_bond_order[k] - BOA_jk) )
                                     / (1.0 + exp_coa2);
-                                data->my_en.e_coa += e_coa;
+                                data->my_en->e_coa += e_coa;
 
                                 CEcoa1 = -2.0 * p_coa4 * (BOA_ij - 1.5) * e_coa;
                                 CEcoa2 = -2.0 * p_coa4 * (BOA_jk - 1.5) * e_coa;
@@ -498,7 +498,7 @@ void Valence_Angles( reax_system * const system, control_params * const control,
                                          system->my_atoms[j].orig_id,
                                          system->my_atoms[k].orig_id,
                                          RAD2DEG(theta), theta_0, BOA_ij, BOA_jk,
-                                         e_ang, data->my_en.e_ang );
+                                         e_ang, data->my_en->e_ang );
 
                                 fprintf( out_control->epen,
                                          //"%6d%6d%6d%24.15e%24.15e%24.15e%24.15e%24.15e\n",
@@ -507,7 +507,7 @@ void Valence_Angles( reax_system * const system, control_params * const control,
                                          system->my_atoms[j].orig_id,
                                          system->my_atoms[k].orig_id,
                                          RAD2DEG(theta), BOA_ij, BOA_jk, e_pen,
-                                         data->my_en.e_pen );
+                                         data->my_en->e_pen );
 
                                 fprintf( out_control->ecoa,
                                          //"%6d%6d%6d%24.15e%24.15e%24.15e%24.15e%24.15e\n",
@@ -516,7 +516,7 @@ void Valence_Angles( reax_system * const system, control_params * const control,
                                          system->my_atoms[j].orig_id,
                                          system->my_atoms[k].orig_id,
                                          RAD2DEG(theta), BOA_ij, BOA_jk,
-                                         e_coa, data->my_en.e_coa );
+                                         e_coa, data->my_en->e_coa );
 #endif
 
 #if defined(TEST_FORCES)
@@ -574,7 +574,7 @@ void Valence_Angles( reax_system * const system, control_params * const control,
     if ( num_thb_intrs >= (int) (thb_list->max_intrs * DANGER_ZONE) )
     {
         system->total_thbodies = MAX( num_thb_intrs * SAFE_ZONE, MIN_3BODIES );
-        workspace->realloc.thbody = TRUE;
+        workspace->realloc->thbody = TRUE;
 
         //TODO: need to refactor Compute_Bonded_Forces to allow retry logic
         if ( num_thb_intrs > thb_list->max_intrs )
@@ -589,7 +589,7 @@ void Valence_Angles( reax_system * const system, control_params * const control,
     fprintf( stderr, "Number of angle interactions: %d\n", num_thb_intrs );
     fprintf( stderr,
              "Angle Energy: %g\t Penalty Energy: %g\t Coalition Energy: %g\t\n",
-             data->my_en.e_ang, data->my_en.e_pen, data->my_en.e_coa );
+             data->my_en->e_ang, data->my_en->e_pen, data->my_en->e_coa );
 
     fprintf( stderr, "3body: ext_press (%12.6f %12.6f %12.6f)\n",
              data->ext_press[0], data->ext_press[1], data->ext_press[2] );

@@ -293,7 +293,7 @@ void Cuda_Compute_Bonds( reax_system const * const system,
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
 #else
-    sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_bond,
+    sCudaMemsetAsync( &data->d_my_en->e_bond,
             0, sizeof(real), control->cuda_streams[1], __FILE__, __LINE__ );
 #endif
 
@@ -307,7 +307,7 @@ void Cuda_Compute_Bonds( reax_system const * const system,
 //#if !defined(GPU_ACCUM_ATOMIC)
 //          spad
 //#else
-//          &((simulation_data *)data->d_simulation_data)->my_en.e_bond
+//          &data->d_my_en->e_bond
 //#endif
 //        );
 //    cudaCheckError( );
@@ -325,7 +325,7 @@ void Cuda_Compute_Bonds( reax_system const * const system,
 #if !defined(GPU_ACCUM_ATOMIC)
           spad
 #else
-          &((simulation_data *)data->d_simulation_data)->my_en.e_bond
+          &data->d_my_en->e_bond
 #endif
         );
     cudaCheckError( );
@@ -333,7 +333,7 @@ void Cuda_Compute_Bonds( reax_system const * const system,
 #if !defined(GPU_ACCUM_ATOMIC)
     if ( update_energy == TRUE )
     {
-        Cuda_Reduction_Sum( spad, &((simulation_data *)data->d_simulation_data)->my_en.e_bond,
+        Cuda_Reduction_Sum( spad, &data->d_my_en->e_bond,
                 system->n, 1, control->cuda_streams[1] );
     }
 #endif

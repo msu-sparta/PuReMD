@@ -77,6 +77,9 @@ static void Cuda_Init_System( reax_system *system, control_params *control,
 void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
         simulation_data *data )
 {
+    data->my_en = (energy_data *) smalloc_pinned( sizeof(energy_data), __FILE__, __LINE__ );
+    data->sys_en = (energy_data *) smalloc( sizeof(energy_data), __FILE__, __LINE__ );
+
     Cuda_Allocate_Simulation_Data( data, control->cuda_streams[0] );
 
     Reset_Simulation_Data( data );
@@ -110,7 +113,7 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
         if ( !control->restart || (control->restart && control->random_vel) )
         {
             data->therm.G_xi = control->Tau_T
-                * (2.0 * data->sys_en.e_kin - data->N_f * K_B * control->T );
+                * (2.0 * data->sys_en->e_kin - data->N_f * K_B * control->T );
             data->therm.v_xi = data->therm.G_xi * control->dt;
             data->therm.v_xi_old = 0;
             data->therm.xi = 0;
@@ -166,19 +169,19 @@ void Cuda_Init_Workspace( reax_system *system, control_params *control,
     Cuda_Allocate_Workspace_Part2( system, control, workspace->d_workspace,
             system->total_cap );
 
-    workspace->realloc.far_nbrs = FALSE;
-    workspace->realloc.cm = FALSE;
-    workspace->realloc.bonds = FALSE;
-    workspace->realloc.hbonds = FALSE;
-    workspace->realloc.thbody = FALSE;
-    workspace->realloc.gcell_atoms = 0;
+    workspace->realloc->far_nbrs = FALSE;
+    workspace->realloc->cm = FALSE;
+    workspace->realloc->bonds = FALSE;
+    workspace->realloc->hbonds = FALSE;
+    workspace->realloc->thbody = FALSE;
+    workspace->realloc->gcell_atoms = 0;
 
-    workspace->d_workspace->realloc.far_nbrs = FALSE;
-    workspace->d_workspace->realloc.cm = FALSE;
-    workspace->d_workspace->realloc.bonds = FALSE;
-    workspace->d_workspace->realloc.hbonds = FALSE;
-    workspace->d_workspace->realloc.thbody = FALSE;
-    workspace->d_workspace->realloc.gcell_atoms = 0;
+    workspace->d_workspace->realloc->far_nbrs = FALSE;
+    workspace->d_workspace->realloc->cm = FALSE;
+    workspace->d_workspace->realloc->bonds = FALSE;
+    workspace->d_workspace->realloc->hbonds = FALSE;
+    workspace->d_workspace->realloc->thbody = FALSE;
+    workspace->d_workspace->realloc->gcell_atoms = 0;
 
     if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
@@ -305,6 +308,12 @@ extern "C" void Cuda_Initialize( reax_system *system, control_params *control,
     }
     workspace->host_scratch = NULL;
     workspace->host_scratch_size = 0;
+
+    /* early allocation before Cuda_Init_Workspace for Bin_My_Atoms inside Cuda_Init_System */
+    workspace->realloc = (reallocate_data *) smalloc(
+            sizeof(reallocate_data), __FILE__, __LINE__ );
+    workspace->d_workspace->realloc = (reallocate_data *) smalloc_pinned(
+            sizeof(reallocate_data), __FILE__, __LINE__ );
 
     Cuda_Init_System( system, control, data, workspace, mpi_data );
     /* reset for step 0 */

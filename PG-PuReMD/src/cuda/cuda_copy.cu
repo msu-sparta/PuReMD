@@ -161,7 +161,7 @@ extern "C" void Cuda_Copy_Matrix_Device_to_Host( sparse_matrix * const A,
 extern "C" void Cuda_Copy_Simulation_Data_Device_to_Host( control_params const * const control,
         simulation_data * const data, simulation_data * const d_data )
 {
-    sCudaMemcpyAsync( &data->my_en, &d_data->my_en, sizeof(energy_data), 
+    sCudaMemcpyAsync( data->my_en, data->d_my_en, sizeof(energy_data), 
             cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
     if ( control->virial == 1 )
     {

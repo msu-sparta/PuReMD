@@ -1353,7 +1353,7 @@ static void Cuda_Compute_Polarization_Energy( reax_system const * const system,
             sizeof(real) * system->n, __FILE__, __LINE__ );
     spad = (real *) workspace->scratch[5];
 #else
-    sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_pol,
+    sCudaMemsetAsync( &data->d_my_en->e_pol,
             0, sizeof(real), control->cuda_streams[5], __FILE__, __LINE__ );
 #endif
 
@@ -1367,15 +1367,14 @@ static void Cuda_Compute_Polarization_Energy( reax_system const * const system,
 #if !defined(GPU_ACCUM_ATOMIC)
           spad
 #else
-          &((simulation_data *)data->d_simulation_data)->my_en.e_pol
+          &data->d_my_en->e_pol
 #endif
         );
     cudaCheckError( );
 
 #if !defined(GPU_ACCUM_ATOMIC)
     Cuda_Reduction_Sum( spad,
-            &((simulation_data *)data->d_simulation_data)->my_en.e_pol,
-            system->n, 5, control->cuda_streams[5] );
+            &data->d_my_en->e_pol, system->n, 5, control->cuda_streams[5] );
 #endif
 }
 
@@ -1414,7 +1413,7 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
             s, __FILE__, __LINE__ );
     spad = (real *) workspace->scratch[4];
 #else
-    sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_vdW,
+    sCudaMemsetAsync( &data->d_my_en->e_vdW,
             0, sizeof(real), control->cuda_streams[4], __FILE__, __LINE__ );
     if ( control->virial == 1 )
     {
@@ -1442,8 +1441,7 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
 #if !defined(GPU_ACCUM_ATOMIC)
                   spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
 #else
-                  &((simulation_data *)data->d_simulation_data)->my_en.e_vdW,
-                  &((simulation_data *)data->d_simulation_data)->my_en.e_ele,
+                  &data->d_my_en->e_vdW, &data->d_my_en->e_ele,
                   &((simulation_data *)data->d_simulation_data)->my_ext_press
 #endif
                 );
@@ -1462,7 +1460,7 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
 #if !defined(GPU_ACCUM_ATOMIC)
                       spad
 #else
-                      &((simulation_data *)data->d_simulation_data)->my_en.e_vdW
+                      &data->d_my_en->e_vdW
 #endif
                     );
             }
@@ -1478,7 +1476,7 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
 #if !defined(GPU_ACCUM_ATOMIC)
                       spad
 #else
-                      &((simulation_data *)data->d_simulation_data)->my_en.e_vdW
+                      &data->d_my_en->e_vdW
 #endif
                     );
             }
@@ -1494,7 +1492,7 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
 #if !defined(GPU_ACCUM_ATOMIC)
                       spad
 #else
-                      &((simulation_data *)data->d_simulation_data)->my_en.e_vdW
+                      &data->d_my_en->e_vdW
 #endif
                     );
             }
@@ -1512,8 +1510,7 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
 #if !defined(GPU_ACCUM_ATOMIC)
               spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
 #else
-              &((simulation_data *)data->d_simulation_data)->my_en.e_vdW,
-              &((simulation_data *)data->d_simulation_data)->my_en.e_ele,
+              &data->d_my_en->e_vdW, &data->d_my_en->e_ele,
               &((simulation_data *)data->d_simulation_data)->my_ext_press
 #endif
             );
@@ -1525,8 +1522,7 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
     {
         /* reduction for vdw */
         Cuda_Reduction_Sum( spad,
-                &((simulation_data *)data->d_simulation_data)->my_en.e_vdW,
-                system->n, 4, control->cuda_streams[4] );
+                &data->d_my_en->e_vdW, system->n, 4, control->cuda_streams[4] );
     }
 
     if ( control->virial == 1 )
@@ -1587,10 +1583,10 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
     spad = (real *) workspace->scratch[5];
 #else
 #if defined(USE_FUSED_VDW_COULOMB)
-    sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_vdW,
+    sCudaMemsetAsync( &data->d_my_en->e_vdW,
             0, sizeof(real), control->cuda_streams[5], __FILE__, __LINE__ );
 #endif
-    sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_ele,
+    sCudaMemsetAsync( &data->d_my_en->e_ele,
             0, sizeof(real), control->cuda_streams[5], __FILE__, __LINE__ );
     if ( control->virial == 1 )
     {
@@ -1615,8 +1611,7 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
 //#if !defined(GPU_ACCUM_ATOMIC)
 //                  spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
 //#else
-//                  &((simulation_data *)data->d_simulation_data)->my_en.e_vdW,
-//                  &((simulation_data *)data->d_simulation_data)->my_en.e_ele,
+//                  &data->d_my_en->e_vdW, &data->d_my_en->e_ele,
 //                  &((simulation_data *)data->d_simulation_data)->my_ext_press
 //#endif
 //            );
@@ -1631,8 +1626,7 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
 #if !defined(GPU_ACCUM_ATOMIC)
                   spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
 #else
-                  &((simulation_data *)data->d_simulation_data)->my_en.e_vdW,
-                  &((simulation_data *)data->d_simulation_data)->my_en.e_ele,
+                  &data->d_my_en->e_vdW, &data->d_my_en->e_ele,
                   &((simulation_data *)data->d_simulation_data)->my_ext_press
 #endif
                 );
@@ -1649,8 +1643,7 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
 //#if !defined(GPU_ACCUM_ATOMIC)
 //                  spad, &spad[system->n]
 //#else
-//                  &((simulation_data *)data->d_simulation_data)->my_en.e_vdW,
-//                  &((simulation_data *)data->d_simulation_data)->my_en.e_ele
+//                  &data->d_my_en->e_vdW, &data->d_my_en->e_ele
 //#endif
 //                );
 
@@ -1664,8 +1657,7 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
 #if !defined(GPU_ACCUM_ATOMIC)
                   spad, &spad[system->n]
 #else
-                  &((simulation_data *)data->d_simulation_data)->my_en.e_vdW,
-                  &((simulation_data *)data->d_simulation_data)->my_en.e_ele
+                  &data->d_my_en->e_vdW, &data->d_my_en->e_ele
 #endif
                 );
 
@@ -1681,7 +1673,7 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
 #if !defined(GPU_ACCUM_ATOMIC)
                   &spad[system->n]
 #else
-                  &((simulation_data *)data->d_simulation_data)->my_en.e_ele
+                  &data->d_my_en->e_ele
 #endif
                 );
 #endif
@@ -1699,8 +1691,7 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
 #if !defined(GPU_ACCUM_ATOMIC)
               spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
 #else
-              &((simulation_data *)data->d_simulation_data)->my_en.e_vdW,
-              &((simulation_data *)data->d_simulation_data)->my_en.e_ele,
+              &data->d_my_en->e_vdW, &data->d_my_en->e_ele,
               &((simulation_data *)data->d_simulation_data)->my_ext_press
 #endif
             );
@@ -1713,8 +1704,7 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
 #if defined(USE_FUSED_VDW_COULOMB)
         /* reduction for vdw */
         Cuda_Reduction_Sum( spad,
-                &((simulation_data *)data->d_simulation_data)->my_en.e_vdW,
-                system->n, 5, control->cuda_streams[5] );
+                &data->d_my_en->e_vdW, system->n, 5, control->cuda_streams[5] );
 #endif
 
         /* reduction for ele */
@@ -1724,8 +1714,7 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
 #else
                 spad,
 #endif
-                &((simulation_data *)data->d_simulation_data)->my_en.e_ele,
-                system->n, 5, control->cuda_streams[5] );
+                &data->d_my_en->e_ele, system->n, 5, control->cuda_streams[5] );
     }
 
     if ( control->virial == 1 )

@@ -589,11 +589,11 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
 #else
-    sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_lp,
+    sCudaMemsetAsync( &data->d_my_en->e_lp,
             0, sizeof(real), control->cuda_streams[0], __FILE__, __LINE__ );
-    sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_ov,
+    sCudaMemsetAsync( &data->d_my_en->e_ov,
             0, sizeof(real), control->cuda_streams[0], __FILE__, __LINE__ );
-    sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_en.e_un,
+    sCudaMemsetAsync( &data->d_my_en->e_un,
             0, sizeof(real), control->cuda_streams[0], __FILE__, __LINE__ );
 #endif
 
@@ -604,7 +604,7 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
 //#if !defined(GPU_ACCUM_ATOMIC)
 //          spad
 //#else
-//          &((simulation_data *)data->d_simulation_data)->my_en.e_lp
+//          &data->d_my_en->e_lp
 //#endif
 //         );
 //    cudaCheckError( );
@@ -621,7 +621,7 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
 #if !defined(GPU_ACCUM_ATOMIC)
           spad
 #else
-          &((simulation_data *)data->d_simulation_data)->my_en.e_lp
+          &data->d_my_en->e_lp
 #endif
          );
     cudaCheckError( );
@@ -633,8 +633,8 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
 //#if !defined(GPU_ACCUM_ATOMIC)
 //          &spad[system->n], &spad[2 * system->n]
 //#else
-//          &((simulation_data *)data->d_simulation_data)->my_en.e_ov,
-//          &((simulation_data *)data->d_simulation_data)->my_en.e_un
+//          &data->d_my_en->e_ov,
+//          &data->d_my_en->e_un
 //#endif
 //         );
 //    cudaCheckError( );
@@ -651,8 +651,7 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
 #if !defined(GPU_ACCUM_ATOMIC)
           &spad[system->n], &spad[2 * system->n]
 #else
-          &((simulation_data *)data->d_simulation_data)->my_en.e_ov,
-          &((simulation_data *)data->d_simulation_data)->my_en.e_un
+          &data->d_my_en->e_ov, &data->d_my_en->e_un
 #endif
          );
     cudaCheckError( );
@@ -666,16 +665,13 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
     if ( update_energy == TRUE )
     {
         Cuda_Reduction_Sum( spad,
-                &((simulation_data *)data->d_simulation_data)->my_en.e_lp,
-                system->n, 0, control->cuda_streams[0] );
+                &data->d_my_en->e_lp, system->n, 0, control->cuda_streams[0] );
 
         Cuda_Reduction_Sum( &spad[system->n],
-                &((simulation_data *)data->d_simulation_data)->my_en.e_ov,
-                system->n, 0, control->cuda_streams[0] );
+                &data->d_my_en->e_ov, system->n, 0, control->cuda_streams[0] );
 
         Cuda_Reduction_Sum( &spad[2 * system->n],
-                &((simulation_data *)data->d_simulation_data)->my_en.e_un,
-                system->n, 0, control->cuda_streams[0] );
+                &data->d_my_en->e_un, system->n, 0, control->cuda_streams[0] );
     }
 #endif
 

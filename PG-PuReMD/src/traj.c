@@ -619,59 +619,59 @@ int Write_Frame_Header( reax_system *system, control_params *control,
 
         /* energies */
         sprintf( out_control->line, REAL_LINE, "total_energy:",
-                 data->sys_en.e_tot );
+                 data->sys_en->e_tot );
         strncat( out_control->buffer, out_control->line, HEADER_LINE_LEN + 1 );
 
         sprintf( out_control->line, REAL_LINE, "total_kinetic:",
-                 data->sys_en.e_kin );
+                 data->sys_en->e_kin );
         strncat( out_control->buffer, out_control->line, HEADER_LINE_LEN + 1 );
 
         sprintf( out_control->line, REAL_LINE, "total_potential:",
-                 data->sys_en.e_pot );
+                 data->sys_en->e_pot );
         strncat( out_control->buffer, out_control->line, HEADER_LINE_LEN + 1 );
 
         sprintf( out_control->line, REAL_LINE, "bond_energy:",
-                 data->sys_en.e_bond );
+                 data->sys_en->e_bond );
         strncat( out_control->buffer, out_control->line, HEADER_LINE_LEN + 1 );
 
         sprintf( out_control->line, REAL_LINE, "atom_energy:",
-                 data->sys_en.e_ov + data->sys_en.e_un  );
+                 data->sys_en->e_ov + data->sys_en->e_un  );
         strncat( out_control->buffer, out_control->line, HEADER_LINE_LEN + 1 );
 
         sprintf( out_control->line, REAL_LINE, "lone_pair_energy:",
-                 data->sys_en.e_lp  );
+                 data->sys_en->e_lp  );
         strncat( out_control->buffer, out_control->line, HEADER_LINE_LEN + 1 );
 
         sprintf( out_control->line, REAL_LINE, "valence_angle_energy:",
-                 data->sys_en.e_ang + data->sys_en.e_pen );
+                 data->sys_en->e_ang + data->sys_en->e_pen );
         strncat( out_control->buffer, out_control->line, HEADER_LINE_LEN + 1 );
 
         sprintf( out_control->line, REAL_LINE, "3-body_conjugation:",
-                 data->sys_en.e_coa );
+                 data->sys_en->e_coa );
         strncat( out_control->buffer, out_control->line, HEADER_LINE_LEN + 1 );
 
         sprintf( out_control->line, REAL_LINE, "hydrogen_bond_energy:",
-                 data->sys_en.e_hb );
+                 data->sys_en->e_hb );
         strncat( out_control->buffer, out_control->line, HEADER_LINE_LEN + 1 );
 
         sprintf( out_control->line, REAL_LINE, "torsion_angle_energy:",
-                 data->sys_en.e_tor );
+                 data->sys_en->e_tor );
         strncat( out_control->buffer, out_control->line, HEADER_LINE_LEN + 1 );
 
         sprintf( out_control->line, REAL_LINE, "4-body_conjugation:",
-                 data->sys_en.e_con );
+                 data->sys_en->e_con );
         strncat( out_control->buffer, out_control->line, HEADER_LINE_LEN + 1 );
 
         sprintf( out_control->line, REAL_LINE, "vdWaals_energy:",
-                 data->sys_en.e_vdW );
+                 data->sys_en->e_vdW );
         strncat( out_control->buffer, out_control->line, HEADER_LINE_LEN + 1 );
 
         sprintf( out_control->line, REAL_LINE, "electrostatics_energy:",
-                 data->sys_en.e_ele );
+                 data->sys_en->e_ele );
         strncat( out_control->buffer, out_control->line, HEADER_LINE_LEN + 1 );
 
         sprintf( out_control->line, REAL_LINE, "polarization_energy:",
-                 data->sys_en.e_pol );
+                 data->sys_en->e_pol );
         strncat( out_control->buffer, out_control->line, HEADER_LINE_LEN + 1 );
     }
 

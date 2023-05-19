@@ -575,7 +575,7 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
         control_params *control, simulation_data *data, storage *workspace,
         reax_list **lists )
 {
-    int blocks, ret, ret_far_nbr;
+    int blocks, ret;
 #if defined(LOG_PERFORMANCE)
     cudaEventRecord( control->cuda_time_events[TE_NBRS_START], control->cuda_streams[0] );
 #endif
@@ -609,12 +609,12 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
     cudaCheckError( );
 
     /* check reallocation flag on device */
-    sCudaMemcpyAsync( &ret_far_nbr, system->d_realloc_far_nbrs, sizeof(int), 
+    sCudaMemcpyAsync( &workspace->d_workspace->realloc->far_nbrs,
+            system->d_realloc_far_nbrs, sizeof(int), 
             cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->cuda_streams[0] );
 
-    ret = (ret_far_nbr == FALSE) ? SUCCESS : FAILURE;
-    workspace->d_workspace->realloc.far_nbrs = ret_far_nbr;
+    ret = (workspace->d_workspace->realloc->far_nbrs == FALSE) ? SUCCESS : FAILURE;
 
 #if defined(LOG_PERFORMANCE)
     cudaEventRecord( control->cuda_time_events[TE_NBRS_STOP], control->cuda_streams[0] );
