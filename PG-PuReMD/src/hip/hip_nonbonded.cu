@@ -1357,7 +1357,7 @@ static void Hip_Compute_Polarization_Energy( reax_system const * const system,
             0, sizeof(real), control->hip_streams[5], __FILE__, __LINE__ );
 #endif
 
-    k_compute_polarization_energy <<< blocks_n, control->gpu_block_size,
+    k_compute_polarization_energy <<< control->blocks_n, control->gpu_block_size,
                                   0, control->hip_streams[5] >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
           system->n,

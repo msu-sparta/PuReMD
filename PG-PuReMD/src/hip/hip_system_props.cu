@@ -397,7 +397,7 @@ static void Hip_Compute_Momentum( reax_system *system, control_params *control,
     hipStreamSynchronize( control->hip_streams[0] );
     
     // vcm
-    k_center_of_mass_vcm <<< blocks, GPU_BLOCKS_SIZE,
+    k_center_of_mass_vcm <<< blocks, GPU_BLOCK_SIZE,
                          sizeof(hipcub::BlockReduce<double, GPU_BLOCK_SIZE>::TempStorage),
                          control->hip_streams[0] >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad, system->n );
@@ -441,29 +441,34 @@ static void Hip_Compute_Momentum( reax_system *system, control_params *control,
 static void Hip_Compute_Inertial_Tensor( reax_system *system, control_params *control,
         storage *workspace, real *t, rvec my_xcm )
 {
+    int blocks, blocks_pow_2;
     real *spad;
 
+    blocks = system->n / GPU_BLOCK_SIZE
+        + (system->n % GPU_BLOCK_SIZE == 0 ? 0 : 1);
+    blocks_pow_2 = ((blocks + WARP_SIZE - 1) / WARP_SIZE) * WARP_SIZE;
+
     sHipCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
-            sizeof(real) * 6 * (control->blocks_n + 1), __FILE__, __LINE__ );
+            sizeof(real) * 6 * (blocks + 1), __FILE__, __LINE__ );
     spad = (real *) workspace->scratch[0];
-    sHipMemsetAsync( spad, 0, sizeof(real) * 6 * (control->blocks_n + 1),
+    sHipMemsetAsync( spad, 0, sizeof(real) * 6 * (blocks + 1),
             control->hip_streams[0], __FILE__, __LINE__ );
     hipStreamSynchronize( control->hip_streams[0] );
 
-    k_compute_inertial_tensor_part1 <<< control->blocks_n, control->gpu_block_size,
-                                sizeof(hipcub::BlockReduce<double, control->gpu_block_size>::TempStorage),
+    k_compute_inertial_tensor_part1 <<< blocks, GPU_BLOCK_SIZE,
+                                sizeof(hipcub::BlockReduce<double, GPU_BLOCK_SIZE>::TempStorage),
                                 control->hip_streams[0] >>>
         ( system->reax_param.d_sbp, system->d_my_atoms, spad,
           my_xcm[0], my_xcm[1], my_xcm[2], system->n );
     hipCheckError( );
 
-    k_compute_inertial_tensor_part2 <<< 1, control->blocks_pow_2_n,
-                                     sizeof(hipcub::BlockReduce<double, control->gpu_block_size>::TempStorage),
+    k_compute_inertial_tensor_part2 <<< 1, blocks_pow_2,
+                                     sizeof(hipcub::BlockReduce<double, GPU_BLOCK_SIZE>::TempStorage),
                                      control->hip_streams[0] >>>
-        ( spad, &spad[6 * control->blocks], control->blocks );
+        ( spad, &spad[6 * blocks], blocks );
     hipCheckError( );
 
-    sHipMemcpyAsync( t, &spad[6 * control->blocks],
+    sHipMemcpyAsync( t, &spad[6 * blocks],
         sizeof(real) * 6, hipMemcpyDeviceToHost,
         control->hip_streams[0], __FILE__, __LINE__ );
     hipStreamSynchronize( control->hip_streams[0] );
