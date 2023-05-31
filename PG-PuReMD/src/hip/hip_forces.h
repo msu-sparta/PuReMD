@@ -9,12 +9,12 @@ void Hip_Init_Neighbor_Indices( reax_system * const, control_params const * cons
         reax_list * const );
 
 void Hip_Init_HBond_Indices( reax_system * const, storage * const, reax_list * const,
-        int, cudaStream_t );
+        int, hipStream_t );
 
-void Hip_Init_Bond_Indices( reax_system * const, reax_list * const, int, cudaStream_t );
+void Hip_Init_Bond_Indices( reax_system * const, reax_list * const, int, hipStream_t );
 
 void Hip_Init_Sparse_Matrix_Indices( reax_system * const, sparse_matrix * const, int,
-       cudaStream_t );
+       hipStream_t );
 
 void Hip_Init_Three_Body_Indices( int *, int, reax_list ** );
 

@@ -1921,7 +1921,7 @@ void Hip_Init_Neighbor_Indices( reax_system * const system,
  *
  * system: atomic system info. */
 void Hip_Init_HBond_Indices( reax_system * const system, storage * const workspace,
-        reax_list * const hbond_list, int block_size, cudaStream_t s )
+        reax_list * const hbond_list, int block_size, hipStream_t s )
 {
     int blocks, *temp;
 
@@ -1946,7 +1946,7 @@ void Hip_Init_HBond_Indices( reax_system * const system, storage * const workspa
  *
  * system: atomic system info. */
 void Hip_Init_Bond_Indices( reax_system * const system, reax_list * const bond_list,
-        int block_size, cudaStream_t s )
+        int block_size, hipStream_t s )
 {
     int blocks;
 
@@ -1969,7 +1969,7 @@ void Hip_Init_Bond_Indices( reax_system * const system, reax_list * const bond_l
  * system: atomic system info.
  * H: charge matrix */
 void Hip_Init_Sparse_Matrix_Indices( reax_system * const system, sparse_matrix * const H,
-        int block_size, cudaStream_t s )
+        int block_size, hipStream_t s )
 {
     int blocks;
 

@@ -148,7 +148,7 @@ GPU_GLOBAL void k_center_of_mass_amcm( single_body_parameters *sbp,
 GPU_GLOBAL void k_compute_inertial_tensor_part1( single_body_parameters *sbp,
         reax_atom *atoms, real *t_g, real xcm0, real xcm1, real xcm2, size_t n )
 {
-    extern __shared__ hipcub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage temp_block[];
+    extern __shared__ hipcub::BlockReduce<double, GPU_BLOCK_SIZE>::TempStorage temp_block[];
     unsigned int i;
     real xx, xy, xz, yy, yz, zz, m;
     rvec diff, xcm;
@@ -179,17 +179,17 @@ GPU_GLOBAL void k_compute_inertial_tensor_part1( single_body_parameters *sbp,
         zz = 0.0;
     }
 
-    xx = hipcub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(xx);
+    xx = hipcub::BlockReduce<double, GPU_BLOCK_SIZE>(*temp_block).Sum(xx);
     __syncthreads( );
-    xy = hipcub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(xy);
+    xy = hipcub::BlockReduce<double, GPU_BLOCK_SIZE>(*temp_block).Sum(xy);
     __syncthreads( );
-    xz = hipcub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(xz);
+    xz = hipcub::BlockReduce<double, GPU_BLOCK_SIZE>(*temp_block).Sum(xz);
     __syncthreads( );
-    yy = hipcub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(yy);
+    yy = hipcub::BlockReduce<double, GPU_BLOCK_SIZE>(*temp_block).Sum(yy);
     __syncthreads( );
-    yz = hipcub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(yz);
+    yz = hipcub::BlockReduce<double, GPU_BLOCK_SIZE>(*temp_block).Sum(yz);
     __syncthreads( );
-    zz = hipcub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(zz);
+    zz = hipcub::BlockReduce<double, GPU_BLOCK_SIZE>(*temp_block).Sum(zz);
 
     /* one thread writes the block-level partial sum
      * of the reduction back to global memory */
@@ -207,7 +207,7 @@ GPU_GLOBAL void k_compute_inertial_tensor_part1( single_body_parameters *sbp,
 
 GPU_GLOBAL void k_compute_inertial_tensor_part2( real *input, real *output, size_t n )
 {
-    extern __shared__ hipcub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage temp_block[];
+    extern __shared__ hipcub::BlockReduce<double, GPU_BLOCK_SIZE>::TempStorage temp_block[];
     unsigned int i;
     real xx, xy, xz, yy, yz, zz;
 
@@ -232,17 +232,17 @@ GPU_GLOBAL void k_compute_inertial_tensor_part2( real *input, real *output, size
         zz = 0.0;
     }
 
-    xx = hipcub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(xx);
+    xx = hipcub::BlockReduce<double, GPU_BLOCK_SIZE>(*temp_block).Sum(xx);
     __syncthreads( );
-    xy = hipcub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(xy);
+    xy = hipcub::BlockReduce<double, GPU_BLOCK_SIZE>(*temp_block).Sum(xy);
     __syncthreads( );
-    xz = hipcub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(xz);
+    xz = hipcub::BlockReduce<double, GPU_BLOCK_SIZE>(*temp_block).Sum(xz);
     __syncthreads( );
-    yy = hipcub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(yy);
+    yy = hipcub::BlockReduce<double, GPU_BLOCK_SIZE>(*temp_block).Sum(yy);
     __syncthreads( );
-    yz = hipcub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(yz);
+    yz = hipcub::BlockReduce<double, GPU_BLOCK_SIZE>(*temp_block).Sum(yz);
     __syncthreads( );
-    zz = hipcub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(zz);
+    zz = hipcub::BlockReduce<double, GPU_BLOCK_SIZE>(*temp_block).Sum(zz);
 
     if ( threadIdx.x == 0 )
     {
