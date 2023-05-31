@@ -987,44 +987,39 @@ void Hip_Compute_Bond_Orders( reax_system const * const system,
         storage * const workspace, reax_list ** const lists,
         output_controls const * const out_control )
 {
-    int blocks;
-
 #if defined(LOG_PERFORMANCE)
     hipEventRecord( control->hip_time_events[TE_BOND_ORDER_START], control->hip_streams[0] );
 #endif
 
     hipStreamWaitEvent( control->hip_streams[0], control->hip_stream_events[SE_INIT_BOND_DONE], 0 );
 
-    k_bond_order_part1 <<< control->blocks_n, control->block_size_n, 0,
-                       control->hip_streams[0] >>>
+    k_bond_order_part1 <<< control->blocks_N, control->gpu_block_size,
+                       0, control->hip_streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
           *(workspace->d_workspace), system->N );
     hipCheckError( );
 
-//    k_bond_order_part2 <<< control->blocks_n, control->block_size_n >>>
+//    k_bond_order_part2 <<< control->blocks_N, control->gpu_block_size >>>
 //        ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp, 
 //          system->reax_param.d_tbp, *(workspace->d_workspace), 
 //          *(lists[BONDS]), system->reax_param.num_atom_types, system->N );
 //    hipCheckError( );
 
-    blocks = system->N * WARP_SIZE / DEF_BLOCK_SIZE
-        + (system->N * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-
-    k_bond_order_part2_opt <<< blocks, DEF_BLOCK_SIZE,
-                       sizeof(hipcub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+    k_bond_order_part2_opt <<< control->blocks_warp_N, control->gpu_block_size,
+                       sizeof(hipcub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                        control->hip_streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp, 
           system->reax_param.d_tbp, *(workspace->d_workspace), 
           *(lists[BONDS]), system->reax_param.num_atom_types, system->N );
     hipCheckError( );
 
-    k_bond_order_part3 <<< control->blocks_n, control->block_size_n, 0,
-                       control->hip_streams[0] >>>
+    k_bond_order_part3 <<< control->blocks_N, control->gpu_block_size,
+                       0, control->hip_streams[0] >>>
         ( *(workspace->d_workspace), *(lists[BONDS]), system->N );
     hipCheckError( );
 
-    k_bond_order_part4 <<< control->blocks_n, control->block_size_n, 0,
-                       control->hip_streams[0] >>>
+    k_bond_order_part4 <<< control->blocks_N, control->gpu_block_size,
+                       0, control->hip_streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp, 
          *(workspace->d_workspace), system->N );
     hipCheckError( );
@@ -1041,21 +1036,17 @@ void Hip_Total_Forces_Part1( reax_system const * const system,
         control_params const * const control, simulation_data * const data,
         storage * const workspace, reax_list ** const lists )
 {
-    int blocks;
     rvec *spad_rvec;
 
     if ( control->virial == 0 )
     {
-//        k_total_forces_part1 <<< control->blocks_n, control->block_size_n, 0,
-//                             control->hip_streams[0] >>>
+//        k_total_forces_part1 <<< control->blocks_N, control->gpu_block_size,
+//                             0, control->hip_streams[0] >>>
 //            ( *(workspace->d_workspace), *(lists[BONDS]), system->N );
 //        hipCheckError( );
 
-        blocks = system->N * WARP_SIZE / DEF_BLOCK_SIZE
-            + ((system->N * WARP_SIZE % DEF_BLOCK_SIZE == 0) ? 0 : 1);
-
-        k_total_forces_part1_opt <<< blocks, DEF_BLOCK_SIZE,
-                                 sizeof(hipcub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+        k_total_forces_part1_opt <<< control->blocks_warp_N, control->gpu_block_size,
+                                 sizeof(hipcub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                  control->hip_streams[0] >>>
             ( *(workspace->d_workspace), *(lists[BONDS]), system->N );
         hipCheckError( );
@@ -1069,11 +1060,8 @@ void Hip_Total_Forces_Part1( reax_system const * const system,
                 control->hip_streams[0], __FILE__, __LINE__ );
         hipStreamSynchronize( control->hip_streams[0] );
 
-        blocks = system->N / DEF_BLOCK_SIZE
-            + ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
-
-        k_total_forces_virial_part1 <<< blocks, DEF_BLOCK_SIZE, 0,
-                                    control->hip_streams[0] >>>
+        k_total_forces_virial_part1 <<< control->blocks_N, control->gpu_block_size,
+                                    0, control->hip_streams[0] >>>
             ( *(workspace->d_workspace), *(lists[BONDS]), spad_rvec, system->N );
         hipCheckError( );
 
@@ -1083,12 +1071,9 @@ void Hip_Total_Forces_Part1( reax_system const * const system,
     }
 
 #if !defined(GPU_ACCUM_ATOMIC)
-    blocks = system->N / DEF_BLOCK_SIZE
-        + ((system->N % DEF_BLOCK_SIZE == 0) ? 0 : 1);
-
     /* post processing for the atomic forces */
-    k_total_forces_part1_2 <<< blocks, DEF_BLOCK_SIZE, 0,
-                            control->hip_streams[0] >>>
+    k_total_forces_part1_2 <<< control->blocks_N, control->gpu_block_size,
+                           0, control->hip_streams[0] >>>
         ( *(lists[BONDS]), *(workspace->d_workspace), system->N );
     hipCheckError( ); 
 #endif
@@ -1098,12 +1083,8 @@ void Hip_Total_Forces_Part1( reax_system const * const system,
 void Hip_Total_Forces_Part2( reax_system * const system,
         control_params const * const control, storage * const workspace )
 {
-    int blocks;
-
-    blocks = system->n / DEF_BLOCK_SIZE
-        + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
-
-    k_total_forces_part2 <<< blocks, DEF_BLOCK_SIZE, 0, control->hip_streams[0] >>>
+    k_total_forces_part2 <<< control->blocks_n, control->gpu_block_size,
+                         0, control->hip_streams[0] >>>
         ( system->d_my_atoms, system->n, *(workspace->d_workspace) );
     hipCheckError( ); 
 }

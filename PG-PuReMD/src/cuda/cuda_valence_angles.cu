@@ -1411,23 +1411,21 @@ static int Cuda_Estimate_Storage_Three_Body( reax_system * const system,
         control_params const * const control, simulation_data * const data,
         storage * const workspace, reax_list **lists, int * const thbody )
 {
-    int blocks, ret;
+    int ret;
 
     ret = SUCCESS;
 
     sCudaMemsetAsync( thbody, 0, sizeof(int) * system->total_bonds,
             control->cuda_streams[3], __FILE__, __LINE__ );
 
-//    k_estimate_valence_angles <<< control->blocks_n, control->block_size_n, 0, control->cuda_streams[3] >>>
+//    k_estimate_valence_angles <<< control->blocks_N, control->gpu_block_size,
+//                              0, control->cuda_streams[3] >>>
 //        ( system->d_my_atoms, (control_params *)control->d_control_params, 
 //          *(lists[BONDS]), system->n, system->N, thbody );
 //    cudaCheckError( );
 
-    blocks = system->N * WARP_SIZE / DEF_BLOCK_SIZE
-        + (system->N * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-
-    k_estimate_valence_angles_opt <<< blocks, DEF_BLOCK_SIZE,
-                              sizeof(cub::WarpReduce<int>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+    k_estimate_valence_angles_opt <<< control->blocks_warp_N, control->gpu_block_size,
+                              sizeof(cub::WarpReduce<int>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                               control->cuda_streams[3] >>>
         ( system->d_my_atoms, (control_params *)control->d_control_params, 
           *(lists[BONDS]), system->n, system->N, thbody );
@@ -1491,7 +1489,7 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
         simulation_data * const data, storage * const workspace, 
         reax_list **lists, output_controls const * const out_control )
 {
-    int ret, *thbody, blocks;
+    int ret, *thbody;
     size_t s;
 #if !defined(GPU_ACCUM_ATOMIC)
     int update_energy;
@@ -1542,7 +1540,7 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
 
         if ( control->virial == 1 )
         {
-            k_valence_angles_virial_part1 <<< control->blocks_n, control->block_size_n,
+            k_valence_angles_virial_part1 <<< control->blocks_N, control->gpu_block_size,
                                           0, control->cuda_streams[3] >>>
                 ( system->d_my_atoms, system->reax_param.d_gp,
                   system->reax_param.d_sbp, system->reax_param.d_thbp, 
@@ -1559,7 +1557,7 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
         }
         else
         {
-//            k_valence_angles_part1 <<< control->blocks_n, control->block_size_n,
+//            k_valence_angles_part1 <<< control->blocks_N, control->gpu_block_size,
 //                                   0, control->cuda_streams[3] >>>
 //                ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp,
 //                  system->reax_param.d_tbp, system->reax_param.d_thbp,
@@ -1573,12 +1571,9 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
 //#endif
 //                );
 
-            blocks = system->N * WARP_SIZE / DEF_BLOCK_SIZE
-                + (system->N * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-
-            k_valence_angles_part1_opt <<< blocks, DEF_BLOCK_SIZE,
+            k_valence_angles_part1_opt <<< control->blocks_warp_N, control->gpu_block_size,
                                        (sizeof(cub::WarpScan<int>::TempStorage)
-                                        + sizeof(cub::WarpReduce<double>::TempStorage)) * (DEF_BLOCK_SIZE / WARP_SIZE),
+                                        + sizeof(cub::WarpReduce<double>::TempStorage)) * (control->gpu_block_size / WARP_SIZE),
                                        control->cuda_streams[3] >>>
                 ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp,
                   system->reax_param.d_tbp, system->reax_param.d_thbp, 
@@ -1616,7 +1611,7 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
                     system->N, 3, control->cuda_streams[3] );
         }
 
-        k_valence_angles_part2 <<< control->blocks_n, control->block_size_n,
+        k_valence_angles_part2 <<< control->blocks_N, control->gpu_block_size,
                                0, control->cuda_streams[3] >>>
             ( *(workspace->d_workspace), *(lists[BONDS]), system->N );
         cudaCheckError( );

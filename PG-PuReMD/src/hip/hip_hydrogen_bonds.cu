@@ -740,7 +740,6 @@ void Hip_Compute_Hydrogen_Bonds( reax_system const * const system,
         storage * const workspace, reax_list ** lists,
         output_controls const * const out_control )
 {
-    int blocks;
 //    int hbs, hnbrs_blocks;
 #if !defined(GPU_ACCUM_ATOMIC)
     int update_energy;
@@ -754,7 +753,7 @@ void Hip_Compute_Hydrogen_Bonds( reax_system const * const system,
 
 #if !defined(GPU_ACCUM_ATOMIC)
     sHipCheckMalloc( &workspace->scratch[2], &workspace->scratch_size[2],
-            (sizeof(real) * 3 + sizeof(rvec)) * system->N + sizeof(rvec) * control->blocks_n,
+            (sizeof(real) * 3 + sizeof(rvec)) * system->N + sizeof(rvec) * control->blocks_N,
             __FILE__, __LINE__ );
     spad = (real *) workspace->scratch[2];
     update_energy = (out_control->energy_update_freq > 0
@@ -773,7 +772,7 @@ void Hip_Compute_Hydrogen_Bonds( reax_system const * const system,
 
     if ( control->virial == 1 )
     {
-        k_hydrogen_bonds_virial_part1 <<< control->blocks, control->block_size,
+        k_hydrogen_bonds_virial_part1 <<< control->blocks_n, control->gpu_block_size,
                                       0, control->hip_streams[2] >>>
                 ( system->d_my_atoms, system->reax_param.d_sbp,
                   system->reax_param.d_hbp, system->reax_param.d_gp,
@@ -792,7 +791,7 @@ void Hip_Compute_Hydrogen_Bonds( reax_system const * const system,
     }
     else
     {
-//        k_hydrogen_bonds_part1 <<< control->blocks, control->block_size, 0, control->hip_streams[2] >>>
+//        k_hydrogen_bonds_part1 <<< control->blocks_n, control->gpu_block_size, 0, control->hip_streams[2] >>>
 //                ( system->d_my_atoms, system->reax_param.d_sbp,
 //                  system->reax_param.d_hbp, system->reax_param.d_gp,
 //                  (control_params *) control->d_control_params,
@@ -806,12 +805,9 @@ void Hip_Compute_Hydrogen_Bonds( reax_system const * const system,
 //#endif
 //                );
 //        hipCheckError( );
-
-        blocks = system->n * WARP_SIZE / DEF_BLOCK_SIZE
-            + (system->n * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
         
-        k_hydrogen_bonds_part1_opt <<< blocks, DEF_BLOCK_SIZE,
-                                   sizeof(hipcub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+        k_hydrogen_bonds_part1_opt <<< control->blocks_warp_n, control->gpu_block_size,
+                                   sizeof(hipcub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                    control->hip_streams[2] >>>
                 ( system->d_my_atoms, system->reax_param.d_sbp,
                   system->reax_param.d_hbp, system->reax_param.d_gp,
@@ -831,8 +827,7 @@ void Hip_Compute_Hydrogen_Bonds( reax_system const * const system,
 #if !defined(GPU_ACCUM_ATOMIC)
     if ( update_energy == TRUE )
     {
-        Hip_Reduction_Sum( spad,
-                &data->d_my_en->e_hb,
+        Hip_Reduction_Sum( spad, &data->d_my_en->e_hb,
                 system->n, 2, control->hip_streams[2] );
     }
 
@@ -845,8 +840,8 @@ void Hip_Compute_Hydrogen_Bonds( reax_system const * const system,
                 system->n, 2, control->hip_streams[2] );
     }
 
-    k_hydrogen_bonds_part2 <<< control->blocks, control->block_size, 0,
-                           control->hip_streams[2] >>>
+    k_hydrogen_bonds_part2 <<< control->blocks_n, control->gpu_block_size,
+                           0, control->hip_streams[2] >>>
         ( system->d_my_atoms, *(workspace->d_workspace),
           *(lists[BONDS]), system->n );
     hipCheckError( );
@@ -854,8 +849,8 @@ void Hip_Compute_Hydrogen_Bonds( reax_system const * const system,
 //    hnbrs_blocks = (system->n * HB_POST_PROC_KER_THREADS_PER_ATOM / HB_POST_PROC_BLOCK_SIZE) +
 //        (((system->n * HB_POST_PROC_KER_THREADS_PER_ATOM) % HB_POST_PROC_BLOCK_SIZE) == 0 ? 0 : 1);
 
-    k_hydrogen_bonds_part3 <<< control->blocks, control->block_size, 0,
-                           control->hip_streams[2] >>>
+    k_hydrogen_bonds_part3 <<< control->blocks_n, control->gpu_block_size,
+                           0, control->hip_streams[2] >>>
         ( system->d_my_atoms, *(workspace->d_workspace), *(lists[HBONDS]), system->n );
 //    k_hydrogen_bonds_part3_opt <<< hnbrs_blocks, HB_POST_PROC_BLOCK_SIZE, 
 //            sizeof(rvec) * HB_POST_PROC_BLOCK_SIZE, control->hip_streams[2] >>>

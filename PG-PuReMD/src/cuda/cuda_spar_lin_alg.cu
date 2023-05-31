@@ -41,7 +41,7 @@
 #if defined(USE_CUBLAS)
   #define CUDA_ARG (control->cublas_handle)
 #else
-  #define CUDA_ARG (s)
+  #define CUDA_ARG control->gpu_block_size, s
 #endif
 
 
@@ -543,28 +543,26 @@ GPU_GLOBAL void k_dual_sparse_matvec_full_opt_csr( int *row_ptr_start,
 
 
 void dual_jacobi_apply( real const * const Hdia_inv, rvec2 const * const y,
-        rvec2 * const x, int n, cudaStream_t s )
+        rvec2 * const x, int n, int block_size, cudaStream_t s )
 {
     int blocks;
 
-    blocks = (n / DEF_BLOCK_SIZE)
-        + ((n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    blocks = (n / block_size) + ((n % block_size == 0) ? 0 : 1);
 
-    k_dual_jacobi_apply <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
+    k_dual_jacobi_apply <<< blocks, block_size, 0, s >>>
         ( Hdia_inv, y, x, n );
     cudaCheckError( );
 }
 
 
 void jacobi_apply( real const * const Hdia_inv, real const * const y,
-        real * const x, int n, cudaStream_t s )
+        real * const x, int n, int block_size, cudaStream_t s )
 {
     int blocks;
 
-    blocks = (n / DEF_BLOCK_SIZE)
-        + ((n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    blocks = (n / block_size) + ((n % block_size == 0) ? 0 : 1);
 
-    k_jacobi_apply <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
+    k_jacobi_apply <<< blocks, block_size, 0, s >>>
         ( Hdia_inv, y, x, n );
     cudaCheckError( );
 }
@@ -578,6 +576,7 @@ void jacobi_apply( real const * const Hdia_inv, real const * const y,
  * n: number of entries in x
  * buf_type: data structure type for x
  * mpi_type: MPI_Datatype struct for communications
+ * block_size: CUDA threads per block
  * s: CUDA stream
  *
  * returns: communication time
@@ -585,7 +584,7 @@ void jacobi_apply( real const * const Hdia_inv, real const * const y,
 static void Dual_Sparse_MatVec_Comm_Part1( const reax_system * const system,
         storage * const workspace, mpi_datatypes * const mpi_data,
         void const * const x, int n, int buf_type, MPI_Datatype mpi_type,
-        cudaStream_t s )
+        int block_size, cudaStream_t s )
 {
 #if !defined(GPU_DEVICE_PACK)
     sCudaHostAllocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
@@ -604,7 +603,7 @@ static void Dual_Sparse_MatVec_Comm_Part1( const reax_system * const system,
             cudaMemcpyHostToDevice, s, __FILE__, __LINE__ );
 #else
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
-    Cuda_Dist( system, workspace, mpi_data, x, buf_type, mpi_type, s );
+    Cuda_Dist( system, workspace, mpi_data, x, buf_type, mpi_type, block_size, s );
 #endif
 }
 
@@ -630,31 +629,31 @@ static void Dual_Sparse_MatVec_local( control_params const * const control,
         sCudaMemsetAsync( b, 0, sizeof(rvec2) * n, s, __FILE__, __LINE__ );
 
         /* 1 thread per row implementation */
-//        k_dual_sparse_matvec_half_csr <<< control->blocks, control->block_size, 0, s >>>
+//        k_dual_sparse_matvec_half_csr <<< control->blocks_n, control->gpu_block_size, 0, s >>>
 //            ( A->start, A->end, A->j, A->val, x, b, A->n );
 
-        blocks = A->n * WARP_SIZE / DEF_BLOCK_SIZE
-            + (A->n * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+        blocks = A->n * WARP_SIZE / control->gpu_block_size
+            + (A->n * WARP_SIZE % control->gpu_block_size == 0 ? 0 : 1);
         
         /* WARP_SIZE threads per row implementation
          * using registers to accumulate partial row sums */
-        k_dual_sparse_matvec_half_opt_csr <<< blocks, DEF_BLOCK_SIZE,
-                                          sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE), s >>>
+        k_dual_sparse_matvec_half_opt_csr <<< blocks, control->gpu_block_size,
+                                          sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE), s >>>
              ( A->start, A->end, A->j, A->val, x, b, A->n );
     }
     else if ( A->format == SYM_FULL_MATRIX || A->format == FULL_MATRIX )
     {
         /* 1 thread per row implementation */
-//        k_dual_sparse_matvec_full_csr <<< control->blocks, control->block_size, 0, s >>>
+//        k_dual_sparse_matvec_full_csr <<< control->blocks_n, control->gpu_block_size, 0, s >>>
 //             ( *A, x, b, A->n );
 
-        blocks = ((A->n * WARP_SIZE) / DEF_BLOCK_SIZE)
-            + (((A->n * WARP_SIZE) % DEF_BLOCK_SIZE) == 0 ? 0 : 1);
+        blocks = ((A->n * WARP_SIZE) / control->gpu_block_size)
+            + (((A->n * WARP_SIZE) % control->gpu_block_size) == 0 ? 0 : 1);
         
         /* WARP_SIZE threads per row implementation
          * using registers to accumulate partial row sums */
-        k_dual_sparse_matvec_full_opt_csr <<< blocks, DEF_BLOCK_SIZE,
-                                          sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE), s >>>
+        k_dual_sparse_matvec_full_opt_csr <<< blocks, control->gpu_block_size,
+                                          sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE), s >>>
                 ( A->start, A->end, A->j, A->val, x, b, A->n );
     }
     cudaCheckError( );
@@ -674,6 +673,7 @@ static void Dual_Sparse_MatVec_local( control_params const * const control,
  * n2: number of entries in b (at output)
  * buf_type: data structure type for b
  * mpi_type: MPI_Datatype struct for communications
+ * block_size: CUDA threads per block
  * s: CUDA stream
  *
  * returns: communication time
@@ -681,7 +681,7 @@ static void Dual_Sparse_MatVec_local( control_params const * const control,
 static void Dual_Sparse_MatVec_Comm_Part2( const reax_system * const system,
         storage * const workspace, mpi_datatypes * const mpi_data, int mat_format,
         void * const b, int n1, int n2, int buf_type, MPI_Datatype mpi_type,
-        cudaStream_t s )
+        int block_size, cudaStream_t s )
 {
     /* reduction required for symmetric half matrix */
     if ( mat_format == SYM_HALF_MATRIX )
@@ -701,7 +701,7 @@ static void Dual_Sparse_MatVec_Comm_Part2( const reax_system * const system,
         sCudaMemcpyAsync( b, workspace->host_scratch, sizeof(rvec2) * n2, cudaMemcpyHostToDevice,
                 s, __FILE__, __LINE__ );
 #else
-        Cuda_Coll( system, mpi_data, b, buf_type, mpi_type, s );
+        Cuda_Coll( system, mpi_data, b, buf_type, mpi_type, block_size, s );
 #endif
     }
 }
@@ -733,7 +733,7 @@ static void Dual_Sparse_MatVec( const reax_system * const system,
 #endif
 
     Dual_Sparse_MatVec_Comm_Part1( system, workspace, mpi_data,
-            x, n, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2, s );
+            x, n, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2, control->gpu_block_size, s );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_comm );
@@ -746,7 +746,7 @@ static void Dual_Sparse_MatVec( const reax_system * const system,
 #endif
 
     Dual_Sparse_MatVec_Comm_Part2( system, workspace, mpi_data, A->format, b, n,
-            A->n, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2, s );
+            A->n, RVEC2_PTR_TYPE, mpi_data->mpi_rvec2, control->gpu_block_size, s );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_comm );
@@ -762,12 +762,13 @@ static void Dual_Sparse_MatVec( const reax_system * const system,
  * n: number of entries in x
  * buf_type: data structure type for x
  * mpi_type: MPI_Datatype struct for communications
+ * block_size: CUDA threads per block
  * s: CUDA stream
  */
 static void Sparse_MatVec_Comm_Part1( const reax_system * const system,
         storage * const workspace, mpi_datatypes * const mpi_data,
         void const * const x, int n, int buf_type, MPI_Datatype mpi_type,
-        cudaStream_t s )
+        int block_size, cudaStream_t s )
 {
 #if !defined(GPU_DEVICE_PACK)
     sCudaHostAllocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
@@ -786,7 +787,7 @@ static void Sparse_MatVec_Comm_Part1( const reax_system * const system,
             cudaMemcpyHostToDevice, s, __FILE__, __LINE__ );
 #else
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
-    Cuda_Dist( system, workspace, mpi_data, x, buf_type, mpi_type, s );
+    Cuda_Dist( system, workspace, mpi_data, x, buf_type, mpi_type, block_size, s );
 #endif
 }
 
@@ -812,31 +813,31 @@ static void Sparse_MatVec_local( control_params const * const control,
         sCudaMemsetAsync( b, 0, sizeof(real) * n, s, __FILE__, __LINE__ );
 
         /* 1 thread per row implementation */
-//        k_sparse_matvec_half_csr <<< control->blocks, control->block_size, 0, s >>>
+//        k_sparse_matvec_half_csr <<< control->blocks_n, control->gpu_block_size, 0, s >>>
 //            ( A->start, A->end, A->j, A->val, x, b, A->n );
 
-        blocks = (A->n * WARP_SIZE / DEF_BLOCK_SIZE)
-            + (A->n * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+        blocks = (A->n * WARP_SIZE / control->gpu_block_size)
+            + (A->n * WARP_SIZE % control->gpu_block_size == 0 ? 0 : 1);
 
         /* WARP_SIZE threads per row implementation
          * using registers to accumulate partial row sums */
-        k_sparse_matvec_half_opt_csr <<< blocks, DEF_BLOCK_SIZE,
-                                     sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE), s >>>
+        k_sparse_matvec_half_opt_csr <<< blocks, control->gpu_block_size,
+                                     sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE), s >>>
              ( A->start, A->end, A->j, A->val, x, b, A->n );
     }
     else if ( A->format == SYM_FULL_MATRIX || A->format == FULL_MATRIX )
     {
         /* 1 thread per row implementation */
-//        k_sparse_matvec_full_csr <<< control->blocks, control->block_size, 0, s >>>
+//        k_sparse_matvec_full_csr <<< control->blocks_n, control->gpu_block_size, 0, s >>>
 //             ( A->start, A->end, A->j, A->val, x, b, A->n );
 
-        blocks = ((A->n * WARP_SIZE) / DEF_BLOCK_SIZE)
-            + (((A->n * WARP_SIZE) % DEF_BLOCK_SIZE) == 0 ? 0 : 1);
+        blocks = ((A->n * WARP_SIZE) / control->gpu_block_size)
+            + (((A->n * WARP_SIZE) % control->gpu_block_size) == 0 ? 0 : 1);
 
         /* WARP_SIZE threads per row implementation
          * using registers to accumulate partial row sums */
-        k_sparse_matvec_full_opt_csr <<< blocks, DEF_BLOCK_SIZE,
-                                     sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE), s >>>
+        k_sparse_matvec_full_opt_csr <<< blocks, control->gpu_block_size,
+                                     sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE), s >>>
              ( A->start, A->end, A->j, A->val, x, b, A->n );
     }
     cudaCheckError( );
@@ -856,12 +857,13 @@ static void Sparse_MatVec_local( control_params const * const control,
  * n2: number of entries in b (at output)
  * buf_type: data structure type for b
  * mpi_type: MPI_Datatype struct for communications
+ * block_size: CUDA threads per block
  * s: CUDA stream
  */
 static void Sparse_MatVec_Comm_Part2( const reax_system * const system,
         storage * const workspace, mpi_datatypes * const mpi_data, int mat_format,
         void * const b, int n1, int n2, int buf_type, MPI_Datatype mpi_type,
-        cudaStream_t s )
+        int block_size, cudaStream_t s )
 {
     /* reduction required for symmetric half matrix */
     if ( mat_format == SYM_HALF_MATRIX )
@@ -881,7 +883,7 @@ static void Sparse_MatVec_Comm_Part2( const reax_system * const system,
         sCudaMemcpyAsync( b, workspace->host_scratch, sizeof(real) * n2,
                 cudaMemcpyHostToDevice, s, __FILE__, __LINE__ );
 #else
-        Cuda_Coll( system, mpi_data, b, buf_type, mpi_type, s );
+        Cuda_Coll( system, mpi_data, b, buf_type, mpi_type, block_size, s );
 #endif
     }
 }
@@ -913,7 +915,7 @@ static void Sparse_MatVec( reax_system const * const system,
 #endif
 
     Sparse_MatVec_Comm_Part1( system, workspace, mpi_data, x, n,
-            REAL_PTR_TYPE, MPI_DOUBLE, s );
+            REAL_PTR_TYPE, MPI_DOUBLE, control->gpu_block_size, s );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_comm );
@@ -926,7 +928,7 @@ static void Sparse_MatVec( reax_system const * const system,
 #endif
 
     Sparse_MatVec_Comm_Part2( system, workspace, mpi_data, A->format, b, n, A->n,
-            REAL_PTR_TYPE, MPI_DOUBLE, s );
+            REAL_PTR_TYPE, MPI_DOUBLE, control->gpu_block_size, s );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_comm );
@@ -973,7 +975,7 @@ static void dual_apply_preconditioner( reax_system const * const system,
             {
                 case LEFT:
                     dual_jacobi_apply( workspace->d_workspace->Hdia_inv,
-                            y, x, system->n, s );
+                            y, x, system->n, control->gpu_block_size, s );
                     break;
 
                 case RIGHT:
@@ -1147,7 +1149,7 @@ static void apply_preconditioner( reax_system const * const system,
             {
                 case LEFT:
                     jacobi_apply( workspace->d_workspace->Hdia_inv,
-                            y, x, system->n, s );
+                            y, x, system->n, control->gpu_block_size, s );
                     break;
 
                 case RIGHT:

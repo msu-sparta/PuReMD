@@ -1290,7 +1290,6 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
         storage * const workspace, reax_list **lists,
         output_controls const * const out_control )
 {
-    int blocks;
 #if !defined(GPU_ACCUM_ATOMIC)
     int update_energy;
     size_t s;
@@ -1331,7 +1330,7 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
 
     if ( control->virial == 1 )
     {
-        k_torsion_angles_virial_part1 <<< control->blocks, control->block_size,
+        k_torsion_angles_virial_part1 <<< control->blocks_n, control->gpu_block_size,
                                       0, control->cuda_streams[3] >>>
             ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_fbp,
               (control_params *) control->d_control_params, *(lists[BONDS]),
@@ -1347,7 +1346,7 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
     }
     else
     {
-//        k_torsion_angles_part1 <<< control->blocks, control->block_size,
+//        k_torsion_angles_part1 <<< control->blocks_n, control->gpu_block_size,
 //                               0, control->cuda_streams[3] >>>
 //            ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp,
 //              system->reax_param.d_tbp, system->reax_param.d_thbp, system->reax_param.d_fbp,
@@ -1361,11 +1360,8 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
 //#endif
 //            );
 
-        blocks = system->n * WARP_SIZE / DEF_BLOCK_SIZE
-            + (system->n * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-
-        k_torsion_angles_part1_opt <<< blocks, DEF_BLOCK_SIZE,
-                                   sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+        k_torsion_angles_part1_opt <<< control->blocks_warp_n, control->gpu_block_size,
+                                   sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                    control->cuda_streams[3] >>>
             ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp,
               system->reax_param.d_tbp, system->reax_param.d_thbp, system->reax_param.d_fbp,
@@ -1402,8 +1398,8 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
 #endif
 
 #if !defined(GPU_ACCUM_ATOMIC)
-    k_torsion_angles_part2 <<< control->blocks_n, control->block_size_n, 0,
-                           control->cuda_streams[3] >>>
+    k_torsion_angles_part2 <<< control->blocks_N, control->gpu_block_size,
+                           0, control->cuda_streams[3] >>>
             ( *(workspace->d_workspace), *(lists[BONDS]), system->N );
     cudaCheckError( );
 #endif

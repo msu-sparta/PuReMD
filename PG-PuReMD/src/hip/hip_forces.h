@@ -5,40 +5,39 @@
 #include "../reax_types.h"
 
 
-void Hip_Init_Neighbor_Indices( reax_system *, control_params *, reax_list * );
+void Hip_Init_Neighbor_Indices( reax_system * const, control_params const * const,
+        reax_list * const );
 
-void Hip_Init_HBond_Indices( reax_system *, storage *, reax_list *,
-        hipStream_t );
+void Hip_Init_HBond_Indices( reax_system * const, storage * const, reax_list * const,
+        int, cudaStream_t );
 
-void Hip_Init_Bond_Indices( reax_system *, reax_list *, hipStream_t );
+void Hip_Init_Bond_Indices( reax_system * const, reax_list * const, int, cudaStream_t );
 
-void Hip_Init_Sparse_Matrix_Indices( reax_system *, sparse_matrix *,
-       hipStream_t );
+void Hip_Init_Sparse_Matrix_Indices( reax_system * const, sparse_matrix * const, int,
+       cudaStream_t );
 
 void Hip_Init_Three_Body_Indices( int *, int, reax_list ** );
 
-void Hip_Estimate_Storages( reax_system *, control_params *, simulation_data *,
-        storage *, reax_list **, int, int, int, int );
+void Hip_Estimate_Storages( reax_system * const, control_params * const,
+        simulation_data * const, storage * const, reax_list ** const,
+        int, int, int, int );
 
-int Hip_Init_Forces( reax_system *, control_params *, simulation_data *,
-        storage *, reax_list **, output_controls * );
+int Hip_Init_Forces( reax_system * const, control_params * const, simulation_data * const,
+        storage * const, reax_list ** const, output_controls * const );
 
-int Hip_Init_Forces_No_Charges( reax_system *, control_params *, simulation_data *,
-        storage *, reax_list **, output_controls * );
+int Hip_Init_Forces_No_Charges( reax_system * const, control_params * const, simulation_data * const,
+        storage * const, reax_list ** const, output_controls * const );
 
-int Hip_Compute_Bonded_Forces( reax_system *, control_params *, simulation_data *,
-        storage *, reax_list **, output_controls * );
-
-void Hip_Compute_NonBonded_Forces( reax_system *, control_params *,
-        simulation_data *, storage *, reax_list **, output_controls *,
-        mpi_datatypes * );
+int Hip_Compute_Bonded_Forces( reax_system * const, control_params * const, simulation_data * const,
+        storage * const, reax_list ** const, output_controls * const );
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-int Hip_Compute_Forces( reax_system*, control_params*, simulation_data*,
-        storage*, reax_list**, output_controls*, mpi_datatypes* );
+int Hip_Compute_Forces( reax_system * const, control_params * const,
+        simulation_data * const, storage * const, reax_list ** const,
+        output_controls * const, mpi_datatypes * const );
 
 #ifdef __cplusplus
 }

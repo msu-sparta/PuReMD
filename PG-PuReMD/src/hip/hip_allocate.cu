@@ -285,10 +285,9 @@ void Hip_Allocate_Grid( reax_system *system, control_params *control )
     sHipMalloc( (void **) &device->rel_box, sizeof(ivec) * total,
             __FILE__, __LINE__ );
 
-//    int block_size = 512;
-//    int blocks = (host->max_nbrs) / block_size + ((host->max_nbrs) % block_size == 0 ? 0 : 1); 
+//    int blocks = (host->max_nbrs) / control->gpu_block_size + ((host->max_nbrs) % control->gpu_block_size == 0 ? 0 : 1); 
 //
-//    k_init_nbrs <<< blocks, block_size >>>
+//    k_init_nbrs <<< blocks, control->gpu_block_size >>>
 //        ( nbrs_x, host->max_nbrs );
 //    hipCheckError( );
 //

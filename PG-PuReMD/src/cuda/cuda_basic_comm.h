@@ -35,10 +35,10 @@ enum pointer_type
 
 
 void Cuda_Dist( reax_system const * const, storage * const, mpi_datatypes * const,
-        void const * const, int, MPI_Datatype, cudaStream_t );
+        void const * const, int, MPI_Datatype, int, cudaStream_t );
 
 void Cuda_Coll( reax_system const * const, mpi_datatypes * const,
-        void * const , int, MPI_Datatype, cudaStream_t );
+        void * const , int, MPI_Datatype, int, cudaStream_t );
 
 
 #endif

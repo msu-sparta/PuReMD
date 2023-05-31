@@ -35,10 +35,10 @@ enum pointer_type
 
 
 void Hip_Dist( reax_system const * const, storage * const, mpi_datatypes * const,
-        void const * const, int, MPI_Datatype, hipStream_t );
+        void const * const, int, MPI_Datatype, int, hipStream_t );
 
 void Hip_Coll( reax_system const * const, mpi_datatypes * const,
-        void * const , int, MPI_Datatype, hipStream_t );
+        void * const , int, MPI_Datatype, int, hipStream_t );
 
 
 #endif

@@ -3,16 +3,17 @@
 #include "cuda_utils.h"
 
 
-static void compute_blocks( int *blocks, int *block_size, int threads )
+/* compute num. of blocks required given block size and total threads */
+static void compute_blocks( int *blocks, int block_size, int total_threads )
 {
-    *block_size = DEF_BLOCK_SIZE; // threads per block
-    *blocks = (threads + (DEF_BLOCK_SIZE - 1)) / DEF_BLOCK_SIZE; // blocks per grid
+    *blocks = (total_threads + (block_size - 1)) / block_size;
 }
 
 
-static void compute_nearest_multiple_warp( int blocks, int *result )
+/* round num. of blocks up to the nearest multiple of warp size */
+static void compute_nearest_multiple_warp( int blocks, int *new_blocks )
 {
-    *result = ((blocks + WARP_SIZE - 1) / WARP_SIZE) * WARP_SIZE;
+    *new_blocks = ((blocks + WARP_SIZE - 1) / WARP_SIZE) * WARP_SIZE;
 }
 
 
@@ -194,11 +195,12 @@ extern "C" void Cuda_Setup_Environment( reax_system const * const system,
 extern "C" void Cuda_Init_Block_Sizes( reax_system *system,
         control_params *control )
 {
-    compute_blocks( &control->blocks, &control->block_size, system->n );
-    compute_nearest_multiple_warp( control->blocks, &control->blocks_pow_2 );
-
-    compute_blocks( &control->blocks_n, &control->block_size_n, system->N );
+    compute_blocks( &control->blocks_n, control->gpu_block_size, system->n );
+    compute_blocks( &control->blocks_warp_n, control->gpu_block_size, system->n * WARP_SIZE );
     compute_nearest_multiple_warp( control->blocks_n, &control->blocks_pow_2_n );
+
+    compute_blocks( &control->blocks_N, control->gpu_block_size, system->N );
+    compute_blocks( &control->blocks_warp_N, control->gpu_block_size, system->N * WARP_SIZE );
 }
 
 

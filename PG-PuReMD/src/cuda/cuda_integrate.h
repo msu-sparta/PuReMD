@@ -25,7 +25,8 @@
 #include "../reax_types.h"
 
 
-void Cuda_Scale_Velocities_NPT( reax_system *, control_params *, real, rvec );
+void Cuda_Scale_Velocities_NPT( reax_system * const, control_params const * const,
+        real, rvec );
 
 int Cuda_Velocity_Verlet_NVE( reax_system*, control_params*,
         simulation_data*, storage*, reax_list**, output_controls*,

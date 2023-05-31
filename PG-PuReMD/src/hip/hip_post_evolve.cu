@@ -33,7 +33,7 @@ GPU_GLOBAL void k_remove_center_of_mass_velocities( reax_atom *my_atoms,
 extern "C" void Hip_Remove_CoM_Velocities( reax_system *system,
         control_params *control, simulation_data *data )
 {
-    k_remove_center_of_mass_velocities <<< control->blocks, control->block_size,
+    k_remove_center_of_mass_velocities <<< control->blocks_n, control->gpu_block_size,
                                        0, control->hip_streams[0] >>>
         ( system->d_my_atoms, (simulation_data *)data->d_simulation_data, system->n );
     hipCheckError( );

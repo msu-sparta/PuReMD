@@ -1870,28 +1870,21 @@ GPU_GLOBAL void k_print_hbonds( reax_atom *my_atoms, reax_list hbond_list, int n
 
 
 #if defined(DEBUG_FOCUS)
-static void Print_Forces( reax_system *system, control_params *control )
+static void Print_Forces( reax_system const * const system,
+        control_params const * const control )
 {
-    int blocks;
-    
-    blocks = (system->n) / DEF_BLOCK_SIZE
-        + (((system->n % DEF_BLOCK_SIZE) == 0) ? 0 : 1);
-
-    k_print_forces <<< blocks, DEF_BLOCK_SIZE, 0, control->hip_streams[0] >>>
+    k_print_forces <<< control->blocks_n, control->gpu_block_size,
+                   0, control->hip_streams[0] >>>
         ( system->d_my_atoms, workspace->d_workspace->f, system->n );
     hipCheckError( );
 }
 
 
-static void Print_HBonds( reax_system *system, control_params *control,
-        int step )
+static void Print_HBonds( reax_system const * const system,
+        control_params const * const control, int step )
 {
-    int blocks;
-    
-    blocks = (system->n) / DEF_BLOCK_SIZE
-        + (((system->n % DEF_BLOCK_SIZE) == 0) ? 0 : 1);
-
-    k_print_hbonds <<< blocks, DEF_BLOCK_SIZE, 0, control->hip_streams[0] >>>
+    k_print_hbonds <<< control->blocks_n, control->gpu_block_size,
+                   0, control->hip_streams[0] >>>
         ( system->d_my_atoms, *(lists[HBONDS]), system->n, system->my_rank, step );
     hipCheckError( );
 }
@@ -1901,20 +1894,23 @@ static void Print_HBonds( reax_system *system, control_params *control,
 /* Initialize indices for far neighbors list post reallocation
  *
  * system: atomic system info. */
-void Hip_Init_Neighbor_Indices( reax_system *system, control_params *control,
-        reax_list *far_nbr_list )
+void Hip_Init_Neighbor_Indices( reax_system * const system,
+        control_params const * const control,
+        reax_list * const far_nbr_list )
+
 {
     int blocks;
 
-    blocks = far_nbr_list->n / DEF_BLOCK_SIZE
-        + (far_nbr_list->n % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+    blocks = far_nbr_list->n / control->gpu_block_size
+        + (far_nbr_list->n % control->gpu_block_size == 0 ? 0 : 1);
 
     /* init indices */
     Hip_Scan_Excl_Sum( system->d_max_far_nbrs, far_nbr_list->index,
             far_nbr_list->n, 0, control->hip_streams[0] );
 
     /* init end_indices */
-    k_init_end_index <<< blocks, DEF_BLOCK_SIZE, 0, control->hip_streams[0] >>>
+    k_init_end_index <<< blocks, control->gpu_block_size,
+                     0, control->hip_streams[0] >>>
         ( system->d_far_nbrs, far_nbr_list->index, far_nbr_list->end_index,
           far_nbr_list->n );
     hipCheckError( );
@@ -1924,13 +1920,13 @@ void Hip_Init_Neighbor_Indices( reax_system *system, control_params *control,
 /* Initialize indices for far hydrogen bonds list post reallocation
  *
  * system: atomic system info. */
-void Hip_Init_HBond_Indices( reax_system *system, storage *workspace,
-        reax_list *hbond_list, hipStream_t s )
+void Hip_Init_HBond_Indices( reax_system * const system, storage * const workspace,
+        reax_list * const hbond_list, int block_size, cudaStream_t s )
 {
     int blocks, *temp;
 
-    blocks = system->total_cap / DEF_BLOCK_SIZE
-        + (system->total_cap % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+    blocks = system->total_cap / block_size
+        + (system->total_cap % block_size == 0 ? 0 : 1);
 
     sHipCheckMalloc( &workspace->scratch[2], &workspace->scratch_size[2],
             sizeof(int) * system->total_cap, __FILE__, __LINE__ );
@@ -1939,7 +1935,7 @@ void Hip_Init_HBond_Indices( reax_system *system, storage *workspace,
     /* init indices and end_indices */
     Hip_Scan_Excl_Sum( system->d_max_hbonds, temp, system->total_cap, 2, s );
 
-    k_init_hbond_indices <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
+    k_init_hbond_indices <<< blocks, block_size, 0, s >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, system->d_hbonds, temp, 
           hbond_list->index, hbond_list->end_index, system->total_cap );
     hipCheckError( );
@@ -1949,20 +1945,20 @@ void Hip_Init_HBond_Indices( reax_system *system, storage *workspace,
 /* Initialize indices for far bonds list post reallocation
  *
  * system: atomic system info. */
-void Hip_Init_Bond_Indices( reax_system *system, reax_list * bond_list,
-        hipStream_t s )
+void Hip_Init_Bond_Indices( reax_system * const system, reax_list * const bond_list,
+        int block_size, cudaStream_t s )
 {
     int blocks;
 
-    blocks = system->total_cap / DEF_BLOCK_SIZE + 
-        (system->total_cap % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+    blocks = system->total_cap / block_size + 
+        (system->total_cap % block_size == 0 ? 0 : 1);
 
     /* init indices */
     Hip_Scan_Excl_Sum( system->d_max_bonds, bond_list->index,
             system->total_cap, 1, s );
 
     /* init end_indices */
-    k_init_end_index <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
+    k_init_end_index <<< blocks, block_size, 0, s >>>
         ( system->d_bonds, bond_list->index, bond_list->end_index, system->total_cap );
     hipCheckError( );
 }
@@ -1972,27 +1968,27 @@ void Hip_Init_Bond_Indices( reax_system *system, reax_list * bond_list,
  *
  * system: atomic system info.
  * H: charge matrix */
-void Hip_Init_Sparse_Matrix_Indices( reax_system *system, sparse_matrix *H,
-        hipStream_t s )
+void Hip_Init_Sparse_Matrix_Indices( reax_system * const system, sparse_matrix * const H,
+        int block_size, cudaStream_t s )
 {
     int blocks;
 
-    blocks = H->n_max / DEF_BLOCK_SIZE
-        + (H->n_max % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+    blocks = H->n_max / block_size
+        + (H->n_max % block_size == 0 ? 0 : 1);
 
     /* init indices */
     Hip_Scan_Excl_Sum( system->d_max_cm_entries, H->start, H->n_max, 5, s );
 
     //TODO: not needed for full format (Init_Forces sets H->end)
     /* init end_indices */
-    k_init_end_index <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
+    k_init_end_index <<< blocks, block_size, 0, s >>>
         ( system->d_cm_entries, H->start, H->end, H->n_max );
     hipCheckError( );
 }
 
 
-void Hip_Estimate_Storages( reax_system *system, control_params *control, 
-        simulation_data *data, storage *workspace, reax_list **lists,
+void Hip_Estimate_Storages( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace, reax_list ** const lists,
         int realloc_cm, int realloc_bonds, int realloc_hbonds, int step )
 {
     int blocks;
@@ -2006,14 +2002,14 @@ void Hip_Estimate_Storages( reax_system *system, control_params *control,
         hipEventRecord( control->hip_time_events[TE_INIT_CM_START], control->hip_streams[5] );
 #endif
 
-//        blocks = workspace->d_workspace->H.n_max / DEF_BLOCK_SIZE
-//            + (workspace->d_workspace->H.n_max % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-        blocks = workspace->d_workspace->H.n_max * WARP_SIZE / DEF_BLOCK_SIZE
-            + (workspace->d_workspace->H.n_max * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+//        blocks = workspace->d_workspace->H.n_max / control->gpu_block_size
+//            + (workspace->d_workspace->H.n_max % control->gpu_block_size == 0 ? 0 : 1);
+        blocks = workspace->d_workspace->H.n_max * WARP_SIZE / control->gpu_block_size
+            + (workspace->d_workspace->H.n_max * WARP_SIZE % control->gpu_block_size == 0 ? 0 : 1);
 
         if ( workspace->d_workspace->H.format == SYM_HALF_MATRIX )
         {
-            k_estimate_storages_cm_half <<< blocks, DEF_BLOCK_SIZE, 0,
+            k_estimate_storages_cm_half <<< blocks, control->gpu_block_size, 0,
                                         control->hip_streams[5] >>>
                 ( system->d_my_atoms, (control_params *) control->d_control_params,
                   *(lists[FAR_NBRS]), workspace->d_workspace->H.n,
@@ -2022,15 +2018,15 @@ void Hip_Estimate_Storages( reax_system *system, control_params *control,
         }
         else
         {
-//            k_estimate_storages_cm_full <<< blocks, DEF_BLOCK_SIZE, 0,
+//            k_estimate_storages_cm_full <<< blocks, control->gpu_block_size, 0,
 //                                        control->hip_streams[5] >>>
 //                ( (control_params *) control->d_control_params,
 //                  *(lists[FAR_NBRS]), workspace->d_workspace->H.n,
 //                  workspace->d_workspace->H.n_max,
 //                  system->d_cm_entries, system->d_max_cm_entries );
 
-            k_estimate_storages_cm_full_opt <<< blocks, DEF_BLOCK_SIZE,
-                                            sizeof(hipcub::WarpReduce<int>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+            k_estimate_storages_cm_full_opt <<< blocks, control->gpu_block_size,
+                                            sizeof(hipcub::WarpReduce<int>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                             control->hip_streams[5] >>>
                 ( (control_params *) control->d_control_params,
                   *(lists[FAR_NBRS]), workspace->d_workspace->H.n,
@@ -2055,20 +2051,20 @@ void Hip_Estimate_Storages( reax_system *system, control_params *control,
         hipEventRecord( control->hip_time_events[TE_INIT_BOND_START], control->hip_streams[1] );
 #endif
 
-//        blocks = system->total_cap / DEF_BLOCK_SIZE
-//            + (system->total_cap % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-        blocks = system->total_cap * WARP_SIZE / DEF_BLOCK_SIZE
-            + (system->total_cap * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+//        blocks = system->total_cap / control->gpu_block_size
+//            + (system->total_cap % control->gpu_block_size == 0 ? 0 : 1);
+        blocks = system->total_cap * WARP_SIZE / control->gpu_block_size
+            + (system->total_cap * WARP_SIZE % control->gpu_block_size == 0 ? 0 : 1);
 
-//        k_estimate_storage_bonds <<< blocks, DEF_BLOCK_SIZE, 0,
+//        k_estimate_storage_bonds <<< blocks, control->gpu_block_size, 0,
 //                                 control->hip_streams[1] >>>
 //            ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp, 
 //              (control_params *) control->d_control_params,
 //              *(lists[FAR_NBRS]), system->reax_param.num_atom_types,
 //              system->n, system->N, system->total_cap,
 //              system->d_bonds, system->d_max_bonds );
-        k_estimate_storage_bonds_opt <<< blocks, DEF_BLOCK_SIZE,
-                                     sizeof(hipcub::WarpReduce<int>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+        k_estimate_storage_bonds_opt <<< blocks, control->gpu_block_size,
+                                     sizeof(hipcub::WarpReduce<int>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                      control->hip_streams[1] >>>
             ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp, 
               (control_params *) control->d_control_params,
@@ -2093,20 +2089,20 @@ void Hip_Estimate_Storages( reax_system *system, control_params *control,
         hipEventRecord( control->hip_time_events[TE_INIT_HBOND_START], control->hip_streams[2] );
 #endif
 
-//        blocks = system->total_cap / DEF_BLOCK_SIZE
-//            + (system->total_cap % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-        blocks = system->total_cap * WARP_SIZE / DEF_BLOCK_SIZE
-            + (system->total_cap * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+//        blocks = system->total_cap / control->gpu_block_size
+//            + (system->total_cap % control->gpu_block_size == 0 ? 0 : 1);
+        blocks = system->total_cap * WARP_SIZE / control->gpu_block_size
+            + (system->total_cap * WARP_SIZE % control->gpu_block_size == 0 ? 0 : 1);
 
-//        k_estimate_storage_hbonds <<< blocks, DEF_BLOCK_SIZE, 0,
+//        k_estimate_storage_hbonds <<< blocks, control->gpu_block_size, 0,
 //                                  control->hip_streams[2] >>>
 //            ( system->d_my_atoms, system->reax_param.d_sbp,
 //              (control_params *) control->d_control_params,
 //              *(lists[FAR_NBRS]), system->reax_param.num_atom_types,
 //              system->n, system->N, system->total_cap,
 //              system->d_hbonds, system->d_max_hbonds );
-        k_estimate_storage_hbonds_opt <<< blocks, DEF_BLOCK_SIZE,
-                                      sizeof(hipcub::WarpReduce<int>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+        k_estimate_storage_hbonds_opt <<< blocks, control->gpu_block_size,
+                                      sizeof(hipcub::WarpReduce<int>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                       control->hip_streams[2] >>>
             ( system->d_my_atoms, system->reax_param.d_sbp,
               (control_params *) control->d_control_params,
@@ -2167,9 +2163,9 @@ void Hip_Estimate_Storages( reax_system *system, control_params *control,
  * the initialization kernels be atomic transactions. Locks are used
  * to mark if the transaction succeeds (and thus should not be repeated).
  */
-int Hip_Init_Forces( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace,
-        reax_list **lists, output_controls *out_control ) 
+int Hip_Init_Forces( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace,
+        reax_list ** const lists, output_controls * const out_control ) 
 {
     int renbr, blocks, ret;
     static int dist_done = FALSE, cm_done = FALSE, bonds_done = FALSE, hbonds_done = FALSE;
@@ -2202,13 +2198,12 @@ int Hip_Init_Forces( reax_system *system, control_params *control,
         hipEventRecord( control->hip_time_events[TE_INIT_DIST_START], control->hip_streams[0] );
 #endif
 
-//        k_init_dist <<< control->blocks_n, control->block_size_n, 0, control->hip_streams[0] >>>
+//        k_init_dist <<< control->blocks_N, control->gpu_block_size,
+//                    0, control->hip_streams[0] >>>
 //            ( system->d_my_atoms, *(lists[FAR_NBRS]), system->N );
 
-        blocks = system->N * WARP_SIZE / DEF_BLOCK_SIZE
-            + (system->N * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-
-        k_init_dist_opt <<< blocks, DEF_BLOCK_SIZE, 0, control->hip_streams[0] >>>
+        k_init_dist_opt <<< control->blocks_warp_N, control->gpu_block_size,
+                        0, control->hip_streams[0] >>>
             ( system->d_my_atoms, *(lists[FAR_NBRS]), system->N );
         hipCheckError( );
 
@@ -2227,14 +2222,14 @@ int Hip_Init_Forces( reax_system *system, control_params *control,
         hipEventRecord( control->hip_time_events[TE_INIT_CM_START], control->hip_streams[5] );
 #endif
 
-        blocks = workspace->d_workspace->H.n_max / DEF_BLOCK_SIZE
-            + (workspace->d_workspace->H.n_max % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+        blocks = workspace->d_workspace->H.n_max / control->gpu_block_size
+            + (workspace->d_workspace->H.n_max % control->gpu_block_size == 0 ? 0 : 1);
 
         /* update num. rows in matrix for this GPU */
         workspace->d_workspace->H.n = system->n;
 
         Hip_Init_Sparse_Matrix_Indices( system, &workspace->d_workspace->H,
-                control->hip_streams[5] );
+                control->gpu_block_size, control->hip_streams[5] );
 
         if ( renbr == FALSE )
         {
@@ -2245,7 +2240,8 @@ int Hip_Init_Forces( reax_system *system, control_params *control,
         {
             if ( control->tabulate <= 0 )
             {
-                k_init_cm_qeq_half_fs <<< blocks, DEF_BLOCK_SIZE, 0, control->hip_streams[5] >>>
+                k_init_cm_qeq_half_fs <<< blocks, control->gpu_block_size,
+                                      0, control->hip_streams[5] >>>
                     ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
                       *(workspace->d_workspace), (control_params *) control->d_control_params,
                       *(lists[FAR_NBRS]), system->reax_param.num_atom_types,
@@ -2253,7 +2249,8 @@ int Hip_Init_Forces( reax_system *system, control_params *control,
             }
             else
             {
-                k_init_cm_qeq_half_fs_tab <<< blocks, DEF_BLOCK_SIZE, 0, control->hip_streams[5] >>>
+                k_init_cm_qeq_half_fs_tab <<< blocks, control->gpu_block_size,
+                                          0, control->hip_streams[5] >>>
                     ( system->d_my_atoms, system->reax_param.d_sbp,
                       *(workspace->d_workspace), (control_params *) control->d_control_params,
                       *(lists[FAR_NBRS]), workspace->d_LR, system->reax_param.num_atom_types,
@@ -2264,17 +2261,17 @@ int Hip_Init_Forces( reax_system *system, control_params *control,
         {
             if ( control->tabulate <= 0 )
             {
-//                k_init_cm_qeq_full_fs <<< blocks, DEF_BLOCK_SIZE, 0, control->hip_streams[5] >>>
+//                k_init_cm_qeq_full_fs <<< blocks, control->gpu_block_size, 0, control->hip_streams[5] >>>
 //                    ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
 //                      *(workspace->d_workspace), (control_params *) control->d_control_params,
 //                      *(lists[FAR_NBRS]), system->reax_param.num_atom_types,
 //                      system->d_max_cm_entries, system->d_realloc_cm_entries );
 
-                blocks = workspace->d_workspace->H.n_max * WARP_SIZE / DEF_BLOCK_SIZE
-                    + (workspace->d_workspace->H.n_max * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+                blocks = workspace->d_workspace->H.n_max * WARP_SIZE / control->gpu_block_size
+                    + (workspace->d_workspace->H.n_max * WARP_SIZE % control->gpu_block_size == 0 ? 0 : 1);
 
-                k_init_cm_qeq_full_fs_opt <<< blocks, DEF_BLOCK_SIZE,
-                                      sizeof(hipcub::WarpScan<int>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+                k_init_cm_qeq_full_fs_opt <<< blocks, control->gpu_block_size,
+                                      sizeof(hipcub::WarpScan<int>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                       control->hip_streams[5] >>>
                     ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
                       *(workspace->d_workspace), (control_params *) control->d_control_params,
@@ -2283,7 +2280,7 @@ int Hip_Init_Forces( reax_system *system, control_params *control,
             }
             else
             {
-                k_init_cm_qeq_full_fs_tab <<< blocks, DEF_BLOCK_SIZE, 0,
+                k_init_cm_qeq_full_fs_tab <<< blocks, control->gpu_block_size, 0,
                                       control->hip_streams[5] >>>
                     ( system->d_my_atoms, system->reax_param.d_sbp,
                       *(workspace->d_workspace), (control_params *) control->d_control_params,
@@ -2304,17 +2301,18 @@ int Hip_Init_Forces( reax_system *system, control_params *control,
         hipEventRecord( control->hip_time_events[TE_INIT_BOND_START], control->hip_streams[1] );
 #endif
 
-        blocks = system->total_cap / DEF_BLOCK_SIZE
-            + ((system->total_cap % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
+        blocks = system->total_cap / control->gpu_block_size
+            + ((system->total_cap % control->gpu_block_size == 0 ) ? 0 : 1);
 
-        Hip_Init_Bond_Indices( system, lists[BONDS], control->hip_streams[1] );
+        Hip_Init_Bond_Indices( system, lists[BONDS],  control->gpu_block_size,
+                control->hip_streams[1] );
 
         if ( renbr == FALSE )
         {
             hipStreamWaitEvent( control->hip_streams[1], control->hip_stream_events[SE_INIT_DIST_DONE], 0 );
         }
 
-//        k_init_bonds <<< control->blocks_n, control->block_size_n, 0, control->hip_streams[1] >>>
+//        k_init_bonds <<< control->blocks_N, control->gpu_block_size, 0, control->hip_streams[1] >>>
 //            ( system->d_my_atoms, system->reax_param.d_sbp,
 //              system->reax_param.d_tbp, *(workspace->d_workspace),
 //              (control_params *) control->d_control_params,
@@ -2323,12 +2321,9 @@ int Hip_Init_Forces( reax_system *system, control_params *control,
 //              system->d_max_bonds, system->d_realloc_bonds );
 //        hipCheckError( );
 
-        blocks = system->N * WARP_SIZE / DEF_BLOCK_SIZE
-            + (system->N * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-
-        k_init_bonds_opt <<< blocks, DEF_BLOCK_SIZE,
+        k_init_bonds_opt <<< control->blocks_warp_N, control->gpu_block_size,
                      (sizeof(hipcub::WarpScan<int>::TempStorage)
-                      + sizeof(hipcub::WarpReduce<double>::TempStorage)) * (DEF_BLOCK_SIZE / WARP_SIZE),
+                      + sizeof(hipcub::WarpReduce<double>::TempStorage)) * (control->gpu_block_size / WARP_SIZE),
                      control->hip_streams[1] >>>
             ( system->d_my_atoms, system->reax_param.d_sbp,
               system->reax_param.d_tbp, *(workspace->d_workspace),
@@ -2349,7 +2344,7 @@ int Hip_Init_Forces( reax_system *system, control_params *control,
         hipEventRecord( control->hip_time_events[TE_INIT_HBOND_START], control->hip_streams[2] );
 #endif
 
-        Hip_Init_HBond_Indices( system, workspace, lists[HBONDS],
+        Hip_Init_HBond_Indices( system, workspace, lists[HBONDS], control->gpu_block_size,
                 control->hip_streams[2] );
 
         if ( renbr == FALSE )
@@ -2357,7 +2352,7 @@ int Hip_Init_Forces( reax_system *system, control_params *control,
             hipStreamWaitEvent( control->hip_streams[2], control->hip_stream_events[SE_INIT_DIST_DONE], 0 );
         }
 
-//        k_init_hbonds <<< control->blocks_n, control->block_size_n, 0, control->hip_streams[2] >>>
+//        k_init_hbonds <<< control->blocks_N, control->gpu_block_size, 0, control->hip_streams[2] >>>
 //            ( system->d_my_atoms, system->reax_param.d_sbp,
 //              (control_params *) control->d_control_params,
 //              *(lists[FAR_NBRS]), *(lists[HBONDS]),
@@ -2365,11 +2360,8 @@ int Hip_Init_Forces( reax_system *system, control_params *control,
 //              system->d_max_hbonds, system->d_realloc_hbonds );
 //        hipCheckError( );
 
-        blocks = system->N * WARP_SIZE / DEF_BLOCK_SIZE
-            + (system->N * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-
-        k_init_hbonds_opt <<< blocks, DEF_BLOCK_SIZE,
-                          sizeof(hipcub::WarpScan<int>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+        k_init_hbonds_opt <<< control->blocks_warp_N, control->gpu_block_size,
+                          sizeof(hipcub::WarpScan<int>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                           control->hip_streams[2] >>>
             ( system->d_my_atoms, system->reax_param.d_sbp,
               (control_params *) control->d_control_params,
@@ -2472,13 +2464,11 @@ int Hip_Init_Forces( reax_system *system, control_params *control,
         hipEventRecord( control->hip_time_events[TE_INIT_BOND_START], control->hip_streams[1] );
 #endif
 
-        blocks = system->N * WARP_SIZE / DEF_BLOCK_SIZE
-            + (system->N * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-
-//        k_update_sym_dbond_indices <<< control->blocks_n, control->block_size_n,
+//        k_update_sym_dbond_indices <<< control->blocks_N, control->gpu_block_size,
 //                                   0, control->hip_streams[1] >>> 
 //            ( *(lists[BONDS]), system->N );
-        k_update_sym_dbond_indices_opt <<< blocks, DEF_BLOCK_SIZE, 0, control->hip_streams[1] >>>
+        k_update_sym_dbond_indices_opt <<< control->blocks_warp_N, control->gpu_block_size,
+                                       0, control->hip_streams[1] >>>
             ( *(lists[BONDS]), system->N );
         hipCheckError( );
 
@@ -2499,11 +2489,8 @@ int Hip_Init_Forces( reax_system *system, control_params *control,
             hipEventRecord( control->hip_time_events[TE_INIT_HBOND_START], control->hip_streams[2] );
 #endif
 
-            blocks = system->N * WARP_SIZE / DEF_BLOCK_SIZE
-                + (system->N * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-
             /* make hbond_list symmetric */
-            k_update_sym_hbond_indices_opt <<< blocks, DEF_BLOCK_SIZE,
+            k_update_sym_hbond_indices_opt <<< control->blocks_warp_N, control->gpu_block_size,
                                            0, control->hip_streams[2] >>>
                 ( system->d_my_atoms, *(lists[HBONDS]), system->N );
             hipCheckError( );
@@ -2532,11 +2519,11 @@ int Hip_Init_Forces( reax_system *system, control_params *control,
 }
 
 
-int Hip_Init_Forces_No_Charges( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace,
-        reax_list **lists, output_controls *out_control ) 
+int Hip_Init_Forces_No_Charges( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace,
+        reax_list ** const lists, output_controls * const out_control ) 
 {
-    int renbr, blocks, ret;
+    int renbr, ret;
     static int dist_done = FALSE, bonds_done = FALSE, hbonds_done = FALSE;
 #if defined(LOG_PERFORMANCE)
     float time_elapsed;
@@ -2562,13 +2549,12 @@ int Hip_Init_Forces_No_Charges( reax_system *system, control_params *control,
         hipEventRecord( control->hip_time_events[TE_INIT_DIST_START], control->hip_streams[0] );
 #endif
 
-//        k_init_dist <<< control->blocks_n, control->block_size_n, 0, control->hip_streams[0] >>>
+//        k_init_dist <<< control->blocks_N, control->gpu_block_size,
+//                    0, control->hip_streams[0] >>>
 //            ( system->d_my_atoms, *(lists[FAR_NBRS]), system->N );
 
-        blocks = system->N * WARP_SIZE / DEF_BLOCK_SIZE
-            + (system->N * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-
-        k_init_dist_opt <<< blocks, DEF_BLOCK_SIZE, 0, control->hip_streams[0] >>>
+        k_init_dist_opt <<< control->blocks_warp_N, control->gpu_block_size,
+                        0, control->hip_streams[0] >>>
             ( system->d_my_atoms, *(lists[FAR_NBRS]), system->N );
         hipCheckError( );
 
@@ -2587,17 +2573,15 @@ int Hip_Init_Forces_No_Charges( reax_system *system, control_params *control,
         hipEventRecord( control->hip_time_events[TE_INIT_BOND_START], control->hip_streams[1] );
 #endif
 
-        blocks = system->total_cap / DEF_BLOCK_SIZE
-            + ((system->total_cap % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
-
-        Hip_Init_Bond_Indices( system, lists[BONDS], control->hip_streams[1] );
+        Hip_Init_Bond_Indices( system, lists[BONDS], control->gpu_block_size,
+                control->hip_streams[1] );
 
         if ( renbr == FALSE )
         {
             hipStreamWaitEvent( control->hip_streams[1], control->hip_stream_events[SE_INIT_DIST_DONE], 0 );
         }
 
-//        k_init_bonds <<< control->blocks_n, control->block_size_n, 0, control->hip_streams[1] >>>
+//        k_init_bonds <<< control->blocks_N, control->gpu_block_size, 0, control->hip_streams[1] >>>
 //            ( system->d_my_atoms, system->reax_param.d_sbp,
 //              system->reax_param.d_tbp, *(workspace->d_workspace),
 //              (control_params *) control->d_control_params,
@@ -2605,11 +2589,8 @@ int Hip_Init_Forces_No_Charges( reax_system *system, control_params *control,
 //              system->n, system->N, system->reax_param.num_atom_types,
 //              system->d_max_bonds, system->d_realloc_bonds );
 
-        blocks = control->block_size_n * WARP_SIZE / DEF_BLOCK_SIZE
-            + (control->block_size_n * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-
-        k_init_bonds_opt <<< blocks, DEF_BLOCK_SIZE,
-                     sizeof(hipcub::WarpScan<int>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+        k_init_bonds_opt <<< control->blocks_warp_N, control->gpu_block_size,
+                     sizeof(hipcub::WarpScan<int>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                      control->hip_streams[1] >>>
             ( system->d_my_atoms, system->reax_param.d_sbp,
               system->reax_param.d_tbp, *(workspace->d_workspace),
@@ -2631,14 +2612,14 @@ int Hip_Init_Forces_No_Charges( reax_system *system, control_params *control,
 #endif
 
         Hip_Init_HBond_Indices( system, workspace, lists[HBONDS],
-                control->hip_streams[2] );
+                control->gpu_block_size, control->hip_streams[2] );
 
         if ( renbr == FALSE )
         {
             hipStreamWaitEvent( control->hip_streams[2], control->hip_stream_events[SE_INIT_DIST_DONE], 0 );
         }
 
-//        k_init_hbonds <<< control->blocks_n, control->block_size_n, 0, control->hip_streams[2] >>>
+//        k_init_hbonds <<< control->blocks_N, control->gpu_block_size, 0, control->hip_streams[2] >>>
 //            ( system->d_my_atoms, system->reax_param.d_sbp,
 //              (control_params *) control->d_control_params,
 //              *(lists[FAR_NBRS]), *(lists[HBONDS]),
@@ -2646,11 +2627,8 @@ int Hip_Init_Forces_No_Charges( reax_system *system, control_params *control,
 //              system->d_max_hbonds, system->d_realloc_hbonds );
 //        hipCheckError( );
 
-        blocks = system->N * WARP_SIZE / DEF_BLOCK_SIZE
-            + (system->N * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-
-        k_init_hbonds_opt <<< blocks, DEF_BLOCK_SIZE,
-                          sizeof(hipcub::WarpScan<int>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+        k_init_hbonds_opt <<< control->blocks_N, control->gpu_block_size,
+                          sizeof(hipcub::WarpScan<int>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                           control->hip_streams[2] >>>
             ( system->d_my_atoms, system->reax_param.d_sbp,
               (control_params *) control->d_control_params,
@@ -2729,13 +2707,11 @@ int Hip_Init_Forces_No_Charges( reax_system *system, control_params *control,
         hipEventRecord( control->hip_time_events[TE_INIT_BOND_START], control->hip_streams[1] );
 #endif
 
-        blocks = system->N * WARP_SIZE / DEF_BLOCK_SIZE
-            + (system->N * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-
-//        k_update_sym_dbond_indices <<< control->blocks_n, control->block_size_n,
+//        k_update_sym_dbond_indices <<< control->blocks_N, control->gpu_block_size,
 //                                   0, control->hip_streams[1] >>>
 //            ( *(lists[BONDS]), system->N );
-        k_update_sym_dbond_indices_opt <<< blocks, DEF_BLOCK_SIZE, 0, control->hip_streams[1] >>>
+        k_update_sym_dbond_indices_opt <<< control->blocks_warp_N, control->gpu_block_size,
+                                       0, control->hip_streams[1] >>>
             ( *(lists[BONDS]), system->N );
         hipCheckError( );
 
@@ -2756,11 +2732,8 @@ int Hip_Init_Forces_No_Charges( reax_system *system, control_params *control,
             hipEventRecord( control->hip_time_events[TE_INIT_HBOND_START], control->hip_streams[2] );
 #endif
 
-            blocks = system->N * WARP_SIZE / DEF_BLOCK_SIZE
-                + (system->N * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-
             /* make hbond_list symmetric */
-            k_update_sym_hbond_indices_opt <<< blocks, DEF_BLOCK_SIZE,
+            k_update_sym_hbond_indices_opt <<< control->blocks_warp_N, control->gpu_block_size,
                                            0, control->hip_streams[2] >>>
                 ( system->d_my_atoms, *(lists[HBONDS]), system->N );
             hipCheckError( );
@@ -2787,9 +2760,9 @@ int Hip_Init_Forces_No_Charges( reax_system *system, control_params *control,
 }
 
 
-int Hip_Compute_Bonded_Forces( reax_system *system, control_params *control, 
-        simulation_data *data, storage *workspace, 
-        reax_list **lists, output_controls *out_control )
+int Hip_Compute_Bonded_Forces( reax_system * const system, control_params * const control, 
+        simulation_data * const data, storage * const workspace, 
+        reax_list ** const lists, output_controls * const out_control )
 {
     int ret;
     static int compute_bonded_part1 = FALSE;
@@ -2831,9 +2804,9 @@ int Hip_Compute_Bonded_Forces( reax_system *system, control_params *control,
 }
 
 
-static void Hip_Compute_Total_Force( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace,
-        reax_list **lists, mpi_datatypes *mpi_data )
+static void Hip_Compute_Total_Force( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace,
+        reax_list ** const lists, mpi_datatypes * const mpi_data )
 {
     sHipHostMallocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
             sizeof(rvec) * system->N, hipHostMallocNumaUser | hipHostMallocPortable, TRUE, SAFE_ZONE,
@@ -2862,9 +2835,9 @@ static void Hip_Compute_Total_Force( reax_system *system, control_params *contro
 }
 
 
-extern "C" int Hip_Compute_Forces( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace, reax_list **lists,
-        output_controls *out_control, mpi_datatypes *mpi_data )
+extern "C" int Hip_Compute_Forces( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace, reax_list ** const lists,
+        output_controls * const out_control, mpi_datatypes * const mpi_data )
 {
     int i, charge_flag, ret;
     static int init_forces_done = FALSE, nonbonded_forces_part1_done = FALSE;

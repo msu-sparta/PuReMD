@@ -1345,7 +1345,6 @@ static void Cuda_Compute_Polarization_Energy( reax_system const * const system,
         control_params const * const control, storage * const workspace,
         simulation_data * const data )
 {
-    int blocks;
 #if !defined(GPU_ACCUM_ATOMIC)
     real *spad;
 
@@ -1357,11 +1356,8 @@ static void Cuda_Compute_Polarization_Energy( reax_system const * const system,
             0, sizeof(real), control->cuda_streams[5], __FILE__, __LINE__ );
 #endif
 
-    blocks = system->n / DEF_BLOCK_SIZE
-        + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
-
-    k_compute_polarization_energy <<< blocks, DEF_BLOCK_SIZE, 0,
-                                  control->cuda_streams[5] >>>
+    k_compute_polarization_energy <<< control->blocks_n, control->gpu_block_size,
+                                  0, control->cuda_streams[5] >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
           system->n,
 #if !defined(GPU_ACCUM_ATOMIC)
@@ -1373,8 +1369,8 @@ static void Cuda_Compute_Polarization_Energy( reax_system const * const system,
     cudaCheckError( );
 
 #if !defined(GPU_ACCUM_ATOMIC)
-    Cuda_Reduction_Sum( spad,
-            &data->d_my_en->e_pol, system->n, 5, control->cuda_streams[5] );
+    Cuda_Reduction_Sum( spad, &data->d_my_en->e_pol, system->n,
+            5, control->cuda_streams[5] );
 #endif
 }
 
@@ -1385,7 +1381,6 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
         output_controls const * const out_control )
 {
 #if !defined(USE_FUSED_VDW_COULOMB)
-    int blocks;
 #if !defined(GPU_ACCUM_ATOMIC)
     int update_energy;
     size_t s;
@@ -1403,7 +1398,7 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
 #if !defined(GPU_ACCUM_ATOMIC)
     if ( control->virial == 1 )
     {
-        s = (sizeof(real) + sizeof(rvec)) * system->n + sizeof(rvec) * control->blocks;
+        s = (sizeof(real) + sizeof(rvec)) * system->n + sizeof(rvec) * control->blocks_n;
     }
     else
     {
@@ -1422,17 +1417,15 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
     }
 #endif
 
-    cudaStreamWaitEvent( control->cuda_streams[4], control->cuda_stream_events[SE_INIT_DIST_DONE], 0 );
-
-    blocks = system->n * WARP_SIZE / DEF_BLOCK_SIZE
-        + (system->n * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+    cudaStreamWaitEvent( control->cuda_streams[4],
+            control->cuda_stream_events[SE_INIT_DIST_DONE], 0 );
 
     if ( control->tabulate == 0 )
     {
         if ( control->virial == 1 )
         {
-            k_vdW_coulomb_energy_virial_full_opt <<< blocks, DEF_BLOCK_SIZE,
-                                     sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+            k_vdW_coulomb_energy_virial_full_opt <<< control->blocks_warp_n, control->gpu_block_size,
+                                     sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                      control->cuda_streams[4] >>>
                 ( system->d_my_atoms, system->reax_param.d_tbp, 
                   system->reax_param.d_gp, (control_params *) control->d_control_params, 
@@ -1450,8 +1443,8 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
         {
             if ( system->reax_param.gp.vdw_type == 1 )
             {
-                k_vdW_energy_type1_full_opt <<< blocks, DEF_BLOCK_SIZE,
-                                         sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+                k_vdW_energy_type1_full_opt <<< control->blocks_warp_n, control->gpu_block_size,
+                                         sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                          control->cuda_streams[4] >>>
                     ( system->d_my_atoms, system->reax_param.d_tbp, 
                       system->reax_param.d_gp, (control_params *) control->d_control_params, 
@@ -1466,8 +1459,8 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
             }
             else if ( system->reax_param.gp.vdw_type == 2 )
             {
-                k_vdW_energy_type2_full_opt <<< blocks, DEF_BLOCK_SIZE,
-                                         sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+                k_vdW_energy_type2_full_opt <<< control->blocks_warp_n, control->gpu_block_size,
+                                         sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                          control->cuda_streams[4] >>>
                     ( system->d_my_atoms, system->reax_param.d_tbp, 
                       (control_params *) control->d_control_params, 
@@ -1482,8 +1475,8 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
             }
             else if ( system->reax_param.gp.vdw_type == 3 )
             {
-                k_vdW_energy_type3_full_opt <<< blocks, DEF_BLOCK_SIZE,
-                                         sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+                k_vdW_energy_type3_full_opt <<< control->blocks_warp_n, control->gpu_block_size,
+                                         sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                          control->cuda_streams[4] >>>
                     ( system->d_my_atoms, system->reax_param.d_tbp, 
                       system->reax_param.d_gp, (control_params *) control->d_control_params, 
@@ -1501,7 +1494,7 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
     }
     else
     {
-        k_vdW_coulomb_energy_tab_full <<< control->blocks, control->block_size,
+        k_vdW_coulomb_energy_tab_full <<< control->blocks_n, control->gpu_block_size,
                                       0, control->cuda_streams[4] >>>
             ( system->d_my_atoms, system->reax_param.d_gp, 
               (control_params *) control->d_control_params, 
@@ -1521,8 +1514,8 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
     if ( update_energy == TRUE )
     {
         /* reduction for vdw */
-        Cuda_Reduction_Sum( spad,
-                &data->d_my_en->e_vdW, system->n, 4, control->cuda_streams[4] );
+        Cuda_Reduction_Sum( spad, &data->d_my_en->e_vdW, system->n,
+                4, control->cuda_streams[4] );
     }
 
     if ( control->virial == 1 )
@@ -1547,7 +1540,7 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
         storage * const workspace, reax_list **lists,
         output_controls const * const out_control )
 {
-    int update_energy, blocks;
+    int update_energy;
 #if !defined(GPU_ACCUM_ATOMIC)
     size_t s;
     real *spad;
@@ -1565,9 +1558,9 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
     if ( control->virial == 1 )
     {
 #if defined(USE_FUSED_VDW_COULOMB)
-        s = (sizeof(real) * 2 + sizeof(rvec)) * system->n + sizeof(rvec) * control->blocks;
+        s = (sizeof(real) * 2 + sizeof(rvec)) * system->n + sizeof(rvec) * control->blocks_n;
 #else
-        s = (sizeof(real) + sizeof(rvec)) * system->n + sizeof(rvec) * control->blocks;
+        s = (sizeof(real) + sizeof(rvec)) * system->n + sizeof(rvec) * control->blocks_n;
 #endif
     }
     else
@@ -1595,14 +1588,11 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
     }
 #endif
 
-    blocks = system->n * WARP_SIZE / DEF_BLOCK_SIZE
-        + (system->n * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-
     if ( control->tabulate == 0 )
     {
         if ( control->virial == 1 )
         {
-//            k_vdW_coulomb_energy_virial_full <<< control->blocks, control->block_size,
+//            k_vdW_coulomb_energy_virial_full <<< control->blocks_n, control->gpu_block_size,
 //                                             0, control->cuda_streams[5] >>>
 //                ( system->d_my_atoms, system->reax_param.d_tbp, 
 //                  system->reax_param.d_gp, (control_params *) control->d_control_params, 
@@ -1616,8 +1606,8 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
 //#endif
 //            );
 
-            k_vdW_coulomb_energy_virial_full_opt <<< blocks, DEF_BLOCK_SIZE,
-                                     sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+            k_vdW_coulomb_energy_virial_full_opt <<< control->blocks_warp_n, control->gpu_block_size,
+                                     sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                      control->cuda_streams[5] >>>
                 ( system->d_my_atoms, system->reax_param.d_tbp, 
                   system->reax_param.d_gp, (control_params *) control->d_control_params, 
@@ -1634,7 +1624,7 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
         else
         {
 #if defined(USE_FUSED_VDW_COULOMB)
-//            k_vdW_coulomb_energy_full <<< control->blocks, control->block_size,
+//            k_vdW_coulomb_energy_full <<< control->blocks_n, control->gpu_block_size,
 //                                      0, control->cuda_streams[5] >>>
 //                ( system->d_my_atoms, system->reax_param.d_tbp, 
 //                  system->reax_param.d_gp, (control_params *) control->d_control_params, 
@@ -1647,8 +1637,8 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
 //#endif
 //                );
 
-            k_vdW_coulomb_energy_full_opt <<< blocks, DEF_BLOCK_SIZE,
-                                     sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+            k_vdW_coulomb_energy_full_opt <<< control->blocks_warp_n, control->gpu_block_size,
+                                     sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                      control->cuda_streams[5] >>>
                 ( system->d_my_atoms, system->reax_param.d_tbp, 
                   system->reax_param.d_gp, (control_params *) control->d_control_params, 
@@ -1663,8 +1653,8 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
 
 #else
 
-            k_coulomb_energy_full_opt <<< blocks, DEF_BLOCK_SIZE,
-                                     sizeof(cub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+            k_coulomb_energy_full_opt <<< control->blocks_warp_n, control->gpu_block_size,
+                                     sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                      control->cuda_streams[5] >>>
                 ( system->d_my_atoms, system->reax_param.d_tbp, 
                   system->reax_param.d_gp, (control_params *) control->d_control_params, 
@@ -1682,7 +1672,7 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
     }
     else
     {
-        k_vdW_coulomb_energy_tab_full <<< control->blocks, control->block_size,
+        k_vdW_coulomb_energy_tab_full <<< control->blocks_n, control->gpu_block_size,
                                       0, control->cuda_streams[5] >>>
             ( system->d_my_atoms, system->reax_param.d_gp, 
               (control_params *) control->d_control_params, 
@@ -1703,8 +1693,8 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
     {
 #if defined(USE_FUSED_VDW_COULOMB)
         /* reduction for vdw */
-        Cuda_Reduction_Sum( spad,
-                &data->d_my_en->e_vdW, system->n, 5, control->cuda_streams[5] );
+        Cuda_Reduction_Sum( spad, &data->d_my_en->e_vdW, system->n,
+                5, control->cuda_streams[5] );
 #endif
 
         /* reduction for ele */

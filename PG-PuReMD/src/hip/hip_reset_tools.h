@@ -5,19 +5,18 @@
 #include "../reax_types.h"
 
 
-void Hip_Reset_Workspace( reax_system *, control_params *, storage * );
+void Hip_Reset_Workspace( reax_system * const, control_params const * const,
+        storage * const );
 
-void Hip_Reset_Atoms_HBond_Indices( reax_system *, control_params *, storage * );
-
-int Hip_Reset_Neighbor_Lists( reax_system *, control_params *,
-        storage *, reax_list ** );
+void Hip_Reset_Atoms_HBond_Indices( reax_system * const, control_params const * const,
+        storage * const );
 
 #ifdef __cplusplus
 extern "C"  {
 #endif
 
-void Hip_Reset( reax_system*, control_params*, simulation_data*,
-        storage*, reax_list** );
+void Hip_Reset( reax_system * const, control_params const * const, simulation_data * const,
+        storage * const, reax_list ** const );
 
 #ifdef __cplusplus
 }

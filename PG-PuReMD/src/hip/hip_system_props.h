@@ -5,7 +5,8 @@
 #include "../reax_types.h"
 
 
-void Hip_Generate_Initial_Velocities( reax_system *, control_params *, real );
+void Hip_Generate_Initial_Velocities( reax_system * const,
+        control_params const * const, real );
 
 void Hip_Compute_Total_Mass( reax_system *, control_params *,
         storage *, simulation_data *, MPI_Comm );

@@ -276,7 +276,6 @@ void Hip_Compute_Bonds( reax_system const * const system,
         storage * const workspace, reax_list **lists,
         output_controls const * const out_control )
 {
-    int blocks;
 #if !defined(GPU_ACCUM_ATOMIC)
     int update_energy;
     real *spad;
@@ -300,7 +299,7 @@ void Hip_Compute_Bonds( reax_system const * const system,
 
     hipStreamWaitEvent( control->hip_streams[1], control->hip_stream_events[SE_BOND_ORDER_DONE], 0 );
 
-//    k_bonds <<< control->blocks, control->block_size, 0, control->hip_streams[1] >>>
+//    k_bonds <<< control->blocks_n, control->gpu_block_size, 0, control->hip_streams[1] >>>
 //        ( system->d_my_atoms, system->reax_param.d_gp,
 //          system->reax_param.d_sbp, system->reax_param.d_tbp,
 //          *(workspace->d_workspace), *(lists[BONDS]), 
@@ -313,11 +312,8 @@ void Hip_Compute_Bonds( reax_system const * const system,
 //        );
 //    hipCheckError( );
 
-    blocks = system->n * WARP_SIZE / DEF_BLOCK_SIZE
-        + (system->n * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-
-    k_bonds_opt <<< blocks, DEF_BLOCK_SIZE,
-                sizeof(hipcub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+    k_bonds_opt <<< control->blocks_warp_n, control->gpu_block_size,
+                sizeof(hipcub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                 control->hip_streams[1] >>>
         ( system->d_my_atoms, system->reax_param.d_gp,
           system->reax_param.d_sbp, system->reax_param.d_tbp,

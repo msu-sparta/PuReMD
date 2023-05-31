@@ -248,7 +248,7 @@ void Vector_Copy( real * const dest, real const * const v,
 #if defined(USE_HIPBLAS)
         hipblasHandle_t handle
 #else
-        hipStream_t s
+        int block_size, hipStream_t s
 #endif
         )
 {
@@ -265,10 +265,10 @@ void Vector_Copy( real * const dest, real const * const v,
 #else
     int blocks;
 
-    blocks = (k / DEF_BLOCK_SIZE)
-        + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    blocks = (k / block_size)
+        + ((k % block_size == 0) ? 0 : 1);
 
-    k_vector_copy <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
+    k_vector_copy <<< blocks, block_size, 0, s >>>
         ( dest, v, k );
     hipCheckError( );
 #endif
@@ -280,6 +280,7 @@ void Vector_Copy( real * const dest, real const * const v,
  * inputs:
  *  v: dense vector to copy
  *  k: number of entries in v
+ *  block_size: HIP threads per block
  *  s: HIP stream
  * output:
  *  dest: vector copied into
@@ -289,7 +290,7 @@ void Vector_Copy_rvec2( rvec2 * const dest, rvec2 const * const v,
 #if defined(USE_HIPBLAS)
         hipblasHandle_t handle
 #else
-        hipStream_t s
+        int block_size, hipStream_t s
 #endif
         )
 {
@@ -306,10 +307,10 @@ void Vector_Copy_rvec2( rvec2 * const dest, rvec2 const * const v,
 #else
     int blocks;
 
-    blocks = (k / DEF_BLOCK_SIZE)
-        + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    blocks = (k / block_size)
+        + ((k % block_size == 0) ? 0 : 1);
 
-    k_vector_copy_rvec2 <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
+    k_vector_copy_rvec2 <<< blocks, block_size, 0, s >>>
         ( dest, v, k );
     hipCheckError( );
 #endif
@@ -321,7 +322,7 @@ void Vector_Copy_From_rvec2( real * const dst, rvec2 const * const src,
 #if defined(USE_HIPBLAS)
         hipblasHandle_t handle
 #else
-        hipStream_t s
+        int block_size, hipStream_t s
 #endif
         )
 {
@@ -338,10 +339,10 @@ void Vector_Copy_From_rvec2( real * const dst, rvec2 const * const src,
 #else
     int blocks;
 
-    blocks = (k / DEF_BLOCK_SIZE)
-        + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    blocks = (k / block_size)
+        + ((k % block_size == 0) ? 0 : 1);
 
-    k_vector_copy_from_rvec2 <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
+    k_vector_copy_from_rvec2 <<< blocks, block_size, 0, s >>>
         ( dst, src, index, k );
     hipCheckError( );
 #endif
@@ -353,7 +354,7 @@ void Vector_Copy_To_rvec2( rvec2 * const dst, real const * const src,
 #if defined(USE_HIPBLAS)
         hipblasHandle_t handle
 #else
-        hipStream_t s
+        int block_size, hipStream_t s
 #endif
         )
 {
@@ -370,10 +371,10 @@ void Vector_Copy_To_rvec2( rvec2 * const dst, real const * const src,
 #else
     int blocks;
 
-    blocks = (k / DEF_BLOCK_SIZE)
-        + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    blocks = (k / block_size)
+        + ((k % block_size == 0) ? 0 : 1);
 
-    k_vector_copy_to_rvec2 <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
+    k_vector_copy_to_rvec2 <<< blocks, block_size, 0, s >>>
         ( dst, src, index, k );
     hipCheckError( );
 #endif
@@ -387,6 +388,7 @@ void Vector_Copy_To_rvec2( rvec2 * const dst, real const * const src,
  *  c, d: scaling constants
  *  v, y: dense vector whose entries to scale
  *  k: number of entries in the vectors
+ *  block_size: HIP threads per block
  *  s: HIP stream
  * output:
  *  dest: vector containing the scaled sum
@@ -396,7 +398,7 @@ void Vector_Sum( real * const dest, real c, real const * const v,
 #if defined(USE_HIPBLAS)
         hipblasHandle_t handle
 #else
-        hipStream_t s
+        int block_size, hipStream_t s
 #endif
         )
 {
@@ -480,10 +482,10 @@ void Vector_Sum( real * const dest, real c, real const * const v,
 #else
     int blocks;
 
-    blocks = (k / DEF_BLOCK_SIZE)
-        + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    blocks = (k / block_size)
+        + ((k % block_size == 0) ? 0 : 1);
 
-    k_vector_sum <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
+    k_vector_sum <<< blocks, block_size, 0, s >>>
         ( dest, c, v, d, y, k );
     hipCheckError( );
 #endif
@@ -495,7 +497,7 @@ void Vector_Sum_rvec2( rvec2 * const dest, real c0, real c1, rvec2 const * const
 #if defined(USE_HIPBLAS)
         hipblasHandle_t handle
 #else
-        hipStream_t s
+        int block_size, hipStream_t s
 #endif
         )
 {
@@ -636,10 +638,10 @@ void Vector_Sum_rvec2( rvec2 * const dest, real c0, real c1, rvec2 const * const
 #else
     int blocks;
 
-    blocks = (k / DEF_BLOCK_SIZE)
-        + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    blocks = (k / block_size)
+        + ((k % block_size == 0) ? 0 : 1);
 
-    k_vector_sum_rvec2 <<< blocks, DEF_BLOCK_SIZE, 0, s >>> 
+    k_vector_sum_rvec2 <<< blocks, block_size, 0, s >>> 
         ( dest, c0, c1, v, d0, d1, y, k );
     hipCheckError( );
 #endif
@@ -653,6 +655,7 @@ void Vector_Sum_rvec2( rvec2 * const dest, real c0, real c1, rvec2 const * const
  *  c: scaling constant
  *  v: dense vector whose entries to scale
  *  k: number of entries in the vectors
+ *  block_size: HIP threads per block
  *  s: HIP stream
  * output:
  *  dest: vector to accumulate with the scaled sum
@@ -662,7 +665,7 @@ void Vector_Add( real * const dest, real c, real const * const v,
 #if defined(USE_HIPBLAS)
         hipblasHandle_t handle
 #else
-        hipStream_t s
+        int block_size, hipStream_t s
 #endif
         )
 {
@@ -679,10 +682,10 @@ void Vector_Add( real * const dest, real c, real const * const v,
 #else
     int blocks;
 
-    blocks = (k / DEF_BLOCK_SIZE)
-        + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    blocks = (k / block_size)
+        + ((k % block_size == 0) ? 0 : 1);
 
-    k_vector_add <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
+    k_vector_add <<< blocks, block_size, 0, s >>>
         ( dest, c, v, k );
     hipCheckError( );
 #endif
@@ -696,6 +699,7 @@ void Vector_Add( real * const dest, real c, real const * const v,
  *  c: scaling constant
  *  v: dense vector whose entries to scale
  *  k: number of entries in the vectors
+ *  block_size: HIP threads per block
  *  s: HIP stream
  * output:
  *  dest: vector to accumulate with the scaled sum
@@ -705,7 +709,7 @@ void Vector_Add_rvec2( rvec2 * const dest, real c0, real c1, rvec2 const * const
 #if defined(USE_HIPBLAS)
         hipblasHandle_t handle
 #else
-        hipStream_t s
+        int block_size, hipStream_t s
 #endif
         )
 {
@@ -730,10 +734,10 @@ void Vector_Add_rvec2( rvec2 * const dest, real c0, real c1, rvec2 const * const
 #else
     int blocks;
 
-    blocks = (k / DEF_BLOCK_SIZE)
-        + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    blocks = (k / block_size)
+        + ((k % block_size == 0) ? 0 : 1);
 
-    k_vector_add_rvec2 <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
+    k_vector_add_rvec2 <<< blocks, block_size, 0, s >>>
         ( dest, c0, c1, v, k );
     hipCheckError( );
 #endif
@@ -746,19 +750,20 @@ void Vector_Add_rvec2( rvec2 * const dest, real c0, real c1, rvec2 const * const
  * inputs:
  *  v1, v2: dense vectors whose entries to multiply
  *  k: number of entries in the vectors
+ *  block_size: HIP threads per block
  *  s: HIP stream
  * output:
  *  dest: vector with the result of the multiplication
  */
 static void Vector_Mult( real * const dest, real const * const v1,
-        real const * const v2, unsigned int k, hipStream_t s )
+        real const * const v2, unsigned int k, int block_size, hipStream_t s )
 {
     int blocks;
 
-    blocks = (k / DEF_BLOCK_SIZE)
-        + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    blocks = (k / block_size)
+        + ((k % block_size == 0) ? 0 : 1);
 
-    k_vector_mult <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
+    k_vector_mult <<< blocks, block_size, 0, s >>>
         ( dest, v1, v2, k );
     hipCheckError( );
 }
@@ -769,19 +774,20 @@ static void Vector_Mult( real * const dest, real const * const v1,
  * inputs:
  *  v1, v2: dense vectors whose entries to multiply
  *  k: number of entries in the vectors
+ *  block_size: HIP threads per block
  *  s: HIP stream
  * output:
  *  dest: vector with the result of the multiplication
  */
 static void Vector_Mult_rvec2( rvec2 * const dest, rvec2 const * const v1,
-        rvec2 const * const v2, unsigned int k, hipStream_t s )
+        rvec2 const * const v2, unsigned int k, int block_size, hipStream_t s )
 {
     int blocks;
 
-    blocks = (k / DEF_BLOCK_SIZE)
-        + ((k % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    blocks = (k / block_size)
+        + ((k % block_size == 0) ? 0 : 1);
 
-    k_vector_mult_rvec2 <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
+    k_vector_mult_rvec2 <<< blocks, block_size, 0, s >>>
         ( dest, v1, v2, k );
     hipCheckError( );
 }
@@ -804,7 +810,7 @@ real Dot( storage * const workspace,
 #if defined(USE_HIPBLAS)
         hipblasHandle_t handle
 #else
-        hipStream_t s
+        int block_size, hipStream_t s
 #endif
         )
 {
@@ -858,7 +864,7 @@ real Dot( storage * const workspace,
             sizeof(real) * (k + 1), __FILE__, __LINE__ );
     spad = (real *) workspace->scratch[5];
 
-    Vector_Mult( spad, v1, v2, k, s );
+    Vector_Mult( spad, v1, v2, k, block_size, s );
 
     /* local reduction (sum) on device */
     Hip_Reduction_Sum( spad, &spad[k], k, 5, s );
@@ -899,7 +905,7 @@ real Dot_local( storage * const workspace,
 #if defined(USE_HIPBLAS)
         hipblasHandle_t handle
 #else
-        hipStream_t s
+        int block_size, hipStream_t s
 #endif
         )
 {
@@ -921,7 +927,7 @@ real Dot_local( storage * const workspace,
             sizeof(real) * (k + 1), __FILE__, __LINE__ );
     spad = (real *) workspace->scratch[5];
 
-    Vector_Mult( spad, v1, v2, k, s );
+    Vector_Mult( spad, v1, v2, k, block_size, s );
 
     /* local reduction (sum) on device */
     Hip_Reduction_Sum( spad, &spad[k], k, 5, s );
@@ -953,7 +959,7 @@ void Dot_local_rvec2( storage * const workspace,
 #if defined(USE_HIPBLAS)
         hipblasHandle_t handle
 #else
-        hipStream_t s
+        int block_size, hipStream_t s
 #endif
         )
 {
@@ -982,7 +988,7 @@ void Dot_local_rvec2( storage * const workspace,
             sizeof(rvec2) * (k + 1), __FILE__, __LINE__ );
     spad = (rvec2 *) workspace->scratch[5];
 
-    Vector_Mult_rvec2( spad, v1, v2, k, s );
+    Vector_Mult_rvec2( spad, v1, v2, k, block_size, s );
 
     /* local reduction (sum) on device */
     Hip_Reduction_Sum( spad, &spad[k], k, 5, s );

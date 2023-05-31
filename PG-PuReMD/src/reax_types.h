@@ -336,57 +336,8 @@
 #define MAX_RETRIES (5)
 
 /**************** RESOURCE CONSTANTS **********************/
-#if defined(HAVE_CUDA) || defined(HAVE_HIP)
-  /* BLOCK SIZES for kernels */
-  #define HB_SYM_BLOCK_SIZE (64)
-  #define HB_KER_SYM_THREADS_PER_ATOM (16)
-  #define HB_POST_PROC_BLOCK_SIZE (256)
-  #define HB_POST_PROC_KER_THREADS_PER_ATOM (32)
-  
-  #if defined(__INIT_BLOCK_SIZE__)
-    /* all utility functions and all */
-    #define DEF_BLOCK_SIZE (__INIT_BLOCK_SIZE__)
-  #else
-    /* all utility functions and all */
-    #define DEF_BLOCK_SIZE (256)
-  #endif
-  
-  #if defined( __NBRS_THREADS_PER_ATOM__ )
-    #define NB_KER_THREADS_PER_ATOM __NBRS_THREADS_PER_ATOM__
-  #else
-    #define NB_KER_THREADS_PER_ATOM (16)
-  #endif
-  
-  #if defined( __NBRS_BLOCK_SIZE__)
-    #define NBRS_BLOCK_SIZE __NBRS_BLOCK_SIZE__
-  #else
-    #define NBRS_BLOCK_SIZE (256)
-  #endif
-  
-  #if defined( __HB_THREADS_PER_ATOM__)
-    #define HB_KER_THREADS_PER_ATOM __HB_THREADS_PER_ATOM__
-  #else
-    #define HB_KER_THREADS_PER_ATOM (32)
-  #endif
-  
-  #if defined(__HB_BLOCK_SIZE__)
-    #define HB_BLOCK_SIZE __HB_BLOCK_SIZE__
-  #else
-    #define HB_BLOCK_SIZE (256)
-  #endif
-  
-  #if defined( __VDW_THREADS_PER_ATOM__ )
-    #define VDW_KER_THREADS_PER_ATOM __VDW_THREADS_PER_ATOM__
-  #else
-    #define VDW_KER_THREADS_PER_ATOM (32)
-  #endif
-  
-  #if defined( __VDW_BLOCK_SIZE__)
-    #define VDW_BLOCK_SIZE __VDW_BLOCK_SIZE__
-  #else
-    #define VDW_BLOCK_SIZE (256)
-  #endif
-#endif
+/* default num. threads per block */
+#define GPU_BLOCK_SIZE (256)
 
 /* max. num. of active CUDA/HIP streams */
 #define MAX_GPU_STREAMS (6)
@@ -1593,6 +1544,8 @@ struct control_params
     int gpus_per_node;
     /* number of CUDA/HIP streams per GPU, as supplied via control file */
     int gpu_streams;
+    /* num. CUDA/HIP threads per block, as supplied via control file */
+    int gpu_block_size;
     /* MPI processors per each simulation dimension (cartesian topology),
      * as supplied via control file */
     ivec procs_by_dim;
@@ -1765,20 +1718,19 @@ struct control_params
 #if defined(HAVE_CUDA) || defined(HAVE_HIP)
     /* control parameters (GPU) */
     void *d_control_params;
-    /* num. CUDA/HIP blocks for kernels with 1 thread per atom (local) */
-    int blocks;
-    /* num. CUDA/HIP threads per block for kernels with 1 thread per atom (local) */
-    int block_size;
-    /* num. of CUDA/HIP blocks rounded up to the nearest power of 2
-     * for kernels with 1 thread per atom (local) */
-    int blocks_pow_2;
-    /* num. CUDA/HIP blocks for kernels with 1 thread per atom (local AND ghost) */
+    /* num. of CUDA/HIP blocks for kernels where total threads are a function of the num. of local atoms */
     int blocks_n;
-    /* num. CUDA/HIP threads per block for kernels with 1 thread per atom (local AND ghost) */
-    int block_size_n;
+    /* num. of CUDA/HIP blocks for kernels where total threads are a function of
+     * the product of the num. of local atoms and the warp size */
+    int blocks_warp_n;
     /* num. of CUDA/HIP blocks rounded up to the nearest power of 2
-     * for kernels with 1 thread per atom (local AND ghost) */
+     * where total threads are a function of the num. of local atoms */
     int blocks_pow_2_n;
+    /* num. of CUDA/HIP blocks for kernels where total threads are a function of the num. of local AND ghost atoms */
+    int blocks_N;
+    /* num. of CUDA/HIP blocks for kernels where total threads are a function of
+     * the product of the num. of local AND ghost atoms and the warp size */
+    int blocks_warp_N;
 #if defined(HAVE_CUDA)
     /* CUDA streams */
     cudaStream_t cuda_streams[MAX_GPU_STREAMS];

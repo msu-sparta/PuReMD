@@ -55,22 +55,22 @@ GPU_GLOBAL void k_reset_hindex( reax_atom *my_atoms, single_body_parameters *sbp
 #endif
 }
 
-void Hip_Reset_Workspace( reax_system *system, control_params *control,
-        storage *workspace )
+void Hip_Reset_Workspace( reax_system * const system, control_params const * const control,
+        storage * const workspace )
 {
     int blocks;
 
-    blocks = system->total_cap / DEF_BLOCK_SIZE
-        + ((system->total_cap % DEF_BLOCK_SIZE == 0 ) ? 0 : 1);
+    blocks = system->total_cap / control->gpu_block_size
+        + ((system->total_cap % control->gpu_block_size == 0 ) ? 0 : 1);
 
-    k_reset_workspace <<< blocks, DEF_BLOCK_SIZE, 0, control->hip_streams[0] >>>
+    k_reset_workspace <<< blocks, control->gpu_block_size, 0, control->hip_streams[0] >>>
         ( *(workspace->d_workspace), system->total_cap );
     hipCheckError( );
 }
 
 
-void Hip_Reset_Atoms_HBond_Indices( reax_system* system, control_params *control,
-        storage *workspace )
+void Hip_Reset_Atoms_HBond_Indices( reax_system * const system, control_params const * const control,
+        storage * const workspace )
 {
 #if !defined(GPU_ACCUM_ATOMIC)
     int *hindex;
@@ -83,8 +83,8 @@ void Hip_Reset_Atoms_HBond_Indices( reax_system* system, control_params *control
             control->hip_streams[0], __FILE__, __LINE__ );
 #endif
 
-    k_reset_hindex <<< control->blocks_n, control->block_size_n, 0,
-                   control->hip_streams[0] >>>
+    k_reset_hindex <<< control->blocks_N, control->gpu_block_size,
+                   0, control->hip_streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
 #if !defined(GPU_ACCUM_ATOMIC)
           hindex, 
@@ -105,8 +105,8 @@ void Hip_Reset_Atoms_HBond_Indices( reax_system* system, control_params *control
 }
 
 
-extern "C" void Hip_Reset( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace, reax_list **lists )
+extern "C" void Hip_Reset( reax_system * const system, control_params const * const control,
+        simulation_data * const data, storage * const workspace, reax_list ** const lists )
 {
     if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 )
     {

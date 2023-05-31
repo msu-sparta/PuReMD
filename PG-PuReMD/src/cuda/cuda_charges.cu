@@ -204,12 +204,7 @@ static void jacobi( reax_system const * const system,
         control_params const * const control, storage const * const workspace,
         cudaStream_t s )
 {
-    int blocks;
-
-    blocks = system->n / DEF_BLOCK_SIZE
-        + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
-
-    k_jacobi <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
+    k_jacobi <<< control->blocks_n, control->gpu_block_size, 0, s >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
           *(workspace->d_workspace), system->n );
     cudaCheckError( );
@@ -301,12 +296,7 @@ static void Spline_Extrapolate_Charges_QEq( reax_system const * const system,
         storage const * const workspace,
         mpi_datatypes const * const mpi_data, cudaStream_t s )
 {
-    int blocks;
-
-    blocks = system->n / DEF_BLOCK_SIZE
-        + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
-
-    k_spline_extrapolate_charges_qeq <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
+    k_spline_extrapolate_charges_qeq <<< control->blocks_n, control->gpu_block_size, 0, s >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
           (control_params *)control->d_control_params,
           *(workspace->d_workspace), system->n );
@@ -461,13 +451,9 @@ static void Extrapolate_Charges_QEq_Part2( reax_system const * const system,
         control_params const * const control, storage * const workspace,
         real * const q, real u, cudaStream_t s )
 {
-    int blocks;
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
     real *spad;
 #endif
-
-    blocks = system->n / DEF_BLOCK_SIZE
-        + ((system->n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
 
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
     sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
@@ -477,7 +463,7 @@ static void Extrapolate_Charges_QEq_Part2( reax_system const * const system,
             s, __FILE__, __LINE__ );
 #endif
 
-    k_extrapolate_charges_qeq_part2 <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
+    k_extrapolate_charges_qeq_part2 <<< control->blocks_n, control->gpu_block_size, 0, s >>>
         ( system->d_my_atoms, *(workspace->d_workspace), u,
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
           spad,
@@ -505,8 +491,8 @@ static void Update_Ghost_Atom_Charges( reax_system const * const system,
     real *spad;
 #endif
 
-    blocks = (system->N - system->n) / DEF_BLOCK_SIZE
-        + (((system->N - system->n) % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    blocks = (system->N - system->n) / control->gpu_block_size
+        + (((system->N - system->n) % control->gpu_block_size == 0) ? 0 : 1);
 
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
     sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
@@ -519,7 +505,7 @@ static void Update_Ghost_Atom_Charges( reax_system const * const system,
     cudaStreamSynchronize( s );
 #endif
 
-    k_update_ghost_atom_charges <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
+    k_update_ghost_atom_charges <<< blocks, control->gpu_block_size, 0, s >>>
         ( system->d_my_atoms,
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
           spad,
@@ -600,7 +586,7 @@ static void Calculate_Charges_QEq( reax_system const * const system,
             MPI_DOUBLE );
 #else
     Cuda_Dist( system, workspace, mpi_data, workspace->scratch[5],
-            REAL_PTR_TYPE, MPI_DOUBLE, s );
+            REAL_PTR_TYPE, MPI_DOUBLE, control->gpu_block_size, s );
 #endif
 
     /* copy atomic charges to ghost atoms in case of ownership transfer */

@@ -60,6 +60,7 @@ void Read_Control_File( const char * const control_file, control_params * const 
     control->geo_format = 1;
     control->gpus_per_node = 1;
     control->gpu_streams = MAX_GPU_STREAMS;
+    control->gpu_block_size = GPU_BLOCK_SIZE;
 
     control->random_vel = 0;
     control->restart = 0;
@@ -188,6 +189,18 @@ void Read_Control_File( const char * const control_file, control_params * const 
                 {
                     fprintf( stderr, "[ERROR] invalid control file value for gpu_streams (0 < gpu_streams <= %d). Terminating...\n",
                             MAX_GPU_STREAMS );
+                    exit( INVALID_INPUT );
+                }
+            }
+            else if ( strncmp(tmp[0], "gpu_block_size", MAX_LINE) == 0 )
+            {
+                ival = sstrtol( tmp[1], __FILE__, __LINE__ );
+                control->gpu_block_size = ival;
+
+                if ( control->gpu_block_size < WARP_SIZE || control->gpu_block_size % WARP_SIZE != 0 )
+                {
+                    fprintf( stderr, "[ERROR] invalid control file value for gpu_block_size (must be a multiple of warp size %d). Terminating...\n",
+                            WARP_SIZE );
                     exit( INVALID_INPUT );
                 }
             }

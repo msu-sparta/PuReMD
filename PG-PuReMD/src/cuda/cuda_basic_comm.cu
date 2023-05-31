@@ -9,9 +9,9 @@
 
 
 typedef void (*cuda_dist_packer)( void const * const, mpi_out_data * const,
-        cudaStream_t );
+        int, cudaStream_t );
 typedef void (*cuda_coll_unpacker)( void const * const, void * const,
-        mpi_out_data * const, cudaStream_t );
+        mpi_out_data * const, int, cudaStream_t );
 
 
 /* copy integer entries from buffer to MPI egress buffer
@@ -209,14 +209,14 @@ GPU_GLOBAL void k_rvec2_unpacker( rvec2 const * const src, rvec2 * const dest,
 
 
 static void int_packer( void const * const src, mpi_out_data * const out_buf,
-       cudaStream_t s )
+        int block_size, cudaStream_t s )
 {
     int blocks;
 
-    blocks = (out_buf->cnt / DEF_BLOCK_SIZE)
-        + ((out_buf->cnt % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    blocks = (out_buf->cnt / block_size)
+        + ((out_buf->cnt % block_size == 0) ? 0 : 1);
 
-    k_int_packer <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
+    k_int_packer <<< blocks, block_size, 0, s >>>
         ( (int *) src, (int *) out_buf->out_atoms, out_buf->index, out_buf->cnt );
     cudaCheckError( );
 
@@ -225,14 +225,14 @@ static void int_packer( void const * const src, mpi_out_data * const out_buf,
 
 
 static void real_packer( void const * const src, mpi_out_data * const out_buf,
-       cudaStream_t s )
+        int block_size, cudaStream_t s )
 {
     int blocks;
 
-    blocks = (out_buf->cnt / DEF_BLOCK_SIZE)
-        + ((out_buf->cnt % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    blocks = (out_buf->cnt / block_size)
+        + ((out_buf->cnt % block_size == 0) ? 0 : 1);
 
-    k_real_packer <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
+    k_real_packer <<< blocks, block_size, 0, s >>>
         ( (real *) src, (real *) out_buf->out_atoms, out_buf->index, out_buf->cnt );
     cudaCheckError( );
 
@@ -241,14 +241,14 @@ static void real_packer( void const * const src, mpi_out_data * const out_buf,
 
 
 static void rvec_packer( void const * const src, mpi_out_data * const out_buf,
-       cudaStream_t s )
+        int block_size, cudaStream_t s )
 {
     int blocks;
 
-    blocks = (out_buf->cnt / DEF_BLOCK_SIZE)
-        + ((out_buf->cnt % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    blocks = (out_buf->cnt / block_size)
+        + ((out_buf->cnt % block_size == 0) ? 0 : 1);
 
-    k_rvec_packer <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
+    k_rvec_packer <<< blocks, block_size, 0, s >>>
         ( (rvec *) src, (rvec *) out_buf->out_atoms, out_buf->index, out_buf->cnt );
     cudaCheckError( );
 
@@ -257,14 +257,14 @@ static void rvec_packer( void const * const src, mpi_out_data * const out_buf,
 
 
 static void rvec2_packer( void const * const src, mpi_out_data * const out_buf,
-       cudaStream_t s )
+        int block_size, cudaStream_t s )
 {
     int blocks;
 
-    blocks = (out_buf->cnt / DEF_BLOCK_SIZE)
-        + ((out_buf->cnt % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    blocks = (out_buf->cnt / block_size)
+        + ((out_buf->cnt % block_size == 0) ? 0 : 1);
 
-    k_rvec2_packer <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
+    k_rvec2_packer <<< blocks, block_size, 0, s >>>
         ( (rvec2 *) src, (rvec2 *) out_buf->out_atoms, out_buf->index, out_buf->cnt );
     cudaCheckError( );
 
@@ -273,14 +273,14 @@ static void rvec2_packer( void const * const src, mpi_out_data * const out_buf,
 
 
 static void int_unpacker( void const * const dummy_in, void * const dummy_buf,
-        mpi_out_data * const out_buf, cudaStream_t s )
+        mpi_out_data * const out_buf, int block_size, cudaStream_t s )
 {
     int blocks;
 
-    blocks = (out_buf->cnt / DEF_BLOCK_SIZE)
-        + ((out_buf->cnt % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    blocks = (out_buf->cnt / block_size)
+        + ((out_buf->cnt % block_size == 0) ? 0 : 1);
 
-    k_int_unpacker <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
+    k_int_unpacker <<< blocks, block_size, 0, s >>>
         ( (int *) dummy_in, (int *) dummy_buf, out_buf->index, out_buf->cnt );
     cudaCheckError( );
 
@@ -289,14 +289,14 @@ static void int_unpacker( void const * const dummy_in, void * const dummy_buf,
 
 
 static void real_unpacker( void const * const dummy_in, void * const dummy_buf,
-        mpi_out_data * const out_buf, cudaStream_t s )
+        mpi_out_data * const out_buf, int block_size, cudaStream_t s )
 {
     int blocks;
 
-    blocks = (out_buf->cnt / DEF_BLOCK_SIZE)
-        + ((out_buf->cnt % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    blocks = (out_buf->cnt / block_size)
+        + ((out_buf->cnt % block_size == 0) ? 0 : 1);
 
-    k_real_unpacker <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
+    k_real_unpacker <<< blocks, block_size, 0, s >>>
         ( (real *) dummy_in, (real *) dummy_buf, out_buf->index, out_buf->cnt );
     cudaCheckError( );
 
@@ -305,14 +305,14 @@ static void real_unpacker( void const * const dummy_in, void * const dummy_buf,
 
 
 static void rvec_unpacker( void const * const dummy_in, void * const dummy_buf,
-        mpi_out_data * const out_buf, cudaStream_t s )
+        mpi_out_data * const out_buf, int block_size, cudaStream_t s )
 {
     int blocks;
 
-    blocks = (out_buf->cnt / DEF_BLOCK_SIZE)
-        + ((out_buf->cnt % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    blocks = (out_buf->cnt / block_size)
+        + ((out_buf->cnt % block_size == 0) ? 0 : 1);
 
-    k_rvec_unpacker <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
+    k_rvec_unpacker <<< blocks, block_size, 0, s >>>
         ( (rvec *) dummy_in, (rvec *) dummy_buf, out_buf->index, out_buf->cnt );
     cudaCheckError( );
 
@@ -321,14 +321,14 @@ static void rvec_unpacker( void const * const dummy_in, void * const dummy_buf,
 
 
 static void rvec2_unpacker( void const * const dummy_in, void * const dummy_buf,
-        mpi_out_data * const out_buf, cudaStream_t s )
+        mpi_out_data * const out_buf, int block_size, cudaStream_t s )
 {
     int blocks;
 
-    blocks = (out_buf->cnt / DEF_BLOCK_SIZE)
-        + ((out_buf->cnt % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    blocks = (out_buf->cnt / block_size)
+        + ((out_buf->cnt % block_size == 0) ? 0 : 1);
 
-    k_rvec2_unpacker <<< blocks, DEF_BLOCK_SIZE, 0, s >>>
+    k_rvec2_unpacker <<< blocks, block_size, 0, s >>>
         ( (rvec2 *) dummy_in, (rvec2 *) dummy_buf, out_buf->index, out_buf->cnt );
     cudaCheckError( );
 
@@ -435,7 +435,7 @@ static cuda_coll_unpacker Get_Unpacker( int type )
 
 void Cuda_Dist( reax_system const * const system, storage * const workspace,
         mpi_datatypes * const mpi_data, void const * const buf,
-        int buf_type, MPI_Datatype type, cudaStream_t s )
+        int buf_type, MPI_Datatype type, int block_size, cudaStream_t s )
 {
     int d, cnt1, cnt2, ret;
     mpi_out_data *out_bufs;
@@ -484,7 +484,7 @@ void Cuda_Dist( reax_system const * const system, storage * const workspace,
             out_bufs[2 * d].index_size = (size_t) CEIL( (sizeof(int) * out_bufs[2 * d].cnt) * SAFE_ZONE );
 	}
 
-        pack( buf, &out_bufs[2 * d], s );
+        pack( buf, &out_bufs[2 * d], block_size, s );
 
         ret = MPI_Isend( out_bufs[2 * d].out_atoms, out_bufs[2 * d].cnt,
                 type, nbr1->rank, 2 * d, comm, &req1 );
@@ -512,7 +512,7 @@ void Cuda_Dist( reax_system const * const system, storage * const workspace,
             out_bufs[2 * d + 1].index_size = (size_t) CEIL( (sizeof(int) * out_bufs[2 * d + 1].cnt) * SAFE_ZONE );
 	}
 
-        pack( buf, &out_bufs[2 * d + 1], s );
+        pack( buf, &out_bufs[2 * d + 1], block_size, s );
 
         ret = MPI_Isend( out_bufs[2 * d + 1].out_atoms, out_bufs[2 * d + 1].cnt,
                 type, nbr2->rank, 2 * d + 1, comm, &req2 );
@@ -568,7 +568,7 @@ void Cuda_Dist( reax_system const * const system, storage * const workspace,
 
 
 void Cuda_Coll( reax_system const * const system, mpi_datatypes * const mpi_data,
-        void * const buf, int buf_type, MPI_Datatype type, cudaStream_t s )
+        void * const buf, int buf_type, MPI_Datatype type, int block_size, cudaStream_t s )
 {   
     int d, cnt1, cnt2, ret;
     mpi_out_data *out_bufs;
@@ -645,7 +645,7 @@ void Cuda_Coll( reax_system const * const system, mpi_datatypes * const mpi_data
         ret = MPI_Wait( &req2, MPI_STATUS_IGNORE );
         Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-        unpack( mpi_data->d_in1_buffer, buf, &out_bufs[2 * d], s );
-        unpack( mpi_data->d_in2_buffer, buf, &out_bufs[2 * d + 1], s );
+        unpack( mpi_data->d_in1_buffer, buf, &out_bufs[2 * d], block_size, s );
+        unpack( mpi_data->d_in2_buffer, buf, &out_bufs[2 * d + 1], block_size, s );
     }
 }

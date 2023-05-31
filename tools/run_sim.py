@@ -30,6 +30,8 @@ class TestCase():
                     r'(?P<key>\bgpus_per_node\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'gpu_streams': lambda l, x: sub(
                     r'(?P<key>\bgpu_streams\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
+                'gpu_block_size': lambda l, x: sub(
+                    r'(?P<key>\bgpu_block_size\b\s+)\S+(?P<comment>.*)', r'\g<key>%s\g<comment>' % x, l), \
                 'proc_by_dim': lambda l, x: sub(
                     r'(?P<key>\bproc_by_dim\b\s+)\S+\s+\S+\s+\S+(?P<comment>.*)',
                     r'\g<key>{0} {1} {2}\g<comment>'.format(*(x.split(':'))), l), \
@@ -138,6 +140,7 @@ dt                      0.25                    ! time step in fs
 proc_by_dim             1 1 1                   ! distribution of processors by dimensions
 gpus_per_node           1                       ! GPUs per node
 gpu_streams             6                       ! GPU streams
+gpu_block_size          256                     ! GPU threads per block
 periodic_boundaries     1                       ! 0: no periodic boundaries, 1: periodic boundaries
 
 reposition_atoms        0                       ! 0: just fit to periodic boundaries, 1: CoM to the center of box, 3: CoM to the origin
@@ -236,6 +239,8 @@ restart_freq            0                       ! 0: do not output any restart f
             ]
         # add MPI execution command and arguments to subprocess argument list
         elif run_type == 'mpi' or run_type == 'mpi-gpu':
+            env['OMP_NUM_THREADS'] = param_dict['threads']
+
             if mpi_cmd[0] == 'mpirun':
                 cmd_args = [
                     'mpirun',
@@ -906,6 +911,7 @@ if __name__ == '__main__':
                 'dt': ['0.25'],
                 'gpus_per_node': ['1'],
                 'gpu_streams': ['6'],
+                'gpu_block_size': ['256'],
                 'proc_by_dim': ['1:1:1'],
                 'periodic_boundaries': ['1'],
                 'reposition_atoms': ['0'],

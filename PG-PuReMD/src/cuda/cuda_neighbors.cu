@@ -575,7 +575,7 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
         control_params *control, simulation_data *data, storage *workspace,
         reax_list **lists )
 {
-    int blocks, ret;
+    int ret;
 #if defined(LOG_PERFORMANCE)
     cudaEventRecord( control->cuda_time_events[TE_NBRS_START], control->cuda_streams[0] );
 #endif
@@ -587,19 +587,14 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
             control->cuda_streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->cuda_streams[0] );
 
-//    blocks = (system->N / NBRS_BLOCK_SIZE) +
-//        ((system->N % NBRS_BLOCK_SIZE) == 0 ? 0 : 1);
-    blocks = (system->N * WARP_SIZE / NBRS_BLOCK_SIZE) +
-        ((system->N * WARP_SIZE % NBRS_BLOCK_SIZE) == 0 ? 0 : 1);
-
-//    k_generate_neighbor_lists_full <<< blocks, NBRS_BLOCK_SIZE, 0, control->cuda_streams[0] >>>
+//    k_generate_neighbor_lists_full <<< control->blocks_N, control->gpu_block_size, 0, control->cuda_streams[0] >>>
 //        ( system->d_my_atoms, system->my_ext_box,
 //          system->d_my_grid, *(lists[FAR_NBRS]),
 //          system->n, system->N,
 //          system->d_far_nbrs, system->d_max_far_nbrs,
 //          system->d_realloc_far_nbrs, SQR( control->bond_cut ) );
-    k_generate_neighbor_lists_full_opt <<< blocks, NBRS_BLOCK_SIZE,
-                                       sizeof(cub::WarpScan<int>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+    k_generate_neighbor_lists_full_opt <<< control->blocks_warp_N, control->gpu_block_size,
+                                       sizeof(cub::WarpScan<int>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                        control->cuda_streams[0] >>>
         ( system->d_my_atoms, system->my_ext_box,
           system->d_my_grid, *(lists[FAR_NBRS]),
@@ -637,17 +632,17 @@ void Cuda_Estimate_Num_Neighbors( reax_system *system, control_params *control,
     cudaEventRecord( control->cuda_time_events[TE_NBRS_START], control->cuda_streams[0] );
 #endif
 
-//    blocks = system->total_cap / DEF_BLOCK_SIZE
-//        + (system->total_cap % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-    blocks = system->total_cap * WARP_SIZE / DEF_BLOCK_SIZE
-        + (system->total_cap * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
+//    blocks = system->total_cap / control->gpu_block_size
+//        + (system->total_cap % control->gpu_block_size == 0 ? 0 : 1);
+    blocks = system->total_cap * WARP_SIZE / control->gpu_block_size
+        + (system->total_cap * WARP_SIZE % control->gpu_block_size == 0 ? 0 : 1);
 
-//    k_estimate_neighbors_full <<< blocks, DEF_BLOCK_SIZE, 0, control->cuda_streams[0] >>>
+//    k_estimate_neighbors_full <<< blocks, control->gpu_block_size, 0, control->cuda_streams[0] >>>
 //        ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
 //          system->n, system->N, system->total_cap,
 //          system->d_far_nbrs, system->d_max_far_nbrs, SQR( control->bond_cut ) );
-    k_estimate_neighbors_full_opt <<< blocks, DEF_BLOCK_SIZE,
-                                  sizeof(cub::WarpReduce<int>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+    k_estimate_neighbors_full_opt <<< blocks, control->gpu_block_size,
+                                  sizeof(cub::WarpReduce<int>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                   control->cuda_streams[0] >>>
         ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
           system->n, system->N, system->total_cap,

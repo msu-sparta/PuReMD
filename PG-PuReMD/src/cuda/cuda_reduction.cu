@@ -31,7 +31,7 @@
  */
 GPU_GLOBAL void k_reduction_rvec( rvec *input, rvec *results, size_t n )
 {
-    extern __shared__ cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage temp_block[];
+    extern __shared__ cub::BlockReduce<double, GPU_BLOCK_SIZE>::TempStorage temp_block[];
     rvec data;
     unsigned int i;
 
@@ -46,11 +46,11 @@ GPU_GLOBAL void k_reduction_rvec( rvec *input, rvec *results, size_t n )
         rvec_MakeZero( data );
     }
 
-    data[0] = cub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(data[0]);
+    data[0] = cub::BlockReduce<double, GPU_BLOCK_SIZE>(*temp_block).Sum(data[0]);
     __syncthreads( );
-    data[1] = cub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(data[1]);
+    data[1] = cub::BlockReduce<double, GPU_BLOCK_SIZE>(*temp_block).Sum(data[1]);
     __syncthreads( );
-    data[2] = cub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(data[2]);
+    data[2] = cub::BlockReduce<double, GPU_BLOCK_SIZE>(*temp_block).Sum(data[2]);
 
     /* one thread writes the block-level partial sum
      * of the reduction back to global memory */
@@ -69,7 +69,7 @@ GPU_GLOBAL void k_reduction_rvec( rvec *input, rvec *results, size_t n )
 
 GPU_GLOBAL void k_reduction_rvec2( rvec2 *input, rvec2 *results, size_t n )
 {
-    extern __shared__ cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage temp_block[];
+    extern __shared__ cub::BlockReduce<double, GPU_BLOCK_SIZE>::TempStorage temp_block[];
     unsigned int i;
     rvec2 data;
 
@@ -86,9 +86,9 @@ GPU_GLOBAL void k_reduction_rvec2( rvec2 *input, rvec2 *results, size_t n )
         data[1] = 0.0;
     }
 
-    data[0] = cub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(data[0]);
+    data[0] = cub::BlockReduce<double, GPU_BLOCK_SIZE>(*temp_block).Sum(data[0]);
     __syncthreads( );
-    data[1] = cub::BlockReduce<double, DEF_BLOCK_SIZE>(*temp_block).Sum(data[1]);
+    data[1] = cub::BlockReduce<double, GPU_BLOCK_SIZE>(*temp_block).Sum(data[1]);
 
     /* one thread writes the block-level partial sum
      * of the reduction back to global memory */
@@ -200,8 +200,8 @@ void Cuda_Reduction_Sum( rvec *d_array, rvec *d_dest, size_t n,
     static size_t temp_size[MAX_GPU_STREAMS] = { 0 };
 #endif
 
-    blocks = n / DEF_BLOCK_SIZE
-        + ((n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    blocks = n / GPU_BLOCK_SIZE
+        + ((n % GPU_BLOCK_SIZE == 0) ? 0 : 1);
 
 #if !defined(GPU_ACCUM_ATOMIC)
     sCudaCheckMalloc( &temp[s_index], &temp_size[s_index],
@@ -210,8 +210,8 @@ void Cuda_Reduction_Sum( rvec *d_array, rvec *d_dest, size_t n,
     sCudaMemsetAsync( d_dest, 0, sizeof(rvec), s, __FILE__, __LINE__ );
 #endif
 
-    k_reduction_rvec <<< blocks, DEF_BLOCK_SIZE,
-                     sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage), s >>> 
+    k_reduction_rvec <<< blocks, GPU_BLOCK_SIZE,
+                     sizeof(cub::BlockReduce<double, GPU_BLOCK_SIZE>::TempStorage), s >>> 
         ( d_array,
 #if !defined(GPU_ACCUM_ATOMIC)
           temp[s_index],
@@ -223,7 +223,7 @@ void Cuda_Reduction_Sum( rvec *d_array, rvec *d_dest, size_t n,
 
 #if !defined(GPU_ACCUM_ATOMIC)
     k_reduction_rvec <<< 1, ((blocks + WARP_SIZE - 1) / WARP_SIZE) * WARP_SIZE,
-                     sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage), s >>>
+                     sizeof(cub::BlockReduce<double, GPU_BLOCK_SIZE>::TempStorage), s >>>
         ( temp[s_index], d_dest, blocks );
     cudaCheckError( ); 
 #endif
@@ -246,8 +246,8 @@ void Cuda_Reduction_Sum( rvec2 *d_array, rvec2 *d_dest, size_t n,
     static size_t temp_size[MAX_GPU_STREAMS] = { 0 };
 #endif
 
-    blocks = n / DEF_BLOCK_SIZE
-        + ((n % DEF_BLOCK_SIZE == 0) ? 0 : 1);
+    blocks = n / GPU_BLOCK_SIZE
+        + ((n % GPU_BLOCK_SIZE == 0) ? 0 : 1);
 
 #if !defined(GPU_ACCUM_ATOMIC)
     sCudaCheckMalloc( &temp[s_index], &temp_size[s_index],
@@ -256,8 +256,8 @@ void Cuda_Reduction_Sum( rvec2 *d_array, rvec2 *d_dest, size_t n,
     sCudaMemsetAsync( d_dest, 0, sizeof(rvec2), s, __FILE__, __LINE__ );
 #endif
 
-    k_reduction_rvec2 <<< blocks, DEF_BLOCK_SIZE,
-                     sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage), s >>> 
+    k_reduction_rvec2 <<< blocks, GPU_BLOCK_SIZE,
+                     sizeof(cub::BlockReduce<double, GPU_BLOCK_SIZE>::TempStorage), s >>> 
         ( d_array,
 #if !defined(GPU_ACCUM_ATOMIC)
           temp[s_index],
@@ -269,7 +269,7 @@ void Cuda_Reduction_Sum( rvec2 *d_array, rvec2 *d_dest, size_t n,
 
 #if !defined(GPU_ACCUM_ATOMIC)
     k_reduction_rvec2 <<< 1, ((blocks + WARP_SIZE - 1) / WARP_SIZE) * WARP_SIZE,
-                     sizeof(cub::BlockReduce<double, DEF_BLOCK_SIZE>::TempStorage), s >>>
+                     sizeof(cub::BlockReduce<double, GPU_BLOCK_SIZE>::TempStorage), s >>>
         ( temp[s_index], d_dest, blocks );
     cudaCheckError( ); 
 #endif

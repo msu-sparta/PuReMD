@@ -572,7 +572,6 @@ void Hip_Compute_Atom_Energy( reax_system const * const system,
         storage * const workspace, reax_list ** lists,
         output_controls const * const out_control )
 {
-    int blocks;
 #if !defined(GPU_ACCUM_ATOMIC)
     int update_energy;
     real *spad;
@@ -598,7 +597,7 @@ void Hip_Compute_Atom_Energy( reax_system const * const system,
             0, sizeof(real), control->hip_streams[0], __FILE__, __LINE__ );
 #endif
 
-//    k_atom_energy_part1 <<< control->blocks, control->block_size, 0, control->hip_streams[0] >>>
+//    k_atom_energy_part1 <<< control->blocks_n, control->gpu_block_size, 0, control->hip_streams[0] >>>
 //        ( system->d_my_atoms, system->reax_param.d_gp,
 //          system->reax_param.d_sbp, *(workspace->d_workspace),
 //          *(lists[BONDS]), system->n, system->reax_param.num_atom_types,
@@ -610,11 +609,8 @@ void Hip_Compute_Atom_Energy( reax_system const * const system,
 //         );
 //    hipCheckError( );
 
-    blocks = system->n * WARP_SIZE / DEF_BLOCK_SIZE
-        + (system->n * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-
-    k_atom_energy_part1_opt <<< blocks, DEF_BLOCK_SIZE,
-                            sizeof(hipcub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+    k_atom_energy_part1_opt <<< control->blocks_warp_n, control->gpu_block_size,
+                            sizeof(hipcub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                             control->hip_streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_gp,
           system->reax_param.d_sbp, *(workspace->d_workspace),
@@ -627,7 +623,7 @@ void Hip_Compute_Atom_Energy( reax_system const * const system,
          );
     hipCheckError( );
 
-//    k_atom_energy_part2 <<< control->blocks, control->block_size, 0, control->hip_streams[0] >>>
+//    k_atom_energy_part2 <<< control->blocks_n, control->gpu_block_size, 0, control->hip_streams[0] >>>
 //        ( system->d_my_atoms, system->reax_param.d_gp,
 //          system->reax_param.d_sbp, system->reax_param.d_tbp, *(workspace->d_workspace),
 //          *(lists[BONDS]), system->n, system->reax_param.num_atom_types,
@@ -640,11 +636,8 @@ void Hip_Compute_Atom_Energy( reax_system const * const system,
 //         );
 //    hipCheckError( );
 
-    blocks = system->n * WARP_SIZE / DEF_BLOCK_SIZE
-        + (system->n * WARP_SIZE % DEF_BLOCK_SIZE == 0 ? 0 : 1);
-
-    k_atom_energy_part2_opt <<< blocks, DEF_BLOCK_SIZE,
-                            sizeof(hipcub::WarpReduce<double>::TempStorage) * (DEF_BLOCK_SIZE / WARP_SIZE),
+    k_atom_energy_part2_opt <<< control->blocks_warp_n, control->gpu_block_size,
+                            sizeof(hipcub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                             control->hip_streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_gp,
           system->reax_param.d_sbp, system->reax_param.d_tbp, *(workspace->d_workspace),
@@ -658,8 +651,8 @@ void Hip_Compute_Atom_Energy( reax_system const * const system,
     hipCheckError( );
 
 #if !defined(GPU_ACCUM_ATOMIC)
-    k_atom_energy_part3 <<< control->blocks, control->block_size, 0,
-                        control->hip_streams[0] >>>
+    k_atom_energy_part3 <<< control->blocks_n, control->gpu_block_size,
+                        0, control->hip_streams[0] >>>
         ( *(lists[BONDS]), *(workspace->d_workspace), system->n );
     hipCheckError( );
 
