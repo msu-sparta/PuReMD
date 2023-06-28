@@ -1534,8 +1534,11 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
                 0, sizeof(real), control->cuda_streams[3], __FILE__, __LINE__ );
         sCudaMemsetAsync( &data->d_my_en->e_coa,
                 0, sizeof(real), control->cuda_streams[3], __FILE__, __LINE__ );
-        sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_ext_press,
-                0, sizeof(rvec), control->cuda_streams[3], __FILE__, __LINE__ );
+        if ( control->virial == 1 )
+        {
+            sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_ext_press,
+                    0, sizeof(rvec), control->cuda_streams[3], __FILE__, __LINE__ );
+        }
 #endif
 
         if ( control->virial == 1 )
@@ -1600,15 +1603,15 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
 
             Cuda_Reduction_Sum( &spad[2 * system->N],
                     &data->d_my_en->e_coa, system->N, 3, control->cuda_streams[3] );
-        }
 
-        if ( control->virial == 1 )
-        {
-            rvec_spad = (rvec *) (&spad[3 * system->N]);
+            if ( control->virial == 1 )
+            {
+                rvec_spad = (rvec *) (&spad[3 * system->N]);
 
-            Cuda_Reduction_Sum( rvec_spad,
-                    &((simulation_data *)data->d_simulation_data)->my_ext_press,
-                    system->N, 3, control->cuda_streams[3] );
+                Cuda_Reduction_Sum( rvec_spad,
+                        &((simulation_data *)data->d_simulation_data)->my_ext_press,
+                        system->N, 3, control->cuda_streams[3] );
+            }
         }
 
         k_valence_angles_part2 <<< control->blocks_N, control->gpu_block_size,
