@@ -440,19 +440,19 @@ void Cuda_Allocate_System( reax_system *system, control_params *control )
             __FILE__, __LINE__ );
 
     sCudaMalloc( (void **) &system->reax_param.d_tbp,
-            POW( system->reax_param.num_atom_types, 2.0 ) * sizeof(two_body_parameters), 
+            SQR( system->reax_param.num_atom_types ) * sizeof(two_body_parameters), 
             __FILE__, __LINE__ );
 
     sCudaMalloc( (void **) &system->reax_param.d_thbp,
-            POW( system->reax_param.num_atom_types, 3.0 ) * sizeof(three_body_header),
+            CUBE( system->reax_param.num_atom_types ) * sizeof(three_body_header),
             __FILE__, __LINE__ );
 
     sCudaMalloc( (void **) &system->reax_param.d_hbp,
-            POW( system->reax_param.num_atom_types, 3.0 ) * sizeof(hbond_parameters),
+            CUBE( system->reax_param.num_atom_types ) * sizeof(hbond_parameters),
             __FILE__, __LINE__ );
 
     sCudaMalloc( (void **) &system->reax_param.d_fbp,
-            POW( system->reax_param.num_atom_types, 4.0 ) * sizeof(four_body_header),
+            SQR( SQR( system->reax_param.num_atom_types ) ) * sizeof(four_body_header),
             __FILE__, __LINE__ );
 
     sCudaMalloc( (void **) &system->reax_param.d_gp.l,

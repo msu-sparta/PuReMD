@@ -266,7 +266,7 @@ GPU_GLOBAL void k_init_cm_qeq_half_fs( reax_atom * const my_atoms,
                     /* shielding */
                     dr3gamij_1 = r_ij * r_ij * r_ij
                         + tbp[index_tbp(type_i, my_atoms[j].type, num_atom_types)].gamma;
-                    dr3gamij_3 = POW( dr3gamij_1, 1.0 / 3.0 );
+                    dr3gamij_3 = CBRT( dr3gamij_1 );
 
                     /* i == j: periodic self-interaction term
                      * i != j: general interaction term */
@@ -433,7 +433,7 @@ GPU_GLOBAL void k_init_cm_qeq_full_fs( reax_atom * const my_atoms,
                 /* shielding */
                 dr3gamij_1 = r_ij * r_ij * r_ij
                     + tbp[index_tbp(type_i, my_atoms[j].type, num_atom_types)].gamma;
-                dr3gamij_3 = POW( dr3gamij_1, 1.0 / 3.0 );
+                dr3gamij_3 = CBRT( dr3gamij_1 );
 
                 /* i == j: periodic self-interaction term
                  * i != j: general interaction term */
@@ -535,7 +535,7 @@ GPU_GLOBAL void k_init_cm_qeq_full_fs_opt( reax_atom * const my_atoms,
                 /* shielding */
                 dr3gamij_1 = r_ij * r_ij * r_ij
                     + tbp[index_tbp(type_i, my_atoms[j].type, num_atom_types)].gamma;
-                dr3gamij_3 = POW( dr3gamij_1, 1.0 / 3.0 );
+                dr3gamij_3 = CBRT( dr3gamij_1 );
 
                 /* i == j: periodic self-interaction term
                  * i != j: general interaction term */

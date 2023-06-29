@@ -185,7 +185,7 @@ static inline real Init_Charge_Matrix_Entry( const reax_system * const system,
                                     system->my_atoms[j].type,
                                     system->reax_param.num_atom_types )
                         ].gamma;
-                dr3gamij_3 = POW( dr3gamij_1, 1.0 / 3.0 );
+                dr3gamij_3 = CBRT( dr3gamij_1 );
 
                 /* i == j: periodic self-interaction term
                  * i != j: general interaction term */
@@ -289,7 +289,7 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
                         if ( far_nbr_list->far_nbr_list.d[pj] < xcut )
                         {
                             d = far_nbr_list->far_nbr_list.d[pj] / xcut;
-                            bond_softness = system->reax_param.gp.l[34] * POW( d, 3.0 )
+                            bond_softness = system->reax_param.gp.l[34] * CUBE( d )
                                 * POW( 1.0 - d, 6.0 );
 
                             if ( bond_softness > 0.0 )
