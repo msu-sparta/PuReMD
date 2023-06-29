@@ -638,8 +638,6 @@ GPU_GLOBAL void k_hydrogen_bonds_part2_opt( reax_atom *atoms,
         pj += warpSize;
     }
 
-    __syncthreads( );
-
     hb_f[0] = hipcub::WarpReduce<double>(temp_storage[warp_id]).Sum(hb_f[0]);
     hb_f[1] = hipcub::WarpReduce<double>(temp_storage[warp_id]).Sum(hb_f[1]);
     hb_f[2] = hipcub::WarpReduce<double>(temp_storage[warp_id]).Sum(hb_f[2]);
@@ -718,8 +716,6 @@ GPU_GLOBAL void k_hydrogen_bonds_part3_opt( reax_atom *atoms,
 
         pj += warpSize;
     }
-
-    __syncthreads( );
 
     hb_f_l[0] = hipcub::WarpReduce<double>(temp_storage[warp_id]).Sum(hb_f_l[0]);
     hb_f_l[1] = hipcub::WarpReduce<double>(temp_storage[warp_id]).Sum(hb_f_l[1]);

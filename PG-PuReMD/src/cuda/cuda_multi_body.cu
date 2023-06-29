@@ -104,8 +104,6 @@ GPU_GLOBAL void k_atom_energy_part1( reax_atom const * const my_atoms, global_pa
         }
     }
 
-    __syncthreads( );
-
     workspace.CdDelta[i] += CdDelta_i;
 #if !defined(GPU_ACCUM_ATOMIC)
     e_lp_g[i] = e_lp;
@@ -596,7 +594,8 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
             0, sizeof(real), control->cuda_streams[0], __FILE__, __LINE__ );
 #endif
 
-//    k_atom_energy_part1 <<< control->blocks_n, control->gpu_block_size, 0, control->cuda_streams[0] >>>
+//    k_atom_energy_part1 <<< control->blocks_n, control->gpu_block_size,
+//                        0, control->cuda_streams[0] >>>
 //        ( system->d_my_atoms, system->reax_param.d_gp,
 //          system->reax_param.d_sbp, *(workspace->d_workspace),
 //          *(lists[BONDS]), system->n, system->reax_param.num_atom_types,
@@ -622,7 +621,8 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
          );
     cudaCheckError( );
 
-//    k_atom_energy_part2 <<< control->blocks_n, control->gpu_block_size, 0, control->cuda_streams[0] >>>
+//    k_atom_energy_part2 <<< control->blocks_n, control->gpu_block_size,
+//                        0, control->cuda_streams[0] >>>
 //        ( system->d_my_atoms, system->reax_param.d_gp,
 //          system->reax_param.d_sbp, system->reax_param.d_tbp, *(workspace->d_workspace),
 //          *(lists[BONDS]), system->n, system->reax_param.num_atom_types,

@@ -517,8 +517,6 @@ GPU_GLOBAL void k_bond_order_part2( reax_atom const * const my_atoms, global_par
         /* NOTE: handle sym_index later in k_bond_order_part3 */
     }
 
-    __syncthreads( );
-
     workspace.total_bond_order[i] += total_bond_order_i;
 }
 
@@ -823,7 +821,7 @@ GPU_GLOBAL void k_bond_order_part4( reax_atom const * const my_atoms,
     workspace.dDelta_lp[i] = workspace.Clp[i];
 //    workspace.dDelta_lp[i] = workspace.Clp[i] + (0.5 - workspace.Clp[i])
 //        * ((FABS(workspace.Delta_e[i] / 2.0
-//                        - (int)(workspace.Delta_e[i] / 2.0)) < 0.1) ? 1 : 0 );
+//                        - (int) (workspace.Delta_e[i] / 2.0)) < 0.1) ? 1 : 0 );
 
     if ( sbp[type_i].mass > 21.0 )
     {
@@ -999,7 +997,8 @@ void Hip_Compute_Bond_Orders( reax_system const * const system,
           *(workspace->d_workspace), system->N );
     hipCheckError( );
 
-//    k_bond_order_part2 <<< control->blocks_N, control->gpu_block_size >>>
+//    k_bond_order_part2 <<< control->blocks_N, control->gpu_block_size,
+//                       0, control->hip_streams[0] >>>
 //        ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp, 
 //          system->reax_param.d_tbp, *(workspace->d_workspace), 
 //          *(lists[BONDS]), system->reax_param.num_atom_types, system->N );

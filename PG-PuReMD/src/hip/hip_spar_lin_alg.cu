@@ -113,8 +113,6 @@ GPU_GLOBAL void k_jacobi_cm_full( int *row_ptr_start,
         }
     }
 
-    __syncthreads( );
-
     Hdia_inv[i] = diag;
 }
 
@@ -287,8 +285,6 @@ GPU_GLOBAL void k_sparse_matvec_full_csr( int *row_ptr_start,
     {
         sum += vals[pj] * x[col_ind[pj]];
     }
-
-    __syncthreads( );
 
     b[i] = sum;
 }

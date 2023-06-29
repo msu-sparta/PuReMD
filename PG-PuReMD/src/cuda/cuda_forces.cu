@@ -278,8 +278,6 @@ GPU_GLOBAL void k_init_cm_qeq_half_fs( reax_atom * const my_atoms,
         }
     }
 
-    __syncthreads( );
-
     H->end[i] = cm_top;
     num_cm_entries = cm_top - H->start[i];
 
@@ -353,8 +351,6 @@ GPU_GLOBAL void k_init_cm_qeq_half_fs_tab( reax_atom * const my_atoms,
             }
         }
     }
-
-    __syncthreads( );
 
     H->end[i] = cm_top;
     num_cm_entries = cm_top - H->start[i];
@@ -443,8 +439,6 @@ GPU_GLOBAL void k_init_cm_qeq_full_fs( reax_atom * const my_atoms,
             }
         }
     }
-
-    __syncthreads( );
 
     H->end[i] = cm_top;
     num_cm_entries = cm_top - H->start[i];
@@ -615,8 +609,6 @@ GPU_GLOBAL void k_init_cm_qeq_full_fs_tab( reax_atom * const my_atoms,
             }
         }
     }
-
-    __syncthreads( );
 
     H->end[i] = cm_top;
     num_cm_entries = cm_top - H->start[i];
@@ -1203,8 +1195,6 @@ GPU_GLOBAL void k_estimate_storages_cm_half( reax_atom const * const my_atoms,
         }
     }
 
-    __syncthreads( );
-
     cm_entries[i] = num_cm_entries;
     /* round up to the nearest multiple of warp size to ensure that reads along
      * rows can be coalesced */
@@ -1246,8 +1236,6 @@ GPU_GLOBAL void k_estimate_storages_cm_full( control_params const * const contro
             }
         }
     }
-
-    __syncthreads( );
 
     cm_entries[i] = num_cm_entries;
     /* round up to the nearest multiple of warp size to ensure that reads along
@@ -1393,8 +1381,6 @@ GPU_GLOBAL void k_estimate_storage_bonds( reax_atom const * const my_atoms,
             }
         }
     }
-
-    __syncthreads( );
 
     bonds[i] = num_bonds;
     /* round up to the nearest multiple of warp size to ensure that reads along
@@ -1585,8 +1571,6 @@ GPU_GLOBAL void k_estimate_storage_hbonds( reax_atom const * const my_atoms,
             }
         }
     }
-
-    __syncthreads( );
 
     hbonds[i] = num_hbonds;
     /* round up to the nearest multiple of warp size to ensure that reads along

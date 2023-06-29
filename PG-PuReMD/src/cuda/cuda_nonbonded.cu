@@ -1327,7 +1327,6 @@ GPU_GLOBAL void k_vdW_coulomb_energy_tab_full( reax_atom const * const my_atoms,
 
     atomic_rvecAdd( workspace.f[i], f_i );
 #if !defined(GPU_ACCUM_ATOMIC)
-    __syncthreads( );
     e_vdW_g[i] = e_vdW_;
     e_ele_g[i] = e_ele_;
     if ( control->virial == 1 )
