@@ -22,13 +22,13 @@ To build, the following versions of software are required:
 - GNU make
 - C compiler with support for the c11 standard or newer and optionally OpenMP v4.0+ (shared-memory code)
 - C++ compiler with support for the c++14 standard or newer (CUDA, MPI+CUDA versions)
-- MPI v2+ compliant library (MPI, MPI+CUDA versions)
+- Message Passing Interface (MPI) v2+ compliant implementation (MPI, MPI+X versions)
 - CUDA v6.0+ (CUDA, MPI+CUDA versions)
-- RocM v5.4+ (HIP, MPI+HIP versions)
+- RocM v5.0+ (HIP, MPI+HIP versions)
 - zlib v1.2.x or newer
 
 ```bash
-# Download release tarball
+# Download latest release tarball
 tar -xvf puremd-1.0.tar.gz
 cd puremd-1.0
 ./configure
@@ -56,12 +56,13 @@ To build, the following versions of software are required:
 - C++ compiler with support for the c++14 standard or newer (CUDA, MPI+CUDA versions)
 - MPI v2+ compliant library (MPI, MPI+CUDA versions)
 - CUDA v6.0+ (CUDA, MPI+CUDA versions)
+-- Older CUDA versions (prior to v11.0) require downloading NVIDIA CUB manually (provided as a git submodule)
 - RocM v5.4+ (HIP, MPI+HIP versions)
 - zlib v1.2.x or newer
 
 Instructions:
 ```bash
-git clone https://gitlab.msu.edu/SParTA/PuReMD.git
+git clone https://github.com/msu-sparta/PuReMD.git
 cd PuReMD
 git submodule init
 git submodule update
@@ -76,15 +77,19 @@ To build tarball releases after configuring a specific build target, run the fol
 make dist
 ```
 
-# References
+# Selected Publications
 
 Shared-Memory Versions:
-- [Serial](https://www.cs.purdue.edu/puremd/docs/80859.pdf)
-- [CUDA (single GPU)](http://dx.doi.org/10.1016/j.jcp.2014.04.035)
-- [Charge Model Optimizations with OpenMP](https://doi.org/10.1137/18M1224684)
+- Serial, DOI: [10.1137/100808599](https://doi.org/10.1137/100808599)
+- CUDA (single GPU), DOI: [10.1016/j.jcp.2014.04.035](http://dx.doi.org/10.1016/j.jcp.2014.04.035)
+- OpenMP with charge model optimizations, DOI: [10.1137/18M1224684](https://doi.org/10.1137/18M1224684)
 
 Distributed-Memory Versions:
-- [MPI (message passing interface)](https://www.cs.purdue.edu/puremd/docs/Parallel-Reactive-Molecular-Dynamics.pdf)
-- [Hybrid MPI+OpenMP optimization](https://doi.org/10.1177/1094342017746221)
-- [Charge Model Optimizations with MPI](https://doi.org/10.1145/3330345.3330359)
-- [CUDA+MPI (multi-GPU)](https://www.cs.purdue.edu/puremd/docs/pgpuremd.pdf)
+- MPI, DOI: [10.1016/j.parco.2011.08.005](https://doi.org/10.1016/j.parco.2011.08.005)
+- Hybrid MPI+OpenMP, DOI: [10.1177/1094342017746221](https://doi.org/10.1177/1094342017746221)
+- ReaxFF and charge model optimizations with MPI, DOI: [10.1145/3330345.3330359](https://doi.org/10.1145/3330345.3330359)
+- CUDA+MPI, URL: [Purdue e-Pubs](https://docs.lib.purdue.edu/cgi/viewcontent.cgi?article=2769&context=cstech)
+
+Applications and Integrations:
+- ReaxFF force field optimization with gradients using JAX, DOI: [10.1021/acs.jctc.2c00363](https://doi.org/10.1021/acs.jctc.2c00363)
+- QM/MM calcuations with AMBER, DOI: [10.1021/acs.jpclett.2c01279](https://doi.org/10.1021/acs.jpclett.2c01279)
