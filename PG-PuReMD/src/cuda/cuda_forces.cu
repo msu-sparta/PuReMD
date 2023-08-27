@@ -1958,14 +1958,16 @@ void Cuda_Init_Sparse_Matrix_Indices( reax_system * const system, sparse_matrix 
     blocks = H->n_max / block_size
         + (H->n_max % block_size == 0 ? 0 : 1);
 
-    /* init indices */
+    /* init start indices */
     Cuda_Scan_Excl_Sum( system->d_max_cm_entries, H->start, H->n_max, 5, s );
 
-    //TODO: not needed for full format (Init_Forces sets H->end)
-    /* init end_indices */
-    k_init_end_index <<< blocks, block_size, 0, s >>>
-        ( system->d_cm_entries, H->start, H->end, H->n_max );
-    cudaCheckError( );
+    if ( H->format == SYM_HALF_MATRIX )
+    {
+        /* init end_indices */
+        k_init_end_index <<< blocks, block_size, 0, s >>>
+            ( system->d_cm_entries, H->start, H->end, H->n_max );
+        cudaCheckError( );
+    }
 }
 
 
