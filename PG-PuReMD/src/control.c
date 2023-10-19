@@ -197,12 +197,14 @@ void Read_Control_File( const char * const control_file, control_params * const 
                 ival = sstrtol( tmp[1], __FILE__, __LINE__ );
                 control->gpu_block_size = ival;
 
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
                 if ( control->gpu_block_size < WARP_SIZE || control->gpu_block_size % WARP_SIZE != 0 )
                 {
                     fprintf( stderr, "[ERROR] invalid control file value for gpu_block_size (must be a multiple of warp size %d). Terminating...\n",
                             WARP_SIZE );
                     exit( INVALID_INPUT );
                 }
+#endif
             }
             else if ( strncmp(tmp[0], "proc_by_dim", MAX_LINE) == 0 )
             {
