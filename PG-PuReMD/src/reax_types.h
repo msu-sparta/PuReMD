@@ -940,6 +940,10 @@ struct global_parameters
      * 3: inner wall + shielding
      * */
     int vdw_type;
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
+    /* global parameters, see above mapping (GPU) */
+    real* d_l;
+#endif
 };
 
 
@@ -1199,8 +1203,6 @@ struct reax_interaction
     four_body_header *fbp; 
 
 #if defined(HAVE_CUDA) || defined(HAVE_HIP)
-    /* global simulation parameters (GPU), from force field parameters file */
-    global_parameters d_gp;
     /* simulation parameters for single body interactions (GPU) */
     single_body_parameters *d_sbp;
     /* simulation parameters for two body interactions (GPU) */

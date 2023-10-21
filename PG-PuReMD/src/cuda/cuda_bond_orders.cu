@@ -12,8 +12,9 @@
 #include <cub/warp/warp_reduce.cuh>
 
 
-GPU_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
-        storage * const workspace, reax_list * const bond_list, rvec data_ext_press )
+GPU_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj, rvec const * const dDeltap_self,
+        real const * const CdDelta, rvec * const f, reax_list * const bond_list,
+        rvec data_ext_press )
 {
     int k, j, pk, sym_index;
     real C1dbo, C2dbo, C3dbo;
@@ -41,9 +42,9 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
     C3dbopi2 = BL.C3dbopi2[pj] * (BL.Cdbopi2[pj] + BL.Cdbopi2[sym_index]);
     C4dbopi2 = BL.C4dbopi2[pj] * (BL.Cdbopi2[pj] + BL.Cdbopi2[sym_index]);
 
-    C1dDelta = BL.C1dbo[pj] * (workspace->CdDelta[i] + workspace->CdDelta[j]);
-    C2dDelta = BL.C2dbo[pj] * (workspace->CdDelta[i] + workspace->CdDelta[j]);
-    C3dDelta = BL.C3dbo[pj] * (workspace->CdDelta[i] + workspace->CdDelta[j]);
+    C1dDelta = BL.C1dbo[pj] * (CdDelta[i] + CdDelta[j]);
+    C2dDelta = BL.C2dbo[pj] * (CdDelta[i] + CdDelta[j]);
+    C3dDelta = BL.C3dbo[pj] * (CdDelta[i] + CdDelta[j]);
 
     /************************************
     * forces related to atom i          *
@@ -64,7 +65,7 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
 #if !defined(GPU_ACCUM_ATOMIC)
         rvec_Add( BL.tf_f[pk], temp );
 #else
-        atomic_rvecAdd( workspace->f[k], temp );
+        atomic_rvecAdd( f[k], temp );
 #endif
         /* pressure */
         rvec_iMultiply( ext_press, BL.rel_box[pk], temp );
@@ -76,7 +77,7 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
     rvec_Scale( temp, C1dbo + C1dDelta + C2dbopi + C2dbopi2, BL.dBOp[pj] );
 
     /* 2nd, dBO; 2nd, dBO; 3rd, dBOpi; 3rd, dBO_pi2 */
-    rvec_ScaledAdd( temp, C2dbo + C2dDelta + C3dbopi + C3dbopi2, workspace->dDeltap_self[i] );
+    rvec_ScaledAdd( temp, C2dbo + C2dDelta + C3dbopi + C3dbopi2, dDeltap_self[i] );
 
     /* 1st, dBOpi */
     rvec_ScaledAdd( temp, C1dbopi, BL.dln_BOp_pi[pj] );
@@ -85,7 +86,7 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
     rvec_ScaledAdd( temp, C1dbopi2, BL.dln_BOp_pi2[pj] );
 
     /* force */
-    atomic_rvecAdd( workspace->f[i], temp );
+    atomic_rvecAdd( f[i], temp );
     /* ext pressure due to i is dropped, counting force on j will be enough */
 
     /******************************************************
@@ -100,7 +101,7 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
         rvec_Scale( temp, -(C3dbo + C3dDelta + C4dbopi + C4dbopi2), BL.dBOp[pk] );
 
         /* force */
-        atomic_rvecAdd( workspace->f[k], temp );
+        atomic_rvecAdd( f[k], temp );
         /* pressure */
         if ( k != i )
         {
@@ -115,7 +116,7 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
     rvec_Scale( temp, -(C1dbo + C1dDelta + C2dbopi + C2dbopi2), BL.dBOp[pj] );
 
     /* 2nd, dBO; 2nd, dBO; 3rd, dBOpi; 3rd, dBOpi2 */
-    rvec_ScaledAdd( temp, C3dbo + C3dDelta + C4dbopi + C4dbopi2, workspace->dDeltap_self[j] );
+    rvec_ScaledAdd( temp, C3dbo + C3dDelta + C4dbopi + C4dbopi2, dDeltap_self[j] );
 
     /* 1st, dBOpi */
     rvec_ScaledAdd( temp, -C1dbopi, BL.dln_BOp_pi[pj] );
@@ -124,7 +125,7 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
     rvec_ScaledAdd( temp, -C1dbopi2, BL.dln_BOp_pi2[pj] );
 
     /* force */
-    atomic_rvecAdd( workspace->f[j], temp );
+    atomic_rvecAdd( f[j], temp );
     /* pressure */
     rvec_iMultiply( ext_press, BL.rel_box[pj], temp );
     rvec_Add( data_ext_press, ext_press );
@@ -133,8 +134,8 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
 }
 
 
-GPU_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
-        storage * const workspace, reax_list * const bond_list, rvec * const f_i )
+GPU_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj, rvec const * const dDeltap_self,
+        real const * const CdDelta, rvec * const f, reax_list * const bond_list, rvec * const f_i )
 {
     int j, k, pk, sym_index;
     real C1dbo, C2dbo, C3dbo;
@@ -161,9 +162,9 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
     C3dbopi2 = BL.C3dbopi2[pj] * (BL.Cdbopi2[pj] + BL.Cdbopi2[sym_index]);
     C4dbopi2 = BL.C4dbopi2[pj] * (BL.Cdbopi2[pj] + BL.Cdbopi2[sym_index]);
 
-    C1dDelta = BL.C1dbo[pj] * (workspace->CdDelta[i] + workspace->CdDelta[j]);
-    C2dDelta = BL.C2dbo[pj] * (workspace->CdDelta[i] + workspace->CdDelta[j]);
-    C3dDelta = BL.C3dbo[pj] * (workspace->CdDelta[i] + workspace->CdDelta[j]);
+    C1dDelta = BL.C1dbo[pj] * (CdDelta[i] + CdDelta[j]);
+    C2dDelta = BL.C2dbo[pj] * (CdDelta[i] + CdDelta[j]);
+    C3dDelta = BL.C3dbo[pj] * (CdDelta[i] + CdDelta[j]);
 
     for ( pk = Start_Index(i, bond_list); pk < End_Index(i, bond_list); ++pk )
     {
@@ -175,7 +176,7 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
 #if !defined(GPU_ACCUM_ATOMIC)
         rvec_Add( BL.tf_f[pk], temp );
 #else
-        atomic_rvecAdd( workspace->f[k], temp );
+        atomic_rvecAdd( f[k], temp );
 #endif
     }
 
@@ -183,7 +184,7 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
     rvec_Scale( temp, C1dbo + C1dDelta + C2dbopi + C2dbopi2, BL.dBOp[pj] );
 
     /* 2nd, dBO; 2nd, dBO; 3rd, dBOpi; 3rd, dBO_pi2 */
-    rvec_ScaledAdd( temp, C2dbo + C2dDelta + C3dbopi + C3dbopi2, workspace->dDeltap_self[i] );
+    rvec_ScaledAdd( temp, C2dbo + C2dDelta + C3dbopi + C3dbopi2, dDeltap_self[i] );
 
     /* 1st, dBOpi */
     rvec_ScaledAdd( temp, C1dbopi, BL.dln_BOp_pi[pj] );
@@ -200,14 +201,14 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
         /* 3rd, dBO; 3rd, dDelta; 4th, dBOpi; 4th, dBOpi2 */
         rvec_Scale( temp, -(C3dbo + C3dDelta + C4dbopi + C4dbopi2), BL.dBOp[pk] );
 
-        atomic_rvecAdd( workspace->f[k], temp );
+        atomic_rvecAdd( f[k], temp );
     }
 
     /* 1st, dBO; 1st, dBO; 2nd, dBOpi; 2nd, dBOpi2 */
     rvec_Scale( temp, -(C1dbo + C1dDelta + C2dbopi + C2dbopi2), BL.dBOp[pj] );
 
     /* 2nd, dBO; 2nd, dBO; 3rd, dBOpi; 3rd, dBOpi2 */
-    rvec_ScaledAdd( temp, C3dbo + C3dDelta + C4dbopi + C4dbopi2, workspace->dDeltap_self[j] );
+    rvec_ScaledAdd( temp, C3dbo + C3dDelta + C4dbopi + C4dbopi2, dDeltap_self[j] );
 
     /* 1st, dBOpi */
     rvec_ScaledAdd( temp, -C1dbopi, BL.dln_BOp_pi[pj] );
@@ -215,7 +216,7 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
     /* 1st, dBOpi2 */
     rvec_ScaledAdd( temp, -C1dbopi2, BL.dln_BOp_pi2[pj] );
 
-    atomic_rvecAdd( workspace->f[j], temp );
+    atomic_rvecAdd( f[j], temp );
 
 #undef BL
 }
@@ -245,21 +246,18 @@ GPU_GLOBAL void k_bond_order_part1( reax_atom const * const my_atoms,
 
 
 /* Main BO calculations */
-GPU_GLOBAL void k_bond_order_part2( reax_atom const * const my_atoms, global_parameters gp,
+GPU_GLOBAL void k_bond_order_part2( reax_atom const * const my_atoms, real const * const gp_l,
         single_body_parameters const * const sbp, two_body_parameters const * const tbp,
         real * const total_bond_order, real const * const Deltap, real const * const Deltap_boc,
         reax_list bond_list, int num_atom_types, int N )
 {
     int i, j, pj, type_i, type_j;
     int start_i, end_i, tbp_ij;
-    real val_i, Deltap_i, Deltap_boc_i;
-    real val_j, Deltap_j, Deltap_boc_j;
     real f1, f2, f3, f4, f5, f4f5, exp_f4, exp_f5;
     real exp_p1i, exp_p2i, exp_p1j, exp_p2j;
     real temp, u1_ij, u1_ji, Cf1A_ij, Cf1B_ij, Cf1_ij, Cf1_ji;
     real Cf45_ij, Cf45_ji;
     real A0_ij, A1_ij, A2_ij, A2_ji, A3_ij, A3_ji;
-    real p_boc1, p_boc2;
     real total_bond_order_i;
 #define BL (bond_list.bond_list_gpu)
 
@@ -270,14 +268,14 @@ GPU_GLOBAL void k_bond_order_part2( reax_atom const * const my_atoms, global_par
         return;
     }
 
-    p_boc1 = gp.l[0];
-    p_boc2 = gp.l[1];
+    const real p_boc1 = gp_l[0];
+    const real p_boc2 = gp_l[1];
 
     /* Corrected Bond Order calculations */
     type_i = my_atoms[i].type;
-    val_i = sbp[type_i].valency;
-    Deltap_i = Deltap[i];
-    Deltap_boc_i = Deltap_boc[i];
+    const real val_i = sbp[type_i].valency;
+    const real Deltap_i = Deltap[i];
+    const real Deltap_boc_i = Deltap_boc[i];
     start_i = Start_Index( i, &bond_list );
     end_i = End_Index( i, &bond_list );
     total_bond_order_i = 0.0;
@@ -314,9 +312,7 @@ GPU_GLOBAL void k_bond_order_part2( reax_atom const * const my_atoms, global_par
             }
             else
             {
-                val_j = sbp[type_j].valency;
-                Deltap_j = Deltap[j];
-                Deltap_boc_j = Deltap_boc[j];
+                const real val_j = sbp[type_j].valency;
 
                 /* on page 1 */
                 if ( tbp[tbp_ij].ovc >= 0.001 )
@@ -324,8 +320,8 @@ GPU_GLOBAL void k_bond_order_part2( reax_atom const * const my_atoms, global_par
                     /* Correction for overcoordination */
                     exp_p1i = EXP( -p_boc1 * Deltap_i );
                     exp_p2i = EXP( -p_boc2 * Deltap_i );
-                    exp_p1j = EXP( -p_boc1 * Deltap_j );
-                    exp_p2j = EXP( -p_boc2 * Deltap_j );
+                    exp_p1j = EXP( -p_boc1 * Deltap[j] );
+                    exp_p2j = EXP( -p_boc2 * Deltap[j] );
 
                     f2 = exp_p1i + exp_p1j;
                     f3 = -1.0 / p_boc2 * LOG( 0.5 * ( exp_p2i  + exp_p2j ) );
@@ -365,7 +361,7 @@ GPU_GLOBAL void k_bond_order_part2( reax_atom const * const my_atoms, global_par
                     /* Correction for 1-3 bond orders */
                     exp_f4 = EXP( -tbp[tbp_ij].p_boc3 * (tbp[tbp_ij].p_boc4 * SQR( BL.BO[pj] ) - Deltap_boc_i)
                             + tbp[tbp_ij].p_boc5 );
-                    exp_f5 = EXP( -tbp[tbp_ij].p_boc3 * (tbp[tbp_ij].p_boc4 * SQR( BL.BO[pj] ) - Deltap_boc_j)
+                    exp_f5 = EXP( -tbp[tbp_ij].p_boc3 * (tbp[tbp_ij].p_boc4 * SQR( BL.BO[pj] ) - Deltap_boc[j])
                             + tbp[tbp_ij].p_boc5 );
 
                     f4 = 1.0 / (1.0 + exp_f4);
@@ -376,7 +372,7 @@ GPU_GLOBAL void k_bond_order_part2( reax_atom const * const my_atoms, global_par
 //                    temp = tbp[tbp_ij].p_boc5
 //                        - tbp[tbp_ij].p_boc3 * tbp[tbp_ij].p_boc4 * SQR( BL.BO[pj] );
 //                    u_ij = temp + tbp[tbp_ij].p_boc3 * Deltap_boc_i;
-//                    u_ji = temp + tbp[tbp_ij].p_boc3 * Deltap_boc_j;
+//                    u_ji = temp + tbp[tbp_ij].p_boc3 * Deltap_boc[j];
 //                    Cf45_ij = Cf45( u_ij, u_ji ) / f4f5;
 //                    Cf45_ji = Cf45( u_ji, u_ij ) / f4f5;
                     Cf45_ij = -f4 * exp_f4;
@@ -453,7 +449,7 @@ GPU_GLOBAL void k_bond_order_part2( reax_atom const * const my_atoms, global_par
 
 
 /* Main BO calculations */
-GPU_GLOBAL void k_bond_order_part2_opt( reax_atom const * const my_atoms, global_parameters gp, 
+GPU_GLOBAL void k_bond_order_part2_opt( reax_atom const * const my_atoms, real const * const gp_l, 
         single_body_parameters const * const sbp, two_body_parameters const * const tbp, 
         real * const total_bond_order, real const * const Deltap, real const * const Deltap_boc,
         reax_list bond_list, int num_atom_types, int N )
@@ -461,14 +457,11 @@ GPU_GLOBAL void k_bond_order_part2_opt( reax_atom const * const my_atoms, global
     extern __shared__ cub::WarpReduce<double>::TempStorage temp2[];
     int i, j, pj, type_i, type_j, thread_id, warp_id, lane_id, itr;
     int start_i, end_i, tbp_ij;
-    real val_i, Deltap_i, Deltap_boc_i;
-    real val_j, Deltap_j, Deltap_boc_j;
     real f1, f2, f3, f4, f5, f4f5, exp_f4, exp_f5;
     real exp_p1i, exp_p2i, exp_p1j, exp_p2j;
     real temp, u1_ij, u1_ji, Cf1A_ij, Cf1B_ij, Cf1_ij, Cf1_ji;
     real Cf45_ij, Cf45_ji;
     real A0_ij, A1_ij, A2_ij, A2_ji, A3_ij, A3_ji;
-    real p_boc1, p_boc2;
     real total_bond_order_i;
 #define BL (bond_list.bond_list_gpu)
 
@@ -485,14 +478,14 @@ GPU_GLOBAL void k_bond_order_part2_opt( reax_atom const * const my_atoms, global
     warp_id = threadIdx.x / warpSize;
     lane_id = thread_id % warpSize;
 
-    p_boc1 = gp.l[0];
-    p_boc2 = gp.l[1];
+    const real p_boc1 = gp_l[0];
+    const real p_boc2 = gp_l[1];
 
     /* Corrected Bond Order calculations */
     type_i = my_atoms[i].type;
-    val_i = sbp[type_i].valency;
-    Deltap_i = Deltap[i];
-    Deltap_boc_i = Deltap_boc[i];
+    const real val_i = sbp[type_i].valency;
+    const real Deltap_i = Deltap[i];
+    const real Deltap_boc_i = Deltap_boc[i];
     start_i = Start_Index( i, &bond_list );
     end_i = End_Index( i, &bond_list );
     total_bond_order_i = 0.0;
@@ -531,9 +524,7 @@ GPU_GLOBAL void k_bond_order_part2_opt( reax_atom const * const my_atoms, global
                 }
                 else
                 {
-                    val_j = sbp[type_j].valency;
-                    Deltap_j = Deltap[j];
-                    Deltap_boc_j = Deltap_boc[j];
+                    const real val_j = sbp[type_j].valency;
 
                     /* on page 1 */
                     if ( tbp[tbp_ij].ovc >= 0.001 )
@@ -541,8 +532,8 @@ GPU_GLOBAL void k_bond_order_part2_opt( reax_atom const * const my_atoms, global
                         /* Correction for overcoordination */
                         exp_p1i = EXP( -p_boc1 * Deltap_i );
                         exp_p2i = EXP( -p_boc2 * Deltap_i );
-                        exp_p1j = EXP( -p_boc1 * Deltap_j );
-                        exp_p2j = EXP( -p_boc2 * Deltap_j );
+                        exp_p1j = EXP( -p_boc1 * Deltap[j] );
+                        exp_p2j = EXP( -p_boc2 * Deltap[j] );
 
                         f2 = exp_p1i + exp_p1j;
                         f3 = -1.0 / p_boc2 * LOG( 0.5 * ( exp_p2i  + exp_p2j ) );
@@ -582,7 +573,7 @@ GPU_GLOBAL void k_bond_order_part2_opt( reax_atom const * const my_atoms, global
                         /* Correction for 1-3 bond orders */
                         exp_f4 = EXP( -tbp[tbp_ij].p_boc3 * (tbp[tbp_ij].p_boc4 * SQR( BL.BO[pj] ) - Deltap_boc_i)
                                 + tbp[tbp_ij].p_boc5 );
-                        exp_f5 = EXP( -tbp[tbp_ij].p_boc3 * (tbp[tbp_ij].p_boc4 * SQR( BL.BO[pj] ) - Deltap_boc_j)
+                        exp_f5 = EXP( -tbp[tbp_ij].p_boc3 * (tbp[tbp_ij].p_boc4 * SQR( BL.BO[pj] ) - Deltap_boc[j])
                                 + tbp[tbp_ij].p_boc5 );
 
                         f4 = 1.0 / (1.0 + exp_f4);
@@ -593,7 +584,7 @@ GPU_GLOBAL void k_bond_order_part2_opt( reax_atom const * const my_atoms, global
 //                        temp = tbp[tbp_ij].p_boc5
 //                            - tbp[tbp_ij].p_boc3 * tbp[tbp_ij].p_boc4 * SQR( BL.BO[pj] );
 //                        u_ij = temp + tbp[tbp_ij].p_boc3 * Deltap_boc_i;
-//                        u_ji = temp + tbp[tbp_ij].p_boc3 * Deltap_boc_j;
+//                        u_ji = temp + tbp[tbp_ij].p_boc3 * Deltap_boc[j];
 //                        Cf45_ij = Cf45( u_ij, u_ji ) / f4f5;
 //                        Cf45_ji = Cf45( u_ji, u_ij ) / f4f5;
                         Cf45_ij = -f4 * exp_f4;
@@ -720,7 +711,7 @@ GPU_GLOBAL void k_bond_order_part3( real * const total_bond_order, reax_list bon
 
 /* Calculate helper variables */
 GPU_GLOBAL void k_bond_order_part4( reax_atom const * const my_atoms,
-        global_parameters gp, single_body_parameters const * const sbp,
+        real const * const gp_l, single_body_parameters const * const sbp,
         real const * const total_bond_order,
         real * const Delta, real * const Delta_lp, real * const Delta_lp_temp,
         real * const Delta_e, real * const Delta_boc, real * const dDelta_lp,
@@ -728,7 +719,7 @@ GPU_GLOBAL void k_bond_order_part4( reax_atom const * const my_atoms,
         real * const Clp, real * const vlpex, int N )
 {
     int i, type_i;
-    real explp1, p_lp1;
+    real explp1;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -737,7 +728,7 @@ GPU_GLOBAL void k_bond_order_part4( reax_atom const * const my_atoms,
         return;
     }
 
-    p_lp1 = gp.l[15];
+    const real p_lp1 = gp_l[15];
 
     /* Calculate some helper variables that are  used at many places
      * throughout force calculations */
@@ -745,8 +736,7 @@ GPU_GLOBAL void k_bond_order_part4( reax_atom const * const my_atoms,
 
     Delta[i] = total_bond_order[i] - sbp[type_i].valency;
     Delta_e[i] = total_bond_order[i] - sbp[type_i].valency_e;
-    Delta_boc[i] = total_bond_order[i]
-        - sbp[type_i].valency_boc;
+    Delta_boc[i] = total_bond_order[i] - sbp[type_i].valency_boc;
 
     vlpex[i] = Delta_e[i] - 2.0 * (int)(Delta_e[i] / 2.0);
     explp1 = EXP(-p_lp1 * SQR(2.0 + vlpex[i]));
@@ -773,7 +763,8 @@ GPU_GLOBAL void k_bond_order_part4( reax_atom const * const my_atoms,
 }
 
 
-GPU_GLOBAL void k_total_forces_part1( storage workspace, reax_list bond_list,
+GPU_GLOBAL void k_total_forces_part1( rvec const * const dDeltap_self,
+        real const * const CdDelta, rvec * const f, reax_list bond_list,
         int N )
 {
     int i, pj;
@@ -793,21 +784,22 @@ GPU_GLOBAL void k_total_forces_part1( storage workspace, reax_list bond_list,
     {
         if ( i < BL.nbr[pj] )
         {
-            Cuda_Add_dBond_to_Forces( i, pj, &workspace, &bond_list, &f_i );
+            Cuda_Add_dBond_to_Forces( i, pj, dDeltap_self, CdDelta, f, &bond_list, &f_i );
         }
     }
 
 #if !defined(GPU_ACCUM_ATOMIC)
-    rvec_Add( workspace->f[i], f_i );
+    rvec_Add( f[i], f_i );
 #else
-    atomic_rvecAdd( workspace.f[i], f_i );
+    atomic_rvecAdd( f[i], f_i );
 #endif
 
 #undef BL
 }
 
 
-GPU_GLOBAL void k_total_forces_part1_opt( storage workspace, reax_list bond_list,
+GPU_GLOBAL void k_total_forces_part1_opt( rvec const * const dDeltap_self,
+        real const * const CdDelta, rvec * const f, reax_list bond_list,
         int N )
 {
     extern __shared__ cub::WarpReduce<double>::TempStorage temp1[];
@@ -835,7 +827,7 @@ GPU_GLOBAL void k_total_forces_part1_opt( storage workspace, reax_list bond_list
     {
         if ( pj < end_i && i < BL.nbr[pj] )
         {
-            Cuda_Add_dBond_to_Forces( i, pj, &workspace, &bond_list, &f_i );
+            Cuda_Add_dBond_to_Forces( i, pj, dDeltap_self, CdDelta, f, &bond_list, &f_i );
         }
 
         pj += warpSize;
@@ -848,9 +840,9 @@ GPU_GLOBAL void k_total_forces_part1_opt( storage workspace, reax_list bond_list
     if ( lane_id == 0 )
     {
 #if !defined(GPU_ACCUM_ATOMIC)
-        rvec_Add( workspace->f[i], f_i );
+        rvec_Add( f[i], f_i );
 #else
-        atomic_rvecAdd( workspace.f[i], f_i );
+        atomic_rvecAdd( f[i], f_i );
 #endif
     }
 
@@ -858,7 +850,8 @@ GPU_GLOBAL void k_total_forces_part1_opt( storage workspace, reax_list bond_list
 }
 
 
-GPU_GLOBAL void k_total_forces_virial_part1( storage workspace, reax_list bond_list,
+GPU_GLOBAL void k_total_forces_virial_part1( rvec const * const dDeltap_self,
+        real const * const CdDelta, rvec * const f, reax_list bond_list,
         rvec * const data_ext_press, int N )
 {
     int i, pj;
@@ -875,8 +868,8 @@ GPU_GLOBAL void k_total_forces_virial_part1( storage workspace, reax_list bond_l
     {
         if ( i < BL.nbr[pj] )
         {
-            Cuda_Add_dBond_to_Forces_NPT( i, pj, &workspace, &bond_list,
-                    data_ext_press[i] );
+            Cuda_Add_dBond_to_Forces_NPT( i, pj, dDeltap_self, CdDelta,
+                    f, &bond_list, data_ext_press[i] );
         }
     }
 
@@ -943,7 +936,7 @@ void Cuda_Compute_Bond_Orders( reax_system const * const system,
 
 //    k_bond_order_part2 <<< control->blocks_N, control->gpu_block_size,
 //                       0, control->cuda_streams[0] >>>
-//        ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp, 
+//        ( system->d_my_atoms, system->reax_param.gp.d_l, system->reax_param.d_sbp, 
 //          system->reax_param.d_tbp, workspace->d_workspace->total_bond_order,
 //          workspace->d_workspace->Deltap, workspace->d_workspace->Deltap_boc,
 //          *(lists[BONDS]), system->reax_param.num_atom_types, system->N );
@@ -952,7 +945,7 @@ void Cuda_Compute_Bond_Orders( reax_system const * const system,
     k_bond_order_part2_opt <<< control->blocks_warp_N, control->gpu_block_size,
                        sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                        control->cuda_streams[0] >>>
-        ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp, 
+        ( system->d_my_atoms, system->reax_param.gp.d_l, system->reax_param.d_sbp, 
           system->reax_param.d_tbp, workspace->d_workspace->total_bond_order,
           workspace->d_workspace->Deltap, workspace->d_workspace->Deltap_boc,
           *(lists[BONDS]), system->reax_param.num_atom_types, system->N );
@@ -960,13 +953,12 @@ void Cuda_Compute_Bond_Orders( reax_system const * const system,
 
     k_bond_order_part3 <<< control->blocks_N, control->gpu_block_size,
                        0, control->cuda_streams[0] >>>
-        ( workspace->d_workspace->total_bond_order,
-          *(lists[BONDS]), system->N );
+        ( workspace->d_workspace->total_bond_order, *(lists[BONDS]), system->N );
     cudaCheckError( );
 
     k_bond_order_part4 <<< control->blocks_N, control->gpu_block_size,
                        0, control->cuda_streams[0] >>>
-        ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp,
+        ( system->d_my_atoms, system->reax_param.gp.d_l, system->reax_param.d_sbp,
           workspace->d_workspace->total_bond_order, workspace->d_workspace->Delta,
           workspace->d_workspace->Delta_lp, workspace->d_workspace->Delta_lp_temp,
           workspace->d_workspace->Delta_e, workspace->d_workspace->Delta_boc,
@@ -994,13 +986,15 @@ void Cuda_Total_Forces_Part1( reax_system const * const system,
     {
 //        k_total_forces_part1 <<< control->blocks_N, control->gpu_block_size,
 //                             0, control->cuda_streams[0] >>>
-//            ( *(workspace->d_workspace), *(lists[BONDS]), system->N );
+//            ( workspace->d_workspace->dDeltap_self, workspace->d_workspace->CdDelta,
+//              *workspace->d_workspace->f, *(lists[BONDS]), system->N );
 //        cudaCheckError( );
 
         k_total_forces_part1_opt <<< control->blocks_warp_N, control->gpu_block_size,
                                  sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                  control->cuda_streams[0] >>>
-            ( *(workspace->d_workspace), *(lists[BONDS]), system->N );
+            ( workspace->d_workspace->dDeltap_self, workspace->d_workspace->CdDelta,
+              workspace->d_workspace->f, *(lists[BONDS]), system->N );
         cudaCheckError( );
     }
     else
@@ -1014,7 +1008,8 @@ void Cuda_Total_Forces_Part1( reax_system const * const system,
 
         k_total_forces_virial_part1 <<< control->blocks_N, control->gpu_block_size,
                                     0, control->cuda_streams[0] >>>
-            ( *(workspace->d_workspace), *(lists[BONDS]), spad_rvec, system->N );
+            ( workspace->d_workspace->dDeltap_self, workspace->d_workspace->CdDelta,
+              workspace->d_workspace->f, *(lists[BONDS]), spad_rvec, system->N );
         cudaCheckError( );
 
         Cuda_Reduction_Sum( spad_rvec, &data->d_simulation_data->my_ext_press,

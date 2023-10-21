@@ -149,7 +149,7 @@ GPU_DEVICE static inline real Calculate_Omega( const rvec dvec_ij, real r_ij,
 
 
 GPU_GLOBAL void k_torsion_angles_part1( reax_atom const * const my_atoms,
-        global_parameters gp, single_body_parameters const * const sbp,
+        real const * const gp_l, single_body_parameters const * const sbp,
         two_body_parameters const * const tbp, three_body_header const * const thbh,
         four_body_header const * const fbph, real thb_cut, reax_list bond_list,
         reax_list thb_list, real const * const Delta_boc, real * const CdDelta,
@@ -180,7 +180,6 @@ GPU_GLOBAL void k_torsion_angles_part1( reax_atom const * const my_atoms,
     real CdDelta_j, CdDelta_k, Cdbopi_jk, Cdbo_ij, Cdbo_jk;
     rvec dvec_li, f_i, f_j, f_k;
     three_body_interaction_data *p_ijk, *p_jkl;
-    real p_tor2, p_tor3, p_tor4, p_cot2;
 #define BL (bond_list.bond_list_gpu)
 
     j = blockIdx.x * blockDim.x + threadIdx.x;
@@ -194,10 +193,10 @@ GPU_GLOBAL void k_torsion_angles_part1( reax_atom const * const my_atoms,
 
     if ( sbp[type_j].fbp_cnt_j > 0 )
     {
-        p_tor2 = gp.l[23];
-        p_tor3 = gp.l[24];
-        p_tor4 = gp.l[25];
-        p_cot2 = gp.l[27];
+        const real p_tor2 = gp_l[23];
+        const real p_tor3 = gp_l[24];
+        const real p_tor4 = gp_l[25];
+        const real p_cot2 = gp_l[27];
         e_tor_ = 0.0;
         e_con_ = 0.0;
         CdDelta_j = 0.0;
@@ -498,7 +497,7 @@ GPU_GLOBAL void k_torsion_angles_part1( reax_atom const * const my_atoms,
 
 
 GPU_GLOBAL void k_torsion_angles_part1_opt( reax_atom const * const my_atoms,
-        global_parameters gp, single_body_parameters const * const sbp,
+        real const * const gp_l, single_body_parameters const * const sbp,
         two_body_parameters const * const tbp, three_body_header const * const thbh,
         four_body_header const * const fbph, real thb_cut,
         reax_list bond_list, reax_list thb_list, real const * const Delta_boc, real * const CdDelta,
@@ -530,7 +529,6 @@ GPU_GLOBAL void k_torsion_angles_part1_opt( reax_atom const * const my_atoms,
     real CdDelta_j, CdDelta_k, Cdbopi_jk, Cdbo_ij, Cdbo_jk;
     rvec dvec_li, f_i, f_j, f_k;
     three_body_interaction_data *p_ijk, *p_jkl;
-    real p_tor2, p_tor3, p_tor4, p_cot2;
 #define BL (bond_list.bond_list_gpu)
 
     thread_id = blockIdx.x * blockDim.x + threadIdx.x;
@@ -549,10 +547,10 @@ GPU_GLOBAL void k_torsion_angles_part1_opt( reax_atom const * const my_atoms,
     {
         warp_id = threadIdx.x / warpSize;
         lane_id = thread_id % warpSize;
-        p_tor2 = gp.l[23];
-        p_tor3 = gp.l[24];
-        p_tor4 = gp.l[25];
-        p_cot2 = gp.l[27];
+        real const p_tor2 = gp_l[23];
+        real const p_tor3 = gp_l[24];
+        real const p_tor4 = gp_l[25];
+        real const p_cot2 = gp_l[27];
         e_tor_ = 0.0;
         e_con_ = 0.0;
         CdDelta_j = 0.0;
@@ -886,7 +884,7 @@ GPU_GLOBAL void k_torsion_angles_part1_opt( reax_atom const * const my_atoms,
 
 
 GPU_GLOBAL void k_torsion_angles_virial_part1( reax_atom const * const my_atoms,
-        global_parameters gp, four_body_header const * const fbph,
+        real const * const gp_l, four_body_header const * const fbph,
         real thb_cut, reax_list bond_list, reax_list thb_list,
         real const * const Delta_boc, real * const CdDelta,
         rvec * const f, int n, int num_atom_types, real * const e_tor_g,
@@ -917,7 +915,6 @@ GPU_GLOBAL void k_torsion_angles_virial_part1( reax_atom const * const my_atoms,
     rvec dvec_li, temp, f_i, f_j, f_k, ext_press_;
     ivec rel_box_jl;
     three_body_interaction_data *p_ijk, *p_jkl;
-    real p_tor2, p_tor3, p_tor4, p_cot2;
 #define BL (bond_list.bond_list_gpu)
 
     j = blockIdx.x * blockDim.x + threadIdx.x;
@@ -927,10 +924,10 @@ GPU_GLOBAL void k_torsion_angles_virial_part1( reax_atom const * const my_atoms,
         return;
     }
 
-    p_tor2 = gp.l[23];
-    p_tor3 = gp.l[24];
-    p_tor4 = gp.l[25];
-    p_cot2 = gp.l[27];
+    real const p_tor2 = gp_l[23];
+    real const p_tor3 = gp_l[24];
+    real const p_tor4 = gp_l[25];
+    real const p_cot2 = gp_l[27];
     e_tor_ = 0.0;
     e_con_ = 0.0;
     CdDelta_j = 0.0;
@@ -1324,27 +1321,11 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
     }
 #endif
 
-    if ( control->virial == 1 )
-    {
-        k_torsion_angles_virial_part1 <<< control->blocks_n, control->gpu_block_size,
-                                      0, control->cuda_streams[3] >>>
-            ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_fbp,
-              control->thb_cut, *(lists[BONDS]), *(lists[THREE_BODIES]),
-              workspace->d_workspace->Delta_boc, workspace->d_workspace->CdDelta,
-              workspace->d_workspace->f, system->n, system->reax_param.num_atom_types, 
-#if !defined(GPU_ACCUM_ATOMIC)
-              spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
-#else
-              &data->d_my_en->e_tor, &data->d_my_en->e_con,
-              &data->d_simulation_data->my_ext_press
-#endif
-            );
-    }
-    else
+    if ( control->virial == 0 )
     {
 //        k_torsion_angles_part1 <<< control->blocks_n, control->gpu_block_size,
 //                               0, control->cuda_streams[3] >>>
-//            ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp,
+//            ( system->d_my_atoms, system->reax_param.gp.d_l, system->reax_param.d_sbp,
 //              system->reax_param.d_tbp, system->reax_param.d_thbp, system->reax_param.d_fbp,
 //              control->thb_cut, *(lists[BONDS]), *(lists[THREE_BODIES]),
 //              workspace->d_workspace->Delta_boc, workspace->d_workspace->CdDelta,
@@ -1359,7 +1340,7 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
         k_torsion_angles_part1_opt <<< control->blocks_warp_n, control->gpu_block_size,
                                    sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                    control->cuda_streams[3] >>>
-            ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp,
+            ( system->d_my_atoms, system->reax_param.gp.d_l, system->reax_param.d_sbp,
               system->reax_param.d_tbp, system->reax_param.d_thbp, system->reax_param.d_fbp,
               control->thb_cut, *(lists[BONDS]), *(lists[THREE_BODIES]),
               workspace->d_workspace->Delta_boc, workspace->d_workspace->CdDelta,
@@ -1374,7 +1355,7 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
 //        k_torsion_angles_part1_no_cache_opt <<< control->blocks_warp_n, control->gpu_block_size,
 //                                   sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
 //                                   control->cuda_streams[3] >>>
-//            ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp,
+//            ( system->d_my_atoms, system->reax_param.gp.d_l, system->reax_param.d_sbp,
 //              system->reax_param.d_tbp, system->reax_param.d_thbp, system->reax_param.d_fbp,
 //              control->thb_cut, *(lists[BONDS]), workspace->d_workspace->Delta_boc,
 //              workspace->d_workspace->CdDelta, workspace->d_workspace->f, system->n,
@@ -1385,6 +1366,22 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
 //              &data->d_my_en->e_tor, &data->d_my_en->e_con
 //#endif
 //            );
+    }
+    else if ( control->virial == 1 )
+    {
+        k_torsion_angles_virial_part1 <<< control->blocks_n, control->gpu_block_size,
+                                      0, control->cuda_streams[3] >>>
+            ( system->d_my_atoms, system->reax_param.gp.d_l, system->reax_param.d_fbp,
+              control->thb_cut, *(lists[BONDS]), *(lists[THREE_BODIES]),
+              workspace->d_workspace->Delta_boc, workspace->d_workspace->CdDelta,
+              workspace->d_workspace->f, system->n, system->reax_param.num_atom_types, 
+#if !defined(GPU_ACCUM_ATOMIC)
+              spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
+#else
+              &data->d_my_en->e_tor, &data->d_my_en->e_con,
+              &data->d_simulation_data->my_ext_press
+#endif
+            );
     }
     cudaCheckError( );
 

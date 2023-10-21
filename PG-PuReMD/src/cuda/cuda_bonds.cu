@@ -31,7 +31,7 @@
 #include <cub/warp/warp_reduce.cuh>
 
 
-GPU_GLOBAL void k_bonds( reax_atom const * const my_atoms, global_parameters gp, 
+GPU_GLOBAL void k_bonds( reax_atom const * const my_atoms, real const * const gp_l, 
         single_body_parameters const * const sbp, two_body_parameters const * const tbp, 
         real const * const total_bond_order, real const * const Delta, real * const CdDelta,
         reax_list bond_list, int n, int num_atom_types, real * const e_bond_g )
@@ -39,9 +39,7 @@ GPU_GLOBAL void k_bonds( reax_atom const * const my_atoms, global_parameters gp,
     int i, j, pj, orig_id_i;
     int start_i, end_i;
     int type_i, type_j;
-    int flag_i_C, flag_i_O;
     real pow_BOs_be2, exp_be12, CEbo, e_bond_;
-    real gp3, gp4, gp7, gp10;
     real exphu, exphua1, exphub1, exphuov, hulpov;
     real decobdbo, decobdboua, decobdboub;
     real total_bond_order_i, Delta_i, CdDelta_i;
@@ -54,10 +52,10 @@ GPU_GLOBAL void k_bonds( reax_atom const * const my_atoms, global_parameters gp,
         return;
     }
 
-    gp3 = gp.l[3];
-    gp4 = gp.l[4];
-    gp7 = gp.l[7];
-    gp10 = gp.l[10];
+    const real gp3 = gp_l[3];
+    const real gp4 = gp_l[4];
+    const real gp7 = gp_l[7];
+    const real gp10 = gp_l[10];
     e_bond_ = 0.0;
     orig_id_i = my_atoms[i].orig_id;
     total_bond_order_i = total_bond_order[i];
@@ -67,9 +65,8 @@ GPU_GLOBAL void k_bonds( reax_atom const * const my_atoms, global_parameters gp,
     start_i = Start_Index( i, &bond_list );
     end_i = End_Index( i, &bond_list );
     type_i = my_atoms[i].type;
-    single_body_parameters const * const sbp_i = &sbp[type_i];
-    flag_i_C = Cuda_strncmp( sbp_i->name, "C", sizeof(sbp_i->name) );
-    flag_i_O = Cuda_strncmp( sbp_i->name, "O", sizeof(sbp_i->name) );
+    const int flag_i_C = Cuda_strncmp( sbp[type_i].name, "C", sizeof(sbp[type_i].name) );
+    const int flag_i_O = Cuda_strncmp( sbp[type_i].name, "O", sizeof(sbp[type_i].name) );
 
     for ( pj = start_i; pj < end_i; ++pj )
     {
@@ -78,8 +75,7 @@ GPU_GLOBAL void k_bonds( reax_atom const * const my_atoms, global_parameters gp,
         if ( orig_id_i <= my_atoms[j].orig_id )
         {
             type_j = my_atoms[j].type;
-            single_body_parameters const * const sbp_j = &sbp[type_j];
-            two_body_parameters const * const twbp = &tbp[ index_tbp(type_i,type_j, num_atom_types) ];
+            two_body_parameters const * const twbp = &tbp[ index_tbp(type_i, type_j, num_atom_types) ];
 
             pow_BOs_be2 = POW( BL.BO_s[pj], twbp->p_be2 );
             exp_be12 = EXP( twbp->p_be1 * ( 1.0 - pow_BOs_be2 ) );
@@ -99,8 +95,8 @@ GPU_GLOBAL void k_bonds( reax_atom const * const my_atoms, global_parameters gp,
             /* Stabilisation terminal triple bond */
             if ( BL.BO[pj] >= 1.00 )
             {
-                if ( (flag_i_C == 0 && Cuda_strncmp( sbp_j->name, "O", sizeof(sbp_j->name) ) == 0)
-                        || (flag_i_O == 0 && Cuda_strncmp( sbp_j->name, "C", sizeof(sbp_j->name) ) == 0) )
+                if ( (flag_i_C == 0 && Cuda_strncmp( sbp[type_j].name, "O", sizeof(sbp[type_j].name) ) == 0)
+                        || (flag_i_O == 0 && Cuda_strncmp( sbp[type_j].name, "C", sizeof(sbp[type_j].name) ) == 0) )
                 {
                     //ba = SQR( BL.BO[pj] - 2.5 );
                     exphu = EXP( -gp7 * SQR(BL.BO[pj] - 2.5) );
@@ -141,18 +137,16 @@ GPU_GLOBAL void k_bonds( reax_atom const * const my_atoms, global_parameters gp,
 }
 
 
-GPU_GLOBAL void k_bonds_opt( reax_atom const * const my_atoms, global_parameters gp, 
+GPU_GLOBAL void k_bonds_opt( reax_atom const * const my_atoms, real const * const gp_l, 
         single_body_parameters const * const sbp, two_body_parameters const * const tbp, 
         real const * const total_bond_order, real const * const Delta, real * const CdDelta,
         reax_list bond_list, int n, int num_atom_types, real *e_bond_g )
 {
     extern __shared__ cub::WarpReduce<double>::TempStorage temp_d[];
-    int i, j, pj, orig_id_i, thread_id, warp_id, lane_id, itr;;
+    int i, j, pj, orig_id_i, thread_id, warp_id, lane_id, itr;
     int start_i, end_i;
     int type_i, type_j;
-    int flag_i_C, flag_i_O;
     real pow_BOs_be2, exp_be12, CEbo, e_bond_;
-    real gp3, gp4, gp7, gp10;
     real exphu, exphua1, exphub1, exphuov, hulpov;
     real decobdbo, decobdboua, decobdboub;
     real total_bond_order_i, Delta_i, CdDelta_i;
@@ -170,10 +164,10 @@ GPU_GLOBAL void k_bonds_opt( reax_atom const * const my_atoms, global_parameters
 
     warp_id = threadIdx.x / warpSize;
     lane_id = thread_id % warpSize;
-    gp3 = gp.l[3];
-    gp4 = gp.l[4];
-    gp7 = gp.l[7];
-    gp10 = gp.l[10];
+    const real gp3 = gp_l[3];
+    const real gp4 = gp_l[4];
+    const real gp7 = gp_l[7];
+    const real gp10 = gp_l[10];
     e_bond_ = 0.0;
     orig_id_i = my_atoms[i].orig_id;
     total_bond_order_i = total_bond_order[i];
@@ -183,9 +177,8 @@ GPU_GLOBAL void k_bonds_opt( reax_atom const * const my_atoms, global_parameters
     start_i = Start_Index( i, &bond_list );
     end_i = End_Index( i, &bond_list );
     type_i = my_atoms[i].type;
-    single_body_parameters const * const sbp_i = &sbp[type_i];
-    flag_i_C = Cuda_strncmp( sbp_i->name, "C", sizeof(sbp_i->name) );
-    flag_i_O = Cuda_strncmp( sbp_i->name, "O", sizeof(sbp_i->name) );
+    const int flag_i_C = Cuda_strncmp( sbp[type_i].name, "C", sizeof(sbp[type_i].name) );
+    const int flag_i_O = Cuda_strncmp( sbp[type_i].name, "O", sizeof(sbp[type_i].name) );
 
     for ( itr = 0, pj = start_i + lane_id; itr < (end_i - start_i + warpSize - 1) / warpSize; ++itr )
     {
@@ -196,8 +189,7 @@ GPU_GLOBAL void k_bonds_opt( reax_atom const * const my_atoms, global_parameters
             if ( orig_id_i <= my_atoms[j].orig_id )
             {
                 type_j = my_atoms[j].type;
-                single_body_parameters const * const sbp_j = &sbp[type_j];
-                two_body_parameters const * const twbp= &tbp[ index_tbp(type_i,type_j, num_atom_types) ];
+                two_body_parameters const * const twbp = &tbp[ index_tbp(type_i, type_j, num_atom_types) ];
 
                 pow_BOs_be2 = POW( BL.BO_s[pj], twbp->p_be2 );
                 exp_be12 = EXP( twbp->p_be1 * ( 1.0 - pow_BOs_be2 ) );
@@ -217,8 +209,8 @@ GPU_GLOBAL void k_bonds_opt( reax_atom const * const my_atoms, global_parameters
                 /* Stabilisation terminal triple bond */
                 if ( BL.BO[pj] >= 1.00 )
                 {
-                    if ( (flag_i_C == 0 && Cuda_strncmp( sbp_j->name, "O", sizeof(sbp_j->name) ) == 0)
-                            || (flag_i_O == 0 && Cuda_strncmp( sbp_j->name, "C", sizeof(sbp_j->name) ) == 0) )
+                    if ( (flag_i_C == 0 && Cuda_strncmp( sbp[type_j].name, "O", sizeof(sbp[type_j].name) ) == 0)
+                            || (flag_i_O == 0 && Cuda_strncmp( sbp[type_j].name, "C", sizeof(sbp[type_j].name) ) == 0) )
                     {
                         //ba = SQR( BL.BO[pj] - 2.5 );
                         exphu = EXP( -gp7 * SQR(BL.BO[pj] - 2.5) );
@@ -297,7 +289,7 @@ void Cuda_Compute_Bonds( reax_system const * const system,
     cudaStreamWaitEvent( control->cuda_streams[1], control->cuda_stream_events[SE_BOND_ORDER_DONE], 0 );
 
 //    k_bonds <<< control->blocks_n, control->gpu_block_size, 0, control->cuda_streams[1] >>>
-//        ( system->d_my_atoms, system->reax_param.d_gp,
+//        ( system->d_my_atoms, system->reax_param.gp.d_l,
 //          system->reax_param.d_sbp, system->reax_param.d_tbp,
 //          workspace->d_workspace->total_bond_order, workspace->d_workspace->Delta, 
 //          workspace->d_workspace->CdDelta, *(lists[BONDS]), 
@@ -313,7 +305,7 @@ void Cuda_Compute_Bonds( reax_system const * const system,
     k_bonds_opt <<< control->blocks_warp_n, control->gpu_block_size,
                 sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                 control->cuda_streams[1] >>>
-        ( system->d_my_atoms, system->reax_param.d_gp,
+        ( system->d_my_atoms, system->reax_param.gp.d_l,
           system->reax_param.d_sbp, system->reax_param.d_tbp,
           workspace->d_workspace->total_bond_order, workspace->d_workspace->Delta, 
           workspace->d_workspace->CdDelta, *(lists[BONDS]), 

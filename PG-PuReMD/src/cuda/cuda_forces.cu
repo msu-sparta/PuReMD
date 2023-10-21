@@ -107,8 +107,7 @@ GPU_GLOBAL void k_init_hbond_indices( reax_atom * const atoms,
 GPU_GLOBAL void k_print_hbond_info( reax_atom const * const my_atoms,
         single_body_parameters const * const sbp, reax_list hbond_list, int N )
 {
-    int i;
-    int type_i;
+    int i, type_i;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -117,12 +116,10 @@ GPU_GLOBAL void k_print_hbond_info( reax_atom const * const my_atoms,
         return;
     }
 
-    reax_atom const * const atom_i = &my_atoms[i];
-    type_i = atom_i->type;
-    single_body_parameters const * const sbp_i = &sbp[type_i];
+    type_i = my_atoms[i].type;
 
-    printf( "atom %6d: ihb = %2d, ihb_top = %2d\n", i, sbp_i->p_hbond,
-            Start_Index( atom_i->Hindex, &hbond_list ) );
+    printf( "atom %6d: ihb = %2d, ihb_top = %2d\n", i, sbp[type_i].p_hbond,
+            Start_Index( my_atoms[i].Hindex, &hbond_list ) );
 }
 
 

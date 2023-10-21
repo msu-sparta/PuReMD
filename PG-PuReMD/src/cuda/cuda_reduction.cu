@@ -14,7 +14,7 @@
 //struct RvecSum
 //{
 //    template <typename T>
-//    __device__ __forceinline__
+//    GPU_HOST_DEVICE __forceinline__
 //    T operator()(const T &a, const T &b) const
 //    {
 //        T c;

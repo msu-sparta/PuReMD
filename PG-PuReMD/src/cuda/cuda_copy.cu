@@ -112,14 +112,11 @@ extern "C" void Cuda_Copy_System_Host_to_Device( reax_system *system,
             sizeof(four_body_header) * POW(system->reax_param.num_atom_types, 4),
             cudaMemcpyHostToDevice, control->cuda_streams[0], __FILE__, __LINE__ );
 
-    sCudaMemcpyAsync( system->reax_param.d_gp.l, system->reax_param.gp.l,
+    sCudaMemcpyAsync( system->reax_param.gp.d_l, system->reax_param.gp.l,
             sizeof(real) * system->reax_param.gp.n_global,
             cudaMemcpyHostToDevice, control->cuda_streams[0], __FILE__, __LINE__ );
 
     cudaStreamSynchronize( control->cuda_streams[0] );
-
-    system->reax_param.d_gp.n_global = system->reax_param.gp.n_global; 
-    system->reax_param.d_gp.vdw_type = system->reax_param.gp.vdw_type; 
 }
 
 

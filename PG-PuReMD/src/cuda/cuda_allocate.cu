@@ -444,12 +444,9 @@ void Cuda_Allocate_System( reax_system *system, control_params *control )
             SQR( SQR( system->reax_param.num_atom_types ) ) * sizeof(four_body_header),
             __FILE__, __LINE__ );
 
-    sCudaMalloc( (void **) &system->reax_param.d_gp.l,
+    sCudaMalloc( (void **) &system->reax_param.gp.d_l,
             system->reax_param.gp.n_global * sizeof(real),
             __FILE__, __LINE__ );
-
-    system->reax_param.d_gp.n_global = 0;
-    system->reax_param.d_gp.vdw_type = 0;
 }
 
 

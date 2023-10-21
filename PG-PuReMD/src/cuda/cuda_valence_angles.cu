@@ -45,7 +45,7 @@
 struct Prod
 {
     template <typename T>
-    __host__ __device__ __forceinline__ T operator()(const T &a, const T &b) const
+    GPU_HOST_DEVICE __forceinline__ T operator()(const T &a, const T &b) const
     {
         return a * b;
     }
@@ -55,7 +55,7 @@ struct Prod
 /* Compute 3-body interactions, in which the main role is played by
    atom j, which sits in the middle of the other two atoms i and k. */
 GPU_GLOBAL void k_valence_angles_part1( reax_atom const * const my_atoms,
-        global_parameters gp, single_body_parameters const * const sbp,
+        real const * const gp_l, single_body_parameters const * const sbp,
         two_body_parameters const * const tbp, three_body_header const * const thbh,
         real thb_cut, real const * const total_bond_order, real const * const Delta_boc,
         real const * const Delta, real const * const dDelta_lp, real const * const nlp,
@@ -68,10 +68,6 @@ GPU_GLOBAL void k_valence_angles_part1( reax_atom const * const my_atoms,
     int start_j, end_j;
     int cnt, num_thb_intrs, thbh_ijk;
     real temp, temp_bo_jt, pBOjt7;
-    real p_val1, p_val2, p_val3, p_val4, p_val5;
-    real p_val6, p_val7, p_val8, p_val9, p_val10;
-    real p_pen1, p_pen2, p_pen3, p_pen4;
-    real p_coa1, p_coa2, p_coa3, p_coa4;
     real trm8, expval6, expval7, expval2theta, expval12theta, exp3ij, exp3jk;
     real exp_pen2ij, exp_pen2jk, exp_pen3, exp_pen4, trm_pen34, exp_coa2;
     real dSBO1, dSBO2, SBO, SBO2, CSBO2, SBOp, prod_SBO, vlpadj;
@@ -99,16 +95,16 @@ GPU_GLOBAL void k_valence_angles_part1( reax_atom const * const my_atoms,
 
     if ( sbp[type_j].thbp_cnt_j > 0 )
     {
-        p_pen2 = gp.l[19];
-        p_pen3 = gp.l[20];
-        p_pen4 = gp.l[21];
-        p_coa2 = gp.l[2];
-        p_coa3 = gp.l[38];
-        p_coa4 = gp.l[30];
-        p_val6 = gp.l[14];
-        p_val8 = gp.l[33];
-        p_val9 = gp.l[16];
-        p_val10 = gp.l[17];
+        const real p_pen2 = gp_l[19];
+        const real p_pen3 = gp_l[20];
+        const real p_pen4 = gp_l[21];
+        const real p_coa2 = gp_l[2];
+        const real p_coa3 = gp_l[38];
+        const real p_coa4 = gp_l[30];
+        const real p_val6 = gp_l[14];
+        const real p_val8 = gp_l[33];
+        const real p_val9 = gp_l[16];
+        const real p_val10 = gp_l[17];
         e_ang_ = 0.0;
         e_coa_ = 0.0;
         e_pen_ = 0.0;
@@ -122,8 +118,8 @@ GPU_GLOBAL void k_valence_angles_part1( reax_atom const * const my_atoms,
 
         start_j = Start_Index( j, &bond_list );
         end_j = End_Index( j, &bond_list );
-        p_val3 = sbp[type_j].p_val3;
-        p_val5 = sbp[type_j].p_val5;
+        const real p_val3 = sbp[type_j].p_val3;
+        const real p_val5 = sbp[type_j].p_val5;
 
         /* sum of pi and pi-pi BO terms for all neighbors of atom j,
          * used in determining the equilibrium angle between i-j-k */
@@ -254,10 +250,10 @@ GPU_GLOBAL void k_valence_angles_part1( reax_atom const * const my_atoms,
                             three_body_parameters const * const thbp = &thbh[thbh_ijk].prm[cnt];
 
                             /* calculate valence angle energy */
-                            p_val1 = thbp->p_val1;
-                            p_val2 = thbp->p_val2;
-                            p_val4 = thbp->p_val4;
-                            p_val7 = thbp->p_val7;
+                            const real p_val1 = thbp->p_val1;
+                            const real p_val2 = thbp->p_val2;
+                            const real p_val4 = thbp->p_val4;
+                            const real p_val7 = thbp->p_val7;
                             theta_00 = thbp->theta_00;
 
                             exp3ij = EXP( -p_val3 * POW( BOA_ij, p_val4 ) );
@@ -311,7 +307,7 @@ GPU_GLOBAL void k_valence_angles_part1( reax_atom const * const my_atoms,
                             }
 
                             /* calculate penalty for double bonds in valency angles */
-                            p_pen1 = thbp->p_pen1;
+                            const real p_pen1 = thbp->p_pen1;
 
                             exp_pen2ij = EXP( -p_pen2 * SQR( BOA_ij - 2.0 ) );
                             exp_pen2jk = EXP( -p_pen2 * SQR( BOA_jk - 2.0 ) );
@@ -335,7 +331,7 @@ GPU_GLOBAL void k_valence_angles_part1( reax_atom const * const my_atoms,
                             CEpen3 = temp * (BOA_jk - 2.0);
 
                             /* calculate valency angle conjugation energy */
-                            p_coa1 = thbp->p_coa1;
+                            const real p_coa1 = thbp->p_coa1;
 
                             exp_coa2 = EXP( p_coa2 * Delta_boc_j );
                             e_coa = p_coa1
@@ -438,7 +434,7 @@ GPU_GLOBAL void k_valence_angles_part1( reax_atom const * const my_atoms,
 /* Compute 3-body interactions, in which the main role is played by
    atom j, which sits in the middle of the other two atoms i and k. */
 GPU_GLOBAL void k_valence_angles_part1_opt( reax_atom const * const my_atoms,
-        global_parameters gp, single_body_parameters const * const sbp,
+        real const * const gp_l, single_body_parameters const * const sbp,
         two_body_parameters const * const tbp, three_body_header const * const thbh,
         real thb_cut, real const * const total_bond_order, real const * const Delta_boc,
         real const * const Delta, real const * const dDelta_lp, real const * const nlp,
@@ -453,10 +449,6 @@ GPU_GLOBAL void k_valence_angles_part1_opt( reax_atom const * const my_atoms,
     int start_j, end_j;
     int cnt, num_thb_intrs, offset, flag, thbh_ijk;
     real temp, temp_bo_jt, pBOjt7;
-    real p_val1, p_val2, p_val3, p_val4, p_val5;
-    real p_val6, p_val7, p_val8, p_val9, p_val10;
-    real p_pen1, p_pen2, p_pen3, p_pen4;
-    real p_coa1, p_coa2, p_coa3, p_coa4;
     real trm8, expval6, expval7, expval2theta, expval12theta, exp3ij, exp3jk;
     real exp_pen2ij, exp_pen2jk, exp_pen3, exp_pen4, trm_pen34, exp_coa2;
     real dSBO1, dSBO2, SBO, SBO2, CSBO2, SBOp, prod_SBO, vlpadj;
@@ -490,16 +482,16 @@ GPU_GLOBAL void k_valence_angles_part1_opt( reax_atom const * const my_atoms,
         temp_d = (cub::WarpReduce<double>::TempStorage *) &temp_i[blockDim.x / warpSize];
         warp_id = threadIdx.x / warpSize;
         lane_id = thread_id % warpSize;
-        p_pen2 = gp.l[19];
-        p_pen3 = gp.l[20];
-        p_pen4 = gp.l[21];
-        p_coa2 = gp.l[2];
-        p_coa3 = gp.l[38];
-        p_coa4 = gp.l[30];
-        p_val6 = gp.l[14];
-        p_val8 = gp.l[33];
-        p_val9 = gp.l[16];
-        p_val10 = gp.l[17];
+        const real p_pen2 = gp_l[19];
+        const real p_pen3 = gp_l[20];
+        const real p_pen4 = gp_l[21];
+        const real p_coa2 = gp_l[2];
+        const real p_coa3 = gp_l[38];
+        const real p_coa4 = gp_l[30];
+        const real p_val6 = gp_l[14];
+        const real p_val8 = gp_l[33];
+        const real p_val9 = gp_l[16];
+        const real p_val10 = gp_l[17];
         e_ang_ = 0.0;
         e_coa_ = 0.0;
         e_pen_ = 0.0;
@@ -513,8 +505,8 @@ GPU_GLOBAL void k_valence_angles_part1_opt( reax_atom const * const my_atoms,
 
         start_j = Start_Index( j, &bond_list );
         end_j = End_Index( j, &bond_list );
-        p_val3 = sbp[type_j].p_val3;
-        p_val5 = sbp[type_j].p_val5;
+        const real p_val3 = sbp[type_j].p_val3;
+        const real p_val5 = sbp[type_j].p_val5;
 
         /* sum of pi and pi-pi BO terms for all neighbors of atom j,
          * used in determining the equilibrium angle between i-j-k */
@@ -656,10 +648,10 @@ GPU_GLOBAL void k_valence_angles_part1_opt( reax_atom const * const my_atoms,
                                     three_body_parameters const * const thbp = &thbh[thbh_ijk].prm[cnt];
 
                                     /* calculate valence angle energy */
-                                    p_val1 = thbp->p_val1;
-                                    p_val2 = thbp->p_val2;
-                                    p_val4 = thbp->p_val4;
-                                    p_val7 = thbp->p_val7;
+                                    const real p_val1 = thbp->p_val1;
+                                    const real p_val2 = thbp->p_val2;
+                                    const real p_val4 = thbp->p_val4;
+                                    const real p_val7 = thbp->p_val7;
                                     theta_00 = thbp->theta_00;
 
                                     exp3ij = EXP( -p_val3 * POW( BOA_ij, p_val4 ) );
@@ -713,7 +705,7 @@ GPU_GLOBAL void k_valence_angles_part1_opt( reax_atom const * const my_atoms,
                                     }
 
                                     /* calculate penalty for double bonds in valency angles */
-                                    p_pen1 = thbp->p_pen1;
+                                    const real p_pen1 = thbp->p_pen1;
 
                                     exp_pen2ij = EXP( -p_pen2 * SQR( BOA_ij - 2.0 ) );
                                     exp_pen2jk = EXP( -p_pen2 * SQR( BOA_jk - 2.0 ) );
@@ -737,7 +729,7 @@ GPU_GLOBAL void k_valence_angles_part1_opt( reax_atom const * const my_atoms,
                                     CEpen3 = temp * (BOA_jk - 2.0);
 
                                     /* calculate valency angle conjugation energy */
-                                    p_coa1 = thbp->p_coa1;
+                                    const real p_coa1 = thbp->p_coa1;
 
                                     exp_coa2 = EXP( p_coa2 * Delta_boc_j );
                                     e_coa = p_coa1
@@ -871,7 +863,7 @@ GPU_GLOBAL void k_valence_angles_part1_opt( reax_atom const * const my_atoms,
 /* Compute 3-body interactions (no caching), in which the main role is played by
    atom j, which sits in the middle of the other two atoms i and k. */
 GPU_GLOBAL void k_valence_angles_part1_no_cache_opt( reax_atom const * const my_atoms,
-        global_parameters gp, single_body_parameters const * const sbp,
+        real const * const gp_l, single_body_parameters const * const sbp,
         two_body_parameters const * const tbp, three_body_header const * const thbh,
         real thb_cut, real const * const total_bond_order, real const * const Delta_boc,
         real const * const Delta, real const * const dDelta_lp, real const * const nlp,
@@ -886,10 +878,6 @@ GPU_GLOBAL void k_valence_angles_part1_no_cache_opt( reax_atom const * const my_
     int start_j, end_j;
     int cnt, offset, flag, thbh_ijk;
     real temp, temp_bo_jt, pBOjt7;
-    real p_val1, p_val2, p_val3, p_val4, p_val5;
-    real p_val6, p_val7, p_val8, p_val9, p_val10;
-    real p_pen1, p_pen2, p_pen3, p_pen4;
-    real p_coa1, p_coa2, p_coa3, p_coa4;
     real trm8, expval6, expval7, expval2theta, expval12theta, exp3ij, exp3jk;
     real exp_pen2ij, exp_pen2jk, exp_pen3, exp_pen4, trm_pen34, exp_coa2;
     real dSBO1, dSBO2, SBO, SBO2, CSBO2, SBOp, prod_SBO, vlpadj;
@@ -922,16 +910,16 @@ GPU_GLOBAL void k_valence_angles_part1_no_cache_opt( reax_atom const * const my_
         temp_d = (cub::WarpReduce<double>::TempStorage *) &temp_i[blockDim.x / warpSize];
         warp_id = threadIdx.x / warpSize;
         lane_id = thread_id % warpSize;
-        p_pen2 = gp.l[19];
-        p_pen3 = gp.l[20];
-        p_pen4 = gp.l[21];
-        p_coa2 = gp.l[2];
-        p_coa3 = gp.l[38];
-        p_coa4 = gp.l[30];
-        p_val6 = gp.l[14];
-        p_val8 = gp.l[33];
-        p_val9 = gp.l[16];
-        p_val10 = gp.l[17];
+        const real p_pen2 = gp_l[19];
+        const real p_pen3 = gp_l[20];
+        const real p_pen4 = gp_l[21];
+        const real p_coa2 = gp_l[2];
+        const real p_coa3 = gp_l[38];
+        const real p_coa4 = gp_l[30];
+        const real p_val6 = gp_l[14];
+        const real p_val8 = gp_l[33];
+        const real p_val9 = gp_l[16];
+        const real p_val10 = gp_l[17];
         e_ang_ = 0.0;
         e_coa_ = 0.0;
         e_pen_ = 0.0;
@@ -945,8 +933,8 @@ GPU_GLOBAL void k_valence_angles_part1_no_cache_opt( reax_atom const * const my_
 
         start_j = Start_Index( j, &bond_list );
         end_j = End_Index( j, &bond_list );
-        p_val3 = sbp[type_j].p_val3;
-        p_val5 = sbp[type_j].p_val5;
+        const real p_val3 = sbp[type_j].p_val3;
+        const real p_val5 = sbp[type_j].p_val5;
 
         /* sum of pi and pi-pi BO terms for all neighbors of atom j,
          * used in determining the equilibrium angle between i-j-k */
@@ -1082,10 +1070,10 @@ GPU_GLOBAL void k_valence_angles_part1_no_cache_opt( reax_atom const * const my_
                                     three_body_parameters const * const thbp = &thbh[thbh_ijk].prm[cnt];
 
                                     /* calculate valence angle energy */
-                                    p_val1 = thbp->p_val1;
-                                    p_val2 = thbp->p_val2;
-                                    p_val4 = thbp->p_val4;
-                                    p_val7 = thbp->p_val7;
+                                    const real p_val1 = thbp->p_val1;
+                                    const real p_val2 = thbp->p_val2;
+                                    const real p_val4 = thbp->p_val4;
+                                    const real p_val7 = thbp->p_val7;
                                     theta_00 = thbp->theta_00;
 
                                     exp3ij = EXP( -p_val3 * POW( BOA_ij, p_val4 ) );
@@ -1139,7 +1127,7 @@ GPU_GLOBAL void k_valence_angles_part1_no_cache_opt( reax_atom const * const my_
                                     }
 
                                     /* calculate penalty for double bonds in valency angles */
-                                    p_pen1 = thbp->p_pen1;
+                                    const real p_pen1 = thbp->p_pen1;
 
                                     exp_pen2ij = EXP( -p_pen2 * SQR( BOA_ij - 2.0 ) );
                                     exp_pen2jk = EXP( -p_pen2 * SQR( BOA_jk - 2.0 ) );
@@ -1163,7 +1151,7 @@ GPU_GLOBAL void k_valence_angles_part1_no_cache_opt( reax_atom const * const my_
                                     CEpen3 = temp * (BOA_jk - 2.0);
 
                                     /* calculate valency angle conjugation energy */
-                                    p_coa1 = thbp->p_coa1;
+                                    const real p_coa1 = thbp->p_coa1;
 
                                     exp_coa2 = EXP( p_coa2 * Delta_boc_j );
                                     e_coa = p_coa1
@@ -1288,7 +1276,7 @@ GPU_GLOBAL void k_valence_angles_part1_no_cache_opt( reax_atom const * const my_
 /* Compute 3-body interactions, in which the main role is played by
    atom j, which sits in the middle of the other two atoms i and k. */
 GPU_GLOBAL void k_valence_angles_virial_part1( reax_atom const * const my_atoms,
-        global_parameters gp, single_body_parameters const * const sbp,
+        real const * const gp_l, single_body_parameters const * const sbp,
         three_body_header const * const thbh, real thb_cut,
         real const * const total_bond_order, real const * const Delta_boc, real const * const Delta,
         real const * const dDelta_lp, real const * const nlp, real const * const vlpex,
@@ -1301,10 +1289,6 @@ GPU_GLOBAL void k_valence_angles_virial_part1( reax_atom const * const my_atoms,
     int start_j, end_j;
     int cnt, num_thb_intrs, thbh_ijk;
     real temp, temp_bo_jt, pBOjt7;
-    real p_val1, p_val2, p_val3, p_val4, p_val5;
-    real p_val6, p_val7, p_val8, p_val9, p_val10;
-    real p_pen1, p_pen2, p_pen3, p_pen4;
-    real p_coa1, p_coa2, p_coa3, p_coa4;
     real trm8, expval6, expval7, expval2theta, expval12theta, exp3ij, exp3jk;
     real exp_pen2ij, exp_pen2jk, exp_pen3, exp_pen4, trm_pen34, exp_coa2;
     real dSBO1, dSBO2, SBO, SBO2, CSBO2, SBOp, prod_SBO, vlpadj;
@@ -1328,16 +1312,16 @@ GPU_GLOBAL void k_valence_angles_virial_part1( reax_atom const * const my_atoms,
         return;
     }
 
-    p_pen2 = gp.l[19];
-    p_pen3 = gp.l[20];
-    p_pen4 = gp.l[21];
-    p_coa2 = gp.l[2];
-    p_coa3 = gp.l[38];
-    p_coa4 = gp.l[30];
-    p_val6 = gp.l[14];
-    p_val8 = gp.l[33];
-    p_val9 = gp.l[16];
-    p_val10 = gp.l[17];
+    const real p_pen2 = gp_l[19];
+    const real p_pen3 = gp_l[20];
+    const real p_pen4 = gp_l[21];
+    const real p_coa2 = gp_l[2];
+    const real p_coa3 = gp_l[38];
+    const real p_coa4 = gp_l[30];
+    const real p_val6 = gp_l[14];
+    const real p_val8 = gp_l[33];
+    const real p_val9 = gp_l[16];
+    const real p_val10 = gp_l[17];
     e_ang_ = 0.0;
     e_coa_ = 0.0;
     e_pen_ = 0.0;
@@ -1353,8 +1337,8 @@ GPU_GLOBAL void k_valence_angles_virial_part1( reax_atom const * const my_atoms,
     type_j = my_atoms[j].type;
     start_j = Start_Index( j, &bond_list );
     end_j = End_Index( j, &bond_list );
-    p_val3 = sbp[type_j].p_val3;
-    p_val5 = sbp[type_j].p_val5;
+    const real p_val3 = sbp[type_j].p_val3;
+    const real p_val5 = sbp[type_j].p_val5;
 
     /* sum of pi and pi-pi BO terms for all neighbors of atom j,
      * used in determining the equilibrium angle between i-j-k */
@@ -1482,10 +1466,10 @@ GPU_GLOBAL void k_valence_angles_virial_part1( reax_atom const * const my_atoms,
                     three_body_parameters const * const thbp = &thbh[thbh_ijk].prm[cnt];
 
                     /* calculate valence angle energy */
-                    p_val1 = thbp->p_val1;
-                    p_val2 = thbp->p_val2;
-                    p_val4 = thbp->p_val4;
-                    p_val7 = thbp->p_val7;
+                    const real p_val1 = thbp->p_val1;
+                    const real p_val2 = thbp->p_val2;
+                    const real p_val4 = thbp->p_val4;
+                    const real p_val7 = thbp->p_val7;
                     theta_00 = thbp->theta_00;
 
                     exp3ij = EXP( -p_val3 * POW( BOA_ij, p_val4 ) );
@@ -1539,7 +1523,7 @@ GPU_GLOBAL void k_valence_angles_virial_part1( reax_atom const * const my_atoms,
                     }
 
                     /* calculate penalty for double bonds in valency angles */
-                    p_pen1 = thbp->p_pen1;
+                    const real p_pen1 = thbp->p_pen1;
 
                     exp_pen2ij = EXP( -p_pen2 * SQR( BOA_ij - 2.0 ) );
                     exp_pen2jk = EXP( -p_pen2 * SQR( BOA_jk - 2.0 ) );
@@ -1563,7 +1547,7 @@ GPU_GLOBAL void k_valence_angles_virial_part1( reax_atom const * const my_atoms,
                     CEpen3 = temp * (BOA_jk - 2.0);
 
                     /* calculate valency angle conjugation energy */
-                    p_coa1 = thbp->p_coa1;
+                    const real p_coa1 = thbp->p_coa1;
 
                     exp_coa2 = EXP( p_coa2 * Delta_boc_j );
                     e_coa = p_coa1
@@ -1944,37 +1928,17 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
         }
 #endif
 
-        if ( control->virial == 1 )
-        {
-            k_valence_angles_virial_part1 <<< control->blocks_N, control->gpu_block_size,
-                                          0, control->cuda_streams[3] >>>
-                ( system->d_my_atoms, system->reax_param.d_gp,
-                  system->reax_param.d_sbp, system->reax_param.d_thbp, control->thb_cut,
-                  workspace->d_workspace->total_bond_order, workspace->d_workspace->Delta_boc,
-                  workspace->d_workspace->Delta, workspace->d_workspace->dDelta_lp,
-                  workspace->d_workspace->nlp, workspace->d_workspace->vlpex,
-                  workspace->d_workspace->CdDelta, workspace->d_workspace->f,
-                  *(lists[BONDS]), *(lists[THREE_BODIES]), system->n, system->N,
-                  system->reax_param.num_atom_types, 
-#if !defined(GPU_ACCUM_ATOMIC)
-                  spad, &spad[system->N], &spad[2 * system->N], (rvec *) (&spad[3 * system->N])
-#else
-                  &data->d_my_en->e_ang, &data->d_my_en->e_pen, &data->d_my_en->e_coa,
-                  &data->d_simulation_data->my_ext_press
-#endif
-                );
-        }
-        else
+        if ( control->virial == 0 )
         {
 //            k_valence_angles_part1 <<< control->blocks_N, control->gpu_block_size,
 //                                   0, control->cuda_streams[3] >>>
-//                ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp,
+//                ( system->d_my_atoms, system->reax_param.gp.d_l, system->reax_param.d_sbp,
 //                  system->reax_param.d_tbp, system->reax_param.d_thbp, control->thb_cut,
 //                  workspace->d_workspace->total_bond_order, workspace->d_workspace->Delta_boc,
 //                  workspace->d_workspace->Delta, workspace->d_workspace->dDelta_lp,
 //                  workspace->d_workspace->nlp, workspace->d_workspace->vlpex,
-//                  workspace->d_workspace->nlp, workspace->d_workspace->CdDelta,
-//                  workspace->d_workspace->f, *(lists[BONDS]), *(lists[THREE_BODIES]),
+//                  workspace->d_workspace->CdDelta, workspace->d_workspace->f,
+//                  *(lists[BONDS]), *(lists[THREE_BODIES]),
 //                  system->n, system->N, system->reax_param.num_atom_types, 
 //#if !defined(GPU_ACCUM_ATOMIC)
 //                  spad, &spad[system->N], &spad[2 * system->N]
@@ -1987,7 +1951,7 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
                                        (sizeof(cub::WarpScan<int>::TempStorage)
                                         + sizeof(cub::WarpReduce<double>::TempStorage)) * (control->gpu_block_size / WARP_SIZE),
                                        control->cuda_streams[3] >>>
-                ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp,
+                ( system->d_my_atoms, system->reax_param.gp.d_l, system->reax_param.d_sbp,
                   system->reax_param.d_tbp, system->reax_param.d_thbp, control->thb_cut,
                   workspace->d_workspace->total_bond_order, workspace->d_workspace->Delta_boc,
                   workspace->d_workspace->Delta, workspace->d_workspace->dDelta_lp,
@@ -2006,7 +1970,7 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
 //                                       (sizeof(cub::WarpScan<int>::TempStorage)
 //                                        + sizeof(cub::WarpReduce<double>::TempStorage)) * (control->gpu_block_size / WARP_SIZE),
 //                                       control->cuda_streams[3] >>>
-//                ( system->d_my_atoms, system->reax_param.d_gp, system->reax_param.d_sbp,
+//                ( system->d_my_atoms, system->reax_param.gp.d_l, system->reax_param.d_sbp,
 //                  system->reax_param.d_tbp, system->reax_param.d_thbp, control->thb_cut,
 //                  workspace->d_workspace->total_bond_order, workspace->d_workspace->Delta_boc,
 //                  workspace->d_workspace->Delta, workspace->d_workspace->dDelta_lp,
@@ -2020,6 +1984,26 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
 //                  &data->d_my_en->e_ang, &data->d_my_en->e_pen, &data->d_my_en->e_coa
 //#endif
 //                );
+        }
+        else if ( control->virial == 1 )
+        {
+            k_valence_angles_virial_part1 <<< control->blocks_N, control->gpu_block_size,
+                                          0, control->cuda_streams[3] >>>
+                ( system->d_my_atoms, system->reax_param.gp.d_l,
+                  system->reax_param.d_sbp, system->reax_param.d_thbp, control->thb_cut,
+                  workspace->d_workspace->total_bond_order, workspace->d_workspace->Delta_boc,
+                  workspace->d_workspace->Delta, workspace->d_workspace->dDelta_lp,
+                  workspace->d_workspace->nlp, workspace->d_workspace->vlpex,
+                  workspace->d_workspace->CdDelta, workspace->d_workspace->f,
+                  *(lists[BONDS]), *(lists[THREE_BODIES]), system->n, system->N,
+                  system->reax_param.num_atom_types, 
+#if !defined(GPU_ACCUM_ATOMIC)
+                  spad, &spad[system->N], &spad[2 * system->N], (rvec *) (&spad[3 * system->N])
+#else
+                  &data->d_my_en->e_ang, &data->d_my_en->e_pen, &data->d_my_en->e_coa,
+                  &data->d_simulation_data->my_ext_press
+#endif
+                );
         }
         cudaCheckError( );
 

@@ -31,8 +31,8 @@
 
 
 /* Compute lone pair term */
-GPU_GLOBAL void k_atom_energy_part1( reax_atom const * const my_atoms, global_parameters gp,
-        single_body_parameters const * const sbp,
+GPU_GLOBAL void k_atom_energy_part1( reax_atom const * const my_atoms,
+        real const * const gp_l, single_body_parameters const * const sbp,
         real const * const Delta, real const * const Delta_lp,
         real const * const dDelta_lp, real * const CdDelta,
         reax_list bond_list, int n, int num_atom_types, real * const e_lp_g )
@@ -41,7 +41,6 @@ GPU_GLOBAL void k_atom_energy_part1( reax_atom const * const my_atoms, global_pa
     real expvd2, inv_expvd2, dElp, CElp;
     real Di, vov3, deahu2dbo, deahu2dsbo;
     real e_lp;
-    real p_lp2, p_lp3;
     real CdDelta_i;
 #define BL (bond_list.bond_list_gpu)
 
@@ -52,11 +51,11 @@ GPU_GLOBAL void k_atom_energy_part1( reax_atom const * const my_atoms, global_pa
         return;
     }
 
-    p_lp3 = gp.l[5];
+    const real p_lp3 = gp_l[5];
     type_i = my_atoms[i].type;
 
     /* lone-pair Energy */
-    p_lp2 = sbp[type_i].p_lp2;      
+    const real p_lp2 = sbp[type_i].p_lp2;      
     expvd2 = EXP( -75.0 * Delta_lp[i] );
     inv_expvd2 = 1.0 / ( 1.0 + expvd2 );
 
@@ -71,9 +70,8 @@ GPU_GLOBAL void k_atom_energy_part1( reax_atom const * const my_atoms, global_pa
     CdDelta_i = CElp;
 
     /* correction for C2 */
-    if ( gp.l[5] > 0.001
-            && Cuda_strncmp( sbp[type_i].name, "C",
-                sizeof(sbp[type_i].name) ) == 0 )
+    if ( gp_l[5] > 0.001
+            && Cuda_strncmp( sbp[type_i].name, "C", sizeof(sbp[type_i].name) ) == 0 )
     {
         for ( pj = Start_Index(i, &bond_list); pj < End_Index(i, &bond_list); ++pj )
         {
@@ -83,8 +81,7 @@ GPU_GLOBAL void k_atom_energy_part1( reax_atom const * const my_atoms, global_pa
                 j = BL.nbr[pj];
                 type_j = my_atoms[j].type;
 
-                if ( Cuda_strncmp( sbp[type_j].name, "C",
-                            sizeof(sbp[type_j].name) ) == 0 )
+                if ( Cuda_strncmp( sbp[type_j].name, "C", sizeof(sbp[type_j].name) ) == 0 )
                 {
                     Di = Delta[i];
                     vov3 = BL.BO[pj] - Di - 0.040 * POW( Di, 4.0 );
@@ -117,8 +114,8 @@ GPU_GLOBAL void k_atom_energy_part1( reax_atom const * const my_atoms, global_pa
 
 
 /* Compute lone pair term */
-GPU_GLOBAL void k_atom_energy_part1_opt( reax_atom const * const my_atoms, global_parameters gp,
-        single_body_parameters const * const sbp,
+GPU_GLOBAL void k_atom_energy_part1_opt( reax_atom const * const my_atoms,
+        real const * const gp_l, single_body_parameters const * const sbp,
         real const * const Delta, real const * const Delta_lp,
         real const * const dDelta_lp, real * const CdDelta,
         reax_list bond_list, int n, int num_atom_types, real * const e_lp_g )
@@ -145,7 +142,7 @@ GPU_GLOBAL void k_atom_energy_part1_opt( reax_atom const * const my_atoms, globa
 
     warp_id = threadIdx.x / warpSize;
     lane_id = thread_id % warpSize;
-    p_lp3 = gp.l[5];
+    p_lp3 = gp_l[5];
     type_i = my_atoms[i].type;
     start_i = Start_Index( i, &bond_list );
     end_i = End_Index( i, &bond_list );
@@ -174,9 +171,8 @@ GPU_GLOBAL void k_atom_energy_part1_opt( reax_atom const * const my_atoms, globa
     }
 
     /* correction for C2 */
-    if ( gp.l[5] > 0.001
-            && Cuda_strncmp( sbp[type_i].name, "C",
-                sizeof(sbp[type_i].name) ) == 0 )
+    if ( gp_l[5] > 0.001
+            && Cuda_strncmp( sbp[type_i].name, "C", sizeof(sbp[type_i].name) ) == 0 )
     {
         for ( itr = 0, pj = start_i + lane_id; itr < (end_i - start_i + warpSize - 1) / warpSize; ++itr )
         {
@@ -186,8 +182,7 @@ GPU_GLOBAL void k_atom_energy_part1_opt( reax_atom const * const my_atoms, globa
                 j = BL.nbr[pj];
                 type_j = my_atoms[j].type;
 
-                if ( Cuda_strncmp( sbp[type_j].name, "C",
-                            sizeof(sbp[type_j].name) ) == 0 )
+                if ( Cuda_strncmp( sbp[type_j].name, "C", sizeof(sbp[type_j].name) ) == 0 )
                 {
                     Di = Delta[i];
                     vov3 = BL.BO[pj] - Di - 0.040 * POW( Di, 4.0 );
@@ -228,8 +223,9 @@ GPU_GLOBAL void k_atom_energy_part1_opt( reax_atom const * const my_atoms, globa
 
 
 /* Compute over- and under-coordination terms */
-GPU_GLOBAL void k_atom_energy_part2( reax_atom const * const my_atoms, global_parameters gp,
-        single_body_parameters const * const sbp, two_body_parameters const * const tbp,
+GPU_GLOBAL void k_atom_energy_part2( reax_atom const * const my_atoms,
+        real const * const gp_l, single_body_parameters const * const sbp,
+        two_body_parameters const * const tbp,
         real const * const Delta, real const * const Delta_lp_temp,
         real const * const dDelta_lp, real * const CdDelta,
         reax_list bond_list, int n, int num_atom_types,
@@ -243,7 +239,6 @@ GPU_GLOBAL void k_atom_energy_part2( reax_atom const * const my_atoms, global_pa
     real exp_ovun2n, exp_ovun6, exp_ovun8;
     real inv_exp_ovun1, inv_exp_ovun2, inv_exp_ovun2n, inv_exp_ovun8;
     real e_un, CEunder1, CEunder2, CEunder3, CEunder4;
-    real p_ovun2, p_ovun3, p_ovun4, p_ovun5, p_ovun6, p_ovun7, p_ovun8;
 #define BL (bond_list.bond_list_gpu)
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -253,16 +248,16 @@ GPU_GLOBAL void k_atom_energy_part2( reax_atom const * const my_atoms, global_pa
         return;
     }
 
-    p_ovun3 = gp.l[32];
-    p_ovun4 = gp.l[31];
-    p_ovun6 = gp.l[6];
-    p_ovun7 = gp.l[8];
-    p_ovun8 = gp.l[9];
+    const real p_ovun3 = gp_l[32];
+    const real p_ovun4 = gp_l[31];
+    const real p_ovun6 = gp_l[6];
+    const real p_ovun7 = gp_l[8];
+    const real p_ovun8 = gp_l[9];
     sum_ovun1 = 0.0;
     sum_ovun2 = 0.0;
     type_i = my_atoms[i].type;
-    p_ovun2 = sbp[type_i].p_ovun2;
-    p_ovun5 = sbp[type_i].p_ovun5;
+    const real p_ovun2 = sbp[type_i].p_ovun2;
+    const real p_ovun5 = sbp[type_i].p_ovun5;
 
     /* over-coordination energy */
     if ( sbp[type_i].mass > 21.0 ) 
@@ -368,8 +363,9 @@ GPU_GLOBAL void k_atom_energy_part2( reax_atom const * const my_atoms, global_pa
 
 
 /* Compute over- and under-coordination terms */
-GPU_GLOBAL void k_atom_energy_part2_opt( reax_atom const * const my_atoms, global_parameters gp,
-        single_body_parameters const * const sbp, two_body_parameters const * const tbp,
+GPU_GLOBAL void k_atom_energy_part2_opt( reax_atom const * const my_atoms,
+        real const * const gp_l, single_body_parameters const * const sbp,
+        two_body_parameters const * const tbp,
         real const * const Delta, real const * const Delta_lp_temp,
         real const * const dDelta_lp, real * const CdDelta,
         reax_list bond_list, int n, int num_atom_types,
@@ -385,7 +381,6 @@ GPU_GLOBAL void k_atom_energy_part2_opt( reax_atom const * const my_atoms, globa
     real exp_ovun2n, exp_ovun6, exp_ovun8;
     real inv_exp_ovun1, inv_exp_ovun2, inv_exp_ovun2n, inv_exp_ovun8;
     real e_un, CEunder1, CEunder2, CEunder3, CEunder4;
-    real p_ovun2, p_ovun3, p_ovun4, p_ovun5, p_ovun6, p_ovun7, p_ovun8;
     real CdDelta_i;
 #define BL (bond_list.bond_list_gpu)
 
@@ -401,18 +396,18 @@ GPU_GLOBAL void k_atom_energy_part2_opt( reax_atom const * const my_atoms, globa
 
     warp_id = threadIdx.x / warpSize;
     lane_id = thread_id % warpSize;
-    p_ovun3 = gp.l[32];
-    p_ovun4 = gp.l[31];
-    p_ovun6 = gp.l[6];
-    p_ovun7 = gp.l[8];
-    p_ovun8 = gp.l[9];
+    const real p_ovun3 = gp_l[32];
+    const real p_ovun4 = gp_l[31];
+    const real p_ovun6 = gp_l[6];
+    const real p_ovun7 = gp_l[8];
+    const real p_ovun8 = gp_l[9];
     sum_ovun1 = 0.0;
     sum_ovun2 = 0.0;
     e_un = 0.0;
     CdDelta_i = 0.0;
     type_i = my_atoms[i].type;
-    p_ovun2 = sbp[type_i].p_ovun2;
-    p_ovun5 = sbp[type_i].p_ovun5;
+    const real p_ovun2 = sbp[type_i].p_ovun2;
+    const real p_ovun5 = sbp[type_i].p_ovun5;
     start_i = Start_Index( i, &bond_list );
     end_i = End_Index( i, &bond_list );
 
@@ -604,7 +599,7 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
 
 //    k_atom_energy_part1 <<< control->blocks_n, control->gpu_block_size,
 //                        0, control->cuda_streams[0] >>>
-//        ( system->d_my_atoms, system->reax_param.d_gp,
+//        ( system->d_my_atoms, system->reax_param.gp.d_l,
 //          system->reax_param.d_sbp, workspace->d_workspace->Delta,
 //          workspace->d_workspace->Delta_lp, workspace->d_workspace->dDelta_lp,
 //          workspace->d_workspace->CdDelta, *(lists[BONDS]), system->n, system->reax_param.num_atom_types,
@@ -619,7 +614,7 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
     k_atom_energy_part1_opt <<< control->blocks_warp_n, control->gpu_block_size,
                             sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                             control->cuda_streams[0] >>>
-        ( system->d_my_atoms, system->reax_param.d_gp,
+        ( system->d_my_atoms, system->reax_param.gp.d_l,
           system->reax_param.d_sbp, workspace->d_workspace->Delta,
           workspace->d_workspace->Delta_lp, workspace->d_workspace->dDelta_lp,
           workspace->d_workspace->CdDelta, *(lists[BONDS]), system->n,
@@ -634,9 +629,9 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
 
 //    k_atom_energy_part2 <<< control->blocks_n, control->gpu_block_size,
 //                        0, control->cuda_streams[0] >>>
-//        ( system->d_my_atoms, system->reax_param.d_gp,
+//        ( system->d_my_atoms, system->reax_param.gp.d_l,
 //          system->reax_param.d_sbp, system->reax_param.d_tbp, workspace->d_workspace->Delta,
-//          workspace->d_workspace->Delta_lp, workspace->d_workspace->dDelta_lp,
+//          workspace->d_workspace->Delta_lp_temp, workspace->d_workspace->dDelta_lp,
 //          workspace->d_workspace->CdDelta, *(lists[BONDS]),
 //          system->n, system->reax_param.num_atom_types,
 //#if !defined(GPU_ACCUM_ATOMIC)
@@ -651,9 +646,9 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
     k_atom_energy_part2_opt <<< control->blocks_warp_n, control->gpu_block_size,
                             sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                             control->cuda_streams[0] >>>
-        ( system->d_my_atoms, system->reax_param.d_gp,
+        ( system->d_my_atoms, system->reax_param.gp.d_l,
           system->reax_param.d_sbp, system->reax_param.d_tbp, workspace->d_workspace->Delta,
-          workspace->d_workspace->Delta_lp, workspace->d_workspace->dDelta_lp,
+          workspace->d_workspace->Delta_lp_temp, workspace->d_workspace->dDelta_lp,
           workspace->d_workspace->CdDelta, *(lists[BONDS]),
           system->n, system->reax_param.num_atom_types,
 #if !defined(GPU_ACCUM_ATOMIC)

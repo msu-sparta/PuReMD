@@ -35,7 +35,7 @@
 
 /* one thread per atom implementation */
 GPU_GLOBAL void k_hydrogen_bonds_part1( reax_atom const * const my_atoms,
-        global_parameters gp, single_body_parameters const * const sbp,
+        single_body_parameters const * const sbp,
         hbond_parameters const * const hbp,
         rvec * const f, reax_list far_nbr_list,
         reax_list bond_list, reax_list hbond_list, int n, 
@@ -197,7 +197,7 @@ GPU_GLOBAL void k_hydrogen_bonds_part1( reax_atom const * const my_atoms,
 
 /* one thread per atom implementation */
 GPU_GLOBAL void k_hydrogen_bonds_part1_opt( reax_atom const * const my_atoms,
-        global_parameters gp, single_body_parameters const * const sbp,
+        single_body_parameters const * const sbp,
         hbond_parameters const * const hbp,
         rvec * const f, reax_list far_nbr_list,
         reax_list bond_list, reax_list hbond_list, int n, 
@@ -353,9 +353,9 @@ GPU_GLOBAL void k_hydrogen_bonds_part1_opt( reax_atom const * const my_atoms,
 
 
 /* one thread per atom implementation */
-GPU_GLOBAL void k_hydrogen_bonds_virial_part1( reax_atom const * const my_atoms, global_parameters gp,
-        single_body_parameters const * const sbp, hbond_parameters const * const hbp,
-        rvec * const f, reax_list far_nbr_list,
+GPU_GLOBAL void k_hydrogen_bonds_virial_part1( reax_atom const * const my_atoms,
+        single_body_parameters const * const sbp,
+        hbond_parameters const * const hbp, rvec * const f, reax_list far_nbr_list,
         reax_list bond_list, reax_list hbond_list, int n, 
         int num_atom_types, real * const e_hb_g, rvec * const ext_press_g )
 {
@@ -750,28 +750,10 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
 
     cudaStreamWaitEvent( control->cuda_streams[2], control->cuda_stream_events[SE_BOND_ORDER_DONE], 0 );
 
-    if ( control->virial == 1 )
-    {
-        k_hydrogen_bonds_virial_part1 <<< control->blocks_n, control->gpu_block_size,
-                                      0, control->cuda_streams[2] >>>
-                ( system->d_my_atoms, system->reax_param.d_gp,
-                  system->reax_param.d_sbp, system->reax_param.d_hbp,
-                  workspace->d_workspace->f, *(lists[FAR_NBRS]),
-                  *(lists[BONDS]), *(lists[HBONDS]),
-                  system->n, system->reax_param.num_atom_types,
-#if !defined(GPU_ACCUM_ATOMIC)
-                  spad, (rvec *) (&spad[system->n])
-#else
-                  &data->d_my_en->e_hb, &data->d_simulation_data->my_ext_press
-#endif
-                );
-        cudaCheckError( );
-    }
-    else
+    if ( control->virial == 0 )
     {
 //        k_hydrogen_bonds_part1 <<< control->blocks_n, control->gpu_block_size, 0, control->cuda_streams[2] >>>
-//                ( system->d_my_atoms, system->reax_param.d_gp,
-//                  system->reax_param.d_sbp, system->reax_param.d_hbp,
+//                ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_hbp,
 //                  workspace->d_workspace->f, *(lists[FAR_NBRS]),
 //                  *(lists[BONDS]), *(lists[HBONDS]),
 //                  system->n, system->reax_param.num_atom_types,
@@ -781,13 +763,11 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
 //                  &data->d_my_en->e_hb
 //#endif
 //                );
-//        cudaCheckError( );
         
         k_hydrogen_bonds_part1_opt <<< control->blocks_warp_n, control->gpu_block_size,
                                    sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                    control->cuda_streams[2] >>>
-                ( system->d_my_atoms, system->reax_param.d_gp,
-                  system->reax_param.d_sbp, system->reax_param.d_hbp,
+                ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_hbp,
                   workspace->d_workspace->f, *(lists[FAR_NBRS]),
                   *(lists[BONDS]), *(lists[HBONDS]),
                   system->n, system->reax_param.num_atom_types,
@@ -797,8 +777,23 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
                   &data->d_my_en->e_hb
 #endif
                 );
-        cudaCheckError( );
     }
+    else if ( control->virial == 1 )
+    {
+        k_hydrogen_bonds_virial_part1 <<< control->blocks_n, control->gpu_block_size,
+                                      0, control->cuda_streams[2] >>>
+                ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_hbp,
+                  workspace->d_workspace->f, *(lists[FAR_NBRS]),
+                  *(lists[BONDS]), *(lists[HBONDS]),
+                  system->n, system->reax_param.num_atom_types,
+#if !defined(GPU_ACCUM_ATOMIC)
+                  spad, (rvec *) (&spad[system->n])
+#else
+                  &data->d_my_en->e_hb, &data->d_simulation_data->my_ext_press
+#endif
+                );
+    }
+    cudaCheckError( );
 
 #if !defined(GPU_ACCUM_ATOMIC)
     if ( update_energy == TRUE )
