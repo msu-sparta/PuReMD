@@ -53,8 +53,8 @@ enum preconditioner_type
 
 
 /* Jacobi preconditioner computation */
-GPU_GLOBAL void k_jacobi_cm_half( int *row_ptr_start,
-        int *row_ptr_end, int *col_ind, real *vals,
+GPU_GLOBAL void k_jacobi_cm_half( int const * const row_ptr_start,
+        int const * const row_ptr_end, int const * const col_ind, real const * const vals,
         real * const Hdia_inv, int N )
 {
     int i;
@@ -81,8 +81,8 @@ GPU_GLOBAL void k_jacobi_cm_half( int *row_ptr_start,
 
 
 /* Jacobi preconditioner computation */
-GPU_GLOBAL void k_jacobi_cm_full( int *row_ptr_start,
-        int *row_ptr_end, int *col_ind, real *vals,
+GPU_GLOBAL void k_jacobi_cm_full( int const * const row_ptr_start,
+        int const * const row_ptr_end, int const * const col_ind, real const * const vals,
         real * const Hdia_inv, int N )
 {
     int i, pj;
@@ -157,8 +157,8 @@ GPU_GLOBAL void k_jacobi_apply( real const * const Hdia_inv, real const * const 
  * x: dense vector, size equal to num. columns in A
  * b (output): dense vector, size equal to num. columns in A
  * N: number of rows in A */
-GPU_GLOBAL void k_sparse_matvec_half_csr( int *row_ptr_start,
-        int *row_ptr_end, int *col_ind, real *vals,
+GPU_GLOBAL void k_sparse_matvec_half_csr( int const * const row_ptr_start,
+        int const * const row_ptr_end, int const * const col_ind, real const * const vals,
         const real * const x, real * const b, int N )
 {
     int i, pj, si, ei;
@@ -198,8 +198,8 @@ GPU_GLOBAL void k_sparse_matvec_half_csr( int *row_ptr_start,
  * x: dense vector, size equal to num. columns in A
  * b (output): dense vector, size equal to num. columns in A
  * N: number of rows in A */
-GPU_GLOBAL void k_sparse_matvec_half_opt_csr( int *row_ptr_start,
-        int *row_ptr_end, int *col_ind, real *vals,
+GPU_GLOBAL void k_sparse_matvec_half_opt_csr( int const * const row_ptr_start,
+        int const * const row_ptr_end, int const * const col_ind, real const * const vals,
         const real * const x, real * const b, int N )
 {
     extern __shared__ cub::WarpReduce<double>::TempStorage temp_storage[];
@@ -262,8 +262,8 @@ GPU_GLOBAL void k_sparse_matvec_half_opt_csr( int *row_ptr_start,
  * x: dense vector, size equal to num. columns in A
  * b (output): dense vector, size equal to num. columns in A
  * N: number of rows in A */
-GPU_GLOBAL void k_sparse_matvec_full_csr( int *row_ptr_start,
-        int *row_ptr_end, int *col_ind, real *vals,
+GPU_GLOBAL void k_sparse_matvec_full_csr( int const * const row_ptr_start,
+        int const * const row_ptr_end, int const * const col_ind, real const * const vals,
         const real * const x, real * const b, int n )
 {
     int i, pj, si, ei;
@@ -297,8 +297,8 @@ GPU_GLOBAL void k_sparse_matvec_full_csr( int *row_ptr_start,
  * x: dense vector, size equal to num. columns in A
  * b (output): dense vector, size equal to num. columns in A
  * N: number of rows in A */
-GPU_GLOBAL void k_sparse_matvec_full_opt_csr( int *row_ptr_start,
-        int *row_ptr_end, int *col_ind, real *vals,
+GPU_GLOBAL void k_sparse_matvec_full_opt_csr( int const * const row_ptr_start,
+        int const * const row_ptr_end, int const * const col_ind, real const * const vals,
         const real * const x, real * const b, int n )
 {
     extern __shared__ cub::WarpReduce<double>::TempStorage temp_storage[];
@@ -350,8 +350,8 @@ GPU_GLOBAL void k_sparse_matvec_full_opt_csr( int *row_ptr_start,
  * X: 2 dense vectors, size equal to num. columns in A
  * B (output): 2 dense vectors, size equal to num. columns in A
  * N: number of rows in A */
-GPU_GLOBAL void k_dual_sparse_matvec_half_csr( int *row_ptr_start,
-        int *row_ptr_end, int *col_ind, real *vals,
+GPU_GLOBAL void k_dual_sparse_matvec_half_csr( int const * const row_ptr_start,
+        int const * const row_ptr_end, int const * const col_ind, real const * const vals,
         const rvec2 * const x, rvec2 * const b, int N )
 {
     int i, pj, si, ei;
@@ -395,8 +395,8 @@ GPU_GLOBAL void k_dual_sparse_matvec_half_csr( int *row_ptr_start,
  * X: 2 dense vectors, size equal to num. columns in A
  * B (output): 2 dense vectors, size equal to num. columns in A
  * N: number of rows in A */
-GPU_GLOBAL void k_dual_sparse_matvec_half_opt_csr( int *row_ptr_start,
-        int *row_ptr_end, int *col_ind, real *vals,
+GPU_GLOBAL void k_dual_sparse_matvec_half_opt_csr( int const * const row_ptr_start,
+        int const * const row_ptr_end, int const * const col_ind, real const * const vals,
         const rvec2 * const x, rvec2 * const b, int N )
 {
     extern __shared__ cub::WarpReduce<double>::TempStorage temp_storage[];
@@ -449,8 +449,17 @@ GPU_GLOBAL void k_dual_sparse_matvec_half_opt_csr( int *row_ptr_start,
 }
 
 
-/* 1 thread per row implementation */
-GPU_GLOBAL void k_dual_sparse_matvec_full_csr( sparse_matrix A,
+/* sparse matrix, dense vector multiplication AX = B,
+ * 1 thread per row implementation
+ *
+ * A: symmetric matrix,
+ *    stored in CSR format
+ * X: 2 dense vectors, size equal to num. columns in A
+ * B (output): 2 dense vectors, size equal to num. columns in A
+ * n: number of rows in A */
+GPU_GLOBAL void k_dual_sparse_matvec_full_csr( int const * const row_ptr_start,
+        int const * const row_ptr_end, int const * const col_ind, real const * const vals,
+
         rvec2 const * const x, rvec2 * const b, int n )
 {
     int i, pj, si, ei;
@@ -465,13 +474,13 @@ GPU_GLOBAL void k_dual_sparse_matvec_full_csr( sparse_matrix A,
 
     sum[0] = 0.0;
     sum[1] = 0.0;
-    si = A.start[i];
-    ei = A.end[i];
+    si = row_ptr_start[i];
+    ei = row_ptr_end[i];
 
     for ( pj = si; pj < ei; ++pj )
     {
-        sum[0] += A.val[pj] * x[A.j[pj]][0];
-        sum[1] += A.val[pj] * x[A.j[pj]][1];
+        sum[0] += vals[pj] * x[col_ind[pj]][0];
+        sum[1] += vals[pj] * x[col_ind[pj]][1];
     }
 
     b[i][0] = sum[0];
@@ -488,8 +497,8 @@ GPU_GLOBAL void k_dual_sparse_matvec_full_csr( sparse_matrix A,
  * X: 2 dense vectors, size equal to num. columns in A
  * B (output): 2 dense vectors, size equal to num. columns in A
  * n: number of rows in A */
-GPU_GLOBAL void k_dual_sparse_matvec_full_opt_csr( int *row_ptr_start,
-        int *row_ptr_end, int *col_ind, real *vals,
+GPU_GLOBAL void k_dual_sparse_matvec_full_opt_csr( int const * const row_ptr_start,
+        int const * const row_ptr_end, int const * const col_ind, real const * const vals,
         rvec2 const * const x, rvec2 * const b, int n )
 {
     extern __shared__ cub::WarpReduce<double>::TempStorage temp_storage[];
@@ -641,7 +650,7 @@ static void Dual_Sparse_MatVec_local( control_params const * const control,
     {
         /* 1 thread per row implementation */
 //        k_dual_sparse_matvec_full_csr <<< control->blocks_n, control->gpu_block_size, 0, s >>>
-//             ( *A, x, b, A->n );
+//             ( A->start, A->end, A->j, A->val,, x, b, A->n );
 
         blocks = ((A->n * WARP_SIZE) / control->gpu_block_size)
             + (((A->n * WARP_SIZE) % control->gpu_block_size) == 0 ? 0 : 1);

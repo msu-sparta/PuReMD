@@ -35,11 +35,11 @@ GPU_DEVICE static inline int Cuda_strncmp( const char * a,
 
 
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 600
-GPU_DEVICE static inline double atomicAdd( double* address, double val )
+GPU_DEVICE static inline double atomicAdd( double * address, double val )
 {
     unsigned long long int *address_as_ull, old, assumed;
 
-    address_as_ull = (unsigned long long int*)address;
+    address_as_ull = (unsigned long long int *) address;
     old = *address_as_ull;
 
     do

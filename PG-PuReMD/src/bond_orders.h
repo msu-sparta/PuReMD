@@ -25,25 +25,6 @@
 #include "reax_types.h"
 
 
-typedef struct
-{
-    real C1dbo;
-    real C2dbo;
-    real C3dbo;
-    real C1dbopi;
-    real C2dbopi;
-    real C3dbopi;
-    real C4dbopi;
-    real C1dbopi2;
-    real C2dbopi2;
-    real C3dbopi2;
-    real C4dbopi2;
-    real C1dDelta;
-    real C2dDelta;
-    real C3dDelta;
-} dbond_coefficients;
-
-
 #ifdef __cplusplus
 extern "C" {
 #endif

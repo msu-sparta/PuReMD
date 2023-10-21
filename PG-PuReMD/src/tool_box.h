@@ -103,7 +103,8 @@ double sstrtod( const char * const, const char * const, int );
 #if defined(LAMMPS_REAX) || defined(PURE_REAX)
 /* determine the touch point, tp, of a box to
    its neighbor denoted by the relative coordinate rl */
-static inline void Box_Touch_Point( simulation_box *box, ivec rl, rvec tp )
+static inline void Box_Touch_Point( simulation_box const * const box,
+        const ivec rl, rvec tp )
 {
     int d;
 
@@ -127,7 +128,7 @@ static inline void Box_Touch_Point( simulation_box *box, ivec rl, rvec tp )
 
 /* determine whether point p is inside the box,
  * assumes orthogonal box */
-static inline int is_Inside_Box( simulation_box *box, rvec p )
+static inline int is_Inside_Box( simulation_box const * const box, const rvec p )
 {
     if ( p[0] < box->min[0] || p[0] >= box->max[0]
             || p[1] < box->min[1] || p[1] >= box->max[1]
@@ -140,7 +141,8 @@ static inline int is_Inside_Box( simulation_box *box, rvec p )
 }
 
 
-static inline int iown_midpoint( simulation_box *box, rvec p1, rvec p2 )
+static inline int iown_midpoint( simulation_box const * const box,
+        const rvec p1, const rvec p2 )
 {
     rvec midp;
 
@@ -159,8 +161,8 @@ static inline int iown_midpoint( simulation_box *box, rvec p1, rvec p2 )
 }
 
 
-static inline void GridCell_Closest_Point( grid_cell *gci, grid_cell *gcj,
-        ivec ci, ivec cj, rvec cp )
+static inline void GridCell_Closest_Point( grid_cell const * const gci,
+        grid_cell const * const gcj, const ivec ci, const ivec cj, rvec cp )
 {
     int  d;
 
@@ -182,7 +184,7 @@ static inline void GridCell_Closest_Point( grid_cell *gci, grid_cell *gcj,
 }
 
 
-static inline void GridCell_Touch_Point( grid_cell *gc, ivec rl, rvec fp )
+static inline void GridCell_Touch_Point( grid_cell const * const gc, const ivec rl, rvec fp )
 {
     int d;
 
@@ -205,7 +207,7 @@ static inline void GridCell_Touch_Point( grid_cell *gc, ivec rl, rvec fp )
 
 
 
-static inline real DistSqr_to_CP( rvec cp, rvec x )
+static inline real DistSqr_to_CP( const rvec cp, const rvec x )
 {
     int  i;
     real d_sqr;
@@ -224,13 +226,13 @@ static inline real DistSqr_to_CP( rvec cp, rvec x )
 }
 
 
-static inline int Relative_Coord_Encoding( ivec c )
+static inline int Relative_Coord_Encoding( const ivec c )
 {
     return 9 * (c[0] + 1) + 3 * (c[1] + 1) + (c[2] + 1);
 }
 
 
-static inline real DistSqr_to_Special_Point( rvec cp, rvec x )
+static inline real DistSqr_to_Special_Point( const rvec cp, const rvec x )
 {
     int  i;
     real d_sqr;
@@ -250,8 +252,8 @@ static inline real DistSqr_to_Special_Point( rvec cp, rvec x )
 
 
 /************** taken from box.c **************/
-GPU_HOST_DEVICE static inline void Transform( rvec x1,
-        simulation_box *box, char flag, rvec x2 )
+GPU_HOST_DEVICE static inline void Transform( const rvec x1,
+        simulation_box const * const box, char flag, rvec x2 )
 {
     int i, j;
     real tmp;
@@ -283,8 +285,8 @@ GPU_HOST_DEVICE static inline void Transform( rvec x1,
 }
 
 
-GPU_HOST_DEVICE static inline void Transform_to_UnitBox( rvec x1,
-        simulation_box *box, char flag, rvec x2 )
+GPU_HOST_DEVICE static inline void Transform_to_UnitBox( const rvec x1,
+        simulation_box const * const box, char flag, rvec x2 )
 {
     Transform( x1, box, flag, x2 );
 

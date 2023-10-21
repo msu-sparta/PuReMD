@@ -26,11 +26,9 @@ void Cuda_Allocate_Grid( reax_system *, control_params * );
 
 void Cuda_Allocate_Simulation_Data( simulation_data *, cudaStream_t );
 
-void Cuda_Allocate_Control( control_params * );
+void Cuda_Allocate_Workspace_Part1( control_params const * const, storage * const, int );
 
-void Cuda_Allocate_Workspace_Part1( reax_system *, control_params *, storage *, int );
-
-void Cuda_Allocate_Workspace_Part2( reax_system *, control_params *, storage *, int );
+void Cuda_Allocate_Workspace_Part2( control_params const * const, storage * const, int );
 
 void Cuda_Allocate_Matrix( sparse_matrix * const, int, int, int, int, cudaStream_t );
 

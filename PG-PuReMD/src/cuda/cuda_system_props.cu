@@ -19,8 +19,8 @@
 #define FULL_WARP_MASK (0xFFFFFFFF)
 
 
-GPU_GLOBAL void k_center_of_mass_xcm( single_body_parameters *sbp,
-        reax_atom *atoms, rvec *xcm_g, size_t n )
+GPU_GLOBAL void k_center_of_mass_xcm( single_body_parameters const * const sbp,
+        reax_atom const * const atoms, rvec * const xcm_g, size_t n )
 {
     extern __shared__ cub::BlockReduce<double, GPU_BLOCK_SIZE>::TempStorage temp_block[];
     unsigned int i;
@@ -60,8 +60,8 @@ GPU_GLOBAL void k_center_of_mass_xcm( single_body_parameters *sbp,
 }
 
 
-GPU_GLOBAL void k_center_of_mass_vcm( single_body_parameters *sbp,
-        reax_atom *atoms, rvec *vcm_g, size_t n )
+GPU_GLOBAL void k_center_of_mass_vcm( single_body_parameters const * const sbp,
+        reax_atom const * const atoms, rvec * const vcm_g, size_t n )
 {
     extern __shared__ cub::BlockReduce<double, GPU_BLOCK_SIZE>::TempStorage temp_block[];
     unsigned int i;
@@ -101,8 +101,8 @@ GPU_GLOBAL void k_center_of_mass_vcm( single_body_parameters *sbp,
 }
 
 
-GPU_GLOBAL void k_center_of_mass_amcm( single_body_parameters *sbp,
-        reax_atom *atoms, rvec *amcm_g, size_t n )
+GPU_GLOBAL void k_center_of_mass_amcm( single_body_parameters const * const sbp,
+        reax_atom const * const atoms, rvec * const amcm_g, size_t n )
 {
     extern __shared__ cub::BlockReduce<double, GPU_BLOCK_SIZE>::TempStorage temp_block[];
     unsigned int i;
@@ -143,7 +143,8 @@ GPU_GLOBAL void k_center_of_mass_amcm( single_body_parameters *sbp,
 }
 
 
-GPU_GLOBAL void k_compute_inertial_tensor_blocks( real *input, real *output, size_t n )
+GPU_GLOBAL void k_compute_inertial_tensor_blocks( real const * const input,
+        real * const output, size_t n )
 {
     extern __shared__ real t_s[];
     unsigned int i, index;
@@ -198,8 +199,8 @@ GPU_GLOBAL void k_compute_inertial_tensor_blocks( real *input, real *output, siz
 }
 
 
-GPU_GLOBAL void k_compute_inertial_tensor_xx_xy( single_body_parameters *sbp,
-        reax_atom *atoms, real *t_g, real xcm0, real xcm1, real xcm2, size_t n )
+GPU_GLOBAL void k_compute_inertial_tensor_xx_xy( single_body_parameters const * const sbp,
+        reax_atom const * const atoms, real * const t_g, real xcm0, real xcm1, real xcm2, size_t n )
 {
     extern __shared__ real xx_xy_s[];
     unsigned int i, index, mask;
@@ -258,8 +259,8 @@ GPU_GLOBAL void k_compute_inertial_tensor_xx_xy( single_body_parameters *sbp,
 }
 
 
-GPU_GLOBAL void k_compute_inertial_tensor_xz_yy( single_body_parameters *sbp,
-        reax_atom *atoms, real *t_g, real xcm0, real xcm1, real xcm2, size_t n )
+GPU_GLOBAL void k_compute_inertial_tensor_xz_yy( single_body_parameters const * const sbp,
+        reax_atom const * const atoms, real * const t_g, real xcm0, real xcm1, real xcm2, size_t n )
 {
     extern __shared__ real xz_yy_s[];
     unsigned int i, index, mask;
@@ -318,8 +319,8 @@ GPU_GLOBAL void k_compute_inertial_tensor_xz_yy( single_body_parameters *sbp,
 }
 
 
-GPU_GLOBAL void k_compute_inertial_tensor_yz_zz( single_body_parameters *sbp,
-        reax_atom *atoms, real *t_g, real xcm0, real xcm1, real xcm2, size_t n )
+GPU_GLOBAL void k_compute_inertial_tensor_yz_zz( single_body_parameters const * const sbp,
+        reax_atom const * const atoms, real * const t_g, real xcm0, real xcm1, real xcm2, size_t n )
 {
     extern __shared__ real yz_zz_s[];
     unsigned int i, index, mask;
@@ -380,8 +381,8 @@ GPU_GLOBAL void k_compute_inertial_tensor_yz_zz( single_body_parameters *sbp,
 
 /* Copy the atom masses to a contigous array in global memory
  * for later reduction (sum) */
-GPU_GLOBAL void k_compute_total_mass( single_body_parameters *sbp, reax_atom *my_atoms, 
-        real *M_g, int n )
+GPU_GLOBAL void k_compute_total_mass( single_body_parameters const * const sbp,
+        reax_atom const * const my_atoms, real * const M_g, int n )
 {
     unsigned int i;
 
@@ -396,8 +397,8 @@ GPU_GLOBAL void k_compute_total_mass( single_body_parameters *sbp, reax_atom *my
 }
 
 
-GPU_GLOBAL void k_compute_kinetic_energy( single_body_parameters *sbp, reax_atom *my_atoms, 
-        real *e_kin_g, int n )
+GPU_GLOBAL void k_compute_kinetic_energy( single_body_parameters const * const sbp,
+        reax_atom const * const my_atoms, real * const e_kin_g, int n )
 {
     unsigned int i;
     rvec p;
@@ -415,7 +416,7 @@ GPU_GLOBAL void k_compute_kinetic_energy( single_body_parameters *sbp, reax_atom
 
 
 /* Generate zero atom velocities */
-GPU_GLOBAL void k_atom_velocities_zero( reax_atom *my_atoms, int n )
+GPU_GLOBAL void k_atom_velocities_zero( reax_atom * const my_atoms, int n )
 {
     int i;
 
@@ -432,8 +433,8 @@ GPU_GLOBAL void k_atom_velocities_zero( reax_atom *my_atoms, int n )
 
 /* Generate random atom velocities according
  * to the prescribed initial temperature */
-GPU_GLOBAL void k_atom_velocities_random( single_body_parameters *sbp,
-        reax_atom *my_atoms, real T, int n )
+GPU_GLOBAL void k_atom_velocities_random( single_body_parameters const * const sbp,
+        reax_atom * const my_atoms, real T, int n )
 {
     int i;
     real m, scale, norm;
@@ -455,10 +456,9 @@ GPU_GLOBAL void k_atom_velocities_random( single_body_parameters *sbp,
 }
 
 
-GPU_GLOBAL void k_compute_pressure( reax_atom *my_atoms, simulation_box *big_box,
-        rvec *int_press, int n )
+GPU_GLOBAL void k_compute_pressure( reax_atom const * const my_atoms,
+        simulation_box const * const big_box, rvec * const int_press, int n )
 {
-    reax_atom *p_atom;
     rvec tx;
     int i;
 
@@ -469,7 +469,7 @@ GPU_GLOBAL void k_compute_pressure( reax_atom *my_atoms, simulation_box *big_box
         return;
     }
 
-    p_atom = &my_atoms[i];
+    reax_atom const * const p_atom = &my_atoms[i];
     rvec_MakeZero( int_press[i] );
 
     /* transform x into unit box coordinates, store in tx */

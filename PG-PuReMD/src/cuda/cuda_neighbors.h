@@ -9,15 +9,15 @@
 extern "C" {
 #endif
 
-int Cuda_Generate_Neighbor_Lists( reax_system *, control_params *,
-        simulation_data *, storage *, reax_list ** );
+int Cuda_Generate_Neighbor_Lists( reax_system * const, control_params const * const,
+        simulation_data * const, storage * const, reax_list ** const );
 
 #ifdef __cplusplus
 }
 #endif
 
-void Cuda_Estimate_Num_Neighbors( reax_system *, control_params *,
-        simulation_data * );
+void Cuda_Estimate_Num_Neighbors( reax_system * const, control_params const * const,
+        simulation_data * const );
 
 
 #endif

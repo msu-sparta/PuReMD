@@ -29,7 +29,7 @@
  * The block-level sums are written to global memory pointed to by results
  *  in accordance to their block IDs.
  */
-GPU_GLOBAL void k_reduction_rvec( rvec *input, rvec *results, size_t n )
+GPU_GLOBAL void k_reduction_rvec( rvec const * const input, rvec * const results, size_t n )
 {
     extern __shared__ cub::BlockReduce<double, GPU_BLOCK_SIZE>::TempStorage temp_block[];
     rvec data;
@@ -67,7 +67,7 @@ GPU_GLOBAL void k_reduction_rvec( rvec *input, rvec *results, size_t n )
 }
 
 
-GPU_GLOBAL void k_reduction_rvec2( rvec2 *input, rvec2 *results, size_t n )
+GPU_GLOBAL void k_reduction_rvec2( rvec2 const * const input, rvec2 * const results, size_t n )
 {
     extern __shared__ cub::BlockReduce<double, GPU_BLOCK_SIZE>::TempStorage temp_block[];
     unsigned int i;

@@ -10,6 +10,7 @@
 #include "cuda_neighbors.h"
 #include "cuda_reset_tools.h"
 #include "cuda_system_props.h"
+#include "cuda_utils.h"
 
 #include "../box.h"
 #include "../comm_tools.h"
@@ -23,8 +24,8 @@
 #include "../vector.h"
 
 
-static void Cuda_Init_System( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace, mpi_datatypes *mpi_data )
+static void Cuda_Init_System( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace, mpi_datatypes * const mpi_data )
 {
     Setup_New_Grid( system, control, MPI_COMM_WORLD );
 
@@ -74,8 +75,8 @@ static void Cuda_Init_System( reax_system *system, control_params *control,
 }
 
 
-void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
-        simulation_data *data )
+void Cuda_Init_Simulation_Data( reax_system * const system, control_params * const control,
+        simulation_data * const data )
 {
     data->my_en = (energy_data *) smalloc_pinned( sizeof(energy_data), __FILE__, __LINE__ );
     data->sys_en = (energy_data *) smalloc( sizeof(energy_data), __FILE__, __LINE__ );
@@ -161,13 +162,20 @@ void Cuda_Init_Simulation_Data( reax_system *system, control_params *control,
 }
 
 
-void Cuda_Init_Workspace( reax_system *system, control_params *control,
-        storage *workspace, mpi_datatypes *mpi_data )
+void Cuda_Init_Workspace( reax_system const * const system, control_params * const control,
+        storage * const workspace, mpi_datatypes * const mpi_data )
 {
-    Cuda_Allocate_Workspace_Part1( system, control, workspace->d_workspace,
-            system->local_cap );
-    Cuda_Allocate_Workspace_Part2( system, control, workspace->d_workspace,
-            system->total_cap );
+    Cuda_Allocate_Workspace_Part1( control, workspace->d_workspace, system->local_cap );
+    Cuda_Allocate_Workspace_Part2( control, workspace->d_workspace, system->total_cap );
+
+    /* one-off allocations (not to be rerun after reneighboring)
+     * and not needed earlier during input file parsing (in PreAllocate_Space) */
+    workspace->tap_coef = (real *) smalloc( sizeof(real) * TAPER_COEF_SIZE, __FILE__, __LINE__ );
+    workspace->dtap_coef = (real *) smalloc( sizeof(real) * DTAPER_COEF_SIZE, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &workspace->d_workspace->tap_coef, sizeof(real) * TAPER_COEF_SIZE,
+            __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &workspace->d_workspace->dtap_coef, sizeof(real) * DTAPER_COEF_SIZE,
+            __FILE__, __LINE__ );
 
     workspace->realloc->far_nbrs = FALSE;
     workspace->realloc->cm = FALSE;
@@ -196,13 +204,20 @@ void Cuda_Init_Workspace( reax_system *system, control_params *control,
 
     Cuda_Reset_Workspace( system, control, workspace );
 
-    Init_Taper( control, workspace->d_workspace, mpi_data );
+    Init_Taper( control, workspace, mpi_data );
+
+    sCudaMemcpyAsync( workspace->d_workspace->tap_coef, workspace->tap_coef,
+            sizeof(real) * TAPER_COEF_SIZE, cudaMemcpyHostToDevice,
+            control->cuda_streams[0], __FILE__, __LINE__ );
+    sCudaMemcpyAsync( workspace->d_workspace->dtap_coef, workspace->dtap_coef,
+            sizeof(real) * DTAPER_COEF_SIZE, cudaMemcpyHostToDevice,
+            control->cuda_streams[0], __FILE__, __LINE__ );
 }
 
 
-void Cuda_Init_Lists( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace, reax_list **lists,
-        mpi_datatypes *mpi_data )
+void Cuda_Init_Lists( reax_system * const system, control_params const * const control,
+        simulation_data * const data, storage * const workspace, reax_list ** const lists,
+        mpi_datatypes * const mpi_data )
 {
     Cuda_Estimate_Num_Neighbors( system, control, data );
 
@@ -247,10 +262,10 @@ void Cuda_Init_Lists( reax_system *system, control_params *control,
 }
 
 
-extern "C" void Cuda_Initialize( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace,
-        reax_list **lists, output_controls *out_control,
-        mpi_datatypes *mpi_data )
+extern "C" void Cuda_Initialize( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace,
+        reax_list ** const lists, output_controls * const out_control,
+        mpi_datatypes * const mpi_data )
 {
     int i;
 
@@ -324,8 +339,6 @@ extern "C" void Cuda_Initialize( reax_system *system, control_params *control,
     Cuda_Copy_Grid_Host_to_Device( control, &system->my_grid, &system->d_my_grid );
 
     Cuda_Init_Workspace( system, control, workspace, mpi_data );
-
-    Cuda_Allocate_Control( control );
 
     Cuda_Init_Lists( system, control, data, workspace, lists, mpi_data );
 

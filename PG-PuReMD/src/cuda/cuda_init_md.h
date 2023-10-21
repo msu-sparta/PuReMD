@@ -9,8 +9,8 @@
 extern "C" {
 #endif
 
-void Cuda_Initialize( reax_system*, control_params*, simulation_data*,
-        storage*, reax_list**, output_controls*, mpi_datatypes* );
+void Cuda_Initialize( reax_system * const, control_params * const, simulation_data * const,
+        storage * const, reax_list ** const, output_controls * const, mpi_datatypes * const );
 
 #ifdef __cplusplus
 }

@@ -119,11 +119,9 @@ void Compute_Total_Energy( reax_system const * const system,
     my_en[13] = data->my_en->e_kin;
 
 #if defined(HAVE_CUDA)
-    Cuda_Copy_Simulation_Data_Device_to_Host( control, data,
-            (simulation_data *) data->d_simulation_data );
+    Cuda_Copy_Simulation_Data_Device_to_Host( control, data, data->d_simulation_data );
 #elif defined(HAVE_HIP)
-    Hip_Copy_Simulation_Data_Device_to_Host( control, data,
-            (simulation_data *) data->d_simulation_data );
+    Hip_Copy_Simulation_Data_Device_to_Host( control, data, data->d_simulation_data );
 #endif
 
     my_en[0] = data->my_en->e_bond;

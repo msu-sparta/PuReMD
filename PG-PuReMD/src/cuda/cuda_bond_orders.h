@@ -33,24 +33,21 @@ GPU_DEVICE static inline void Cuda_Compute_BOp( reax_list bond_list, real bo_cut
 {
     real r2;
     real Cln_BOp_s, Cln_BOp_pi, Cln_BOp_pi2;
-    bond_data *ibond;
-    bond_order_data *bo_ij;
+#define BL (bond_list.bond_list_gpu)
 
     r2 = SQR( d );
 
     /****** bond i-j ONLY ******/
-    ibond = &bond_list.bond_list[btop_i];
-    ibond->nbr = j;
-    ibond->d = d;
+    BL.nbr[btop_i] = j;
+    BL.d[btop_i] = d;
 
-    rvec_Copy( ibond->dvec, *dvec );
-    ivec_Copy( ibond->rel_box, *rel_box );
+    rvec_Copy( BL.dvec[btop_i], *dvec );
+    ivec_Copy( BL.rel_box[btop_i], *rel_box );
 
-    bo_ij = &ibond->bo_data;
-    bo_ij->BO = BO;
-    bo_ij->BO_s = BO_s;
-    bo_ij->BO_pi = BO_pi;
-    bo_ij->BO_pi2 = BO_pi2;
+    BL.BO[btop_i] = BO;
+    BL.BO_s[btop_i] = BO_s;
+    BL.BO_pi[btop_i] = BO_pi;
+    BL.BO_pi2[btop_i] = BO_pi2;
 
     /* Bond Order page2-3, derivative of total bond order prime */
     Cln_BOp_s = twbp->p_bo2 * C12 / r2;
@@ -59,36 +56,38 @@ GPU_DEVICE static inline void Cuda_Compute_BOp( reax_list bond_list, real bo_cut
 
     /* Only dln_BOp_xx wrt. dr_i is stored here, note that
      * dln_BOp_xx/dr_i = -dln_BOp_xx/dr_j and all others are 0 */
-    rvec_Scale( bo_ij->dln_BOp_s, -1.0 * bo_ij->BO_s * Cln_BOp_s, ibond->dvec );
-    rvec_Scale( bo_ij->dln_BOp_pi, -1.0 * bo_ij->BO_pi * Cln_BOp_pi, ibond->dvec );
-    rvec_Scale( bo_ij->dln_BOp_pi2, -1.0 * bo_ij->BO_pi2 * Cln_BOp_pi2, ibond->dvec );
+    rvec_Scale( BL.dln_BOp_s[btop_i], -1.0 * BL.BO_s[btop_i] * Cln_BOp_s, BL.dvec[btop_i] );
+    rvec_Scale( BL.dln_BOp_pi[btop_i], -1.0 * BL.BO_pi[btop_i] * Cln_BOp_pi, BL.dvec[btop_i] );
+    rvec_Scale( BL.dln_BOp_pi2[btop_i], -1.0 * BL.BO_pi2[btop_i] * Cln_BOp_pi2, BL.dvec[btop_i] );
 
     /* Only dBOp wrt. dr_i is stored here, note that
      * dBOp/dr_i = -dBOp/dr_j and all others are 0 */
-    rvec_Scale( bo_ij->dBOp, -1.0 * (bo_ij->BO_s * Cln_BOp_s
-                + bo_ij->BO_pi * Cln_BOp_pi
-                + bo_ij->BO_pi2 * Cln_BOp_pi2), ibond->dvec );
+    rvec_Scale( BL.dBOp[btop_i], -1.0 * (BL.BO_s[btop_i] * Cln_BOp_s
+                + BL.BO_pi[btop_i] * Cln_BOp_pi
+                + BL.BO_pi2[btop_i] * Cln_BOp_pi2), BL.dvec[btop_i] );
 
-    rvec_Add( dDeltap_self_i, bo_ij->dBOp );
+    rvec_Add( dDeltap_self_i, BL.dBOp[btop_i] );
 
-    bo_ij->BO_s -= bo_cut;
-    bo_ij->BO -= bo_cut;
+    BL.BO_s[btop_i] -= bo_cut;
+    BL.BO[btop_i] -= bo_cut;
     /* currently total_BOp */
-    *total_bond_order_i += bo_ij->BO; 
-    bo_ij->Cdbo = 0.0;
-    bo_ij->Cdbopi = 0.0;
-    bo_ij->Cdbopi2 = 0.0;
+    *total_bond_order_i += BL.BO[btop_i]; 
+    BL.Cdbo[btop_i] = 0.0;
+    BL.Cdbopi[btop_i] = 0.0;
+    BL.Cdbopi2[btop_i] = 0.0;
 
 #if !defined(GPU_ACCUM_ATOMIC)
-    ibond->ae_CdDelta = 0.0;
-    ibond->va_CdDelta = 0.0;
-    rvec_MakeZero( ibond->va_f );
-    ibond->ta_CdDelta = 0.0;
-    ibond->ta_Cdbo = 0.0;
-    rvec_MakeZero( ibond->ta_f );
-    rvec_MakeZero( ibond->hb_f );
-    rvec_MakeZero( ibond->tf_f );
+    BL.ae_CdDelta[btop_i] = 0.0;
+    BL.va_CdDelta[btop_i] = 0.0;
+    rvec_MakeZero( BL.va_f[btop_i] );
+    BL.ta_CdDelta[btop_i] = 0.0;
+    BL.ta_Cdbo[btop_i] = 0.0;
+    rvec_MakeZero( BL.ta_f[btop_i] );
+    rvec_MakeZero( BL.hb_f[btop_i] );
+    rvec_MakeZero( BL.tf_f[btop_i] );
 #endif
+
+#undef BL
 }
 
 

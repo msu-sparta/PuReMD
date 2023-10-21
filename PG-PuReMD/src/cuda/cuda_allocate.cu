@@ -13,7 +13,7 @@
 #include "../vector.h"
 
 
-GPU_GLOBAL void k_init_nbrs( ivec *nbrs, int N )
+GPU_GLOBAL void k_init_nbrs( ivec * const nbrs, int N )
 {
     int i;
    
@@ -229,17 +229,6 @@ static void Cuda_Reallocate_System_Part2( reax_system *system, control_params *c
             sizeof(int) * system->total_cap, __FILE__, __LINE__ );
     sCudaMemcpyAsync( system->d_max_hbonds, temp, sizeof(int) * total_cap_old,
             cudaMemcpyDeviceToDevice, control->cuda_streams[0], __FILE__, __LINE__ );
-    cudaStreamSynchronize( control->cuda_streams[0] );
-}
-
-
-void Cuda_Allocate_Control( control_params *control )
-{
-    sCudaMalloc( (void **)&control->d_control_params,
-            sizeof(control_params), __FILE__, __LINE__ );
-    sCudaMemcpyAsync( control->d_control_params, control,
-            sizeof(control_params), cudaMemcpyHostToDevice,
-            control->cuda_streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->cuda_streams[0] );
 }
 
@@ -478,8 +467,8 @@ void Cuda_Allocate_Simulation_Data( simulation_data *data, cudaStream_t s )
 }
 
 
-void Cuda_Allocate_Workspace_Part1( reax_system *system, control_params *control, 
-        storage *workspace, int local_cap )
+void Cuda_Allocate_Workspace_Part1( control_params const * const control, 
+        storage * const workspace, int local_cap )
 {
     int local_rvec;
 
@@ -518,8 +507,8 @@ void Cuda_Allocate_Workspace_Part1( reax_system *system, control_params *control
 }
 
 
-void Cuda_Allocate_Workspace_Part2( reax_system *system, control_params *control, 
-        storage *workspace, int total_cap )
+void Cuda_Allocate_Workspace_Part2( control_params const * const control, 
+        storage * const workspace, int total_cap )
 {
     int total_real, total_rvec;
 #if defined(DUAL_SOLVER)
@@ -1165,8 +1154,7 @@ void Cuda_Reallocate_Part2( reax_system *system, control_params *control,
         Cuda_Reallocate_System_Part1( system, control, workspace, local_cap_old );
 
         Cuda_Deallocate_Workspace_Part1( control, workspace );
-        Cuda_Allocate_Workspace_Part1( system, control, workspace,
-                system->local_cap );
+        Cuda_Allocate_Workspace_Part1( control, workspace, system->local_cap );
     }
 
     if ( Nflag == TRUE )
@@ -1174,8 +1162,7 @@ void Cuda_Reallocate_Part2( reax_system *system, control_params *control,
         Cuda_Reallocate_System_Part2( system, control, workspace, total_cap_old );
 
         Cuda_Deallocate_Workspace_Part2( control, workspace );
-        Cuda_Allocate_Workspace_Part2( system, control, workspace,
-                system->total_cap );
+        Cuda_Allocate_Workspace_Part2( control, workspace, system->total_cap );
     }
 
     /* far neighbors */

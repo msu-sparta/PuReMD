@@ -389,7 +389,7 @@ void Init_Simulation_Data( reax_system * const system, control_params * const co
 
 /************************ initialize workspace ************************/
 /* initialize coefficients of taper function and its derivative */
-void Init_Taper( control_params * const control,  storage * const workspace,
+void Init_Taper( control_params const * const control,  storage * const workspace,
         mpi_datatypes * const mpi_data )
 {
     real d1, d7;
@@ -445,6 +445,11 @@ void Init_Workspace( reax_system * const system, control_params * const control,
 {
     Allocate_Workspace_Part1( system, control, workspace, system->local_cap );
     Allocate_Workspace_Part2( system, control, workspace, system->total_cap );
+
+    /* one-off allocations (not to be rerun after reneighboring)
+     * and not needed earlier during input file parsing (in PreAllocate_Space) */
+    workspace->tap_coef = smalloc( sizeof(real) * TAPER_COEF_SIZE, __FILE__, __LINE__ );
+    workspace->dtap_coef = smalloc( sizeof(real) * DTAPER_COEF_SIZE, __FILE__, __LINE__ );
 
     workspace->realloc->far_nbrs = FALSE;
     workspace->realloc->cm = FALSE;
@@ -1000,6 +1005,9 @@ static void Finalize_Workspace( reax_system * const system, control_params * con
             exit( UNKNOWN_OPTION );
             break;
     }
+
+    sfree( workspace->tap_coef, __FILE__, __LINE__ );
+    sfree( workspace->dtap_coef, __FILE__, __LINE__ );
 
     /* integrator storage */
     if ( control->ensemble == nhNVT )

@@ -36,7 +36,7 @@ void Init_MPI_Datatypes( reax_system * const, storage * const, mpi_datatypes * c
 void Initialize( reax_system * const, control_params * const, simulation_data * const,
         storage * const, reax_list** const, output_controls * const, mpi_datatypes * const );
 
-void Init_Taper( control_params * const,  storage * const,
+void Init_Taper( control_params const * const,  storage * const,
         mpi_datatypes * const );
 
 void Finalize( reax_system * const, control_params * const,

@@ -571,9 +571,9 @@ GPU_GLOBAL void k_estimate_neighbors_full_opt( reax_atom const * const my_atoms,
 }
 
 
-extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
-        control_params *control, simulation_data *data, storage *workspace,
-        reax_list **lists )
+extern "C" int Cuda_Generate_Neighbor_Lists( reax_system * const system,
+        control_params const * const control, simulation_data * const data,
+        storage * const workspace, reax_list ** const lists )
 {
     int ret;
 #if defined(LOG_PERFORMANCE)
@@ -622,8 +622,8 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system *system,
 /* Estimate the number of far neighbors for each atoms 
  *
  * system: atomic system info */
-void Cuda_Estimate_Num_Neighbors( reax_system *system, control_params *control,
-        simulation_data *data )
+void Cuda_Estimate_Num_Neighbors( reax_system * const system,
+        control_params const * const control, simulation_data * const data )
 {
     int blocks;
 #if defined(LOG_PERFORMANCE)

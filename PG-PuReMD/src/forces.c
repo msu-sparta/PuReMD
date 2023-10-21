@@ -1157,18 +1157,18 @@ static void Init_Bond_Half( reax_system *system, control_params *control,
 
                         if ( ihb == H_ATOM && jhb == H_BONDING_ATOM )
                         {
-                            hbond_list->hbond_list[ihb_top].nbr = j;
-                            hbond_list->hbond_list[ihb_top].scl = 1;
-                            hbond_list->hbond_list[ihb_top].ptr = pj;
+                            hbond_list->hbond_list.nbr[ihb_top] = j;
+                            hbond_list->hbond_list.scl[ihb_top] = 1;
+                            hbond_list->hbond_list.ptr[ihb_top] = pj;
                             ++ihb_top;
                         }
                         /* only add to list for local j (far nbrs is half-list) */
                         else if ( j < system->n && ihb == H_BONDING_ATOM && jhb == H_ATOM )
                         {
                             jhb_top = End_Index( atom_j->Hindex, hbond_list );
-                            hbond_list->hbond_list[jhb_top].nbr = i;
-                            hbond_list->hbond_list[jhb_top].scl = -1;
-                            hbond_list->hbond_list[jhb_top].ptr = pj;
+                            hbond_list->hbond_list.nbr[jhb_top] = i;
+                            hbond_list->hbond_list.scl[jhb_top] = -1;
+                            hbond_list->hbond_list.ptr[jhb_top] = pj;
                             Set_End_Index( atom_j->Hindex, jhb_top + 1, hbond_list );
                         }
                     }
@@ -1296,9 +1296,9 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
                 if ( far_nbr_list->far_nbr_list.d[pj] <= control->hbond_cut
                         && system->reax_param.sbp[atom_j->type].p_hbond == H_BONDING_ATOM )
                 {
-                    hbond_list->hbond_list[ihb_top].nbr = j;
-                    hbond_list->hbond_list[ihb_top].scl = 1;
-                    hbond_list->hbond_list[ihb_top].ptr = pj;
+                    hbond_list->hbond_list.nbr[ihb_top] = j;
+                    hbond_list->hbond_list.scl[ihb_top] = 1;
+                    hbond_list->hbond_list.ptr[ihb_top] = pj;
                     ++ihb_top;
                 }
             }
@@ -2161,9 +2161,9 @@ static int Init_Forces_No_Charges( reax_system * const system, control_params * 
 
                         if ( ihb == H_ATOM && jhb == H_BONDING_ATOM )
                         {
-                            hbond_list->hbond_list[ihb_top].nbr = j;
-                            hbond_list->hbond_list[ihb_top].scl = 1;
-                            hbond_list->hbond_list[ihb_top].ptr = pj;
+                            hbond_list->hbond_list.nbr[ihb_top] = j;
+                            hbond_list->hbond_list.scl[ihb_top] = 1;
+                            hbond_list->hbond_list.ptr[ihb_top] = pj;
                             ++ihb_top;
                         }
                         /* only add to list for local j (far nbrs is half-list) */
@@ -2171,9 +2171,9 @@ static int Init_Forces_No_Charges( reax_system * const system, control_params * 
                                 && ihb == H_BONDING_ATOM && jhb == H_ATOM )
                         {
                             jhb_top = End_Index( atom_j->Hindex, hbond_list );
-                            hbond_list->hbond_list[jhb_top].nbr = i;
-                            hbond_list->hbond_list[jhb_top].scl = -1;
-                            hbond_list->hbond_list[jhb_top].ptr = pj;
+                            hbond_list->hbond_list.nbr[jhb_top] = i;
+                            hbond_list->hbond_list.scl[jhb_top] = -1;
+                            hbond_list->hbond_list.ptr[jhb_top] = pj;
                             Set_End_Index( atom_j->Hindex, jhb_top + 1, hbond_list );
                         }
                     }

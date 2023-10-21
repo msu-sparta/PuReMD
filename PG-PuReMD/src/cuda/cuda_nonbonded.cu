@@ -62,7 +62,7 @@ GPU_GLOBAL void k_compute_polarization_energy( reax_atom const * const my_atoms,
  * This implementation assigns one thread per atom */
 GPU_GLOBAL void k_vdW_coulomb_energy_full( reax_atom const * const my_atoms,
         two_body_parameters const * const tbp, global_parameters gp,
-        control_params const * const control, storage workspace,
+        real cutoff, double * const tap_coef, double const * const dtap_coef, rvec * const f,
         reax_list far_nbr_list, int n, int num_atom_types, 
         real * const e_vdW_g, real * const e_ele_g )
 {
@@ -99,8 +99,7 @@ GPU_GLOBAL void k_vdW_coulomb_energy_full( reax_atom const * const my_atoms,
         j = far_nbr_list.far_nbr_list.nbr[pj];
         orig_j = my_atoms[j].orig_id;
 
-        if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut 
-                && orig_i < orig_j )
+        if ( far_nbr_list.far_nbr_list.d[pj] <= cutoff && orig_i < orig_j )
         {
             r_ij = far_nbr_list.far_nbr_list.d[pj];
             tbp_ij = index_tbp(my_atoms[i].type, my_atoms[j].type, num_atom_types);
@@ -110,22 +109,22 @@ GPU_GLOBAL void k_vdW_coulomb_energy_full( reax_atom const * const my_atoms,
             self_coef = (orig_i == orig_j) ? 0.5 : 1.0;
 
             /* Calculate Taper and its derivative */
-            tap = workspace.tap_coef[7] * r_ij
-                + workspace.tap_coef[6];
-            tap = tap * r_ij + workspace.tap_coef[5];
-            tap = tap * r_ij + workspace.tap_coef[4];
-            tap = tap * r_ij + workspace.tap_coef[3];
-            tap = tap * r_ij + workspace.tap_coef[2];
-            tap = tap * r_ij + workspace.tap_coef[1];
-            tap = tap * r_ij + workspace.tap_coef[0];
+            tap = tap_coef[7] * r_ij
+                + tap_coef[6];
+            tap = tap * r_ij + tap_coef[5];
+            tap = tap * r_ij + tap_coef[4];
+            tap = tap * r_ij + tap_coef[3];
+            tap = tap * r_ij + tap_coef[2];
+            tap = tap * r_ij + tap_coef[1];
+            tap = tap * r_ij + tap_coef[0];
 
-            dtap = workspace.dtap_coef[6] * r_ij
-                + workspace.dtap_coef[5];
-            dtap = dtap * r_ij + workspace.dtap_coef[4];
-            dtap = dtap * r_ij + workspace.dtap_coef[3];
-            dtap = dtap * r_ij + workspace.dtap_coef[2];
-            dtap = dtap * r_ij + workspace.dtap_coef[1];
-            dtap = dtap * r_ij + workspace.dtap_coef[0];
+            dtap = dtap_coef[6] * r_ij
+                + dtap_coef[5];
+            dtap = dtap * r_ij + dtap_coef[4];
+            dtap = dtap * r_ij + dtap_coef[3];
+            dtap = dtap * r_ij + dtap_coef[2];
+            dtap = dtap * r_ij + dtap_coef[1];
+            dtap = dtap * r_ij + dtap_coef[0];
 
             /* vdWaals Calculations */
             if ( gp.vdw_type == 1 || gp.vdw_type == 3 )
@@ -187,11 +186,11 @@ GPU_GLOBAL void k_vdW_coulomb_energy_full( reax_atom const * const my_atoms,
             rvec_Scale( temp, -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
             rvec_Add( f_i, temp );
             rvec_Scale( temp, -1.0, temp );
-            atomic_rvecAdd( workspace.f[j], temp );
+            atomic_rvecAdd( f[j], temp );
         }
     }
 
-    atomic_rvecAdd( workspace.f[i], f_i );
+    atomic_rvecAdd( f[i], f_i );
 #if !defined(GPU_ACCUM_ATOMIC)
     e_vdW_g[i] = e_vdW_;
     e_ele_g[i] = e_ele_;
@@ -208,7 +207,7 @@ GPU_GLOBAL void k_vdW_coulomb_energy_full( reax_atom const * const my_atoms,
  * This implementation assigns one thread per atom */
 GPU_GLOBAL void k_vdW_coulomb_energy_virial_full( reax_atom const * const my_atoms, 
         two_body_parameters const * const tbp, global_parameters gp,
-        control_params const * const control, storage workspace,
+        real cutoff, double * const tap_coef, double const * const dtap_coef, rvec * const f,
         reax_list far_nbr_list, int n, int num_atom_types, 
         real * const e_vdW_g, real * const e_ele_g, rvec * const ext_press_g )
 {
@@ -246,8 +245,7 @@ GPU_GLOBAL void k_vdW_coulomb_energy_virial_full( reax_atom const * const my_ato
         j = far_nbr_list.far_nbr_list.nbr[pj];
         orig_j = my_atoms[j].orig_id;
 
-        if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut 
-                && orig_i < orig_j )
+        if ( far_nbr_list.far_nbr_list.d[pj] <= cutoff && orig_i < orig_j )
         {
             r_ij = far_nbr_list.far_nbr_list.d[pj];
             tbp_ij = index_tbp(my_atoms[i].type, my_atoms[j].type, num_atom_types);
@@ -257,22 +255,22 @@ GPU_GLOBAL void k_vdW_coulomb_energy_virial_full( reax_atom const * const my_ato
             self_coef = (orig_i == orig_j) ? 0.5 : 1.0;
 
             /* Calculate Taper and its derivative */
-            tap = workspace.tap_coef[7] * r_ij
-                + workspace.tap_coef[6];
-            tap = tap * r_ij + workspace.tap_coef[5];
-            tap = tap * r_ij + workspace.tap_coef[4];
-            tap = tap * r_ij + workspace.tap_coef[3];
-            tap = tap * r_ij + workspace.tap_coef[2];
-            tap = tap * r_ij + workspace.tap_coef[1];
-            tap = tap * r_ij + workspace.tap_coef[0];
+            tap = tap_coef[7] * r_ij
+                + tap_coef[6];
+            tap = tap * r_ij + tap_coef[5];
+            tap = tap * r_ij + tap_coef[4];
+            tap = tap * r_ij + tap_coef[3];
+            tap = tap * r_ij + tap_coef[2];
+            tap = tap * r_ij + tap_coef[1];
+            tap = tap * r_ij + tap_coef[0];
 
-            dtap = workspace.dtap_coef[6] * r_ij
-                + workspace.dtap_coef[5];
-            dtap = dtap * r_ij + workspace.dtap_coef[4];
-            dtap = dtap * r_ij + workspace.dtap_coef[3];
-            dtap = dtap * r_ij + workspace.dtap_coef[2];
-            dtap = dtap * r_ij + workspace.dtap_coef[1];
-            dtap = dtap * r_ij + workspace.dtap_coef[0];
+            dtap = dtap_coef[6] * r_ij
+                + dtap_coef[5];
+            dtap = dtap * r_ij + dtap_coef[4];
+            dtap = dtap * r_ij + dtap_coef[3];
+            dtap = dtap * r_ij + dtap_coef[2];
+            dtap = dtap * r_ij + dtap_coef[1];
+            dtap = dtap * r_ij + dtap_coef[0];
 
             /* vdWaals Calculations */
             if ( gp.vdw_type == 1 || gp.vdw_type == 3 )
@@ -337,7 +335,7 @@ GPU_GLOBAL void k_vdW_coulomb_energy_virial_full( reax_atom const * const my_ato
                     -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
             rvec_Add( f_i, temp );
             rvec_Scale( temp, -1.0, temp );
-            atomic_rvecAdd( workspace.f[j], temp );
+            atomic_rvecAdd( f[j], temp );
 
             rvec_iMultiply( temp,
                     far_nbr_list.far_nbr_list.rel_box[pj], temp );
@@ -345,7 +343,7 @@ GPU_GLOBAL void k_vdW_coulomb_energy_virial_full( reax_atom const * const my_ato
         }
     }
 
-    atomic_rvecAdd( workspace.f[i], f_i );
+    atomic_rvecAdd( f[i], f_i );
 #if !defined(GPU_ACCUM_ATOMIC)
     e_vdW_g[i] = e_vdW_;
     e_ele_g[i] = e_ele_;
@@ -364,7 +362,7 @@ GPU_GLOBAL void k_vdW_coulomb_energy_virial_full( reax_atom const * const my_ato
  * This implementation assigns one warp of threads per atom */
 GPU_GLOBAL void k_vdW_coulomb_energy_full_opt( reax_atom const * const my_atoms, 
         two_body_parameters const * const tbp, global_parameters gp,
-        control_params const * const control, storage workspace,
+        real cutoff, double * const tap_coef, double const * const dtap_coef, rvec * const f,
         reax_list far_nbr_list, int n, int num_atom_types, 
         real * const e_vdW_g, real * const e_ele_g )
 {
@@ -407,8 +405,7 @@ GPU_GLOBAL void k_vdW_coulomb_energy_full_opt( reax_atom const * const my_atoms,
         j = far_nbr_list.far_nbr_list.nbr[pj];
         orig_j = my_atoms[j].orig_id;
 
-        if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut 
-                && orig_i < orig_j )
+        if ( far_nbr_list.far_nbr_list.d[pj] <= cutoff && orig_i < orig_j )
         {
             r_ij = far_nbr_list.far_nbr_list.d[pj];
             tbp_ij = index_tbp(my_atoms[i].type, my_atoms[j].type, num_atom_types);
@@ -418,22 +415,22 @@ GPU_GLOBAL void k_vdW_coulomb_energy_full_opt( reax_atom const * const my_atoms,
             self_coef = (orig_i == orig_j) ? 0.5 : 1.0;
 
             /* Calculate Taper and its derivative */
-            tap = workspace.tap_coef[7] * r_ij
-                + workspace.tap_coef[6];
-            tap = tap * r_ij + workspace.tap_coef[5];
-            tap = tap * r_ij + workspace.tap_coef[4];
-            tap = tap * r_ij + workspace.tap_coef[3];
-            tap = tap * r_ij + workspace.tap_coef[2];
-            tap = tap * r_ij + workspace.tap_coef[1];
-            tap = tap * r_ij + workspace.tap_coef[0];
+            tap = tap_coef[7] * r_ij
+                + tap_coef[6];
+            tap = tap * r_ij + tap_coef[5];
+            tap = tap * r_ij + tap_coef[4];
+            tap = tap * r_ij + tap_coef[3];
+            tap = tap * r_ij + tap_coef[2];
+            tap = tap * r_ij + tap_coef[1];
+            tap = tap * r_ij + tap_coef[0];
 
-            dtap = workspace.dtap_coef[6] * r_ij
-                + workspace.dtap_coef[5];
-            dtap = dtap * r_ij + workspace.dtap_coef[4];
-            dtap = dtap * r_ij + workspace.dtap_coef[3];
-            dtap = dtap * r_ij + workspace.dtap_coef[2];
-            dtap = dtap * r_ij + workspace.dtap_coef[1];
-            dtap = dtap * r_ij + workspace.dtap_coef[0];
+            dtap = dtap_coef[6] * r_ij
+                + dtap_coef[5];
+            dtap = dtap * r_ij + dtap_coef[4];
+            dtap = dtap * r_ij + dtap_coef[3];
+            dtap = dtap * r_ij + dtap_coef[2];
+            dtap = dtap * r_ij + dtap_coef[1];
+            dtap = dtap * r_ij + dtap_coef[0];
 
             /* vdWaals Calculations */
             if ( gp.vdw_type == 1 || gp.vdw_type == 3 )
@@ -495,7 +492,7 @@ GPU_GLOBAL void k_vdW_coulomb_energy_full_opt( reax_atom const * const my_atoms,
             rvec_Scale( temp, -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
             rvec_Add( f_i, temp );
             rvec_Scale( temp, -1.0, temp );
-            atomic_rvecAdd( workspace.f[j], temp );
+            atomic_rvecAdd( f[j], temp );
         }
 
         pj += warpSize;
@@ -510,7 +507,7 @@ GPU_GLOBAL void k_vdW_coulomb_energy_full_opt( reax_atom const * const my_atoms,
     /* first thread within a warp writes warp-level sum to global memory */
     if ( lane_id == 0 )
     {
-        atomic_rvecAdd( workspace.f[i], f_i );
+        atomic_rvecAdd( f[i], f_i );
 #if !defined(GPU_ACCUM_ATOMIC)
         e_vdW_g[i] = e_vdW_;
         e_ele_g[i] = e_ele_;
@@ -529,7 +526,7 @@ GPU_GLOBAL void k_vdW_coulomb_energy_full_opt( reax_atom const * const my_atoms,
  * This implementation assigns one warp of threads per atom */
 GPU_GLOBAL void k_vdW_energy_type1_full_opt( reax_atom const * const my_atoms, 
         two_body_parameters const * const tbp, global_parameters gp,
-        control_params const * const control, storage workspace,
+        real cutoff, double * const tap_coef, double const * const dtap_coef, rvec * const f,
         reax_list far_nbr_list, int n, int num_atom_types, 
         real * const e_vdW_g )
 {
@@ -540,7 +537,7 @@ GPU_GLOBAL void k_vdW_energy_type1_full_opt( reax_atom const * const my_atoms,
     real p_vdW1, p_vdW1i;
     real powr_vdW1, powgi_vdW1;
     real r_ij, fn13, exp1, exp2, e_base, de_base;
-    real tap, dtap, tap_coef[8], dtap_coef[7], dfn13, CEvd;
+    real tap, dtap, tap_coef_[TAPER_COEF_SIZE], dtap_coef_[DTAPER_COEF_SIZE], dfn13, CEvd;
     real e_vdW_;
     rvec temp, f_i;
     int warp_id, lane_id;
@@ -563,22 +560,15 @@ GPU_GLOBAL void k_vdW_energy_type1_full_opt( reax_atom const * const my_atoms,
     end_i = End_Index( i, &far_nbr_list );
     orig_i = my_atoms[i].orig_id;
 
-    tap_coef[0] = workspace.tap_coef[0];
-    tap_coef[1] = workspace.tap_coef[1];
-    tap_coef[2] = workspace.tap_coef[2];
-    tap_coef[3] = workspace.tap_coef[3];
-    tap_coef[4] = workspace.tap_coef[4];
-    tap_coef[5] = workspace.tap_coef[5];
-    tap_coef[6] = workspace.tap_coef[6];
-    tap_coef[7] = workspace.tap_coef[7];
+    for ( pj = 0; pj < TAPER_COEF_SIZE; ++pj )
+    {
+        tap_coef_[pj] = tap_coef[pj];
+    }
 
-    dtap_coef[0] = workspace.dtap_coef[0];
-    dtap_coef[1] = workspace.dtap_coef[1];
-    dtap_coef[2] = workspace.dtap_coef[2];
-    dtap_coef[3] = workspace.dtap_coef[3];
-    dtap_coef[4] = workspace.dtap_coef[4];
-    dtap_coef[5] = workspace.dtap_coef[5];
-    dtap_coef[6] = workspace.dtap_coef[6];
+    for ( pj = 0; pj < DTAPER_COEF_SIZE; ++pj )
+    {
+        dtap_coef_[pj] = dtap_coef[pj];
+    }
 
     pj = start_i + lane_id;
     while ( pj < end_i )
@@ -586,8 +576,7 @@ GPU_GLOBAL void k_vdW_energy_type1_full_opt( reax_atom const * const my_atoms,
         j = far_nbr_list.far_nbr_list.nbr[pj];
         orig_j = my_atoms[j].orig_id;
 
-        if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut 
-                && orig_i < orig_j )
+        if ( far_nbr_list.far_nbr_list.d[pj] <= cutoff && orig_i < orig_j )
         {
             r_ij = far_nbr_list.far_nbr_list.d[pj];
             tbp_ij = index_tbp(my_atoms[i].type, my_atoms[j].type, num_atom_types);
@@ -597,20 +586,20 @@ GPU_GLOBAL void k_vdW_energy_type1_full_opt( reax_atom const * const my_atoms,
             self_coef = (orig_i == orig_j) ? 0.5 : 1.0;
 
             /* Calculate Taper and its derivative */
-            tap = tap_coef[7] * r_ij + tap_coef[6];
-            tap = tap * r_ij + tap_coef[5];
-            tap = tap * r_ij + tap_coef[4];
-            tap = tap * r_ij + tap_coef[3];
-            tap = tap * r_ij + tap_coef[2];
-            tap = tap * r_ij + tap_coef[1];
-            tap = tap * r_ij + tap_coef[0];
+            tap = tap_coef_[7] * r_ij + tap_coef_[6];
+            tap = tap * r_ij + tap_coef_[5];
+            tap = tap * r_ij + tap_coef_[4];
+            tap = tap * r_ij + tap_coef_[3];
+            tap = tap * r_ij + tap_coef_[2];
+            tap = tap * r_ij + tap_coef_[1];
+            tap = tap * r_ij + tap_coef_[0];
 
-            dtap = dtap_coef[6] * r_ij + dtap_coef[5];
-            dtap = dtap * r_ij + dtap_coef[4];
-            dtap = dtap * r_ij + dtap_coef[3];
-            dtap = dtap * r_ij + dtap_coef[2];
-            dtap = dtap * r_ij + dtap_coef[1];
-            dtap = dtap * r_ij + dtap_coef[0];
+            dtap = dtap_coef_[6] * r_ij + dtap_coef_[5];
+            dtap = dtap * r_ij + dtap_coef_[4];
+            dtap = dtap * r_ij + dtap_coef_[3];
+            dtap = dtap * r_ij + dtap_coef_[2];
+            dtap = dtap * r_ij + dtap_coef_[1];
+            dtap = dtap * r_ij + dtap_coef_[0];
 
             /* vdWaals Calculations */
             /* shielding */
@@ -633,7 +622,7 @@ GPU_GLOBAL void k_vdW_energy_type1_full_opt( reax_atom const * const my_atoms,
             rvec_Scale( temp, -CEvd / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
             rvec_Add( f_i, temp );
             rvec_Scale( temp, -1.0, temp );
-            atomic_rvecAdd( workspace.f[j], temp );
+            atomic_rvecAdd( f[j], temp );
         }
 
         pj += warpSize;
@@ -647,7 +636,7 @@ GPU_GLOBAL void k_vdW_energy_type1_full_opt( reax_atom const * const my_atoms,
     /* first thread within a warp writes warp-level sum to global memory */
     if ( lane_id == 0 )
     {
-        atomic_rvecAdd( workspace.f[i], f_i );
+        atomic_rvecAdd( f[i], f_i );
 #if !defined(GPU_ACCUM_ATOMIC)
         e_vdW_g[i] = e_vdW_;
 #else
@@ -663,8 +652,8 @@ GPU_GLOBAL void k_vdW_energy_type1_full_opt( reax_atom const * const my_atoms,
  *
  * This implementation assigns one warp of threads per atom */
 GPU_GLOBAL void k_vdW_energy_type2_full_opt( reax_atom const * const my_atoms, 
-        two_body_parameters const * const tbp,
-        control_params const * const control, storage workspace,
+        two_body_parameters const * const tbp, real cutoff,
+        double * const tap_coef, double const * const dtap_coef, rvec * const f,
         reax_list far_nbr_list, int n, int num_atom_types, 
         real * const e_vdW_g )
 {
@@ -673,7 +662,7 @@ GPU_GLOBAL void k_vdW_energy_type2_full_opt( reax_atom const * const my_atoms,
     int start_i, end_i, orig_i, orig_j, tbp_ij;
     real self_coef;
     real r_ij, exp1, exp2, e_base, de_base;
-    real tap, dtap, tap_coef[8], dtap_coef[7], CEvd;
+    real tap, dtap, tap_coef_[TAPER_COEF_SIZE], dtap_coef_[DTAPER_COEF_SIZE], CEvd;
     real e_vdW_, e_core, de_core;
     rvec temp, f_i;
     int warp_id, lane_id;
@@ -694,22 +683,15 @@ GPU_GLOBAL void k_vdW_energy_type2_full_opt( reax_atom const * const my_atoms,
     end_i = End_Index( i, &far_nbr_list );
     orig_i = my_atoms[i].orig_id;
 
-    tap_coef[0] = workspace.tap_coef[0];
-    tap_coef[1] = workspace.tap_coef[1];
-    tap_coef[2] = workspace.tap_coef[2];
-    tap_coef[3] = workspace.tap_coef[3];
-    tap_coef[4] = workspace.tap_coef[4];
-    tap_coef[5] = workspace.tap_coef[5];
-    tap_coef[6] = workspace.tap_coef[6];
-    tap_coef[7] = workspace.tap_coef[7];
+    for ( pj = 0; pj < TAPER_COEF_SIZE; ++pj )
+    {
+        tap_coef_[pj] = tap_coef[pj];
+    }
 
-    dtap_coef[0] = workspace.dtap_coef[0];
-    dtap_coef[1] = workspace.dtap_coef[1];
-    dtap_coef[2] = workspace.dtap_coef[2];
-    dtap_coef[3] = workspace.dtap_coef[3];
-    dtap_coef[4] = workspace.dtap_coef[4];
-    dtap_coef[5] = workspace.dtap_coef[5];
-    dtap_coef[6] = workspace.dtap_coef[6];
+    for ( pj = 0; pj < DTAPER_COEF_SIZE; ++pj )
+    {
+        dtap_coef_[pj] = dtap_coef[pj];
+    }
 
     pj = start_i + lane_id;
     while ( pj < end_i )
@@ -717,8 +699,7 @@ GPU_GLOBAL void k_vdW_energy_type2_full_opt( reax_atom const * const my_atoms,
         j = far_nbr_list.far_nbr_list.nbr[pj];
         orig_j = my_atoms[j].orig_id;
 
-        if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut 
-                && orig_i < orig_j )
+        if ( far_nbr_list.far_nbr_list.d[pj] <= cutoff && orig_i < orig_j )
         {
             r_ij = far_nbr_list.far_nbr_list.d[pj];
             tbp_ij = index_tbp(my_atoms[i].type, my_atoms[j].type, num_atom_types);
@@ -728,20 +709,20 @@ GPU_GLOBAL void k_vdW_energy_type2_full_opt( reax_atom const * const my_atoms,
             self_coef = (orig_i == orig_j) ? 0.5 : 1.0;
 
             /* Calculate Taper and its derivative */
-            tap = tap_coef[7] * r_ij + tap_coef[6];
-            tap = tap * r_ij + tap_coef[5];
-            tap = tap * r_ij + tap_coef[4];
-            tap = tap * r_ij + tap_coef[3];
-            tap = tap * r_ij + tap_coef[2];
-            tap = tap * r_ij + tap_coef[1];
-            tap = tap * r_ij + tap_coef[0];
+            tap = tap_coef_[7] * r_ij + tap_coef_[6];
+            tap = tap * r_ij + tap_coef_[5];
+            tap = tap * r_ij + tap_coef_[4];
+            tap = tap * r_ij + tap_coef_[3];
+            tap = tap * r_ij + tap_coef_[2];
+            tap = tap * r_ij + tap_coef_[1];
+            tap = tap * r_ij + tap_coef_[0];
 
-            dtap = dtap_coef[6] * r_ij + dtap_coef[5];
-            dtap = dtap * r_ij + dtap_coef[4];
-            dtap = dtap * r_ij + dtap_coef[3];
-            dtap = dtap * r_ij + dtap_coef[2];
-            dtap = dtap * r_ij + dtap_coef[1];
-            dtap = dtap * r_ij + dtap_coef[0];
+            dtap = dtap_coef_[6] * r_ij + dtap_coef_[5];
+            dtap = dtap * r_ij + dtap_coef_[4];
+            dtap = dtap * r_ij + dtap_coef_[3];
+            dtap = dtap * r_ij + dtap_coef_[2];
+            dtap = dtap * r_ij + dtap_coef_[1];
+            dtap = dtap * r_ij + dtap_coef_[0];
 
             /* vdWaals Calculations */
             /* no shielding */
@@ -765,7 +746,7 @@ GPU_GLOBAL void k_vdW_energy_type2_full_opt( reax_atom const * const my_atoms,
             rvec_Scale( temp, -CEvd / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
             rvec_Add( f_i, temp );
             rvec_Scale( temp, -1.0, temp );
-            atomic_rvecAdd( workspace.f[j], temp );
+            atomic_rvecAdd( f[j], temp );
         }
 
         pj += warpSize;
@@ -779,7 +760,7 @@ GPU_GLOBAL void k_vdW_energy_type2_full_opt( reax_atom const * const my_atoms,
     /* first thread within a warp writes warp-level sum to global memory */
     if ( lane_id == 0 )
     {
-        atomic_rvecAdd( workspace.f[i], f_i );
+        atomic_rvecAdd( f[i], f_i );
 #if !defined(GPU_ACCUM_ATOMIC)
         e_vdW_g[i] = e_vdW_;
 #else
@@ -795,8 +776,8 @@ GPU_GLOBAL void k_vdW_energy_type2_full_opt( reax_atom const * const my_atoms,
  *
  * This implementation assigns one warp of threads per atom */
 GPU_GLOBAL void k_vdW_energy_type3_full_opt( reax_atom const * const my_atoms, 
-        two_body_parameters const * const tbp, global_parameters gp,
-        control_params const * const control, storage workspace,
+        two_body_parameters const * const tbp, global_parameters gp, real cutoff,
+        double * const tap_coef, double const * const dtap_coef, rvec * const f,
         reax_list far_nbr_list, int n, int num_atom_types, 
         real * const e_vdW_g )
 {
@@ -807,7 +788,7 @@ GPU_GLOBAL void k_vdW_energy_type3_full_opt( reax_atom const * const my_atoms,
     real p_vdW1, p_vdW1i;
     real powr_vdW1, powgi_vdW1;
     real r_ij, fn13, exp1, exp2, e_base, de_base;
-    real tap, dtap, tap_coef[8], dtap_coef[7], dfn13, CEvd;
+    real tap, dtap, tap_coef_[TAPER_COEF_SIZE], dtap_coef_[DTAPER_COEF_SIZE], dfn13, CEvd;
     real e_vdW_, e_core, de_core;
     rvec temp, f_i;
     int warp_id, lane_id;
@@ -830,22 +811,15 @@ GPU_GLOBAL void k_vdW_energy_type3_full_opt( reax_atom const * const my_atoms,
     end_i = End_Index( i, &far_nbr_list );
     orig_i = my_atoms[i].orig_id;
 
-    tap_coef[0] = workspace.tap_coef[0];
-    tap_coef[1] = workspace.tap_coef[1];
-    tap_coef[2] = workspace.tap_coef[2];
-    tap_coef[3] = workspace.tap_coef[3];
-    tap_coef[4] = workspace.tap_coef[4];
-    tap_coef[5] = workspace.tap_coef[5];
-    tap_coef[6] = workspace.tap_coef[6];
-    tap_coef[7] = workspace.tap_coef[7];
+    for ( pj = 0; pj < TAPER_COEF_SIZE; ++pj )
+    {
+        tap_coef_[pj] = tap_coef[pj];
+    }
 
-    dtap_coef[0] = workspace.dtap_coef[0];
-    dtap_coef[1] = workspace.dtap_coef[1];
-    dtap_coef[2] = workspace.dtap_coef[2];
-    dtap_coef[3] = workspace.dtap_coef[3];
-    dtap_coef[4] = workspace.dtap_coef[4];
-    dtap_coef[5] = workspace.dtap_coef[5];
-    dtap_coef[6] = workspace.dtap_coef[6];
+    for ( pj = 0; pj < DTAPER_COEF_SIZE; ++pj )
+    {
+        dtap_coef_[pj] = dtap_coef[pj];
+    }
 
     pj = start_i + lane_id;
     while ( pj < end_i )
@@ -853,8 +827,7 @@ GPU_GLOBAL void k_vdW_energy_type3_full_opt( reax_atom const * const my_atoms,
         j = far_nbr_list.far_nbr_list.nbr[pj];
         orig_j = my_atoms[j].orig_id;
 
-        if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut 
-                && orig_i < orig_j )
+        if ( far_nbr_list.far_nbr_list.d[pj] <= cutoff && orig_i < orig_j )
         {
             r_ij = far_nbr_list.far_nbr_list.d[pj];
             tbp_ij = index_tbp(my_atoms[i].type, my_atoms[j].type, num_atom_types);
@@ -864,20 +837,20 @@ GPU_GLOBAL void k_vdW_energy_type3_full_opt( reax_atom const * const my_atoms,
             self_coef = (orig_i == orig_j) ? 0.5 : 1.0;
 
             /* Calculate Taper and its derivative */
-            tap = tap_coef[7] * r_ij + tap_coef[6];
-            tap = tap * r_ij + tap_coef[5];
-            tap = tap * r_ij + tap_coef[4];
-            tap = tap * r_ij + tap_coef[3];
-            tap = tap * r_ij + tap_coef[2];
-            tap = tap * r_ij + tap_coef[1];
-            tap = tap * r_ij + tap_coef[0];
+            tap = tap_coef_[7] * r_ij + tap_coef_[6];
+            tap = tap * r_ij + tap_coef_[5];
+            tap = tap * r_ij + tap_coef_[4];
+            tap = tap * r_ij + tap_coef_[3];
+            tap = tap * r_ij + tap_coef_[2];
+            tap = tap * r_ij + tap_coef_[1];
+            tap = tap * r_ij + tap_coef_[0];
 
-            dtap = dtap_coef[6] * r_ij + dtap_coef[5];
-            dtap = dtap * r_ij + dtap_coef[4];
-            dtap = dtap * r_ij + dtap_coef[3];
-            dtap = dtap * r_ij + dtap_coef[2];
-            dtap = dtap * r_ij + dtap_coef[1];
-            dtap = dtap * r_ij + dtap_coef[0];
+            dtap = dtap_coef_[6] * r_ij + dtap_coef_[5];
+            dtap = dtap * r_ij + dtap_coef_[4];
+            dtap = dtap * r_ij + dtap_coef_[3];
+            dtap = dtap * r_ij + dtap_coef_[2];
+            dtap = dtap * r_ij + dtap_coef_[1];
+            dtap = dtap * r_ij + dtap_coef_[0];
 
             /* vdWaals Calculations */
             /* shielding */
@@ -907,7 +880,7 @@ GPU_GLOBAL void k_vdW_energy_type3_full_opt( reax_atom const * const my_atoms,
             rvec_Scale( temp, -CEvd / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
             rvec_Add( f_i, temp );
             rvec_Scale( temp, -1.0, temp );
-            atomic_rvecAdd( workspace.f[j], temp );
+            atomic_rvecAdd( f[j], temp );
         }
 
         pj += warpSize;
@@ -921,7 +894,7 @@ GPU_GLOBAL void k_vdW_energy_type3_full_opt( reax_atom const * const my_atoms,
     /* first thread within a warp writes warp-level sum to global memory */
     if ( lane_id == 0 )
     {
-        atomic_rvecAdd( workspace.f[i], f_i );
+        atomic_rvecAdd( f[i], f_i );
 #if !defined(GPU_ACCUM_ATOMIC)
         e_vdW_g[i] = e_vdW_;
 #else
@@ -937,8 +910,8 @@ GPU_GLOBAL void k_vdW_energy_type3_full_opt( reax_atom const * const my_atoms,
  * This implementation assigns one warp of threads per atom */
 GPU_GLOBAL void k_coulomb_energy_full_opt( reax_atom const * const my_atoms, 
         two_body_parameters const * const tbp, global_parameters gp,
-        control_params const * const control, storage workspace,
-        reax_list far_nbr_list, int n, int num_atom_types, 
+        real cutoff, double * const tap_coef, double const * const dtap_coef,
+        rvec * const f, reax_list far_nbr_list, int n, int num_atom_types, 
         real * const e_ele_g )
 {
     extern __shared__ cub::WarpReduce<double>::TempStorage temp_storage[];
@@ -946,7 +919,7 @@ GPU_GLOBAL void k_coulomb_energy_full_opt( reax_atom const * const my_atoms,
     int start_i, end_i, orig_i, orig_j, tbp_ij;
     real self_coef;
     real r_ij;
-    real tap, dtap, tap_coef[8], dtap_coef[7], CEclmb;
+    real tap, dtap, tap_coef_[8], dtap_coef_[7], CEclmb;
     real dr3gamij_1, dr3gamij_3;
     real e_ele_, e_clb, de_clb;
     rvec temp, f_i;
@@ -969,22 +942,22 @@ GPU_GLOBAL void k_coulomb_energy_full_opt( reax_atom const * const my_atoms,
     end_i = End_Index( i, &far_nbr_list );
     orig_i = my_atoms[i].orig_id;
 
-    tap_coef[0] = workspace.tap_coef[0];
-    tap_coef[1] = workspace.tap_coef[1];
-    tap_coef[2] = workspace.tap_coef[2];
-    tap_coef[3] = workspace.tap_coef[3];
-    tap_coef[4] = workspace.tap_coef[4];
-    tap_coef[5] = workspace.tap_coef[5];
-    tap_coef[6] = workspace.tap_coef[6];
-    tap_coef[7] = workspace.tap_coef[7];
+    tap_coef_[0] = tap_coef[0];
+    tap_coef_[1] = tap_coef[1];
+    tap_coef_[2] = tap_coef[2];
+    tap_coef_[3] = tap_coef[3];
+    tap_coef_[4] = tap_coef[4];
+    tap_coef_[5] = tap_coef[5];
+    tap_coef_[6] = tap_coef[6];
+    tap_coef_[7] = tap_coef[7];
 
-    dtap_coef[0] = workspace.dtap_coef[0];
-    dtap_coef[1] = workspace.dtap_coef[1];
-    dtap_coef[2] = workspace.dtap_coef[2];
-    dtap_coef[3] = workspace.dtap_coef[3];
-    dtap_coef[4] = workspace.dtap_coef[4];
-    dtap_coef[5] = workspace.dtap_coef[5];
-    dtap_coef[6] = workspace.dtap_coef[6];
+    dtap_coef_[0] = dtap_coef[0];
+    dtap_coef_[1] = dtap_coef[1];
+    dtap_coef_[2] = dtap_coef[2];
+    dtap_coef_[3] = dtap_coef[3];
+    dtap_coef_[4] = dtap_coef[4];
+    dtap_coef_[5] = dtap_coef[5];
+    dtap_coef_[6] = dtap_coef[6];
 
     pj = start_i + lane_id;
     while ( pj < end_i )
@@ -992,8 +965,7 @@ GPU_GLOBAL void k_coulomb_energy_full_opt( reax_atom const * const my_atoms,
         j = far_nbr_list.far_nbr_list.nbr[pj];
         orig_j = my_atoms[j].orig_id;
 
-        if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut 
-                && orig_i < orig_j )
+        if ( far_nbr_list.far_nbr_list.d[pj] <= cutoff && orig_i < orig_j )
         {
             r_ij = far_nbr_list.far_nbr_list.d[pj];
             tbp_ij = index_tbp(my_atoms[i].type, my_atoms[j].type, num_atom_types);
@@ -1003,20 +975,20 @@ GPU_GLOBAL void k_coulomb_energy_full_opt( reax_atom const * const my_atoms,
             self_coef = (orig_i == orig_j) ? 0.5 : 1.0;
 
             /* Calculate Taper and its derivative */
-            tap = tap_coef[7] * r_ij + tap_coef[6];
-            tap = tap * r_ij + tap_coef[5];
-            tap = tap * r_ij + tap_coef[4];
-            tap = tap * r_ij + tap_coef[3];
-            tap = tap * r_ij + tap_coef[2];
-            tap = tap * r_ij + tap_coef[1];
-            tap = tap * r_ij + tap_coef[0];
+            tap = tap_coef_[7] * r_ij + tap_coef_[6];
+            tap = tap * r_ij + tap_coef_[5];
+            tap = tap * r_ij + tap_coef_[4];
+            tap = tap * r_ij + tap_coef_[3];
+            tap = tap * r_ij + tap_coef_[2];
+            tap = tap * r_ij + tap_coef_[1];
+            tap = tap * r_ij + tap_coef_[0];
 
-            dtap = dtap_coef[6] * r_ij + dtap_coef[5];
-            dtap = dtap * r_ij + dtap_coef[4];
-            dtap = dtap * r_ij + dtap_coef[3];
-            dtap = dtap * r_ij + dtap_coef[2];
-            dtap = dtap * r_ij + dtap_coef[1];
-            dtap = dtap * r_ij + dtap_coef[0];
+            dtap = dtap_coef_[6] * r_ij + dtap_coef_[5];
+            dtap = dtap * r_ij + dtap_coef_[4];
+            dtap = dtap * r_ij + dtap_coef_[3];
+            dtap = dtap * r_ij + dtap_coef_[2];
+            dtap = dtap * r_ij + dtap_coef_[1];
+            dtap = dtap * r_ij + dtap_coef_[0];
 
             /* Coulomb Calculations */
             dr3gamij_1 = r_ij * r_ij * r_ij + tbp[tbp_ij].gamma;
@@ -1031,7 +1003,7 @@ GPU_GLOBAL void k_coulomb_energy_full_opt( reax_atom const * const my_atoms,
             rvec_Scale( temp, -CEclmb / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
             rvec_Add( f_i, temp );
             rvec_Scale( temp, -1.0, temp );
-            atomic_rvecAdd( workspace.f[j], temp );
+            atomic_rvecAdd( f[j], temp );
         }
 
         pj += warpSize;
@@ -1045,7 +1017,7 @@ GPU_GLOBAL void k_coulomb_energy_full_opt( reax_atom const * const my_atoms,
     /* first thread within a warp writes warp-level sum to global memory */
     if ( lane_id == 0 )
     {
-        atomic_rvecAdd( workspace.f[i], f_i );
+        atomic_rvecAdd( f[i], f_i );
 #if !defined(GPU_ACCUM_ATOMIC)
         e_ele_g[i] = e_ele_;
 #else
@@ -1061,8 +1033,8 @@ GPU_GLOBAL void k_coulomb_energy_full_opt( reax_atom const * const my_atoms,
  * This implementation assigns one warp of threads per atom */
 GPU_GLOBAL void k_vdW_coulomb_energy_virial_full_opt( reax_atom const * const my_atoms,
         two_body_parameters const * const tbp, global_parameters gp,
-        control_params const * const control, storage workspace,
-        reax_list far_nbr_list, int n, int num_atom_types, 
+        real cutoff, double * const tap_coef, double const * const dtap_coef,
+        rvec * const f, reax_list far_nbr_list, int n, int num_atom_types, 
         real * const e_vdW_g, real * const e_ele_g, rvec * const ext_press_g )
 {
     extern __shared__ cub::WarpReduce<double>::TempStorage temp_storage[];
@@ -1105,8 +1077,7 @@ GPU_GLOBAL void k_vdW_coulomb_energy_virial_full_opt( reax_atom const * const my
         j = far_nbr_list.far_nbr_list.nbr[pj];
         orig_j = my_atoms[j].orig_id;
 
-        if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut 
-                && orig_i < orig_j )
+        if ( far_nbr_list.far_nbr_list.d[pj] <= cutoff && orig_i < orig_j )
         {
             r_ij = far_nbr_list.far_nbr_list.d[pj];
             tbp_ij = index_tbp(my_atoms[i].type, my_atoms[j].type, num_atom_types);
@@ -1116,22 +1087,22 @@ GPU_GLOBAL void k_vdW_coulomb_energy_virial_full_opt( reax_atom const * const my
             self_coef = (orig_i == orig_j) ? 0.5 : 1.0;
 
             /* Calculate Taper and its derivative */
-            tap = workspace.tap_coef[7] * r_ij
-                + workspace.tap_coef[6];
-            tap = tap * r_ij + workspace.tap_coef[5];
-            tap = tap * r_ij + workspace.tap_coef[4];
-            tap = tap * r_ij + workspace.tap_coef[3];
-            tap = tap * r_ij + workspace.tap_coef[2];
-            tap = tap * r_ij + workspace.tap_coef[1];
-            tap = tap * r_ij + workspace.tap_coef[0];
+            tap = tap_coef[7] * r_ij
+                + tap_coef[6];
+            tap = tap * r_ij + tap_coef[5];
+            tap = tap * r_ij + tap_coef[4];
+            tap = tap * r_ij + tap_coef[3];
+            tap = tap * r_ij + tap_coef[2];
+            tap = tap * r_ij + tap_coef[1];
+            tap = tap * r_ij + tap_coef[0];
 
-            dtap = workspace.dtap_coef[6] * r_ij
-                + workspace.dtap_coef[5];
-            dtap = dtap * r_ij + workspace.dtap_coef[4];
-            dtap = dtap * r_ij + workspace.dtap_coef[3];
-            dtap = dtap * r_ij + workspace.dtap_coef[2];
-            dtap = dtap * r_ij + workspace.dtap_coef[1];
-            dtap = dtap * r_ij + workspace.dtap_coef[0];
+            dtap = dtap_coef[6] * r_ij
+                + dtap_coef[5];
+            dtap = dtap * r_ij + dtap_coef[4];
+            dtap = dtap * r_ij + dtap_coef[3];
+            dtap = dtap * r_ij + dtap_coef[2];
+            dtap = dtap * r_ij + dtap_coef[1];
+            dtap = dtap * r_ij + dtap_coef[0];
 
             /* vdWaals Calculations */
             if ( gp.vdw_type == 1 || gp.vdw_type == 3 )
@@ -1196,7 +1167,7 @@ GPU_GLOBAL void k_vdW_coulomb_energy_virial_full_opt( reax_atom const * const my
                     -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
             rvec_Add( f_i, temp );
             rvec_Scale( temp, -1.0, temp );
-            atomic_rvecAdd( workspace.f[j], temp );
+            atomic_rvecAdd( f[j], temp );
 
             rvec_iMultiply( temp,
                     far_nbr_list.far_nbr_list.rel_box[pj], temp );
@@ -1215,7 +1186,7 @@ GPU_GLOBAL void k_vdW_coulomb_energy_virial_full_opt( reax_atom const * const my
     /* first thread within a warp writes warp-level sum to global memory */
     if ( lane_id == 0 )
     {
-        atomic_rvecAdd( workspace.f[i], f_i );
+        atomic_rvecAdd( f[i], f_i );
 #if !defined(GPU_ACCUM_ATOMIC)
         e_vdW_g[i] = e_vdW_;
         e_ele_g[i] = e_ele_;
@@ -1231,8 +1202,8 @@ GPU_GLOBAL void k_vdW_coulomb_energy_virial_full_opt( reax_atom const * const my
 
 /* one thread per atom implementation */
 GPU_GLOBAL void k_vdW_coulomb_energy_tab_full( reax_atom const * const my_atoms, 
-        global_parameters gp, control_params const * const control, 
-        storage workspace, reax_list far_nbr_list, 
+        global_parameters gp, real cutoff, int virial,
+        rvec * const f, reax_list far_nbr_list, 
         LR_lookup_table * const t_LR, int n, int num_atom_types, 
         real * const e_vdW_g, real * const e_ele_g, rvec * const ext_press_g )
 {
@@ -1267,8 +1238,7 @@ GPU_GLOBAL void k_vdW_coulomb_energy_tab_full( reax_atom const * const my_atoms,
         j = far_nbr_list.far_nbr_list.nbr[pj];
         orig_j = my_atoms[j].orig_id;
 
-        if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut
-                && orig_i < orig_j )
+        if ( far_nbr_list.far_nbr_list.d[pj] <= cutoff && orig_i < orig_j )
         {
             type_j = my_atoms[j].type;
             r_ij = far_nbr_list.far_nbr_list.d[pj];
@@ -1300,13 +1270,13 @@ GPU_GLOBAL void k_vdW_coulomb_energy_tab_full( reax_atom const * const my_atoms,
                 * dif + t->CEclmb[r].a;
             CEclmb *= self_coef * my_atoms[i].q * my_atoms[j].q;
 
-            if ( control->virial == 0 )
+            if ( virial == 0 )
             {
                 rvec_ScaledAdd( temp,
                         -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
                 rvec_Add( f_i, temp );
                 rvec_Scale( temp, -1.0, temp );
-                atomic_rvecAdd( workspace.f[j], temp );
+                atomic_rvecAdd( f[j], temp );
             }
             /* NPT, iNPT or sNPT */
             else
@@ -1317,7 +1287,7 @@ GPU_GLOBAL void k_vdW_coulomb_energy_tab_full( reax_atom const * const my_atoms,
                         -(CEvd + CEclmb) / r_ij, far_nbr_list.far_nbr_list.dvec[pj] );
                 rvec_Add( f_i, temp );
                 rvec_ScaledAdd( temp, -1.0, temp );
-                atomic_rvecAdd( workspace.f[j], temp );
+                atomic_rvecAdd( f[j], temp );
 
                 rvec_iMultiply( temp, far_nbr_list.far_nbr_list.rel_box[pj], temp );
                 rvec_Add( ext_press_, temp );
@@ -1325,16 +1295,16 @@ GPU_GLOBAL void k_vdW_coulomb_energy_tab_full( reax_atom const * const my_atoms,
         }
     }
 
-    atomic_rvecAdd( workspace.f[i], f_i );
+    atomic_rvecAdd( f[i], f_i );
 #if !defined(GPU_ACCUM_ATOMIC)
     e_vdW_g[i] = e_vdW_;
     e_ele_g[i] = e_ele_;
-    if ( control->virial == 1 )
+    if ( virial == 1 )
         rvec_Copy( ext_press_g[j], ext_press_ );
 #else
     atomicAdd( (double *) e_vdW_g, (double) e_vdW_ );
     atomicAdd( (double *) e_ele_g, (double) e_ele_ );
-    if ( control->virial == 1 )
+    if ( virial == 1 )
         atomic_rvecAdd( *ext_press_g, ext_press_ );
 #endif
 }
@@ -1411,7 +1381,7 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
             0, sizeof(real), control->cuda_streams[4], __FILE__, __LINE__ );
     if ( control->virial == 1 )
     {
-        sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_ext_press,
+        sCudaMemsetAsync( &data->d_simulation_data->my_ext_press,
                 0, sizeof(rvec), control->cuda_streams[4], __FILE__, __LINE__ );
     }
 #endif
@@ -1419,95 +1389,89 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
     cudaStreamWaitEvent( control->cuda_streams[4],
             control->cuda_stream_events[SE_INIT_DIST_DONE], 0 );
 
-    if ( control->tabulate == 0 )
+    if ( control->tabulate <= 0 && control->virial == 0 )
     {
-        if ( control->virial == 1 )
+        if ( system->reax_param.gp.vdw_type == 1 )
         {
-            k_vdW_coulomb_energy_virial_full_opt <<< control->blocks_warp_n, control->gpu_block_size,
+            k_vdW_energy_type1_full_opt <<< control->blocks_warp_n, control->gpu_block_size,
                                      sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                      control->cuda_streams[4] >>>
                 ( system->d_my_atoms, system->reax_param.d_tbp, 
-                  system->reax_param.d_gp, (control_params *) control->d_control_params, 
-                  *(workspace->d_workspace), *(lists[FAR_NBRS]), 
+                  system->reax_param.d_gp, control->nonb_cut, workspace->d_workspace->tap_coef,
+                  workspace->d_workspace->dtap_coef, workspace->d_workspace->f, *(lists[FAR_NBRS]), 
                   system->n, system->reax_param.num_atom_types, 
 #if !defined(GPU_ACCUM_ATOMIC)
-                  spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
+                  spad
 #else
-                  &data->d_my_en->e_vdW, &data->d_my_en->e_ele,
-                  &((simulation_data *)data->d_simulation_data)->my_ext_press
+                  &data->d_my_en->e_vdW
 #endif
                 );
         }
-        else
+        else if ( system->reax_param.gp.vdw_type == 2 )
         {
-            if ( system->reax_param.gp.vdw_type == 1 )
-            {
-                k_vdW_energy_type1_full_opt <<< control->blocks_warp_n, control->gpu_block_size,
-                                         sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
-                                         control->cuda_streams[4] >>>
-                    ( system->d_my_atoms, system->reax_param.d_tbp, 
-                      system->reax_param.d_gp, (control_params *) control->d_control_params, 
-                      *(workspace->d_workspace), *(lists[FAR_NBRS]), 
-                      system->n, system->reax_param.num_atom_types, 
+            k_vdW_energy_type2_full_opt <<< control->blocks_warp_n, control->gpu_block_size,
+                                     sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
+                                     control->cuda_streams[4] >>>
+                ( system->d_my_atoms, system->reax_param.d_tbp, control->nonb_cut, workspace->d_workspace->tap_coef,
+                  workspace->d_workspace->dtap_coef, workspace->d_workspace->f, *(lists[FAR_NBRS]), 
+                  system->n, system->reax_param.num_atom_types, 
 #if !defined(GPU_ACCUM_ATOMIC)
-                      spad
+                  spad
 #else
-                      &data->d_my_en->e_vdW
+                  &data->d_my_en->e_vdW
 #endif
-                    );
-            }
-            else if ( system->reax_param.gp.vdw_type == 2 )
-            {
-                k_vdW_energy_type2_full_opt <<< control->blocks_warp_n, control->gpu_block_size,
-                                         sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
-                                         control->cuda_streams[4] >>>
-                    ( system->d_my_atoms, system->reax_param.d_tbp, 
-                      (control_params *) control->d_control_params, 
-                      *(workspace->d_workspace), *(lists[FAR_NBRS]), 
-                      system->n, system->reax_param.num_atom_types, 
-#if !defined(GPU_ACCUM_ATOMIC)
-                      spad
-#else
-                      &data->d_my_en->e_vdW
-#endif
-                    );
-            }
-            else if ( system->reax_param.gp.vdw_type == 3 )
-            {
-                k_vdW_energy_type3_full_opt <<< control->blocks_warp_n, control->gpu_block_size,
-                                         sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
-                                         control->cuda_streams[4] >>>
-                    ( system->d_my_atoms, system->reax_param.d_tbp, 
-                      system->reax_param.d_gp, (control_params *) control->d_control_params, 
-                      *(workspace->d_workspace), *(lists[FAR_NBRS]), 
-                      system->n, system->reax_param.num_atom_types, 
-#if !defined(GPU_ACCUM_ATOMIC)
-                      spad
-#else
-                      &data->d_my_en->e_vdW
-#endif
-                    );
-            }
+                );
         }
-        cudaCheckError( );
+        else if ( system->reax_param.gp.vdw_type == 3 )
+        {
+            k_vdW_energy_type3_full_opt <<< control->blocks_warp_n, control->gpu_block_size,
+                                     sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
+                                     control->cuda_streams[4] >>>
+                ( system->d_my_atoms, system->reax_param.d_tbp, 
+                  system->reax_param.d_gp, control->nonb_cut, workspace->d_workspace->tap_coef,
+                  workspace->d_workspace->dtap_coef, workspace->d_workspace->f, *(lists[FAR_NBRS]), 
+                  system->n, system->reax_param.num_atom_types, 
+#if !defined(GPU_ACCUM_ATOMIC)
+                  spad
+#else
+                  &data->d_my_en->e_vdW
+#endif
+                );
+        }
     }
-    else
+    else if ( control->tabulate <= 0 && control->virial == 1 )
+    {
+        k_vdW_coulomb_energy_virial_full_opt <<< control->blocks_warp_n, control->gpu_block_size,
+                                             sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
+                                             control->cuda_streams[4] >>>
+            ( system->d_my_atoms, system->reax_param.d_tbp, 
+              system->reax_param.d_gp, control->nonb_cut, workspace->d_workspace->tap_coef,
+              workspace->d_workspace->dtap_coef, workspace->d_workspace->f, *(lists[FAR_NBRS]), 
+              system->n, system->reax_param.num_atom_types, 
+#if !defined(GPU_ACCUM_ATOMIC)
+              spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
+#else
+              &data->d_my_en->e_vdW, &data->d_my_en->e_ele,
+              &data->d_simulation_data->my_ext_press
+#endif
+            );
+    }
+    else if ( control->tabulate > 0 )
     {
         k_vdW_coulomb_energy_tab_full <<< control->blocks_n, control->gpu_block_size,
                                       0, control->cuda_streams[4] >>>
-            ( system->d_my_atoms, system->reax_param.d_gp, 
-              (control_params *) control->d_control_params, 
-              *(workspace->d_workspace), *(lists[FAR_NBRS]), 
+            ( system->d_my_atoms, system->reax_param.d_gp, control->nonb_cut,
+              control->virial, workspace->d_workspace->f, *(lists[FAR_NBRS]), 
               workspace->d_LR, system->n, system->reax_param.num_atom_types, 
 #if !defined(GPU_ACCUM_ATOMIC)
               spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
 #else
               &data->d_my_en->e_vdW, &data->d_my_en->e_ele,
-              &((simulation_data *)data->d_simulation_data)->my_ext_press
+              &data->d_simulation_data->my_ext_press
 #endif
             );
-        cudaCheckError( );
     }
+    cudaCheckError( );
 
 #if !defined(GPU_ACCUM_ATOMIC)
     if ( update_energy == TRUE )
@@ -1521,8 +1485,7 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
     {
         spad_rvec = (rvec *) (&spad[system->n]);
 
-        Cuda_Reduction_Sum( spad_rvec,
-                &((simulation_data *)data->d_simulation_data)->my_ext_press,
+        Cuda_Reduction_Sum( spad_rvec, &data->d_simulation_data->my_ext_press,
                 system->n, 4, control->cuda_streams[4] );
     }
 #endif
@@ -1582,110 +1545,104 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
             0, sizeof(real), control->cuda_streams[5], __FILE__, __LINE__ );
     if ( control->virial == 1 )
     {
-        sCudaMemsetAsync( &((simulation_data *)data->d_simulation_data)->my_ext_press,
+        sCudaMemsetAsync( &data->d_simulation_data->my_ext_press,
                 0, sizeof(rvec), control->cuda_streams[5], __FILE__, __LINE__ );
     }
 #endif
 
-    if ( control->tabulate == 0 )
+    if ( control->tabulate <= 0 && control->virial == 0 )
     {
-        if ( control->virial == 1 )
-        {
-//            k_vdW_coulomb_energy_virial_full <<< control->blocks_n, control->gpu_block_size,
-//                                             0, control->cuda_streams[5] >>>
-//                ( system->d_my_atoms, system->reax_param.d_tbp, 
-//                  system->reax_param.d_gp, (control_params *) control->d_control_params, 
-//                  *(workspace->d_workspace), *(lists[FAR_NBRS]), 
-//                  system->n, system->reax_param.num_atom_types, 
-//#if !defined(GPU_ACCUM_ATOMIC)
-//                  spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
-//#else
-//                  &data->d_my_en->e_vdW, &data->d_my_en->e_ele,
-//                  &((simulation_data *)data->d_simulation_data)->my_ext_press
-//#endif
-//            );
-
-            k_vdW_coulomb_energy_virial_full_opt <<< control->blocks_warp_n, control->gpu_block_size,
-                                     sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
-                                     control->cuda_streams[5] >>>
-                ( system->d_my_atoms, system->reax_param.d_tbp, 
-                  system->reax_param.d_gp, (control_params *) control->d_control_params, 
-                  *(workspace->d_workspace), *(lists[FAR_NBRS]), 
-                  system->n, system->reax_param.num_atom_types, 
-#if !defined(GPU_ACCUM_ATOMIC)
-                  spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
-#else
-                  &data->d_my_en->e_vdW, &data->d_my_en->e_ele,
-                  &((simulation_data *)data->d_simulation_data)->my_ext_press
-#endif
-                );
-        }
-        else
-        {
 #if defined(USE_FUSED_VDW_COULOMB)
-//            k_vdW_coulomb_energy_full <<< control->blocks_n, control->gpu_block_size,
-//                                      0, control->cuda_streams[5] >>>
-//                ( system->d_my_atoms, system->reax_param.d_tbp, 
-//                  system->reax_param.d_gp, (control_params *) control->d_control_params, 
-//                  *(workspace->d_workspace), *(lists[FAR_NBRS]), 
-//                  system->n, system->reax_param.num_atom_types, 
+//       k_vdW_coulomb_energy_full <<< control->blocks_n, control->gpu_block_size,
+//                                 0, control->cuda_streams[5] >>>
+//           ( system->d_my_atoms, system->reax_param.d_tbp, 
+//             system->reax_param.d_gp, control->nonb_cut, workspace->d_workspace->tap_coef,
+//             workspace->d_workspace->dtap_coef, workspace->d_workspace->f,*(lists[FAR_NBRS]), 
+//             system->n, system->reax_param.num_atom_types, 
 //#if !defined(GPU_ACCUM_ATOMIC)
-//                  spad, &spad[system->n]
+//              spad, &spad[system->n]
 //#else
-//                  &data->d_my_en->e_vdW, &data->d_my_en->e_ele
+//              &data->d_my_en->e_vdW, &data->d_my_en->e_ele
 //#endif
 //                );
 
-            k_vdW_coulomb_energy_full_opt <<< control->blocks_warp_n, control->gpu_block_size,
-                                     sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
-                                     control->cuda_streams[5] >>>
-                ( system->d_my_atoms, system->reax_param.d_tbp, 
-                  system->reax_param.d_gp, (control_params *) control->d_control_params, 
-                  *(workspace->d_workspace), *(lists[FAR_NBRS]), 
-                  system->n, system->reax_param.num_atom_types, 
+        k_vdW_coulomb_energy_full_opt <<< control->blocks_warp_n, control->gpu_block_size,
+                                      sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
+                                      control->cuda_streams[5] >>>
+            ( system->d_my_atoms, system->reax_param.d_tbp, 
+              system->reax_param.d_gp, control->nonb_cut, workspace->d_workspace->tap_coef,
+              workspace->d_workspace->dtap_coef, workspace->d_workspace->f, *(lists[FAR_NBRS]), 
+              system->n, system->reax_param.num_atom_types, 
 #if !defined(GPU_ACCUM_ATOMIC)
-                  spad, &spad[system->n]
+              spad, &spad[system->n]
 #else
-                  &data->d_my_en->e_vdW, &data->d_my_en->e_ele
+              &data->d_my_en->e_vdW, &data->d_my_en->e_ele
 #endif
-                );
+            );
 
 #else
-
-            k_coulomb_energy_full_opt <<< control->blocks_warp_n, control->gpu_block_size,
-                                     sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
-                                     control->cuda_streams[5] >>>
-                ( system->d_my_atoms, system->reax_param.d_tbp, 
-                  system->reax_param.d_gp, (control_params *) control->d_control_params, 
-                  *(workspace->d_workspace), *(lists[FAR_NBRS]), 
-                  system->n, system->reax_param.num_atom_types, 
+        k_coulomb_energy_full_opt <<< control->blocks_warp_n, control->gpu_block_size,
+                                  sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
+                                  control->cuda_streams[5] >>>
+            ( system->d_my_atoms, system->reax_param.d_tbp, 
+              system->reax_param.d_gp, control->nonb_cut, workspace->d_workspace->tap_coef,
+              workspace->d_workspace->dtap_coef, workspace->d_workspace->f, *(lists[FAR_NBRS]), 
+              system->n, system->reax_param.num_atom_types, 
 #if !defined(GPU_ACCUM_ATOMIC)
-                  &spad[system->n]
+              &spad[system->n]
 #else
-                  &data->d_my_en->e_ele
+              &data->d_my_en->e_ele
 #endif
-                );
+            );
 #endif
-        }
-        cudaCheckError( );
     }
-    else
+    else if ( control->tabulate <= 0 && control->virial == 1 )
+    {
+//        k_vdW_coulomb_energy_virial_full <<< control->blocks_n, control->gpu_block_size,
+//                                         0, control->cuda_streams[5] >>>
+//            ( system->d_my_atoms, system->reax_param.d_tbp, 
+//              system->reax_param.d_gp, control->nonb_cut, workspace->d_workspace->tap_coef,
+//              workspace->d_workspace->dtap_coef, workspace->d_workspace->f, *(lists[FAR_NBRS]), 
+//              system->n, system->reax_param.num_atom_types, 
+//#if !defined(GPU_ACCUM_ATOMIC)
+//              spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
+//#else
+//              &data->d_my_en->e_vdW, &data->d_my_en->e_ele,
+//              &data->d_simulation_data->my_ext_press
+//#endif
+//        );
+
+        k_vdW_coulomb_energy_virial_full_opt <<< control->blocks_warp_n, control->gpu_block_size,
+                                             sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
+                                             control->cuda_streams[5] >>>
+            ( system->d_my_atoms, system->reax_param.d_tbp, 
+              system->reax_param.d_gp, control->nonb_cut, workspace->d_workspace->tap_coef,
+              workspace->d_workspace->dtap_coef, workspace->d_workspace->f, *(lists[FAR_NBRS]), 
+              system->n, system->reax_param.num_atom_types, 
+#if !defined(GPU_ACCUM_ATOMIC)
+              spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
+#else
+              &data->d_my_en->e_vdW, &data->d_my_en->e_ele,
+              &data->d_simulation_data->my_ext_press
+#endif
+            );
+    }
+    else if ( control->tabulate > 0 )
     {
         k_vdW_coulomb_energy_tab_full <<< control->blocks_n, control->gpu_block_size,
                                       0, control->cuda_streams[5] >>>
-            ( system->d_my_atoms, system->reax_param.d_gp, 
-              (control_params *) control->d_control_params, 
-              *(workspace->d_workspace), *(lists[FAR_NBRS]), 
+            ( system->d_my_atoms, system->reax_param.d_gp, control->nonb_cut,
+              control->virial, workspace->d_workspace->f, *(lists[FAR_NBRS]), 
               workspace->d_LR, system->n, system->reax_param.num_atom_types, 
 #if !defined(GPU_ACCUM_ATOMIC)
               spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
 #else
               &data->d_my_en->e_vdW, &data->d_my_en->e_ele,
-              &((simulation_data *)data->d_simulation_data)->my_ext_press
+              &data->d_simulation_data->my_ext_press
 #endif
             );
-        cudaCheckError( );
     }
+    cudaCheckError( );
 
 #if !defined(GPU_ACCUM_ATOMIC)
     if ( update_energy == TRUE )
@@ -1714,8 +1671,7 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
         spad_rvec = (rvec *) (&spad[system->n]);
 #endif
 
-        Cuda_Reduction_Sum( spad_rvec,
-                &((simulation_data *)data->d_simulation_data)->my_ext_press,
+        Cuda_Reduction_Sum( spad_rvec, &data->d_simulation_data->my_ext_press,
                 system->n, 5, control->cuda_streams[5] );
     }
 #endif

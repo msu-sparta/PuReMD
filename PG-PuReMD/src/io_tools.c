@@ -929,7 +929,6 @@ void Print_HBonds( reax_system *system, reax_list **lists,
 {
     int i, pj; 
     char fname[MAX_STR]; 
-    hbond_data *phbond;
     FILE *fout;
     reax_list *far_nbr_list, *hbond_list;
 
@@ -943,14 +942,12 @@ void Print_HBonds( reax_system *system, reax_list **lists,
     {
         for ( pj = Start_Index(i, hbond_list); pj < End_Index(i, hbond_list); ++pj )
         {
-            phbond = &hbond_list->hbond_list[pj];
-
-            fprintf( fout, "%8d%8d %24.15e %24.15e %24.15e\n", i, phbond->nbr,
-                    far_nbr_list->far_nbr_list.dvec[phbond->ptr][0],
-                    far_nbr_list->far_nbr_list.dvec[phbond->ptr][1],
-                    far_nbr_list->far_nbr_list.dvec[phbond->ptr][2] );
-//            fprintf( fout, "%8d%8d %8d %8d\n", i, phbond->nbr,
-//                  phbond->scl, phbond->sym_index );
+            fprintf( fout, "%8d%8d %24.15e %24.15e %24.15e\n", i, hbond_list->hbond_list.nbr[pj],
+                    far_nbr_list->far_nbr_list.dvec[hbond_list->hbond_list.ptr[pj]][0],
+                    far_nbr_list->far_nbr_list.dvec[hbond_list->hbond_list.ptr[pj]][1],
+                    far_nbr_list->far_nbr_list.dvec[hbond_list->hbond_list.ptr[pj]][2] );
+//            fprintf( fout, "%8d%8d %8d %8d\n", i, hbond_list->hbond_list.nbr[pj],
+//                  hbond_list->hbond_list.scl[pj], hbond_list->hbond_list.sym_index[pj] );
         }
     }
 

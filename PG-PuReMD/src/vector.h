@@ -434,19 +434,19 @@ GPU_HOST_DEVICE static inline void rvec_OuterProduct( rtensor r,
 }
 
 
-GPU_HOST_DEVICE static inline real rvec_Norm_Sqr( rvec v )
+GPU_HOST_DEVICE static inline real rvec_Norm_Sqr( const rvec v )
 {
     return SQR(v[0]) + SQR(v[1]) + SQR(v[2]);
 }
 
 
-GPU_HOST_DEVICE static inline real rvec_Norm( rvec v )
+GPU_HOST_DEVICE static inline real rvec_Norm( const rvec v )
 {
     return SQRT(SQR(v[0]) + SQR(v[1]) + SQR(v[2]));
 }
 
 
-GPU_HOST_DEVICE static inline int rvec_isZero( rvec v )
+GPU_HOST_DEVICE static inline int rvec_isZero( const rvec v )
 {
     if ( FABS(v[0]) > ALMOST_ZERO ||
             FABS(v[1]) > ALMOST_ZERO ||
@@ -698,7 +698,7 @@ GPU_HOST_DEVICE static inline real rtensor_Det( const rtensor t )
 }
 
 
-GPU_HOST_DEVICE static inline real rtensor_Trace( rtensor t )
+GPU_HOST_DEVICE static inline real rtensor_Trace( const rtensor t )
 {
     return t[0][0] + t[1][1] + t[2][2];
 }

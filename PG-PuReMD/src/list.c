@@ -104,7 +104,13 @@ void Make_List( int n, int max_intrs, int type, int format, reax_list * const l 
         break;
 
     case TYP_HBOND:
-        l->hbond_list = smalloc( sizeof(hbond_data) * l->max_intrs, __FILE__, __LINE__ );
+        l->hbond_list.nbr = smalloc( sizeof(int) * l->max_intrs, __FILE__, __LINE__ );
+        l->hbond_list.scl = smalloc( sizeof(int) * l->max_intrs, __FILE__, __LINE__ );
+        l->hbond_list.ptr = smalloc( sizeof(int) * l->max_intrs, __FILE__, __LINE__ );
+#if (defined(HAVE_CUDA) || defined(HAVE_HIP)) && !defined(GPU_ACCUM_ATOMIC)
+        l->hbond_list.sym_index = smalloc( sizeof(int) * l->max_intrs, __FILE__, __LINE__ );
+        l->hbond_list.hb_f = smalloc( sizeof(rvec) * l->max_intrs, __FILE__, __LINE__ );
+#endif
         break;
 
     case TYP_THREE_BODY:
@@ -166,7 +172,13 @@ void Delete_List( reax_list * const l )
         break;
 
     case TYP_HBOND:
-        sfree( l->hbond_list, __FILE__, __LINE__ );
+        sfree( l->hbond_list.nbr, __FILE__, __LINE__ );
+        sfree( l->hbond_list.scl, __FILE__, __LINE__ );
+        sfree( l->hbond_list.ptr, __FILE__, __LINE__ );
+#if (defined(HAVE_CUDA) || defined(HAVE_HIP)) && !defined(GPU_ACCUM_ATOMIC)
+        sfree( l->hbond_list.sym_index, __FILE__, __LINE__ );
+        sfree( l->hbond_list.hb_f, __FILE__, __LINE__ );
+#endif
         break;
 
     case TYP_THREE_BODY:

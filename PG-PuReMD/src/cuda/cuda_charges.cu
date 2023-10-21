@@ -45,7 +45,7 @@
 //TODO: move k_jacob and jacboi to cuda_lin_alg.cu
 GPU_GLOBAL void k_jacobi( reax_atom const * const my_atoms,
         single_body_parameters const * const sbp,
-        storage workspace, int n  )
+        real * const Hdia_inv, int n  )
 {
     int i;
 
@@ -56,13 +56,14 @@ GPU_GLOBAL void k_jacobi( reax_atom const * const my_atoms,
         return;
     }
 
-    workspace.Hdia_inv[i] = 1.0 / sbp[ my_atoms[i].type ].eta;
+    Hdia_inv[i] = 1.0 / sbp[ my_atoms[i].type ].eta;
 }
 
 
 GPU_GLOBAL void k_spline_extrapolate_charges_qeq( reax_atom const * const my_atoms,
-        single_body_parameters const * const sbp, control_params const * const control,
-        storage workspace, int n )
+        single_body_parameters const * const sbp, int cm_init_guess_extrap1,
+        int cm_init_guess_extrap2, real * const b_s, real * const b_t,
+        real * const s, real * const t, rvec2 * const b, rvec2 * const x, int n )
 {
     int i;
     real s_tmp, t_tmp;
@@ -75,30 +76,30 @@ GPU_GLOBAL void k_spline_extrapolate_charges_qeq( reax_atom const * const my_ato
     }
 
     /* RHS vectors for linear system */
-    workspace.b_s[i] = -1.0 * sbp[ my_atoms[i].type ].chi;
-    workspace.b_t[i] = -1.0;
+    b_s[i] = -1.0 * sbp[ my_atoms[i].type ].chi;
+    b_t[i] = -1.0;
 #if defined(DUAL_SOLVER)
-    workspace.b[i][0] = -1.0 * sbp[ my_atoms[i].type ].chi;
-    workspace.b[i][1] = -1.0;
+    b[i][0] = -1.0 * sbp[ my_atoms[i].type ].chi;
+    b[i][1] = -1.0;
 #endif
 
     /* no extrapolation, previous solution as initial guess */
-    if ( control->cm_init_guess_extrap1 == 0 )
+    if ( cm_init_guess_extrap1 == 0 )
     {
         s_tmp = my_atoms[i].s[0];
     }
     /* linear */
-    else if ( control->cm_init_guess_extrap1 == 1 )
+    else if ( cm_init_guess_extrap1 == 1 )
     {
         s_tmp = 2.0 * my_atoms[i].s[0] - my_atoms[i].s[1];
     }
     /* quadratic */
-    else if ( control->cm_init_guess_extrap1 == 2 )
+    else if ( cm_init_guess_extrap1 == 2 )
     {
         s_tmp = my_atoms[i].s[2] + 3.0 * (my_atoms[i].s[0] - my_atoms[i].s[1]);
     }
     /* cubic */
-    else if ( control->cm_init_guess_extrap1 == 3 )
+    else if ( cm_init_guess_extrap1 == 3 )
     {
         s_tmp = 4.0 * (my_atoms[i].s[0] + my_atoms[i].s[2])
             - (6.0 * my_atoms[i].s[1] + my_atoms[i].s[3]);
@@ -109,22 +110,22 @@ GPU_GLOBAL void k_spline_extrapolate_charges_qeq( reax_atom const * const my_ato
     }
 
     /* no extrapolation, previous solution as initial guess */
-    if ( control->cm_init_guess_extrap1 == 0 )
+    if ( cm_init_guess_extrap2 == 0 )
     {
         t_tmp = my_atoms[i].t[0];
     }
     /* linear */
-    else if ( control->cm_init_guess_extrap1 == 1 )
+    else if ( cm_init_guess_extrap2 == 1 )
     {
         t_tmp = 2.0 * my_atoms[i].t[0] - my_atoms[i].t[1];
     }
     /* quadratic */
-    else if ( control->cm_init_guess_extrap1 == 2 )
+    else if ( cm_init_guess_extrap2 == 2 )
     {
         t_tmp = my_atoms[i].t[2] + 3.0 * (my_atoms[i].t[0] - my_atoms[i].t[1]);
     }
     /* cubic */
-    else if ( control->cm_init_guess_extrap1 == 3 )
+    else if ( cm_init_guess_extrap2 == 3 )
     {
         t_tmp = 4.0 * (my_atoms[i].t[0] + my_atoms[i].t[2])
             - (6.0 * my_atoms[i].t[1] + my_atoms[i].t[3]);
@@ -135,17 +136,18 @@ GPU_GLOBAL void k_spline_extrapolate_charges_qeq( reax_atom const * const my_ato
     }
 
 #if defined(DUAL_SOLVER)
-    workspace.x[i][0] = s_tmp;
-    workspace.x[i][1] = t_tmp;
+    x[i][0] = s_tmp;
+    x[i][1] = t_tmp;
 #else
-    workspace.s[i] = s_tmp;
-    workspace.t[i] = t_tmp;
+    s[i] = s_tmp;
+    t[i] = t_tmp;
 #endif
 }
 
 
-GPU_GLOBAL void k_extrapolate_charges_qeq_part2( reax_atom *my_atoms,
-        storage workspace, real u, real *q, int n )
+GPU_GLOBAL void k_extrapolate_charges_qeq_part2( reax_atom * const my_atoms,
+        real const * const s, real const * const t, rvec2 const * const x,
+        real u, real * const q, int n )
 {
     int i;
 
@@ -158,9 +160,9 @@ GPU_GLOBAL void k_extrapolate_charges_qeq_part2( reax_atom *my_atoms,
 
     /* compute charge based on s & t */
 #if defined(DUAL_SOLVER)
-    my_atoms[i].q = workspace.x[i][0] - u * workspace.x[i][1];
+    my_atoms[i].q = x[i][0] - u * x[i][1];
 #else
-    my_atoms[i].q = workspace.s[i] - u * workspace.t[i];
+    my_atoms[i].q = s[i] - u * t[i];
 #endif
     q[i] = my_atoms[i].q;
 
@@ -168,24 +170,24 @@ GPU_GLOBAL void k_extrapolate_charges_qeq_part2( reax_atom *my_atoms,
     my_atoms[i].s[2] = my_atoms[i].s[1];
     my_atoms[i].s[1] = my_atoms[i].s[0];
 #if defined(DUAL_SOLVER)
-    my_atoms[i].s[0] = workspace.x[i][0];
+    my_atoms[i].s[0] = x[i][0];
 #else
-    my_atoms[i].s[0] = workspace.s[i];
+    my_atoms[i].s[0] = s[i];
 #endif
 
     my_atoms[i].t[3] = my_atoms[i].t[2];
     my_atoms[i].t[2] = my_atoms[i].t[1];
     my_atoms[i].t[1] = my_atoms[i].t[0];
 #if defined(DUAL_SOLVER)
-    my_atoms[i].t[0] = workspace.x[i][1];
+    my_atoms[i].t[0] = x[i][1];
 #else
-    my_atoms[i].t[0] = workspace.t[i];
+    my_atoms[i].t[0] = t[i];
 #endif
 }
 
 
-GPU_GLOBAL void k_update_ghost_atom_charges( reax_atom *my_atoms, real *q,
-        int n, int N )
+GPU_GLOBAL void k_update_ghost_atom_charges( reax_atom * const my_atoms,
+        real const * const q, int n, int N )
 {
     int i;
 
@@ -206,7 +208,7 @@ static void jacobi( reax_system const * const system,
 {
     k_jacobi <<< control->blocks_n, control->gpu_block_size, 0, s >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
-          *(workspace->d_workspace), system->n );
+          workspace->d_workspace->Hdia_inv, system->n );
     cudaCheckError( );
 }
 
@@ -298,8 +300,10 @@ static void Spline_Extrapolate_Charges_QEq( reax_system const * const system,
 {
     k_spline_extrapolate_charges_qeq <<< control->blocks_n, control->gpu_block_size, 0, s >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
-          (control_params *)control->d_control_params,
-          *(workspace->d_workspace), system->n );
+          control->cm_init_guess_extrap1, control->cm_init_guess_extrap2,
+          workspace->d_workspace->b_s, workspace->d_workspace->b_t,
+          workspace->d_workspace->s, workspace->d_workspace->t,
+          workspace->d_workspace->b, workspace->d_workspace->x, system->n );
     cudaCheckError( );
 }
 
@@ -464,7 +468,8 @@ static void Extrapolate_Charges_QEq_Part2( reax_system const * const system,
 #endif
 
     k_extrapolate_charges_qeq_part2 <<< control->blocks_n, control->gpu_block_size, 0, s >>>
-        ( system->d_my_atoms, *(workspace->d_workspace), u,
+        ( system->d_my_atoms, workspace->d_workspace->s, workspace->d_workspace->t,
+          workspace->d_workspace->x, u,
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
           spad,
 #else

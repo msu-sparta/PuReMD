@@ -224,15 +224,30 @@ extern "C" void Cuda_Copy_List_Device_to_Host( control_params *control,
             break;
 
         case TYP_BOND:
+            //TODO: update for bond_list_gpu (convert between data struct formats)
             sCudaMemcpyAsync( host_list->bond_list, device_list->bond_list,
                     sizeof(bond_data) * device_list->max_intrs,
                     cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
             break;
 
         case TYP_HBOND:
-            sCudaMemcpyAsync( host_list->hbond_list, device_list->hbond_list,
-                    sizeof(hbond_data) * device_list->max_intrs,
+            sCudaMemcpyAsync( host_list->hbond_list.nbr, device_list->hbond_list.nbr,
+                    sizeof(int) * device_list->max_intrs,
                     cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
+            sCudaMemcpyAsync( host_list->hbond_list.scl, device_list->hbond_list.scl,
+                    sizeof(int) * device_list->max_intrs,
+                    cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
+            sCudaMemcpyAsync( host_list->hbond_list.ptr, device_list->hbond_list.ptr,
+                    sizeof(int) * device_list->max_intrs,
+                    cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
+#if (defined(HAVE_CUDA) || defined(HAVE_HIP)) && !defined(GPU_ACCUM_ATOMIC)
+            sCudaMemcpyAsync( host_list->hbond_list.sym_index, device_list->hbond_list.sym_index,
+                    sizeof(int) * device_list->max_intrs,
+                    cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
+            sCudaMemcpyAsync( host_list->hbond_list.hb_f, device_list->hbond_list.hb_f,
+                    sizeof(int) * device_list->max_intrs,
+                    cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
+#endif
             break;
 
         case TYP_THREE_BODY:

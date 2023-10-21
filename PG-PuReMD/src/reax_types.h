@@ -333,7 +333,12 @@
 
 /* max. num. of main simulation loop retries;
  * retries occur when memory allocation checks determine more memory is needed */
-#define MAX_RETRIES (5)
+#define MAX_RETRIES (3)
+
+/* num. coefficients for tapering 7th order polynomial function used for Coulomb interactions */
+#define TAPER_COEF_SIZE (8)
+/* num. coefficients for derivative of tapering 7th order polynomial function used for Coulomb interactions */
+#define DTAPER_COEF_SIZE (7)
 
 /**************** RESOURCE CONSTANTS **********************/
 /* default num. threads per block */
@@ -667,6 +672,9 @@ typedef struct dDelta_data dDelta_data;
 typedef struct dbond_data dbond_data;
 typedef struct bond_order_data bond_order_data;
 typedef struct bond_data bond_data;
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
+typedef struct bond_data_gpu bond_data_gpu;
+#endif
 typedef struct sparse_matrix sparse_matrix;
 typedef struct reallocate_data reallocate_data;
 typedef struct storage storage;
@@ -1716,8 +1724,6 @@ struct control_params
     evolve_function Hip_Evolve;
 #endif
 #if defined(HAVE_CUDA) || defined(HAVE_HIP)
-    /* control parameters (GPU) */
-    void *d_control_params;
     /* num. of CUDA/HIP blocks for kernels where total threads are a function of the num. of local atoms */
     int blocks_n;
     /* num. of CUDA/HIP blocks for kernels where total threads are a function of
@@ -1999,10 +2005,8 @@ struct simulation_data
 
     /* energies for ReaxFF potential terms and system (partials for this processor) (GPU) */
     energy_data *d_my_en;
-    /* struct containing timing of various simulation functions (GPU) */
-    reax_timing d_timing;
     /**/
-    void *d_simulation_data;
+    simulation_data *d_simulation_data;
 };
 
 
@@ -2046,16 +2050,16 @@ struct far_neighbor_data
 struct hbond_data
 {
     /* neighbor atom ID */
-    int nbr;
+    int *nbr;
     /**/
-    int scl;
+    int *scl;
     /* position of neighbor in far neighbor list */
-    int ptr;
+    int *ptr;
 #if (defined(HAVE_CUDA) || defined(HAVE_HIP)) && !defined(GPU_ACCUM_ATOMIC)
     /**/
-    int sym_index;
+    int *sym_index;
     /**/
-    rvec hb_f;
+    rvec *hb_f;
 #endif
 };
 
@@ -2153,25 +2157,92 @@ struct bond_data
     rvec dvec;
     /* bond order data */
     bond_order_data bo_data;
-#if (defined(HAVE_CUDA) || defined(HAVE_HIP)) && !defined(GPU_ACCUM_ATOMIC)
+};
+
+
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
+/**/
+struct bond_data_gpu
+{
+    /* local atom ID of neighboring bonded atom */
+    int *nbr;
+    /* index in the bonds list of neighboring atom */
+    int *sym_index;
+    /* index in the dbond list of neighboring atom */
+    int *dbond_index;
     /**/
-    real ae_CdDelta;
+    ivec *rel_box;
+//  rvec ext_factor;
+    /* distance to neighboring atom */
+    real *d;
+    /* component-wise difference of coordinates of this atom
+     * and its neighboring bonded atom */
+    rvec *dvec;
+    /* bond order data */
     /**/
-    real va_CdDelta;
+    real *BO;
     /**/
-    rvec va_f;
+    real *BO_s;
     /**/
-    real ta_CdDelta;
+    real *BO_pi;
     /**/
-    real ta_Cdbo;
+    real *BO_pi2;
     /**/
-    rvec ta_f;
+    real *Cdbo;
     /**/
-    rvec hb_f;
+    real *Cdbopi;
     /**/
-    rvec tf_f;
+    real *Cdbopi2;
+    /**/
+    real *C1dbo;
+    /**/
+    real *C2dbo;
+    /**/
+    real *C3dbo;
+    /**/
+    real *C1dbopi;
+    /**/
+    real *C2dbopi;
+    /**/
+    real *C3dbopi;
+    /**/
+    real *C4dbopi;
+    /**/
+    real *C1dbopi2;
+    /**/
+    real *C2dbopi2;
+    /**/
+    real *C3dbopi2;
+    /**/
+    real *C4dbopi2;
+    /**/
+    rvec *dBOp;
+    /**/
+    rvec *dln_BOp_s;
+    /**/
+    rvec *dln_BOp_pi;
+    /**/
+    rvec *dln_BOp_pi2;
+#if !defined(GPU_ACCUM_ATOMIC)
+    /**/
+    real *ae_CdDelta;
+    /**/
+    real *va_CdDelta;
+    /**/
+    rvec *va_f;
+    /**/
+    real *ta_CdDelta;
+    /**/
+    real *ta_Cdbo;
+    /**/
+    rvec *ta_f;
+    /**/
+    rvec *hb_f;
+    /**/
+    rvec *tf_f;
 #endif
 };
+#endif
 
 
 /* Matrix in compressed row storage (CRS) format,
@@ -2358,9 +2429,9 @@ struct storage
     rvec2 *w2;
 
     /* coefficients of 7-th order polynomial taper function */
-    real tap_coef[8];
+    real *tap_coef;
     /* coefficients of 6-th order polynomial taper derivative function */
-    real dtap_coef[7];
+    real *dtap_coef;
 
     /* storage for analysis */
     /**/
@@ -2494,6 +2565,9 @@ struct reax_list
     three_body_interaction_data *three_body_list;
     /* bond type */
     bond_data *bond_list;
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
+    bond_data_gpu bond_list_gpu;
+#endif
     /* derivative bond order type */
     dbond_data *dbo_list;
     /* derivative delta type */
@@ -2501,7 +2575,7 @@ struct reax_list
     /* far neighbor type */
     far_neighbor_data far_nbr_list;
     /* hydrogen bond type */
-    hbond_data *hbond_list;
+    hbond_data hbond_list;
 };
 
 

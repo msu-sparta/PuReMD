@@ -64,7 +64,6 @@ void Hydrogen_Bonds( reax_system * const system, control_params * const control,
     int nbr_jk;
     reax_list *far_nbr_list, *bond_list, *hbond_list;
     bond_data *pbond_ij;
-    hbond_data *phbond_jk;
 #if defined(DEBUG_FOCUS)
     int num_hb_intrs = 0;
 #endif
@@ -118,13 +117,12 @@ void Hydrogen_Bonds( reax_system * const system, control_params * const control,
             /* for each hbond of atom j */
             for ( pk = hb_start_j; pk < hb_end_j; ++pk )
             {
-                phbond_jk = &hbond_list->hbond_list[pk];
-                k = phbond_jk->nbr;
+                k = hbond_list->hbond_list.nbr[pk];
                 type_k = system->my_atoms[k].type;
-                nbr_jk = phbond_jk->ptr;
+                nbr_jk = hbond_list->hbond_list.ptr[pk];
                 r_jk = far_nbr_list->far_nbr_list.d[nbr_jk];
 
-                rvec_Scale( dvec_jk, phbond_jk->scl,
+                rvec_Scale( dvec_jk, hbond_list->hbond_list.scl[pk],
                         far_nbr_list->far_nbr_list.dvec[nbr_jk] );
 
                 /* find matching hbond to atoms j and k */
@@ -199,7 +197,7 @@ void Hydrogen_Bonds( reax_system * const system, control_params * const control,
 
                             rvec_ScaledAdd( workspace->f[j], CEhb2, dcos_theta_dj );
 
-                            ivec_Scale( rel_jk, phbond_jk->scl,
+                            ivec_Scale( rel_jk, hbond_list->hbond_list.scl[pk],
                                     far_nbr_list->far_nbr_list.rel_box[nbr_jk] );
                             rvec_Scale( force, CEhb2, dcos_theta_dk );
                             rvec_Add( workspace->f[k], force );

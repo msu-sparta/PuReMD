@@ -9,7 +9,7 @@
 #include "../vector.h"
 
 
-GPU_GLOBAL void k_reset_workspace( storage workspace, int N )
+GPU_GLOBAL void k_reset_workspace( real * const CdDelta, rvec * const f, int N )
 {
     int i;
 
@@ -20,13 +20,13 @@ GPU_GLOBAL void k_reset_workspace( storage workspace, int N )
         return;
     }
 
-    workspace.CdDelta[i] = 0.0;
-    rvec_MakeZero( workspace.f[i] );
+    CdDelta[i] = 0.0;
+    rvec_MakeZero( f[i] );
 }
 
 
-GPU_GLOBAL void k_reset_hindex( reax_atom *my_atoms, single_body_parameters *sbp,
-        int * hindex, int N )
+GPU_GLOBAL void k_reset_hindex( reax_atom * const my_atoms,
+        single_body_parameters const * const sbp, int * const hindex, int N )
 {
     int i;
 
@@ -55,8 +55,8 @@ GPU_GLOBAL void k_reset_hindex( reax_atom *my_atoms, single_body_parameters *sbp
 #endif
 }
 
-void Cuda_Reset_Workspace( reax_system * const system, control_params const * const control,
-        storage * const workspace )
+void Cuda_Reset_Workspace( reax_system const * const system,
+        control_params const * const control, storage * const workspace )
 {
     int blocks;
 
@@ -64,7 +64,7 @@ void Cuda_Reset_Workspace( reax_system * const system, control_params const * co
         + ((system->total_cap % control->gpu_block_size == 0 ) ? 0 : 1);
 
     k_reset_workspace <<< blocks, control->gpu_block_size, 0, control->cuda_streams[0] >>>
-        ( *(workspace->d_workspace), system->total_cap );
+        ( workspace->d_workspace->CdDelta, workspace->d_workspace->f, system->total_cap );
     cudaCheckError( );
 }
 
