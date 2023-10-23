@@ -23,6 +23,9 @@
 
 #include "cuda_list.h"
 #include "cuda_helpers.h"
+#if !defined(GPU_ACCUM_ATOMIC)
+  #include "cuda_reduction.h"
+#endif
 #include "cuda_valence_angles.h"
 #include "cuda_utils.h"
 
@@ -1234,7 +1237,7 @@ GPU_GLOBAL void k_torsion_angles_virial_part1( reax_atom const * const my_atoms,
     rvec_Add( f[j], f_j );
     e_tor_g[j] = e_tor_;
     e_con_g[j] = e_con_;
-    rvec_Copy( e_ext_press_g[j], e_ext_press_l );
+    rvec_Copy( ext_press_g[j], ext_press_ );
 #else
     atomicAdd( &CdDelta[j], CdDelta_j );
     atomic_rvecAdd( f[j], f_j );
@@ -1264,7 +1267,7 @@ GPU_GLOBAL void k_torsion_angles_part2( real * const CdDelta, rvec * const f,
     for ( pj = Start_Index(i, &bond_list); pj < End_Index(i, &bond_list); ++pj )
     {
         CdDelta[i] += BL.ta_CdDelta[BL.sym_index[pj]];
-        BL.bo_data.Cdbo[pj] += BL.ta_Cdbo[pj];
+        BL.Cdbo[pj] += BL.ta_Cdbo[pj];
         rvec_Add( f[i], BL.ta_f[BL.sym_index[pj]] ); 
     }
 
@@ -1296,7 +1299,7 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
     }
     else
     {
-        s = (sizeof(real) * 2 * system->n;
+        s = (sizeof(real) * 2) * system->n;
     }
     sCudaCheckMalloc( &workspace->scratch[3], &workspace->scratch_size[3],
             s, __FILE__, __LINE__ );

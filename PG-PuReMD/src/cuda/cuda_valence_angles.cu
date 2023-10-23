@@ -21,9 +21,7 @@
 
 #include "cuda_valence_angles.h"
 
-#if defined(GPU_ACCUM_ATOMIC)
 #include "cuda_helpers.h"
-#endif
 #include "cuda_list.h"
 #include "cuda_reduction.h"
 #include "cuda_utils.h"
@@ -413,7 +411,7 @@ GPU_GLOBAL void k_valence_angles_part1( reax_atom const * const my_atoms,
         }
 
 #if !defined(GPU_ACCUM_ATOMIC)
-        rvec_Add( f[j], f_j_l );
+        rvec_Add( f[j], f_j );
         atomicAdd( &CdDelta[j], CdDelta_j );
         e_ang_g[j] = e_ang_;
         e_coa_g[j] = e_coa_;

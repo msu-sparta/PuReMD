@@ -1719,9 +1719,8 @@ GPU_GLOBAL void k_update_sym_dbond_indices_opt( reax_list bond_list, int N )
 GPU_GLOBAL void k_update_sym_hbond_indices_opt( reax_atom const * const my_atoms,
         reax_list hbond_list, int N )
 {
-    int i, pj, pk;
-    int nbr, nbrstart, nbrend;
-    int start, end, flag, lane_id;
+    int i, pi, pj, nbr;
+    int start_i, end_i, flag, lane_id;
 
     i = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
 
@@ -1731,20 +1730,19 @@ GPU_GLOBAL void k_update_sym_hbond_indices_opt( reax_atom const * const my_atoms
     }
 
     lane_id = (blockIdx.x * blockDim.x + threadIdx.x) % warpSize; 
-    start = Start_Index( my_atoms[i].Hindex, &hbond_list );
-    end = End_Index( my_atoms[i].Hindex, &hbond_list );
-    pj = start + lane_id;
+    start_i = Start_Index( my_atoms[i].Hindex, &hbond_list );
+    end_i = End_Index( my_atoms[i].Hindex, &hbond_list );
+    pi = start_i + lane_id;
 
-    while ( pj < end )
+    while ( pi < end_i )
     {
-        nbr = hbond_list.hbond_list.nbr[pj];
+        nbr = hbond_list.hbond_list.nbr[pi];
         flag = FALSE;
-        nbrstart = Start_Index( my_atoms[nbr].Hindex, &hbond_list );
-        nbrend = End_Index( my_atoms[nbr].Hindex, &hbond_list );
 
-        for ( pk = nbrstart; pk < nbrend; pk++ )
+        for ( pj = Start_Index( my_atoms[nbr].Hindex, &hbond_list );
+                pj < End_Index( my_atoms[nbr].Hindex, &hbond_list ); pj++ )
         {
-            if ( jhbond->nbr == i )
+            if ( hbond_list.hbond_list.nbr[pj] == i )
             {
                 flag = TRUE;
                 break;
@@ -1753,11 +1751,11 @@ GPU_GLOBAL void k_update_sym_hbond_indices_opt( reax_atom const * const my_atoms
 
         if ( flag == TRUE )
         {
-            hbond_list.hbond_list.sym_index[pj] = pk;
-            hbond_list.hbond_list.sym_index[pk] = pj;
+            hbond_list.hbond_list.sym_index[pi] = pj;
+            hbond_list.hbond_list.sym_index[pj] = pi;
         }
 
-        pj += warpSize;
+        pi += warpSize;
     }
 }
 #endif

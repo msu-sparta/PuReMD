@@ -57,7 +57,7 @@ GPU_GLOBAL void k_reduction_rvec( rvec const * const input, rvec * const results
     if ( threadIdx.x == 0 )
     {
 #if !defined(GPU_ACCUM_ATOMIC)
-        rvec_Copy( results[blockIdx.x], data_s[0] );
+        rvec_Copy( results[blockIdx.x], data );
 #else
         atomicAdd( (double *) &results[0][0], (double) data[0] );
         atomicAdd( (double *) &results[0][1], (double) data[1] );
@@ -204,7 +204,7 @@ void Cuda_Reduction_Sum( rvec *d_array, rvec *d_dest, size_t n,
         + ((n % GPU_BLOCK_SIZE == 0) ? 0 : 1);
 
 #if !defined(GPU_ACCUM_ATOMIC)
-    sCudaCheckMalloc( &temp[s_index], &temp_size[s_index],
+    sCudaCheckMalloc( (void **) &temp[s_index], &temp_size[s_index],
             sizeof(rvec) * blocks, __FILE__, __LINE__ );
 #else
     sCudaMemsetAsync( d_dest, 0, sizeof(rvec), s, __FILE__, __LINE__ );
@@ -250,7 +250,7 @@ void Cuda_Reduction_Sum( rvec2 *d_array, rvec2 *d_dest, size_t n,
         + ((n % GPU_BLOCK_SIZE == 0) ? 0 : 1);
 
 #if !defined(GPU_ACCUM_ATOMIC)
-    sCudaCheckMalloc( &temp[s_index], &temp_size[s_index],
+    sCudaCheckMalloc( (void **)&temp[s_index], &temp_size[s_index],
             sizeof(rvec2) * blocks, __FILE__, __LINE__ );
 #else
     sCudaMemsetAsync( d_dest, 0, sizeof(rvec2), s, __FILE__, __LINE__ );

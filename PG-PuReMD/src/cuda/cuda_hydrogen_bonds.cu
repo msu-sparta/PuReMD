@@ -183,7 +183,7 @@ GPU_GLOBAL void k_hydrogen_bonds_part1( reax_atom const * const my_atoms,
         }
 
 #if !defined(GPU_ACCUM_ATOMIC)
-        rvecCopy( f[j], f_j );
+        rvec_Copy( f[j], f_j );
         e_hb_g[j] = e_hb_;
 #else
         atomic_rvecAdd( f[j], f_j );
@@ -339,7 +339,7 @@ GPU_GLOBAL void k_hydrogen_bonds_part1_opt( reax_atom const * const my_atoms,
         {
 #if !defined(GPU_ACCUM_ATOMIC)
             /* write conflicts for accumulating partial forces resolved by subsequent kernels */
-            rvecCopy( f[j], f_j );
+            rvec_Copy( f[j], f_j );
             e_hb_g[j] = e_hb_;
 #else
             atomic_rvecAdd( f[j], f_j );
@@ -493,7 +493,7 @@ GPU_GLOBAL void k_hydrogen_bonds_virial_part1( reax_atom const * const my_atoms,
 
                     rvec_ScaledAdd( f[j], CEhb2, dcos_theta_dj );
 
-                    ivec_Scale( rel_jk, hbond_list.hbond_list[pk].scl,
+                    ivec_Scale( rel_jk, hbond_list.hbond_list.scl[pk],
                             far_nbr_list.far_nbr_list.rel_box[nbr_jk] );
                     rvec_Scale( temp, CEhb2, dcos_theta_dk );
                     rvec_Add( hbond_list.hbond_list.hb_f[pk], temp );
@@ -544,10 +544,8 @@ GPU_GLOBAL void k_hydrogen_bonds_virial_part1( reax_atom const * const my_atoms,
     }
 
 #if !defined(GPU_ACCUM_ATOMIC)
-    /* write conflicts for accumulating partial forces resolved by subsequent kernels */
-    rvecCopy( f[j], f_j );
     e_hb_g[j] = e_hb_;
-    rvecCopy( ext_press_g[j], ext_press_l );
+    rvec_Copy( ext_press_g[j], ext_press_l );
 #else
     atomic_rvecAdd( f[j], f_j );
     atomicAdd( (double *) e_hb_g, (double) e_hb_ );
@@ -640,7 +638,6 @@ GPU_GLOBAL void k_hydrogen_bonds_part3( reax_atom const * const atoms,
         rvec * const f, reax_list hbond_list, int n )
 {
     int j, pj;
-    hbond_data *nbr_pj, *sym_index_nbr;
     rvec hb_f;
 
     j = blockIdx.x * blockDim.x + threadIdx.x;
@@ -654,10 +651,7 @@ GPU_GLOBAL void k_hydrogen_bonds_part3( reax_atom const * const atoms,
 
     for ( pj = Start_Index(atoms[j].Hindex, &hbond_list); pj < End_Index(atoms[j].Hindex, &hbond_list); ++pj )
     {
-        nbr_pj = &hbond_list.hbond_list[pj];
-        sym_index_nbr = &hbond_list.hbond_list[ nbr_pj->sym_index ];
-
-        rvec_Add( hb_f, sym_index_nbr->hb_f );
+        rvec_Add( hb_f, hbond_list.hbond_list.hb_f[hbond_list.hbond_list.sym_index[pj]] );
     }
 
     rvec_Add( f[j], hb_f );
@@ -671,9 +665,8 @@ GPU_GLOBAL void k_hydrogen_bonds_part3_opt( reax_atom const * const atoms,
 {
     extern __shared__ cub::WarpReduce<double>::TempStorage temp_storage[];
     int j, pj, start, end;
-    hbond_data *nbr_pj, *sym_index_nbr;
     /* thread-local variables */
-    int thread_id, warp_id, lane_id, offset;
+    int thread_id, warp_id, lane_id;
     rvec hb_f_l;
 
     thread_id = blockIdx.x * blockDim.x + threadIdx.x;
@@ -693,10 +686,7 @@ GPU_GLOBAL void k_hydrogen_bonds_part3_opt( reax_atom const * const atoms,
 
     while ( pj < end )
     {
-        nbr_pj = &hbond_list.hbond_list[pj];
-        sym_index_nbr = &hbond_list.hbond_list[ nbr_pj->sym_index ];
-
-        rvec_Add( hb_f_l, sym_index_nbr->hb_f );
+        rvec_Add( hb_f_l, hbond_list.hbond_list.hb_f[hbond_list.hbond_list.sym_index[pj]] );
 
         pj += warpSize;
     }

@@ -23,6 +23,9 @@
 
 #include "cuda_helpers.h"
 #include "cuda_list.h"
+#if !defined(GPU_ACCUM_ATOMIC)
+  #include "cuda_reduction.h"
+#endif
 #include "cuda_utils.h"
 
 #include "../index_utils.h"
@@ -667,14 +670,14 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
 
     if ( update_energy == TRUE )
     {
-        Cuda_Reduction_Sum( spad,
-                &data->d_my_en->e_lp, system->n, 0, control->cuda_streams[0] );
+        Cuda_Reduction_Sum( spad, &data->d_my_en->e_lp, system->n, 0,
+                control->cuda_streams[0] );
 
-        Cuda_Reduction_Sum( &spad[system->n],
-                &data->d_my_en->e_ov, system->n, 0, control->cuda_streams[0] );
+        Cuda_Reduction_Sum( &spad[system->n], &data->d_my_en->e_ov, system->n, 0,
+                control->cuda_streams[0] );
 
-        Cuda_Reduction_Sum( &spad[2 * system->n],
-                &data->d_my_en->e_un, system->n, 0, control->cuda_streams[0] );
+        Cuda_Reduction_Sum( &spad[2 * system->n], &data->d_my_en->e_un, system->n, 0,
+                control->cuda_streams[0] );
     }
 #endif
 
