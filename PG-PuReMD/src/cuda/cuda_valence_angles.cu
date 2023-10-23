@@ -59,8 +59,8 @@ GPU_GLOBAL void k_valence_angles_part1( reax_atom const * const my_atoms,
         two_body_parameters const * const tbp, three_body_header const * const thbh,
         real thb_cut, real const * const total_bond_order, real const * const Delta_boc,
         real const * const Delta, real const * const dDelta_lp, real const * const nlp,
-        real const * const vlpex, real * const CdDelta, rvec * const f, reax_list bond_list,
-        reax_list thb_list, int n, int N, int num_atom_types,
+        real const * const vlpex, real * const CdDelta, rvec * const f,
+        const reax_list bond_list, reax_list thb_list, int n, int N, int num_atom_types,
         real * const e_ang_g, real * const e_pen_g, real * const e_coa_g )
 {
     int i, j, pi, k, pk, t;
@@ -81,8 +81,8 @@ GPU_GLOBAL void k_valence_angles_part1( reax_atom const * const my_atoms,
     real BOA_ij, BOA_jk;
     real Cdbo_ij, CdDelta_i, CdDelta_j;
     rvec f_i, f_j;
-    three_body_interaction_data *p_ijk;
 #define BL (bond_list.bond_list_gpu)
+#define TBL (thb_list.three_body_list_gpu)
 
     j = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -209,17 +209,17 @@ GPU_GLOBAL void k_valence_angles_part1( reax_atom const * const my_atoms,
 
                         k = BL.nbr[pk];
                         type_k = my_atoms[k].type;
-                        p_ijk = &thb_list.three_body_list[num_thb_intrs];
 
                         Calculate_Theta( BL.dvec[pi], BL.d[pi], BL.dvec[pk], BL.d[pk],
                                 &theta, &cos_theta );
 
                         Calculate_dCos_Theta( BL.dvec[pi], BL.d[pi], BL.dvec[pk], BL.d[pk],
-                                &p_ijk->dcos_di, &p_ijk->dcos_dj, &p_ijk->dcos_dk );
+                                &TBL.dcos_di[num_thb_intrs], &TBL.dcos_dj[num_thb_intrs],
+                                &TBL.dcos_dk[num_thb_intrs] );
 
-                        p_ijk->thb = k;
-                        p_ijk->pthb = pk;
-                        p_ijk->theta = theta;
+                        TBL.thb[num_thb_intrs] = k;
+                        TBL.pthb[num_thb_intrs] = pk;
+                        TBL.theta[num_thb_intrs] = theta;
 
                         sin_theta = SIN( theta );
                         if ( sin_theta < 1.0e-5 )
@@ -386,12 +386,12 @@ GPU_GLOBAL void k_valence_angles_part1( reax_atom const * const my_atoms,
 #endif
                                 }
 
-                                rvec_ScaledAdd( f_i, CEval8, p_ijk->dcos_di );
-                                rvec_ScaledAdd( f_j, CEval8, p_ijk->dcos_dj );
+                                rvec_ScaledAdd( f_i, CEval8, TBL.dcos_di[num_thb_intrs] );
+                                rvec_ScaledAdd( f_j, CEval8, TBL.dcos_dj[num_thb_intrs] );
 #if !defined(GPU_ACCUM_ATOMIC)
-                                rvec_ScaledAdd( BL.va_f[pk], CEval8, p_ijk->dcos_dk );
+                                rvec_ScaledAdd( BL.va_f[pk], CEval8, TBL.dcos_dk[num_thb_intrs] );
 #else
-                                atomic_rvecScaledAdd( f[k], CEval8, p_ijk->dcos_dk );
+                                atomic_rvecScaledAdd( f[k], CEval8, TBL.dcos_dk[num_thb_intrs] );
 #endif
                             }
                         }
@@ -428,6 +428,7 @@ GPU_GLOBAL void k_valence_angles_part1( reax_atom const * const my_atoms,
     }
 
 #undef BL
+#undef TBL
 }
 
 
@@ -439,7 +440,7 @@ GPU_GLOBAL void k_valence_angles_part1_opt( reax_atom const * const my_atoms,
         real thb_cut, real const * const total_bond_order, real const * const Delta_boc,
         real const * const Delta, real const * const dDelta_lp, real const * const nlp,
         real const * const vlpex, real * const CdDelta, rvec * const f,
-        reax_list bond_list, reax_list thb_list, int n, int N,
+        const reax_list bond_list, reax_list thb_list, int n, int N,
         int num_atom_types, real * const e_ang_g, real * const e_pen_g, real * const e_coa_g )
 {
     extern __shared__ cub::WarpScan<int>::TempStorage temp_i[];
@@ -462,8 +463,8 @@ GPU_GLOBAL void k_valence_angles_part1_opt( reax_atom const * const my_atoms,
     real BOA_ij, BOA_jk;
     real Cdbo_ij, CdDelta_i, CdDelta_j;
     rvec f_i, f_j;
-    three_body_interaction_data *p_ijk;
 #define BL (bond_list.bond_list_gpu)
+#define TBL (thb_list.three_body_list_gpu)
 
     thread_id = blockIdx.x * blockDim.x + threadIdx.x;
     /* all threads within a warp are assigned the interactions
@@ -612,17 +613,18 @@ GPU_GLOBAL void k_valence_angles_part1_opt( reax_atom const * const my_atoms,
                         {
                             k = BL.nbr[pk];
                             type_k = my_atoms[k].type;
-                            p_ijk = &thb_list.three_body_list[num_thb_intrs + offset];
 
                             Calculate_Theta( BL.dvec[pi], BL.d[pi], BL.dvec[pk], BL.d[pk],
                                     &theta, &cos_theta );
 
                             Calculate_dCos_Theta( BL.dvec[pi], BL.d[pi], BL.dvec[pk], BL.d[pk],
-                                    &p_ijk->dcos_di, &p_ijk->dcos_dj, &p_ijk->dcos_dk );
+                                    &TBL.dcos_di[num_thb_intrs + offset],
+                                    &TBL.dcos_dj[num_thb_intrs + offset],
+                                    &TBL.dcos_dk[num_thb_intrs + offset] );
 
-                            p_ijk->thb = k;
-                            p_ijk->pthb = pk;
-                            p_ijk->theta = theta;
+                            TBL.thb[num_thb_intrs + offset] = k;
+                            TBL.pthb[num_thb_intrs + offset] = pk;
+                            TBL.theta[num_thb_intrs + offset] = theta;
 
                             sin_theta = SIN( theta );
                             if ( sin_theta < 1.0e-5 )
@@ -784,12 +786,12 @@ GPU_GLOBAL void k_valence_angles_part1_opt( reax_atom const * const my_atoms,
 #endif
                                         }
 
-                                        rvec_ScaledAdd( f_i, CEval8, p_ijk->dcos_di );
-                                        rvec_ScaledAdd( f_j, CEval8, p_ijk->dcos_dj );
+                                        rvec_ScaledAdd( f_i, CEval8, TBL.dcos_di[num_thb_intrs + offset] );
+                                        rvec_ScaledAdd( f_j, CEval8, TBL.dcos_dj[num_thb_intrs + offset] );
 #if !defined(GPU_ACCUM_ATOMIC)
-                                        rvec_ScaledAdd( BL.va_f[pk], CEval8, p_ijk->dcos_dk );
+                                        rvec_ScaledAdd( BL.va_f[pk], CEval8, TBL.dcos_dk[num_thb_intrs + offset] );
 #else
-                                        atomic_rvecScaledAdd( f[k], CEval8, p_ijk->dcos_dk );
+                                        atomic_rvecScaledAdd( f[k], CEval8, TBL.dcos_dk[num_thb_intrs + offset] );
 #endif
                                     }
                                 }
@@ -857,6 +859,7 @@ GPU_GLOBAL void k_valence_angles_part1_opt( reax_atom const * const my_atoms,
     }
 
 #undef BL
+#undef TBL
 }
 
 
@@ -1280,8 +1283,8 @@ GPU_GLOBAL void k_valence_angles_virial_part1( reax_atom const * const my_atoms,
         three_body_header const * const thbh, real thb_cut,
         real const * const total_bond_order, real const * const Delta_boc, real const * const Delta,
         real const * const dDelta_lp, real const * const nlp, real const * const vlpex,
-        real * const CdDelta, rvec * const f, reax_list bond_list, reax_list thb_list,
-        int n, int N, int num_atom_types, real * const e_ang_g,
+        real * const CdDelta, rvec * const f, const reax_list bond_list,
+        reax_list thb_list, int n, int N, int num_atom_types, real * const e_ang_g,
         real * const e_pen_g, real * const e_coa_g, rvec * const ext_press_g )
 {
     int i, j, pi, k, pk, t;
@@ -1302,8 +1305,8 @@ GPU_GLOBAL void k_valence_angles_virial_part1( reax_atom const * const my_atoms,
     real BOA_ij, BOA_jk;
     real Cdbo_ij, CdDelta_i, CdDelta_j;
     rvec rvec_temp, f_i, f_j, ext_press;
-    three_body_interaction_data *p_ijk;
 #define BL (bond_list.bond_list_gpu)
+#define TBL (thb_list.three_body_list_gpu)
 
     j = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -1425,17 +1428,17 @@ GPU_GLOBAL void k_valence_angles_virial_part1( reax_atom const * const my_atoms,
 
                 k = BL.nbr[pk];
                 type_k = my_atoms[k].type;
-                p_ijk = &thb_list.three_body_list[num_thb_intrs];
 
                 Calculate_Theta( BL.dvec[pi], BL.d[pi], BL.dvec[pk], BL.d[pk],
                         &theta, &cos_theta );
 
                 Calculate_dCos_Theta( BL.dvec[pi], BL.d[pi], BL.dvec[pk], BL.d[pk],
-                        &p_ijk->dcos_di, &p_ijk->dcos_dj, &p_ijk->dcos_dk );
+                        &TBL.dcos_di[num_thb_intrs], &TBL.dcos_dj[num_thb_intrs],
+                        &TBL.dcos_dk[num_thb_intrs] );
 
-                p_ijk->thb = k;
-                p_ijk->pthb = pk;
-                p_ijk->theta = theta;
+                TBL.thb[num_thb_intrs] = k;
+                TBL.pthb[num_thb_intrs] = pk;
+                TBL.theta[num_thb_intrs] = theta;
 
                 sin_theta = SIN( theta );
                 if ( sin_theta < 1.0e-5 )
@@ -1604,14 +1607,14 @@ GPU_GLOBAL void k_valence_angles_virial_part1( reax_atom const * const my_atoms,
 
                         /* terms not related to bond order derivatives are
                          * added directly into forces and pressure vector/tensor */
-                        rvec_Scale( rvec_temp, CEval8, p_ijk->dcos_di );
+                        rvec_Scale( rvec_temp, CEval8, TBL.dcos_di[num_thb_intrs] );
                         rvec_Add( f_i, rvec_temp );
                         rvec_iMultiply( rvec_temp, BL.rel_box[pi], rvec_temp );
                         rvec_Add( ext_press, rvec_temp );
 
-                        rvec_ScaledAdd( f_j, CEval8, p_ijk->dcos_dj );
+                        rvec_ScaledAdd( f_j, CEval8, TBL.dcos_dj[num_thb_intrs] );
 
-                        rvec_Scale( rvec_temp, CEval8, p_ijk->dcos_dk );
+                        rvec_Scale( rvec_temp, CEval8, TBL.dcos_dk[num_thb_intrs] );
 #if !defined(GPU_ACCUM_ATOMIC)
                         rvec_Add( BL.va_f[pk], rvec_temp );
 #else
@@ -1654,6 +1657,7 @@ GPU_GLOBAL void k_valence_angles_virial_part1( reax_atom const * const my_atoms,
 #endif
 
 #undef BL
+#undef TBL
 }
 
 
@@ -1726,7 +1730,9 @@ GPU_GLOBAL void k_estimate_valence_angles( reax_atom const * const my_atoms,
             }
         }
 
-        count[ pi ] = num_thb_intrs;
+        /* round up to the nearest multiple of warp size to ensure that reads along
+         * rows can be coalesced */
+        count[pi] = (num_thb_intrs + warpSize - 1) / warpSize * warpSize;
     }
 
 #undef BL
@@ -1786,7 +1792,9 @@ GPU_GLOBAL void k_estimate_valence_angles_opt( reax_atom const * const my_atoms,
 
         if ( lane_id == 0 )
         {
-            count[ pi ] = num_thb_intrs;
+            /* round up to the nearest multiple of warp size to ensure that reads along
+             * rows can be coalesced */
+            count[pi] = (num_thb_intrs + warpSize - 1) / warpSize * warpSize;
         }
     }
 
@@ -1807,15 +1815,13 @@ static int Cuda_Estimate_Storage_Three_Body( reax_system * const system,
 
 //    k_estimate_valence_angles <<< control->blocks_N, control->gpu_block_size,
 //                              0, control->cuda_streams[3] >>>
-//        ( system->d_my_atoms, control->thb_cut, *(lists[BONDS]), 
-//          system->n, system->N, thbody );
+//        ( system->d_my_atoms, control->thb_cut, *(lists[BONDS]), system->n, system->N, thbody );
 //    cudaCheckError( );
 
     k_estimate_valence_angles_opt <<< control->blocks_warp_N, control->gpu_block_size,
                               sizeof(cub::WarpReduce<int>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                               control->cuda_streams[3] >>>
-        ( system->d_my_atoms, control->thb_cut, *(lists[BONDS]), 
-          system->n, system->N, thbody );
+        ( system->d_my_atoms, control->thb_cut, *(lists[BONDS]), system->n, system->N, thbody );
     cudaCheckError( );
 
     Cuda_Reduction_Sum( thbody, system->d_total_thbodies, system->total_bonds,

@@ -248,6 +248,7 @@ extern "C" void Cuda_Copy_List_Device_to_Host( control_params *control,
             break;
 
         case TYP_THREE_BODY:
+            //TODO: update for three_body_list_gpu (convert between data struct formats)
             sCudaMemcpyAsync( host_list->three_body_list,
                     device_list->three_body_list,
                     sizeof(three_body_interaction_data ) * device_list->max_intrs,

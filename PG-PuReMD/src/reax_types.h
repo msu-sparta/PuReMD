@@ -666,6 +666,9 @@ typedef struct reax_timing reax_timing;
 typedef struct energy_data energy_data;
 typedef struct simulation_data simulation_data;
 typedef struct three_body_interaction_data three_body_interaction_data;
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
+typedef struct three_body_interaction_data_gpu three_body_interaction_data_gpu;
+#endif
 typedef struct far_neighbor_data far_neighbor_data;
 typedef struct hbond_data hbond_data;
 typedef struct dDelta_data dDelta_data;
@@ -2032,6 +2035,26 @@ struct three_body_interaction_data
 };
 
 
+/**/
+struct three_body_interaction_data_gpu
+{
+    /**/
+    int *thb;
+    /* pointer to the third body on the central atom's nbrlist */
+    int *pthb;
+    /**/
+    real *theta;
+    /**/
+    real *cos_theta;
+    /**/
+    rvec *dcos_di;
+    /**/
+    rvec *dcos_dj;
+    /**/
+    rvec *dcos_dk;
+};
+
+
 /* info. about a far neighbor to an atom */
 struct far_neighbor_data
 {
@@ -2565,9 +2588,14 @@ struct reax_list
     void *v;
     /* three body type */
     three_body_interaction_data *three_body_list;
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
+    /* three body type (GPU) */
+    three_body_interaction_data_gpu three_body_list_gpu;
+#endif
     /* bond type */
     bond_data *bond_list;
 #if defined(HAVE_CUDA) || defined(HAVE_HIP)
+    /* bond type (GPU) */
     bond_data_gpu bond_list_gpu;
 #endif
     /* derivative bond order type */

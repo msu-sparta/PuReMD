@@ -153,9 +153,20 @@ extern "C" void Cuda_Make_List( int n, int max_intrs, int type, reax_list * cons
             break;            
 
         case TYP_THREE_BODY:
-            sCudaMalloc( (void **) &l->three_body_list,
-                    sizeof(three_body_interaction_data) * l->max_intrs,
-                    __FILE__, __LINE__ );
+            sCudaMalloc( (void **) &l->three_body_list_gpu.thb,
+                    sizeof(int) * l->max_intrs, __FILE__, __LINE__ );
+            sCudaMalloc( (void **) &l->three_body_list_gpu.pthb,
+                    sizeof(int) * l->max_intrs, __FILE__, __LINE__ );
+            sCudaMalloc( (void **) &l->three_body_list_gpu.theta,
+                    sizeof(real) * l->max_intrs, __FILE__, __LINE__ );
+            sCudaMalloc( (void **) &l->three_body_list_gpu.cos_theta,
+                    sizeof(real) * l->max_intrs, __FILE__, __LINE__ );
+            sCudaMalloc( (void **) &l->three_body_list_gpu.dcos_di,
+                    sizeof(rvec) * l->max_intrs, __FILE__, __LINE__ );
+            sCudaMalloc( (void **) &l->three_body_list_gpu.dcos_dj,
+                    sizeof(rvec) * l->max_intrs, __FILE__, __LINE__ );
+            sCudaMalloc( (void **) &l->three_body_list_gpu.dcos_dk,
+                    sizeof(rvec) * l->max_intrs, __FILE__, __LINE__ );
             break;
 
         default:
@@ -243,7 +254,13 @@ extern "C" void Cuda_Delete_List( reax_list *l )
             break;
 
         case TYP_THREE_BODY:
-            sCudaFree( l->three_body_list, __FILE__, __LINE__ );
+            sCudaFree( l->three_body_list_gpu.thb, __FILE__, __LINE__ );
+            sCudaFree( l->three_body_list_gpu.pthb, __FILE__, __LINE__ );
+            sCudaFree( l->three_body_list_gpu.theta, __FILE__, __LINE__ );
+            sCudaFree( l->three_body_list_gpu.cos_theta, __FILE__, __LINE__ );
+            sCudaFree( l->three_body_list_gpu.dcos_di, __FILE__, __LINE__ );
+            sCudaFree( l->three_body_list_gpu.dcos_dj, __FILE__, __LINE__ );
+            sCudaFree( l->three_body_list_gpu.dcos_dk, __FILE__, __LINE__ );
             break;
 
         default:
