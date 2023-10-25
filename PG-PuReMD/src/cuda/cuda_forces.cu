@@ -2985,7 +2985,7 @@ extern "C" int Cuda_Compute_Forces( reax_system * const system, control_params *
             data->timing.hbonds += (real) (time_elapsed / 1000.0);
         }
 
-#if !defined(USE_FUSED_VDW_COULOMB)
+#if !defined(FUSED_VDW_COULOMB)
         cudaEventElapsedTime( &time_elapsed, control->cuda_time_events[TE_VDW_START],
                 control->cuda_time_events[TE_VDW_STOP] ); 
         data->timing.nonb += (real) (time_elapsed / 1000.0);

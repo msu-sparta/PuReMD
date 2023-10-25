@@ -24,7 +24,9 @@
 #include "cuda_valence_angles.h"
 #include "cuda_helpers.h"
 #include "cuda_list.h"
-#include "cuda_reduction.h"
+#if !defined(GPU_ATOMIC_EV)
+  #include "cuda_reduction.h"
+#endif
 #include "cuda_utils.h"
 
 #include "../index_utils.h"
@@ -156,10 +158,10 @@ GPU_GLOBAL void k_hydrogen_bonds_part1( reax_atom const * const my_atoms,
                     atomicAdd( &BL.Cdbo[pi], CEhb1 );
 
                     /* dcos terms */
-#if !defined(GPU_ACCUM_ATOMIC)
-                    rvec_ScaledAdd( BL.hb_f[pi], CEhb2, dcos_theta_di ); 
-#else
+#if defined(GPU_ACCUM_ATOMIC)
                     atomic_rvecScaledAdd( f[i], CEhb2, dcos_theta_di );
+#else
+                    rvec_ScaledAdd( BL.hb_f[pi], CEhb2, dcos_theta_di ); 
 #endif
                     rvec_ScaledAdd( f_j, CEhb2, dcos_theta_dj );
                     rvec_ScaledAdd( f_k, CEhb2, dcos_theta_dk );
@@ -170,10 +172,10 @@ GPU_GLOBAL void k_hydrogen_bonds_part1( reax_atom const * const my_atoms,
                 }
             }
 
-#if !defined(GPU_ACCUM_ATOMIC)
-            rvec_Copy( hbond_list.hbond_list.hb_f[pk], f_k );
-#else
+#if defined(GPU_ACCUM_ATOMIC)
             atomic_rvecAdd( f[k], f_k );
+#else
+            rvec_Copy( hbond_list.hbond_list.hb_f[pk], f_k );
 #endif
         }
 
@@ -182,12 +184,15 @@ GPU_GLOBAL void k_hydrogen_bonds_part1( reax_atom const * const my_atoms,
             free( hblist );
         }
 
-#if !defined(GPU_ACCUM_ATOMIC)
-        rvec_Copy( f[j], f_j );
-        e_hb_g[j] = e_hb_;
-#else
+#if defined(GPU_ACCUM_ATOMIC)
         atomic_rvecAdd( f[j], f_j );
+#else
+        rvec_Copy( f[j], f_j );
+#endif
+#if defined(GPU_ATOMIC_EV)
         atomicAdd( (double *) e_hb_g, (double) e_hb_ );
+#else
+        e_hb_g[j] = e_hb_;
 #endif
     }
 
@@ -299,10 +304,10 @@ GPU_GLOBAL void k_hydrogen_bonds_part1_opt( reax_atom const * const my_atoms,
                         atomicAdd( &BL.Cdbo[pi], CEhb1 );
 
                         /* dcos terms */
-#if !defined(GPU_ACCUM_ATOMIC)
-                        rvec_ScaledAdd( BL.hb_f[pi], CEhb2, dcos_theta_di ); 
-#else
+#if defined(GPU_ACCUM_ATOMIC)
                         atomic_rvecScaledAdd( f[i], CEhb2, dcos_theta_di );
+#else
+                        rvec_ScaledAdd( BL.hb_f[pi], CEhb2, dcos_theta_di ); 
 #endif
                         rvec_ScaledAdd( f_j, CEhb2, dcos_theta_dj );
                         rvec_ScaledAdd( f_k, CEhb2, dcos_theta_dk );
@@ -322,10 +327,10 @@ GPU_GLOBAL void k_hydrogen_bonds_part1_opt( reax_atom const * const my_atoms,
 
             if ( lane_id == 0 )
             {
-#if !defined(GPU_ACCUM_ATOMIC)
-                rvec_Copy( hbond_list.hbond_list.hb_f[pk], f_k );
-#else
+#if defined(GPU_ACCUM_ATOMIC)
                 atomic_rvecAdd( f[k], f_k );
+#else
+                rvec_Copy( hbond_list.hbond_list.hb_f[pk], f_k );
 #endif
             }
         }
@@ -337,13 +342,16 @@ GPU_GLOBAL void k_hydrogen_bonds_part1_opt( reax_atom const * const my_atoms,
 
         if ( lane_id == 0 )
         {
-#if !defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_ACCUM_ATOMIC)
+            atomic_rvecAdd( f[j], f_j );
+#else
             /* write conflicts for accumulating partial forces resolved by subsequent kernels */
             rvec_Copy( f[j], f_j );
-            e_hb_g[j] = e_hb_;
-#else
-            atomic_rvecAdd( f[j], f_j );
+#endif
+#if defined(GPU_ATOMIC_EV)
             atomicAdd( (double *) e_hb_g, (double) e_hb_ );
+#else
+            e_hb_g[j] = e_hb_;
 #endif
         }
     }
@@ -369,10 +377,7 @@ GPU_GLOBAL void k_hydrogen_bonds_virial_part1( reax_atom const * const my_atoms,
     real r_ij, r_jk, theta, cos_theta, sin_xhz4, cos_xhz1, sin_theta2;
     real e_hb, e_hb_, exp_hb2, exp_hb3, CEhb1, CEhb2, CEhb3;
     rvec dcos_theta_di, dcos_theta_dj, dcos_theta_dk;
-    rvec dvec_jk, temp, ext_press_l;
-#if defined(GPU_ACCUM_ATOMIC)
-    rvec f_j;
-#endif
+    rvec dvec_jk, temp, ext_press_l, f_j;
 #define BL (bond_list.bond_list_gpu)
 
     j = blockIdx.x * blockDim.x + threadIdx.x;
@@ -384,9 +389,7 @@ GPU_GLOBAL void k_hydrogen_bonds_virial_part1( reax_atom const * const my_atoms,
 
     e_hb_ = 0.0;
     rvec_MakeZero( ext_press_l );
-#if defined(GPU_ACCUM_ATOMIC)
     rvec_MakeZero( f_j );
-#endif
 
     /* discover the Hydrogen bonds between i-j-k triplets.
      * here j is H atom and there has to be some bond between i and j.
@@ -482,37 +485,15 @@ GPU_GLOBAL void k_hydrogen_bonds_virial_part1( reax_atom const * const my_atoms,
                     /* dbo term */
                     atomicAdd( &BL.Cdbo[pi], CEhb1 );
 
-#if !defined(GPU_ACCUM_ATOMIC)
                     /* for pressure coupling, terms that are not related to bond order
                      * derivatives are added directly into pressure vector/tensor */
                     /* dcos terms */
                     rvec_Scale( temp, CEhb2, dcos_theta_di );
-                    rvec_Add( BL.hb_f[pi], temp );
-                    rvec_iMultiply( temp, BL.rel_box[pi], temp );
-                    rvec_Add( ext_press_l, temp );
-
-                    rvec_ScaledAdd( f[j], CEhb2, dcos_theta_dj );
-
-                    ivec_Scale( rel_jk, hbond_list.hbond_list.scl[pk],
-                            far_nbr_list.far_nbr_list.rel_box[nbr_jk] );
-                    rvec_Scale( temp, CEhb2, dcos_theta_dk );
-                    rvec_Add( hbond_list.hbond_list.hb_f[pk], temp );
-                    rvec_iMultiply( temp, rel_jk, temp );
-                    rvec_Add( ext_press_l, temp );
-
-                    /* dr terms */
-                    rvec_ScaledAdd( f[j], -1.0 * CEhb3 / r_jk, dvec_jk ); 
-
-                    rvec_Scale( temp, CEhb3 / r_jk, dvec_jk );
-                    rvec_Add( hbond_list.hbond_list.hb_f[pk], temp );
-                    rvec_iMultiply( temp, rel_jk, temp );
-                    rvec_Add( ext_press_l, temp );
-#else
-                    /* for pressure coupling, terms that are not related to bond order
-                     * derivatives are added directly into pressure vector/tensor */
-                    /* dcos terms */
-                    rvec_Scale( temp, CEhb2, dcos_theta_di );
+#if defined(GPU_ACCUM_ATOMIC)
                     atomic_rvecAdd( f[i], temp );
+#else
+                    rvec_Add( BL.hb_f[pi], temp );
+#endif
                     rvec_iMultiply( temp, BL.rel_box[pi], temp );
                     rvec_Add( ext_press_l, temp );
 
@@ -521,7 +502,11 @@ GPU_GLOBAL void k_hydrogen_bonds_virial_part1( reax_atom const * const my_atoms,
                     ivec_Scale( rel_jk, hbond_list.hbond_list.scl[pk],
                             far_nbr_list.far_nbr_list.rel_box[nbr_jk] );
                     rvec_Scale( temp, CEhb2, dcos_theta_dk );
+#if defined(GPU_ACCUM_ATOMIC)
                     atomic_rvecAdd( f[k], temp );
+#else
+                    rvec_Add( hbond_list.hbond_list.hb_f[pk], temp );
+#endif
                     rvec_iMultiply( temp, rel_jk, temp );
                     rvec_Add( ext_press_l, temp );
 
@@ -529,10 +514,13 @@ GPU_GLOBAL void k_hydrogen_bonds_virial_part1( reax_atom const * const my_atoms,
                     rvec_ScaledAdd( f_j, -1.0 * CEhb3 / r_jk, dvec_jk ); 
 
                     rvec_Scale( temp, CEhb3 / r_jk, dvec_jk );
+#if defined(GPU_ACCUM_ATOMIC)
                     atomic_rvecAdd( f[k], temp );
+#else
+                    rvec_Add( hbond_list.hbond_list.hb_f[pk], temp );
+#endif
                     rvec_iMultiply( temp, rel_jk, temp );
                     rvec_Add( ext_press_l, temp );
-#endif
                 }
             }
         }
@@ -543,13 +531,17 @@ GPU_GLOBAL void k_hydrogen_bonds_virial_part1( reax_atom const * const my_atoms,
         }
     }
 
-#if !defined(GPU_ACCUM_ATOMIC)
-    e_hb_g[j] = e_hb_;
-    rvec_Copy( ext_press_g[j], ext_press_l );
-#else
+#if defined(GPU_ACCUM_ATOMIC)
     atomic_rvecAdd( f[j], f_j );
-    atomicAdd( (double *) e_hb_g, (double) e_hb_ );
     atomic_rvecAdd( *ext_press_g, ext_press_l );
+#else
+    rvec_Add( f[j], f_j );
+    rvec_Copy( ext_press_g[j], ext_press_l );
+#endif
+#if defined(GPU_ATOMIC_EV)
+    atomicAdd( (double *) e_hb_g, (double) e_hb_ );
+#else
+    e_hb_g[j] = e_hb_;
 #endif
 
 #undef BL
@@ -711,7 +703,7 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
         output_controls const * const out_control )
 {
 //    int hbs, hnbrs_blocks;
-#if !defined(GPU_ACCUM_ATOMIC)
+#if !defined(GPU_ATOMIC_EV)
     int update_energy;
     real *spad;
     rvec *rvec_spad;
@@ -721,7 +713,7 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
     cudaEventRecord( control->cuda_time_events[TE_HBONDS_START], control->cuda_streams[2] );
 #endif
 
-#if !defined(GPU_ACCUM_ATOMIC)
+#if !defined(GPU_ATOMIC_EV)
     sCudaCheckMalloc( &workspace->scratch[2], &workspace->scratch_size[2],
             (sizeof(real) * 3 + sizeof(rvec)) * system->N + sizeof(rvec) * control->blocks_N,
             __FILE__, __LINE__ );
@@ -744,13 +736,17 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
     {
 //        k_hydrogen_bonds_part1 <<< control->blocks_n, control->gpu_block_size, 0, control->cuda_streams[2] >>>
 //                ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_hbp,
-//                  workspace->d_workspace->f, *(lists[FAR_NBRS]),
-//                  *(lists[BONDS]), *(lists[HBONDS]),
-//                  system->n, system->reax_param.num_atom_types,
-//#if !defined(GPU_ACCUM_ATOMIC)
-//                  spad
+//#if defined(GPU_STREAM_SINGLE_ACCUM)
+//                  workspace->d_workspace->f,
 //#else
+//                  workspace->d_workspace->f_hb,
+//#endif
+//                  *(lists[FAR_NBRS]), *(lists[BONDS]), *(lists[HBONDS]),
+//                  system->n, system->reax_param.num_atom_types,
+//#if defined(GPU_ATOMIC_EV)
 //                  &data->d_my_en->e_hb
+//#else
+//                  spad
 //#endif
 //                );
         
@@ -758,13 +754,17 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
                                    sizeof(cub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                    control->cuda_streams[2] >>>
                 ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_hbp,
-                  workspace->d_workspace->f, *(lists[FAR_NBRS]),
-                  *(lists[BONDS]), *(lists[HBONDS]),
-                  system->n, system->reax_param.num_atom_types,
-#if !defined(GPU_ACCUM_ATOMIC)
-                  spad
+#if defined(GPU_STREAM_SINGLE_ACCUM)
+                  workspace->d_workspace->f,
 #else
+                  workspace->d_workspace->f_hb,
+#endif
+                  *(lists[FAR_NBRS]), *(lists[BONDS]), *(lists[HBONDS]),
+                  system->n, system->reax_param.num_atom_types,
+#if defined(GPU_ATOMIC_EV)
                   &data->d_my_en->e_hb
+#else
+                  spad
 #endif
                 );
     }
@@ -773,19 +773,23 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
         k_hydrogen_bonds_virial_part1 <<< control->blocks_n, control->gpu_block_size,
                                       0, control->cuda_streams[2] >>>
                 ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_hbp,
-                  workspace->d_workspace->f, *(lists[FAR_NBRS]),
-                  *(lists[BONDS]), *(lists[HBONDS]),
-                  system->n, system->reax_param.num_atom_types,
-#if !defined(GPU_ACCUM_ATOMIC)
-                  spad, (rvec *) (&spad[system->n])
+#if defined(GPU_STREAM_SINGLE_ACCUM)
+                  workspace->d_workspace->f,
 #else
+                  workspace->d_workspace->f_hb,
+#endif
+                  *(lists[FAR_NBRS]), *(lists[BONDS]), *(lists[HBONDS]),
+                  system->n, system->reax_param.num_atom_types,
+#if defined(GPU_ATOMIC_EV)
                   &data->d_my_en->e_hb, &data->d_simulation_data->my_ext_press
+#else
+                  spad, (rvec *) (&spad[system->n])
 #endif
                 );
     }
     cudaCheckError( );
 
-#if !defined(GPU_ACCUM_ATOMIC)
+#if !defined(GPU_ATOMIC_EV)
     if ( update_energy == TRUE )
     {
         Cuda_Reduction_Sum( spad, &data->d_my_en->e_hb,
@@ -799,10 +803,17 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
         Cuda_Reduction_Sum( rvec_spad, &data->d_simulation_data->my_ext_press,
                 system->n, 2, control->cuda_streams[2] );
     }
+#endif
 
+#if !defined(GPU_ACCUM_ATOMIC)
     k_hydrogen_bonds_part2 <<< control->blocks_n, control->gpu_block_size,
                            0, control->cuda_streams[2] >>>
-        ( workspace->d_workspace->f, *(lists[BONDS]), system->n );
+#if defined(GPU_STREAM_SINGLE_ACCUM)
+        ( workspace->d_workspace->f,
+#else
+        ( workspace->d_workspace->f_hb,
+#endif
+          *(lists[BONDS]), system->n );
     cudaCheckError( );
 
 //    hnbrs_blocks = (system->n * HB_POST_PROC_KER_THREADS_PER_ATOM / HB_POST_PROC_BLOCK_SIZE) +
@@ -810,10 +821,23 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
 
     k_hydrogen_bonds_part3 <<< control->blocks_n, control->gpu_block_size,
                            0, control->cuda_streams[2] >>>
-        ( system->d_my_atoms, workspace->d_workspace->f, *(lists[HBONDS]), system->n );
+        ( system->d_my_atoms,
+#if defined(GPU_STREAM_SINGLE_ACCUM)
+          workspace->d_workspace->f,
+#else
+          workspace->d_workspace->f_hb,
+#endif
+          *(lists[HBONDS]), system->n );
+
 //    k_hydrogen_bonds_part3_opt <<< hnbrs_blocks, HB_POST_PROC_BLOCK_SIZE, 
 //            sizeof(rvec) * HB_POST_PROC_BLOCK_SIZE, control->cuda_streams[2] >>>
-//        ( system->d_my_atoms, workspace->d_workspace->f, *(lists[HBONDS]), system->n );
+//        ( system->d_my_atoms,
+//#if defined(GPU_STREAM_SINGLE_ACCUM)
+//          workspace->d_workspace->f,
+//#else
+//          workspace->d_workspace->f_hb,
+//#endif
+//          *(lists[HBONDS]), system->n );
     cudaCheckError( );
 #endif
 

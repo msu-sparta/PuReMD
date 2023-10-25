@@ -23,7 +23,7 @@
 
 #include "cuda_helpers.h"
 #include "cuda_list.h"
-#if !defined(GPU_ACCUM_ATOMIC)
+#if !defined(GPU_ATOMIC_EV)
   #include "cuda_reduction.h"
 #endif
 #include "cuda_utils.h"
@@ -105,11 +105,15 @@ GPU_GLOBAL void k_atom_energy_part1( reax_atom const * const my_atoms,
         }
     }
 
-    CdDelta[i] += CdDelta_i;
-#if !defined(GPU_ACCUM_ATOMIC)
-    e_lp_g[i] = e_lp;
+#if defined(GPU_STREAM_SINGLE_ACCUM)
+    atomicAdd( &CdDelta[i], CdDelta_i );
 #else
+    CdDelta[i] += CdDelta_i;
+#endif
+#if defined(GPU_ATOMIC_EV)
     atomicAdd( (double *) e_lp_g, (double) e_lp );
+#else
+    e_lp_g[i] = e_lp;
 #endif
 
 #undef BL
@@ -213,11 +217,15 @@ GPU_GLOBAL void k_atom_energy_part1_opt( reax_atom const * const my_atoms,
 
     if ( lane_id == 0 )
     {
-        CdDelta[i] += CdDelta_i;
-#if !defined(GPU_ACCUM_ATOMIC)
-        e_lp_g[i] = e_lp;
+#if defined(GPU_STREAM_SINGLE_ACCUM)
+        atomicAdd( &CdDelta[i], CdDelta_i );
 #else
+        CdDelta[i] += CdDelta_i;
+#endif
+#if defined(GPU_ATOMIC_EV)
         atomicAdd( (double *) e_lp_g, (double) e_lp );
+#else
+        e_lp_g[i] = e_lp;
 #endif
     }
 
@@ -295,10 +303,10 @@ GPU_GLOBAL void k_atom_energy_part2( reax_atom const * const my_atoms,
     DlpVi = 1.0 / (Delta_lpcorr + sbp[type_i].valency + 1.0e-8);
     CEover1 = Delta_lpcorr * DlpVi * inv_exp_ovun2;
 
-#if !defined(GPU_ACCUM_ATOMIC)
-    e_ov_g[i] = sum_ovun1 * CEover1;
-#else
+#if defined(GPU_ATOMIC_EV)
     atomicAdd( (double *) e_ov_g, (double) (sum_ovun1 * CEover1) );
+#else
+    e_ov_g[i] = sum_ovun1 * CEover1;
 #endif
 
     CEover2 = sum_ovun1 * DlpVi * inv_exp_ovun2 * (1.0 - Delta_lpcorr
@@ -317,10 +325,10 @@ GPU_GLOBAL void k_atom_energy_part2( reax_atom const * const my_atoms,
     inv_exp_ovun8 = 1.0 / (1.0 + exp_ovun8);
 
     e_un = -p_ovun5 * (1.0 - exp_ovun6) * inv_exp_ovun2n * inv_exp_ovun8;
-#if !defined(GPU_ACCUM_ATOMIC)
-    e_un_g[i] = e_un;
-#else
+#if defined(GPU_ATOMIC_EV)
     atomicAdd( (double *) e_un_g, (double) e_un );
+#else
+    e_un_g[i] = e_un;
 #endif
 
     CEunder1 = inv_exp_ovun2n * ( p_ovun5 * p_ovun6 * exp_ovun6 * inv_exp_ovun8
@@ -332,10 +340,10 @@ GPU_GLOBAL void k_atom_energy_part2( reax_atom const * const my_atoms,
 
     /* forces */
     // OvCoor - 2nd term, UnCoor - 1st term
-#if !defined(GPU_ACCUM_ATOMIC)
-    CdDelta[i] += CEover3 + CEunder3;
-#else
+#if defined(GPU_ACCUM_ATOMIC)
     atomicAdd( &CdDelta[i], CEover3 + CEunder3 );
+#else
+    CdDelta[i] += CEover3 + CEunder3;
 #endif
 
     for ( pj = Start_Index(i, &bond_list); pj < End_Index(i, &bond_list); ++pj )
@@ -346,12 +354,12 @@ GPU_GLOBAL void k_atom_energy_part2( reax_atom const * const my_atoms,
         // OvCoor-1st 
         atomicAdd( &BL.Cdbo[pj], CEover1 * tbp[tbp_ij].p_ovun1 * tbp[tbp_ij].De_s );
         // OvCoor-3a, UnCoor - 2a
-#if !defined(GPU_ACCUM_ATOMIC)
-        BL.ae_CdDelta[pj] += (CEover4 + CEunder4) * (1.0 - dfvl * dDelta_lp[j])
-            * (BL.BO_pi[pj] + BL.BO_pi2[pj]);
-#else
+#if defined(GPU_ACCUM_ATOMIC)
         atomicAdd( &CdDelta[j], (CEover4 + CEunder4) * (1.0 - dfvl * dDelta_lp[j])
             * (BL.BO_pi[pj] + BL.BO_pi2[pj]) );
+#else
+        BL.ae_CdDelta[pj] += (CEover4 + CEunder4) * (1.0 - dfvl * dDelta_lp[j])
+            * (BL.BO_pi[pj] + BL.BO_pi2[pj]);
 #endif
         // OvCoor-3b, UnCoor-2b
         atomicAdd( &BL.Cdbopi[pj], (CEover4 + CEunder4) * (Delta[j] - dfvl
@@ -457,10 +465,10 @@ GPU_GLOBAL void k_atom_energy_part2_opt( reax_atom const * const my_atoms,
 
     if ( lane_id == 0 )
     {
-#if !defined(GPU_ACCUM_ATOMIC)
-        e_ov_g[i] = sum_ovun1 * CEover1;
-#else
+#if defined(GPU_ATOMIC_EV)
         atomicAdd( (double *) e_ov_g, (double) (sum_ovun1 * CEover1) );
+#else
+        e_ov_g[i] = sum_ovun1 * CEover1;
 #endif
     }
 
@@ -482,10 +490,10 @@ GPU_GLOBAL void k_atom_energy_part2_opt( reax_atom const * const my_atoms,
     e_un = -p_ovun5 * (1.0 - exp_ovun6) * inv_exp_ovun2n * inv_exp_ovun8;
     if ( lane_id == 0 )
     {
-#if !defined(GPU_ACCUM_ATOMIC)
-        e_un_g[i] = e_un;
-#else
+#if defined(GPU_ATOMIC_EV)
         atomicAdd( (double *) e_un_g, (double) e_un );
+#else
+        e_un_g[i] = e_un;
 #endif
     }
 
@@ -507,10 +515,10 @@ GPU_GLOBAL void k_atom_energy_part2_opt( reax_atom const * const my_atoms,
 
     if ( lane_id == 0 )
     {
-#if !defined(GPU_ACCUM_ATOMIC)
-        CdDelta[i] += CdDelta_i;
-#else
+#if defined(GPU_ACCUM_ATOMIC)
         atomicAdd( &CdDelta[i], CdDelta_i );
+#else
+        CdDelta[i] += CdDelta_i;
 #endif
     }
 
@@ -524,12 +532,12 @@ GPU_GLOBAL void k_atom_energy_part2_opt( reax_atom const * const my_atoms,
             // OvCoor-1st 
             atomicAdd( &BL.Cdbo[pj], CEover1 * tbp[tbp_ij].p_ovun1 * tbp[tbp_ij].De_s );
             // OvCoor-3a, UnCoor - 2a
-#if !defined(GPU_ACCUM_ATOMIC)
-            BL.ae_CdDelta[pj] += (CEover4 + CEunder4) * (1.0 - dfvl * dDelta_lp[j])
-                * (BL.BO_pi[pj] + BL.BO_pi2[pj]);
-#else
+#if defined(GPU_ACCUM_ATOMIC)
             atomicAdd( &CdDelta[j], (CEover4 + CEunder4) * (1.0 - dfvl * dDelta_lp[j])
                 * (BL.BO_pi[pj] + BL.BO_pi2[pj]) );
+#else
+            BL.ae_CdDelta[pj] += (CEover4 + CEunder4) * (1.0 - dfvl * dDelta_lp[j])
+                * (BL.BO_pi[pj] + BL.BO_pi2[pj]);
 #endif
             // OvCoor-3b, UnCoor-2b
             atomicAdd( &BL.Cdbopi[pj], (CEover4 + CEunder4) * (Delta[j] - dfvl
@@ -575,7 +583,7 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
         storage * const workspace, reax_list ** lists,
         output_controls const * const out_control )
 {
-#if !defined(GPU_ACCUM_ATOMIC)
+#if !defined(GPU_ATOMIC_EV)
     int update_energy;
     real *spad;
 #endif
@@ -584,20 +592,20 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
     cudaEventRecord( control->cuda_time_events[TE_LPOVUN_START], control->cuda_streams[0] );
 #endif
 
-#if !defined(GPU_ACCUM_ATOMIC)
-    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
-            sizeof(real) * 3 * system->n, __FILE__, __LINE__ );
-
-    spad = (real *) workspace->scratch[0];
-    update_energy = (out_control->energy_update_freq > 0
-            && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
-#else
+#if defined(GPU_ATOMIC_EV)
     sCudaMemsetAsync( &data->d_my_en->e_lp,
             0, sizeof(real), control->cuda_streams[0], __FILE__, __LINE__ );
     sCudaMemsetAsync( &data->d_my_en->e_ov,
             0, sizeof(real), control->cuda_streams[0], __FILE__, __LINE__ );
     sCudaMemsetAsync( &data->d_my_en->e_un,
             0, sizeof(real), control->cuda_streams[0], __FILE__, __LINE__ );
+#else
+    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
+            sizeof(real) * 3 * system->n, __FILE__, __LINE__ );
+
+    spad = (real *) workspace->scratch[0];
+    update_energy = (out_control->energy_update_freq > 0
+            && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
 #endif
 
 //    k_atom_energy_part1 <<< control->blocks_n, control->gpu_block_size,
@@ -605,11 +613,16 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
 //        ( system->d_my_atoms, system->reax_param.gp.d_l,
 //          system->reax_param.d_sbp, workspace->d_workspace->Delta,
 //          workspace->d_workspace->Delta_lp, workspace->d_workspace->dDelta_lp,
-//          workspace->d_workspace->CdDelta, *(lists[BONDS]), system->n, system->reax_param.num_atom_types,
-//#if !defined(GPU_ACCUM_ATOMIC)
-//          spad
+//#if defined(GPU_STREAM_SINGLE_ACCUM)
+//          workspace->d_workspace->CdDelta,
 //#else
+//          workspace->d_workspace->CdDelta_multi,
+//#endif
+//          *(lists[BONDS]), system->n, system->reax_param.num_atom_types,
+//#if defined(GPU_ATOMIC_EV)
 //          &data->d_my_en->e_lp
+//#else
+//          spad
 //#endif
 //         );
 //    cudaCheckError( );
@@ -620,12 +633,16 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
         ( system->d_my_atoms, system->reax_param.gp.d_l,
           system->reax_param.d_sbp, workspace->d_workspace->Delta,
           workspace->d_workspace->Delta_lp, workspace->d_workspace->dDelta_lp,
-          workspace->d_workspace->CdDelta, *(lists[BONDS]), system->n,
-          system->reax_param.num_atom_types,
-#if !defined(GPU_ACCUM_ATOMIC)
-          spad
+#if defined(GPU_STREAM_SINGLE_ACCUM)
+          workspace->d_workspace->CdDelta,
 #else
+          workspace->d_workspace->CdDelta_multi,
+#endif
+          *(lists[BONDS]), system->n, system->reax_param.num_atom_types,
+#if defined(GPU_ATOMIC_EV)
           &data->d_my_en->e_lp
+#else
+          spad
 #endif
          );
     cudaCheckError( );
@@ -635,13 +652,16 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
 //        ( system->d_my_atoms, system->reax_param.gp.d_l,
 //          system->reax_param.d_sbp, system->reax_param.d_tbp, workspace->d_workspace->Delta,
 //          workspace->d_workspace->Delta_lp_temp, workspace->d_workspace->dDelta_lp,
-//          workspace->d_workspace->CdDelta, *(lists[BONDS]),
-//          system->n, system->reax_param.num_atom_types,
-//#if !defined(GPU_ACCUM_ATOMIC)
-//          &spad[system->n], &spad[2 * system->n]
+//#if defined(GPU_STREAM_SINGLE_ACCUM)
+//          workspace->d_workspace->CdDelta,
 //#else
-//          &data->d_my_en->e_ov,
-//          &data->d_my_en->e_un
+//          workspace->d_workspace->CdDelta_multi,
+//#endif
+//          *(lists[BONDS]), system->n, system->reax_param.num_atom_types,
+//#if defined(GPU_ATOMIC_EV)
+//          &data->d_my_en->e_ov, &data->d_my_en->e_un
+//#else
+//          &spad[system->n], &spad[2 * system->n]
 //#endif
 //         );
 //    cudaCheckError( );
@@ -652,12 +672,16 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
         ( system->d_my_atoms, system->reax_param.gp.d_l,
           system->reax_param.d_sbp, system->reax_param.d_tbp, workspace->d_workspace->Delta,
           workspace->d_workspace->Delta_lp_temp, workspace->d_workspace->dDelta_lp,
-          workspace->d_workspace->CdDelta, *(lists[BONDS]),
-          system->n, system->reax_param.num_atom_types,
-#if !defined(GPU_ACCUM_ATOMIC)
-          &spad[system->n], &spad[2 * system->n]
+#if defined(GPU_STREAM_SINGLE_ACCUM)
+          workspace->d_workspace->CdDelta,
 #else
+          workspace->d_workspace->CdDelta_multi,
+#endif
+          *(lists[BONDS]), system->n, system->reax_param.num_atom_types,
+#if defined(GPU_ATOMIC_EV)
           &data->d_my_en->e_ov, &data->d_my_en->e_un
+#else
+          &spad[system->n], &spad[2 * system->n]
 #endif
          );
     cudaCheckError( );
@@ -665,9 +689,17 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
 #if !defined(GPU_ACCUM_ATOMIC)
     k_atom_energy_part3 <<< control->blocks_n, control->gpu_block_size,
                         0, control->cuda_streams[0] >>>
-        ( *(lists[BONDS]), workspace->d_workspace->CdDelta, system->n );
+        ( *(lists[BONDS]),
+#if defined(GPU_STREAM_SINGLE_ACCUM)
+          workspace->d_workspace->CdDelta,
+#else
+          workspace->d_workspace->CdDelta_multi,
+#endif
+          system->n );
     cudaCheckError( );
+#endif
 
+#if !defined(GPU_ATOMIC_EV)
     if ( update_energy == TRUE )
     {
         Cuda_Reduction_Sum( spad, &data->d_my_en->e_lp, system->n, 0,

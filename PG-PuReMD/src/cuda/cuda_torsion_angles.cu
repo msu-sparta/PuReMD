@@ -23,7 +23,7 @@
 
 #include "cuda_list.h"
 #include "cuda_helpers.h"
-#if !defined(GPU_ACCUM_ATOMIC)
+#if !defined(GPU_ATOMIC_EV)
   #include "cuda_reduction.h"
 #endif
 #include "cuda_valence_angles.h"
@@ -421,10 +421,10 @@ GPU_GLOBAL void k_torsion_angles_part1( reax_atom const * const my_atoms,
                                             CdDelta_k += CEtors3;
                                             Cdbo_ij += (CEtors4 + CEconj1);
                                             Cdbo_jk += (CEtors5 + CEconj2);
-#if !defined(GPU_ACCUM_ATOMIC)
-                                            atomicAdd( &BL.ta_Cdbo[plk], CEtors6 + CEconj3 );
-#else
+#if defined(GPU_ACCUM_ATOMIC)
                                             atomicAdd( &BL.Cdbo[plk], CEtors6 + CEconj3 );
+#else
+                                            atomicAdd( &BL.ta_Cdbo[plk], CEtors6 + CEconj3 );
 #endif
 
                                             /* dcos_theta_ijk */
@@ -435,61 +435,64 @@ GPU_GLOBAL void k_torsion_angles_part1( reax_atom const * const my_atoms,
                                             /* dcos_theta_jkl */
                                             rvec_ScaledAdd( f_j, CEtors8 + CEconj5, TBL.dcos_di[pl] );
                                             rvec_ScaledAdd( f_k, CEtors8 + CEconj5, TBL.dcos_dj[pl] );
-#if !defined(GPU_ACCUM_ATOMIC)
-                                            atomic_rvecScaledAdd( BL.ta_f[plk], CEtors8 + CEconj5, TBL.dcos_dk[pl] );
-#else
+#if defined(GPU_ACCUM_ATOMIC)
                                             atomic_rvecScaledAdd( f[l], CEtors8 + CEconj5, TBL.dcos_dk[pl] );
+#else
+                                            atomic_rvecScaledAdd( BL.ta_f[plk], CEtors8 + CEconj5, TBL.dcos_dk[pl] );
 #endif
 
                                             /* dcos_omega */
                                             rvec_ScaledAdd( f_i, CEtors9 + CEconj6, dcos_omega_di );
                                             rvec_ScaledAdd( f_j, CEtors9 + CEconj6, dcos_omega_dj );
                                             rvec_ScaledAdd( f_k, CEtors9 + CEconj6, dcos_omega_dk );
-#if !defined(GPU_ACCUM_ATOMIC)
-                                            atomic_rvecScaledAdd( BL.ta_f[plk], CEtors9 + CEconj6, dcos_omega_dl );
-#else
+#if defined(GPU_ACCUM_ATOMIC)
                                             atomic_rvecScaledAdd( f[l], CEtors9 + CEconj6, dcos_omega_dl );
+#else
+                                            atomic_rvecScaledAdd( BL.ta_f[plk], CEtors9 + CEconj6, dcos_omega_dl );
 #endif
                                         } // pl check ends
                                     } // pl loop ends
 
-#if !defined(GPU_ACCUM_ATOMIC)
-                                BL.Cdbo[pij] += Cdbo_ij;
-                                atomic_rvecAdd( BL.ta_f[pij], f_i );
-#else
+#if defined(GPU_ACCUM_ATOMIC)
                                 atomicAdd( &BL.Cdbo[pij], Cdbo_ij );
                                 atomic_rvecAdd( f[i], f_i );
+#else
+                                BL.Cdbo[pij] += Cdbo_ij;
+                                atomic_rvecAdd( BL.ta_f[pij], f_i );
 #endif
                                 } // pi check ends
                             }
                         } // pi loop ends
 
-#if !defined(GPU_ACCUM_ATOMIC)
-                        BL.Cdbopi[pk] += Cdbopi_jk;
-                        BL.ta_CdDelta[pk] += CdDelta_k;
-                        BL.Cdbo[pk] += Cdbo_jk;
-                        atomic_rvecAdd( BL.ta_f[pk], f_k );
-#else
+#if defined(GPU_ACCUM_ATOMIC)
                         atomicAdd( &BL.Cdbopi[pk], Cdbopi_jk );
                         atomicAdd( &CdDelta[k], CdDelta_k );
                         atomicAdd( &BL.Cdbo[pk], Cdbo_jk );
                         atomic_rvecAdd( f[k], f_k );
+#else
+                        BL.Cdbopi[pk] += Cdbopi_jk;
+                        BL.ta_CdDelta[pk] += CdDelta_k;
+                        BL.Cdbo[pk] += Cdbo_jk;
+                        atomic_rvecAdd( BL.ta_f[pk], f_k );
 #endif
                     } // k-j neighbor check ends
                 } // j<k && j-k neighbor check ends
             } 
         } // pk loop ends
 
-#if !defined(GPU_ACCUM_ATOMIC)
-        CdDelta[j] += CdDelta_j;
-        rvec_Add( f[j], f_j );
-        e_tor_g[j] = e_tor_;
-        e_con_g[j] = e_con_;
-#else
+#if defined(GPU_ACCUM_ATOMIC)
         atomicAdd( &CdDelta[j], CdDelta_j );
         atomic_rvecAdd( f[j], f_j );
+#else
+        CdDelta[j] += CdDelta_j;
+        rvec_Add( f[j], f_j );
+#endif
+#if defined(GPU_ATOMIC_EV)
         atomicAdd( (double *) e_tor_g, (double) e_tor_ );
         atomicAdd( (double *) e_con_g, (double) e_con_ );
+#else
+        e_tor_g[j] = e_tor_;
+        e_con_g[j] = e_con_;
 #endif
     }
 
@@ -777,10 +780,10 @@ GPU_GLOBAL void k_torsion_angles_part1_opt( reax_atom const * const my_atoms,
                                                 CdDelta_k += CEtors3;
                                                 Cdbo_ij += (CEtors4 + CEconj1);
                                                 Cdbo_jk += (CEtors5 + CEconj2);
-#if !defined(GPU_ACCUM_ATOMIC)
-                                                atomicAdd( &BL.ta_Cdbo[plk], CEtors6 + CEconj3 );
-#else
+#if defined(GPU_ACCUM_ATOMIC)
                                                 atomicAdd( &BL.Cdbo[plk], CEtors6 + CEconj3 );
+#else
+                                                atomicAdd( &BL.ta_Cdbo[plk], CEtors6 + CEconj3 );
 #endif
 
                                                 /* dcos_theta_ijk */
@@ -791,20 +794,20 @@ GPU_GLOBAL void k_torsion_angles_part1_opt( reax_atom const * const my_atoms,
                                                 /* dcos_theta_jkl */
                                                 rvec_ScaledAdd( f_j, CEtors8 + CEconj5, TBL.dcos_di[pl] );
                                                 rvec_ScaledAdd( f_k, CEtors8 + CEconj5, TBL.dcos_dj[pl] );
-#if !defined(GPU_ACCUM_ATOMIC)
-                                                atomic_rvecScaledAdd( BL.ta_f[plk], CEtors8 + CEconj5, TBL.dcos_dk[pl] );
-#else
+#if defined(GPU_ACCUM_ATOMIC)
                                                 atomic_rvecScaledAdd( f[l], CEtors8 + CEconj5, TBL.dcos_dk[pl] );
+#else
+                                                atomic_rvecScaledAdd( BL.ta_f[plk], CEtors8 + CEconj5, TBL.dcos_dk[pl] );
 #endif
 
                                                 /* dcos_omega */
                                                 rvec_ScaledAdd( f_i, CEtors9 + CEconj6, dcos_omega_di );
                                                 rvec_ScaledAdd( f_j, CEtors9 + CEconj6, dcos_omega_dj );
                                                 rvec_ScaledAdd( f_k, CEtors9 + CEconj6, dcos_omega_dk );
-#if !defined(GPU_ACCUM_ATOMIC)
-                                                atomic_rvecScaledAdd( BL.ta_f[plk], CEtors9 + CEconj6, dcos_omega_dl );
-#else
+#if defined(GPU_ACCUM_ATOMIC)
                                                 atomic_rvecScaledAdd( f[l], CEtors9 + CEconj6, dcos_omega_dl );
+#else
+                                                atomic_rvecScaledAdd( BL.ta_f[plk], CEtors9 + CEconj6, dcos_omega_dl );
 #endif
                                             } // pl check ends
                                         }
@@ -819,12 +822,12 @@ GPU_GLOBAL void k_torsion_angles_part1_opt( reax_atom const * const my_atoms,
 
                                     if ( lane_id == 0 )
                                     {
-#if !defined(GPU_ACCUM_ATOMIC)
-                                        BL.Cdbo[pij] += Cdbo_ij;
-                                        atomic_rvecAdd( BL.ta_f[pij], f_i );
-#else
+#if defined(GPU_ACCUM_ATOMIC)
                                         atomicAdd( &BL.Cdbo[pij], Cdbo_ij );
                                         atomic_rvecAdd( f[i], f_i );
+#else
+                                        BL.Cdbo[pij] += Cdbo_ij;
+                                        atomic_rvecAdd( BL.ta_f[pij], f_i );
 #endif
                                     }
                                 } // pi check ends
@@ -840,16 +843,16 @@ GPU_GLOBAL void k_torsion_angles_part1_opt( reax_atom const * const my_atoms,
 
                         if ( lane_id == 0 )
                         {
-#if !defined(GPU_ACCUM_ATOMIC)
-                            BL.Cdbopi[pk] += Cdbopi_jk;
-                            BL.ta_CdDelta[pk] += CdDelta_k;
-                            BL.Cdbo[pk] += Cdbo_jk;
-                            atomic_rvecAdd( BL.ta_f[pk], f_k );
-#else
+#if defined(GPU_ACCUM_ATOMIC)
                             atomicAdd( &BL.Cdbopi[pk], Cdbopi_jk );
                             atomicAdd( &CdDelta[k], CdDelta_k );
                             atomicAdd( &BL.Cdbo[pk], Cdbo_jk );
                             atomic_rvecAdd( f[k], f_k );
+#else
+                            BL.Cdbopi[pk] += Cdbopi_jk;
+                            BL.ta_CdDelta[pk] += CdDelta_k;
+                            BL.Cdbo[pk] += Cdbo_jk;
+                            atomic_rvecAdd( BL.ta_f[pk], f_k );
 #endif
                         }
                     } // k-j neighbor check ends
@@ -866,16 +869,19 @@ GPU_GLOBAL void k_torsion_angles_part1_opt( reax_atom const * const my_atoms,
 
         if ( lane_id == 0 )
         {
-#if !defined(GPU_ACCUM_ATOMIC)
-            CdDelta[j] += CdDelta_j;
-            rvec_Add( f[j], f_j );
-            e_tor_g[j] = e_tor_;
-            e_con_g[j] = e_con_;
-#else
+#if defined(GPU_ACCUM_ATOMIC)
             atomicAdd( &CdDelta[j], CdDelta_j );
             atomic_rvecAdd( f[j], f_j );
+#else
+            CdDelta[j] += CdDelta_j;
+            rvec_Add( f[j], f_j );
+#endif
+#if defined(GPU_ATOMIC_EV)
             atomicAdd( (double *) e_tor_g, (double) e_tor_ );
             atomicAdd( (double *) e_con_g, (double) e_con_ );
+#else
+            e_tor_g[j] = e_tor_;
+            e_con_g[j] = e_con_;
 #endif
         }
     }
@@ -1145,10 +1151,10 @@ GPU_GLOBAL void k_torsion_angles_virial_part1( reax_atom const * const my_atoms,
                                 CdDelta_k += CEtors3;
                                 Cdbo_ij += (CEtors4 + CEconj1);
                                 Cdbo_jk += (CEtors5 + CEconj2);
-#if !defined(GPU_ACCUM_ATOMIC)
-                                atomicAdd( &BL.ta_Cdbo[plk], CEtors6 + CEconj3 );
-#else
+#if defined(GPU_ACCUM_ATOMIC)
                                 atomicAdd( &BL.Cdbo[plk], CEtors6 + CEconj3 );
+#else
+                                atomicAdd( &BL.ta_Cdbo[plk], CEtors6 + CEconj3 );
 #endif
 
                                 ivec_Sum( rel_box_jl, BL.rel_box[pk], BL.rel_box[plk] );
@@ -1175,10 +1181,10 @@ GPU_GLOBAL void k_torsion_angles_virial_part1( reax_atom const * const my_atoms,
                                 rvec_Add( ext_press_, temp );
 
                                 rvec_Scale( temp, CEtors8 + CEconj5, TBL.dcos_dk[pl] );
-#if !defined(GPU_ACCUM_ATOMIC)
-                                rvec_Add( BL.ta_f[plk], temp );
-#else
+#if defined(GPU_ACCUM_ATOMIC)
                                 atomic_rvecAdd( f[l], temp );
+#else
+                                rvec_Add( BL.ta_f[plk], temp );
 #endif
                                 rvec_iMultiply( temp, rel_box_jl, temp );
                                 rvec_Add( ext_press_, temp );
@@ -1197,53 +1203,56 @@ GPU_GLOBAL void k_torsion_angles_virial_part1( reax_atom const * const my_atoms,
                                 rvec_Add( ext_press_, temp );
 
                                 rvec_Scale( temp, CEtors9 + CEconj6, dcos_omega_dl );
-#if !defined(GPU_ACCUM_ATOMIC)
-                                rvec_Add( BL.ta_f[plk], temp );
-#else
+#if defined(GPU_ACCUM_ATOMIC)
                                 atomic_rvecAdd( f[l], temp );
+#else
+                                rvec_Add( BL.ta_f[plk], temp );
 #endif
                                 rvec_iMultiply( temp, rel_box_jl, temp );
                                 rvec_Add( ext_press_, temp );
                             } // pl check ends
                         } // pl loop ends
 
-#if !defined(GPU_ACCUM_ATOMIC)
-                        BL.Cdbo[pij] += Cdbo_ij;
-                        atomic_rvecAdd( BL.ta_f[pij], f_i );
-#else
+#if defined(GPU_ACCUM_ATOMIC)
                         atomicAdd( &BL.Cdbo[pij], Cdbo_ij );
                         atomic_rvecAdd( f[i], f_i );
+#else
+                        BL.Cdbo[pij] += Cdbo_ij;
+                        atomic_rvecAdd( BL.ta_f[pij], f_i );
 #endif
                     } // pi check ends
                 } // pi loop ends
 
-#if !defined(GPU_ACCUM_ATOMIC)
-                BL.Cdbopi[pk] += Cdbopi_jk;
-                BL.ta_CdDelta[pk] += CdDelta_k;
-                BL.Cdbo[pk] += Cdbo_jk;
-                atomic_rvecAdd( BL.ta_f[pk], f_k );
-#else
+#if defined(GPU_ACCUM_ATOMIC)
                 atomicAdd( &BL.Cdbopi[pk], Cdbopi_jk );
                 atomicAdd( &CdDelta[k], CdDelta_k );
                 atomicAdd( &BL.Cdbo[pk], Cdbo_jk );
                 atomic_rvecAdd( f[k], f_k );
+#else
+                BL.Cdbopi[pk] += Cdbopi_jk;
+                BL.ta_CdDelta[pk] += CdDelta_k;
+                BL.Cdbo[pk] += Cdbo_jk;
+                atomic_rvecAdd( BL.ta_f[pk], f_k );
 #endif
             } // k-j neighbor check ends
         } // j<k && j-k neighbor check ends
     } // pk loop ends
 
-#if !defined(GPU_ACCUM_ATOMIC)
-    CdDelta[j] += CdDelta_j;
-    rvec_Add( f[j], f_j );
-    e_tor_g[j] = e_tor_;
-    e_con_g[j] = e_con_;
-    rvec_Copy( ext_press_g[j], ext_press_ );
-#else
+#if defined(GPU_ACCUM_ATOMIC)
     atomicAdd( &CdDelta[j], CdDelta_j );
     atomic_rvecAdd( f[j], f_j );
+#else
+    CdDelta[j] += CdDelta_j;
+    rvec_Add( f[j], f_j );
+#endif
+#if defined(GPU_ATOMIC_EV)
     atomicAdd( (double *) e_tor_g, (double) e_tor_ );
     atomicAdd( (double *) e_con_g, (double) e_con_ );
     atomic_rvecAdd( *ext_press_g, ext_press_ );
+#else
+    e_tor_g[j] = e_tor_;
+    e_con_g[j] = e_con_;
+    rvec_Copy( ext_press_g[j], ext_press_ );
 #endif
 
 #undef BL
@@ -1281,7 +1290,7 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
         storage * const workspace, reax_list **lists,
         output_controls const * const out_control )
 {
-#if !defined(GPU_ACCUM_ATOMIC)
+#if !defined(GPU_ATOMIC_EV)
     int update_energy;
     size_t s;
     real *spad;
@@ -1292,7 +1301,17 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
     cudaEventRecord( control->cuda_time_events[TE_TORSION_START], control->cuda_streams[3] );
 #endif
 
-#if !defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_ATOMIC_EV)
+    sCudaMemsetAsync( &data->d_my_en->e_tor,
+            0, sizeof(real), control->cuda_streams[3], __FILE__, __LINE__ );
+    sCudaMemsetAsync( &data->d_my_en->e_con,
+            0, sizeof(real), control->cuda_streams[3], __FILE__, __LINE__ );
+    if ( control->virial == 1 )
+    {
+        sCudaMemsetAsync( &data->d_simulation_data->my_ext_press,
+                0, sizeof(rvec), control->cuda_streams[3], __FILE__, __LINE__ );
+    }
+#else
     if ( control->virial == 1 )
     {
         s = (sizeof(real) * 2 + sizeof(rvec)) * system->n;
@@ -1307,16 +1326,6 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
     spad = (real *) workspace->scratch[3];
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
-#else
-    sCudaMemsetAsync( &data->d_my_en->e_tor,
-            0, sizeof(real), control->cuda_streams[3], __FILE__, __LINE__ );
-    sCudaMemsetAsync( &data->d_my_en->e_con,
-            0, sizeof(real), control->cuda_streams[3], __FILE__, __LINE__ );
-    if ( control->virial == 1 )
-    {
-        sCudaMemsetAsync( &data->d_simulation_data->my_ext_press,
-                0, sizeof(rvec), control->cuda_streams[3], __FILE__, __LINE__ );
-    }
 #endif
 
     if ( control->virial == 0 )
@@ -1326,12 +1335,17 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
 //            ( system->d_my_atoms, system->reax_param.gp.d_l, system->reax_param.d_sbp,
 //              system->reax_param.d_tbp, system->reax_param.d_thbp, system->reax_param.d_fbp,
 //              control->thb_cut, *(lists[BONDS]), *(lists[THREE_BODIES]),
-//              workspace->d_workspace->Delta_boc, workspace->d_workspace->CdDelta,
-//              workspace->d_workspace->f, system->n, system->reax_param.num_atom_types, 
-//#if !defined(GPU_ACCUM_ATOMIC)
-//              spad, &spad[system->n]
+//              workspace->d_workspace->Delta_boc,
+//#if defined(GPU_STREAM_SINGLE_ACCUM)
+//              workspace->d_workspace->CdDelta, workspace->d_workspace->f,
 //#else
+//              workspace->d_workspace->CdDelta_tor, workspace->d_workspace->f_tor,
+//#endif
+//              system->n, system->reax_param.num_atom_types, 
+//#if defined(GPU_ATOMIC_EV)
 //              &data->d_my_en->e_tor, &data->d_my_en->e_con
+//#else
+//              spad, &spad[system->n]
 //#endif
 //            );
 
@@ -1341,12 +1355,17 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
             ( system->d_my_atoms, system->reax_param.gp.d_l, system->reax_param.d_sbp,
               system->reax_param.d_tbp, system->reax_param.d_thbp, system->reax_param.d_fbp,
               control->thb_cut, *(lists[BONDS]), *(lists[THREE_BODIES]),
-              workspace->d_workspace->Delta_boc, workspace->d_workspace->CdDelta,
-              workspace->d_workspace->f, system->n, system->reax_param.num_atom_types, 
-#if !defined(GPU_ACCUM_ATOMIC)
-              spad, &spad[system->n]
+              workspace->d_workspace->Delta_boc,
+#if defined(GPU_STREAM_SINGLE_ACCUM)
+              workspace->d_workspace->CdDelta, workspace->d_workspace->f,
 #else
+              workspace->d_workspace->CdDelta_tor, workspace->d_workspace->f_tor,
+#endif
+              system->n, system->reax_param.num_atom_types, 
+#if defined(GPU_ATOMIC_EV)
               &data->d_my_en->e_tor, &data->d_my_en->e_con
+#else
+              spad, &spad[system->n]
 #endif
             );
 
@@ -1356,12 +1375,16 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
 //            ( system->d_my_atoms, system->reax_param.gp.d_l, system->reax_param.d_sbp,
 //              system->reax_param.d_tbp, system->reax_param.d_thbp, system->reax_param.d_fbp,
 //              control->thb_cut, *(lists[BONDS]), workspace->d_workspace->Delta_boc,
-//              workspace->d_workspace->CdDelta, workspace->d_workspace->f, system->n,
-//              system->reax_param.num_atom_types, 
-//#if !defined(GPU_ACCUM_ATOMIC)
-//              spad, &spad[system->n]
+//#if defined(GPU_STREAM_SINGLE_ACCUM)
+//              workspace->d_workspace->CdDelta, workspace->d_workspace->f,
 //#else
+//              workspace->d_workspace->CdDelta_tor, workspace->d_workspace->f_tor,
+//#endif
+//              system->n, system->reax_param.num_atom_types, 
+//#if defined(GPU_ATOMIC_EV)
 //              &data->d_my_en->e_tor, &data->d_my_en->e_con
+//#else
+//              spad, &spad[system->n]
 //#endif
 //            );
     }
@@ -1371,19 +1394,24 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
                                       0, control->cuda_streams[3] >>>
             ( system->d_my_atoms, system->reax_param.gp.d_l, system->reax_param.d_fbp,
               control->thb_cut, *(lists[BONDS]), *(lists[THREE_BODIES]),
-              workspace->d_workspace->Delta_boc, workspace->d_workspace->CdDelta,
-              workspace->d_workspace->f, system->n, system->reax_param.num_atom_types, 
-#if !defined(GPU_ACCUM_ATOMIC)
-              spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
+              workspace->d_workspace->Delta_boc,
+#if defined(GPU_STREAM_SINGLE_ACCUM)
+              workspace->d_workspace->CdDelta, workspace->d_workspace->f,
 #else
+              workspace->d_workspace->CdDelta_tor, workspace->d_workspace->f_tor,
+#endif
+              system->n, system->reax_param.num_atom_types, 
+#if defined(GPU_ATOMIC_EV)
               &data->d_my_en->e_tor, &data->d_my_en->e_con,
               &data->d_simulation_data->my_ext_press
+#else
+              spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
 #endif
             );
     }
     cudaCheckError( );
 
-#if !defined(GPU_ACCUM_ATOMIC)
+#if !defined(GPU_ATOMIC_EV)
     if ( update_energy == TRUE )
     {
         Cuda_Reduction_Sum( spad,
@@ -1405,7 +1433,11 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
 #if !defined(GPU_ACCUM_ATOMIC)
     k_torsion_angles_part2 <<< control->blocks_N, control->gpu_block_size,
                            0, control->cuda_streams[3] >>>
+#if defined(GPU_STREAM_SINGLE_ACCUM)
             ( workspace->d_workspace->CdDelta, workspace->d_workspace->f,
+#else
+            ( workspace->d_workspace->CdDelta_tor, workspace->d_workspace->f_tor,
+#endif
               *(lists[BONDS]), system->N );
     cudaCheckError( );
 #endif

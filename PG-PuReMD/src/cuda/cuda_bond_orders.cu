@@ -916,6 +916,54 @@ GPU_GLOBAL void k_total_forces_part2( reax_atom * const my_atoms, int n,
 }
 
 
+#if !defined(GPU_STREAM_SINGLE_ACCUM)
+GPU_GLOBAL void k_reduction_CdDelta_stream( real const * const CdDelta_bonds,
+        real const * const CdDelta_multi, real const * const CdDelta_tor,
+        real const * const CdDelta_val, real * const CdDelta, int N )
+{
+    int i;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= N )
+    {
+        return;
+    }
+
+    CdDelta[i] = CdDelta_bonds[i] + CdDelta_multi[i] + CdDelta_tor[i] + CdDelta_val[i];
+}
+
+
+GPU_GLOBAL void k_reduction_f_stream( rvec const * const f_hb,
+#if defined(FUSED_VDW_COULOMB)
+        rvec const * const f_vdw_clmb,
+#else
+        rvec const * const f_vdw, rvec const * const f_clmb,
+#endif
+        rvec const * const f_tor, rvec const * const f_val, rvec * const f, int N )
+{
+    int i;
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= N )
+    {
+        return;
+    }
+
+#if defined(FUSED_VDW_COULOMB)
+    f[i][0] += f_hb[i][0] + f_vdw_clmb[i][0] + f_tor[i][0] + f_val[i][0];
+    f[i][1] += f_hb[i][1] + f_vdw_clmb[i][1] + f_tor[i][1] + f_val[i][1];
+    f[i][2] += f_hb[i][2] + f_vdw_clmb[i][2] + f_tor[i][2] + f_val[i][2];
+#else
+    f[i][0] += f_hb[i][0] + f_vdw[i][0] + f_clmb[i][0] + f_tor[i][0] + f_val[i][0];
+    f[i][1] += f_hb[i][1] + f_vdw[i][1] + f_clmb[i][1] + f_tor[i][1] + f_val[i][1];
+    f[i][2] += f_hb[i][2] + f_vdw[i][2] + f_clmb[i][2] + f_tor[i][2] + f_val[i][2];
+#endif
+}
+#endif
+
+
 void Cuda_Compute_Bond_Orders( reax_system const * const system,
         control_params const * const control, simulation_data * const data,
         storage * const workspace, reax_list ** const lists,
@@ -982,6 +1030,16 @@ void Cuda_Total_Forces_Part1( reax_system const * const system,
 {
     rvec *spad_rvec;
 
+
+#if !defined(GPU_STREAM_SINGLE_ACCUM)
+    k_reduction_CdDelta_stream <<< control->blocks_N, control->gpu_block_size,
+                         0, control->cuda_streams[0] >>>
+        ( workspace->d_workspace->CdDelta_bonds, workspace->d_workspace->CdDelta_multi,
+          workspace->d_workspace->CdDelta_tor, workspace->d_workspace->CdDelta_val,
+          workspace->d_workspace->CdDelta, system->N );
+    cudaCheckError( );
+#endif
+
     if ( control->virial == 0 )
     {
 //        k_total_forces_part1 <<< control->blocks_N, control->gpu_block_size,
@@ -1015,6 +1073,20 @@ void Cuda_Total_Forces_Part1( reax_system const * const system,
         Cuda_Reduction_Sum( spad_rvec, &data->d_simulation_data->my_ext_press,
                 system->N, 0, control->cuda_streams[0] );
     }
+
+#if !defined(GPU_STREAM_SINGLE_ACCUM)
+    k_reduction_f_stream <<< control->blocks_N, control->gpu_block_size,
+                         0, control->cuda_streams[0] >>>
+        ( workspace->d_workspace->f_hb,
+#if defined(FUSED_VDW_COULOMB)
+          workspace->d_workspace->f_vdw_clmb,
+#else
+          workspace->d_workspace->f_vdw, workspace->d_workspace->f_clmb,
+#endif
+          workspace->d_workspace->f_tor, workspace->d_workspace->f_val,
+          workspace->d_workspace->f, system->N );
+    cudaCheckError( );
+#endif
 
 #if !defined(GPU_ACCUM_ATOMIC)
     /* post processing for the atomic forces */

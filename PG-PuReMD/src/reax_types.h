@@ -99,8 +99,8 @@
 //#define USE_REF_FORTRAN_EREAXFF_CONSTANTS
 /* constants defined in LAMMPS ReaxFF code (useful for comparisons) */
 //#define USE_LAMMPS_REAXFF_CONSTANTS
-/* use fused van der Waals and Coulomb functions/kernels for computation */
-//#define USE_FUSED_VDW_COULOMB
+/* fused van der Waals and Coulomb functions/kernels for computation */
+#define FUSED_VDW_COULOMB
 /* pack/unpack MPI buffers on device and use CUDA-aware MPI for messaging */
 //TODO: rewrite this to use configure option to include
 /* OpenMPI extensions for CUDA-aware support */
@@ -108,8 +108,12 @@
 #if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
   #define GPU_DEVICE_PACK
 #endif
-/* aggregate atomic energies and forces using atomic operations */
+/* accumulate forces using atomic operations */
 #define GPU_ACCUM_ATOMIC
+/* accumulate energies and virials using atomic operations */
+//#define GPU_ATOMIC_EV
+/* accumulate CdDelta and forces across streams using single arrays */
+#define GPU_STREAM_SINGLE_ACCUM
 
 /* disable assertions if NOT compiling with debug support --
  * the definition (or lack thereof) controls how the assert macro is defined */
@@ -2477,10 +2481,32 @@ struct storage
     rvec *v_const;
 
     /* force calculations */
-    /**/
-    real *CdDelta;  // coefficient of dDelta
-    /**/
+    /* coefficient of dDelta */
+    real *CdDelta;
+    /* atomic forces */
     rvec *f;
+#if !defined(GPU_STREAM_SINGLE_ACCUM)
+    /* coefficient of dDelta (bonds) */
+    real *CdDelta_bonds;
+    /* coefficient of dDelta (multi_body) */
+    real *CdDelta_multi;
+    /* coefficient of dDelta (torsion) */
+    real *CdDelta_tor;
+    /* coefficient of dDelta (valence angles) */
+    real *CdDelta_val;
+    /* atomic forces (hydrogen bonds) */
+    rvec *f_hb;
+    /* atomic forces (van der Waals and Coulomb) */
+    rvec *f_vdw_clmb;
+    /* atomic forces (van der Waals) */
+    rvec *f_vdw;
+    /* atomic forces (Coulomb) */
+    rvec *f_clmb;
+    /* atomic forces (torsion) */
+    rvec *f_tor;
+    /* atomic forces (valence angles) */
+    rvec *f_val;
+#endif
 #if defined(TEST_FORCES)
     /**/
     rvec *f_ele;

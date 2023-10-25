@@ -9,7 +9,19 @@
 #include "../vector.h"
 
 
-GPU_GLOBAL void k_reset_workspace( real * const CdDelta, rvec * const f, int N )
+GPU_GLOBAL void k_reset_workspace( real * const CdDelta, rvec * const f,
+#if !defined(GPU_STREAM_SINGLE_ACCUM)
+        real * const CdDelta_bonds, real * const CdDelta_multi,
+        real * const CdDelta_tor, real * const CdDelta_val,
+        rvec * const f_hb,
+#if defined(FUSED_VDW_COULOMB)
+        rvec * const f_vdw_clmb,
+#else
+        rvec * const f_vdw, rvec * const f_clmb,
+#endif
+        rvec * const f_tor, rvec * const f_val,
+#endif
+        int N )
 {
     int i;
 
@@ -21,7 +33,24 @@ GPU_GLOBAL void k_reset_workspace( real * const CdDelta, rvec * const f, int N )
     }
 
     CdDelta[i] = 0.0;
+#if !defined(GPU_STREAM_SINGLE_ACCUM)
+    CdDelta_bonds[i] = 0.0;
+    CdDelta_multi[i] = 0.0;
+    CdDelta_tor[i] = 0.0;
+    CdDelta_val[i] = 0.0;
+#endif
     rvec_MakeZero( f[i] );
+#if !defined(GPU_STREAM_SINGLE_ACCUM)
+    rvec_MakeZero( f_hb[i] );
+#if defined(FUSED_VDW_COULOMB)
+    rvec_MakeZero( f_vdw_clmb[i] );
+#else
+    rvec_MakeZero( f_vdw[i] );
+    rvec_MakeZero( f_clmb[i] );
+#endif
+    rvec_MakeZero( f_tor[i] );
+    rvec_MakeZero( f_val[i] );
+#endif
 }
 
 
@@ -64,7 +93,19 @@ void Cuda_Reset_Workspace( reax_system const * const system,
         + ((system->total_cap % control->gpu_block_size == 0 ) ? 0 : 1);
 
     k_reset_workspace <<< blocks, control->gpu_block_size, 0, control->cuda_streams[0] >>>
-        ( workspace->d_workspace->CdDelta, workspace->d_workspace->f, system->total_cap );
+        ( workspace->d_workspace->CdDelta, workspace->d_workspace->f,
+#if !defined(GPU_STREAM_SINGLE_ACCUM)
+          workspace->d_workspace->CdDelta_bonds, workspace->d_workspace->CdDelta_multi,
+          workspace->d_workspace->CdDelta_tor, workspace->d_workspace->CdDelta_val,
+          workspace->d_workspace->f_hb,
+#if defined(FUSED_VDW_COULOMB)
+          workspace->d_workspace->f_vdw_clmb,
+#else
+          workspace->d_workspace->f_vdw, workspace->d_workspace->f_clmb,
+#endif
+          workspace->d_workspace->f_tor, workspace->d_workspace->f_val,
+#endif
+          system->total_cap );
     cudaCheckError( );
 }
 
