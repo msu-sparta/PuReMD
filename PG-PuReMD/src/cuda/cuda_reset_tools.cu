@@ -3,16 +3,21 @@
 
 #include "cuda_list.h"
 #include "cuda_utils.h"
-#include "cuda_reduction.h"
+#if !defined(GPU_ACCUM_ATOMIC)
+  #include "cuda_reduction.h"
+#endif
 
 #include "../reset_tools.h"
 #include "../vector.h"
 
 
-GPU_GLOBAL void k_reset_workspace( real * const CdDelta, rvec * const f,
+GPU_GLOBAL void k_reset_workspace( real * const CdDelta,
 #if !defined(GPU_STREAM_SINGLE_ACCUM)
         real * const CdDelta_bonds, real * const CdDelta_multi,
         real * const CdDelta_tor, real * const CdDelta_val,
+#endif
+        rvec * const f,
+#if !defined(GPU_STREAM_SINGLE_ACCUM)
         rvec * const f_hb,
 #if defined(FUSED_VDW_COULOMB)
         rvec * const f_vdw_clmb,
@@ -93,10 +98,13 @@ void Cuda_Reset_Workspace( reax_system const * const system,
         + ((system->total_cap % control->gpu_block_size == 0 ) ? 0 : 1);
 
     k_reset_workspace <<< blocks, control->gpu_block_size, 0, control->cuda_streams[0] >>>
-        ( workspace->d_workspace->CdDelta, workspace->d_workspace->f,
+        ( workspace->d_workspace->CdDelta,
 #if !defined(GPU_STREAM_SINGLE_ACCUM)
           workspace->d_workspace->CdDelta_bonds, workspace->d_workspace->CdDelta_multi,
           workspace->d_workspace->CdDelta_tor, workspace->d_workspace->CdDelta_val,
+#endif
+          workspace->d_workspace->f,
+#if !defined(GPU_STREAM_SINGLE_ACCUM)
           workspace->d_workspace->f_hb,
 #if defined(FUSED_VDW_COULOMB)
           workspace->d_workspace->f_vdw_clmb,
@@ -113,24 +121,24 @@ void Cuda_Reset_Workspace( reax_system const * const system,
 void Cuda_Reset_Atoms_HBond_Indices( reax_system * const system, control_params const * const control,
         storage * const workspace )
 {
-#if !defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_ACCUM_ATOMIC)
+    sCudaMemsetAsync( system->d_num_H_atoms, 0, sizeof(int), 
+            control->cuda_streams[0], __FILE__, __LINE__ );
+#else
     int *hindex;
 
     sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
             sizeof(int) * system->total_cap, __FILE__, __LINE__ );
     hindex = (int *) workspace->scratch[0];
-#else
-    sCudaMemsetAsync( system->d_num_H_atoms, 0, sizeof(int), 
-            control->cuda_streams[0], __FILE__, __LINE__ );
 #endif
 
     k_reset_hindex <<< control->blocks_N, control->gpu_block_size,
                    0, control->cuda_streams[0] >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, 
-#if !defined(GPU_ACCUM_ATOMIC)
-          hindex, 
-#else
+#if defined(GPU_ACCUM_ATOMIC)
           system->d_num_H_atoms,
+#else
+          hindex, 
 #endif
           system->total_cap );
     cudaCheckError( );

@@ -294,8 +294,7 @@ GPU_GLOBAL void k_atom_energy_part2( reax_atom const * const my_atoms,
 
     exp_ovun1 = p_ovun3 * EXP( p_ovun4 * sum_ovun2 );
     inv_exp_ovun1 = 1.0 / (1.0 + exp_ovun1);
-    Delta_lpcorr = Delta[i]
-        - (dfvl * Delta_lp_temp[i]) * inv_exp_ovun1;
+    Delta_lpcorr = Delta[i] - (dfvl * Delta_lp_temp[i]) * inv_exp_ovun1;
 
     exp_ovun2 = EXP( p_ovun2 * Delta_lpcorr );
     inv_exp_ovun2 = 1.0 / (1.0 + exp_ovun2);
@@ -454,8 +453,7 @@ GPU_GLOBAL void k_atom_energy_part2_opt( reax_atom const * const my_atoms,
 
     exp_ovun1 = p_ovun3 * EXP( p_ovun4 * sum_ovun2 );
     inv_exp_ovun1 = 1.0 / (1.0 + exp_ovun1);
-    Delta_lpcorr = Delta[i]
-        - (dfvl * Delta_lp_temp[i]) * inv_exp_ovun1;
+    Delta_lpcorr = Delta[i] - (dfvl * Delta_lp_temp[i]) * inv_exp_ovun1;
 
     exp_ovun2 = EXP( p_ovun2 * Delta_lpcorr );
     inv_exp_ovun2 = 1.0 / (1.0 + exp_ovun2);

@@ -113,7 +113,7 @@
 /* accumulate energies and virials using atomic operations */
 //#define GPU_ATOMIC_EV
 /* accumulate CdDelta and forces across streams using single arrays */
-#define GPU_STREAM_SINGLE_ACCUM
+//#define GPU_STREAM_SINGLE_ACCUM
 
 /* disable assertions if NOT compiling with debug support --
  * the definition (or lack thereof) controls how the assert macro is defined */
@@ -2253,21 +2253,21 @@ struct bond_data_gpu
     /**/
     rvec *dln_BOp_pi2;
 #if !defined(GPU_ACCUM_ATOMIC)
-    /**/
+    /* coefficient of dDelta (multi_body) */
     real *ae_CdDelta;
-    /**/
+    /* coefficient of dDelta (valence angles) */
     real *va_CdDelta;
-    /**/
+    /* atomic forces (valence angles) */
     rvec *va_f;
-    /**/
+    /* coefficient of dDelta (torsion) */
     real *ta_CdDelta;
-    /**/
+    /* (torsion) */
     real *ta_Cdbo;
-    /**/
+    /* atomic forces (torsion) */
     rvec *ta_f;
-    /**/
+    /* atomic forces (hydrogen bonds) */
     rvec *hb_f;
-    /**/
+    /* atomic forces (bond orders) */
     rvec *tf_f;
 #endif
 };

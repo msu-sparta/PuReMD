@@ -533,15 +533,15 @@ GPU_GLOBAL void k_hydrogen_bonds_virial_part1( reax_atom const * const my_atoms,
 
 #if defined(GPU_ACCUM_ATOMIC)
     atomic_rvecAdd( f[j], f_j );
-    atomic_rvecAdd( *ext_press_g, ext_press_l );
 #else
     rvec_Add( f[j], f_j );
-    rvec_Copy( ext_press_g[j], ext_press_l );
 #endif
 #if defined(GPU_ATOMIC_EV)
     atomicAdd( (double *) e_hb_g, (double) e_hb_ );
+    atomic_rvecAdd( *ext_press_g, ext_press_l );
 #else
     e_hb_g[j] = e_hb_;
+    rvec_Copy( ext_press_g[j], ext_press_l );
 #endif
 
 #undef BL
@@ -713,14 +713,7 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
     cudaEventRecord( control->cuda_time_events[TE_HBONDS_START], control->cuda_streams[2] );
 #endif
 
-#if !defined(GPU_ATOMIC_EV)
-    sCudaCheckMalloc( &workspace->scratch[2], &workspace->scratch_size[2],
-            (sizeof(real) * 3 + sizeof(rvec)) * system->N + sizeof(rvec) * control->blocks_N,
-            __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch[2];
-    update_energy = (out_control->energy_update_freq > 0
-            && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
-#else
+#if defined(GPU_ATOMIC_EV)
     sCudaMemsetAsync( &data->d_my_en->e_hb,
             0, sizeof(real), control->cuda_streams[2], __FILE__, __LINE__ );
     if ( control->virial == 1 )
@@ -728,6 +721,13 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
         sCudaMemsetAsync( &data->d_simulation_data->my_ext_press,
                 0, sizeof(rvec), control->cuda_streams[2], __FILE__, __LINE__ );
     }
+#else
+    sCudaCheckMalloc( &workspace->scratch[2], &workspace->scratch_size[2],
+            (sizeof(real) * 3 + sizeof(rvec)) * system->N + sizeof(rvec) * control->blocks_N,
+            __FILE__, __LINE__ );
+    spad = (real *) workspace->scratch[2];
+    update_energy = (out_control->energy_update_freq > 0
+            && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
 #endif
 
     cudaStreamWaitEvent( control->cuda_streams[2], control->cuda_stream_events[SE_BOND_ORDER_DONE], 0 );

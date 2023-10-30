@@ -62,10 +62,10 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj, rvec const * const 
         rvec_Scale( temp, -(C2dbo + C2dDelta + C3dbopi + C3dbopi2), BL.dBOp[pk] );
 
         /* force */
-#if !defined(GPU_ACCUM_ATOMIC)
-        rvec_Add( BL.tf_f[pk], temp );
-#else
+#if defined(GPU_ACCUM_ATOMIC)
         atomic_rvecAdd( f[k], temp );
+#else
+        rvec_Add( BL.tf_f[pk], temp );
 #endif
         /* pressure */
         rvec_iMultiply( ext_press, BL.rel_box[pk], temp );
@@ -173,10 +173,10 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj, rvec const * const dDel
         /* 2nd, dBO, dDelta, dBOpi, dBOpi2 */
         rvec_Scale( temp, -(C2dbo + C2dDelta + C3dbopi + C3dbopi2), BL.dBOp[pk] );
 
-#if !defined(GPU_ACCUM_ATOMIC)
-        rvec_Add( BL.tf_f[pk], temp );
-#else
+#if defined(GPU_ACCUM_ATOMIC)
         atomic_rvecAdd( f[k], temp );
+#else
+        rvec_Add( BL.tf_f[pk], temp );
 #endif
     }
 
@@ -788,10 +788,10 @@ GPU_GLOBAL void k_total_forces_part1( rvec const * const dDeltap_self,
         }
     }
 
-#if !defined(GPU_ACCUM_ATOMIC)
-    rvec_Add( f[i], f_i );
-#else
+#if defined(GPU_ACCUM_ATOMIC)
     atomic_rvecAdd( f[i], f_i );
+#else
+    rvec_Add( f[i], f_i );
 #endif
 
 #undef BL
@@ -839,10 +839,10 @@ GPU_GLOBAL void k_total_forces_part1_opt( rvec const * const dDeltap_self,
 
     if ( lane_id == 0 )
     {
-#if !defined(GPU_ACCUM_ATOMIC)
-        rvec_Add( f[i], f_i );
-#else
+#if defined(GPU_ACCUM_ATOMIC)
         atomic_rvecAdd( f[i], f_i );
+#else
+        rvec_Add( f[i], f_i );
 #endif
     }
 
