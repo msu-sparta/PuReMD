@@ -2253,20 +2253,20 @@ struct bond_data_gpu
     /**/
     rvec *dln_BOp_pi2;
 #if !defined(GPU_ACCUM_ATOMIC)
+    /* (torsion) */
+    real *ta_Cdbo;
     /* coefficient of dDelta (multi_body) */
     real *ae_CdDelta;
     /* coefficient of dDelta (valence angles) */
     real *va_CdDelta;
-    /* atomic forces (valence angles) */
-    rvec *va_f;
     /* coefficient of dDelta (torsion) */
     real *ta_CdDelta;
-    /* (torsion) */
-    real *ta_Cdbo;
-    /* atomic forces (torsion) */
-    rvec *ta_f;
     /* atomic forces (hydrogen bonds) */
     rvec *hb_f;
+    /* atomic forces (valence angles) */
+    rvec *va_f;
+    /* atomic forces (torsion) */
+    rvec *ta_f;
     /* atomic forces (bond orders) */
     rvec *tf_f;
 #endif

@@ -63,6 +63,8 @@ GPU_GLOBAL void k_hydrogen_bonds_part1( reax_atom const * const my_atoms,
         return;
     }
 
+    e_hb_ = 0.0;
+
     /* discover the Hydrogen bonds between i-j-k triplets.
      * here j is H atom and there has to be some bond between i and j.
      * Hydrogen bond is between j and k.
@@ -80,7 +82,6 @@ GPU_GLOBAL void k_hydrogen_bonds_part1( reax_atom const * const my_atoms,
         hb_start_j = Start_Index( my_atoms[j].Hindex, &hbond_list );
         hb_end_j = End_Index( my_atoms[j].Hindex, &hbond_list );
         top = 0;
-        e_hb_ = 0.0;
         rvec_MakeZero( f_j );
 
         if ( Num_Entries( j, &bond_list ) > hblist_size )
@@ -191,10 +192,12 @@ GPU_GLOBAL void k_hydrogen_bonds_part1( reax_atom const * const my_atoms,
 #endif
 #if defined(GPU_ATOMIC_EV)
         atomicAdd( (double *) e_hb_g, (double) e_hb_ );
-#else
-        e_hb_g[j] = e_hb_;
-#endif
     }
+#else
+    }
+
+    e_hb_g[j] = e_hb_;
+#endif
 
 #undef BL
 }
@@ -230,6 +233,7 @@ GPU_GLOBAL void k_hydrogen_bonds_part1_opt( reax_atom const * const my_atoms,
 
     warp_id = threadIdx.x / warpSize;
     lane_id = thread_id % warpSize; 
+    e_hb_ = 0.0;
 
     /* discover the Hydrogen bonds between i-j-k triplets.
      * here j is H atom and there has to be some bond between i and j.
@@ -245,7 +249,6 @@ GPU_GLOBAL void k_hydrogen_bonds_part1_opt( reax_atom const * const my_atoms,
         end_j = End_Index( j, &bond_list );
         hb_start_j = Start_Index( my_atoms[j].Hindex, &hbond_list );
         hb_end_j = End_Index( my_atoms[j].Hindex, &hbond_list );
-        e_hb_ = 0.0;
         rvec_MakeZero( f_j );
 
         /* for each hbond of atom j */
@@ -350,11 +353,17 @@ GPU_GLOBAL void k_hydrogen_bonds_part1_opt( reax_atom const * const my_atoms,
 #endif
 #if defined(GPU_ATOMIC_EV)
             atomicAdd( (double *) e_hb_g, (double) e_hb_ );
-#else
-            e_hb_g[j] = e_hb_;
-#endif
         }
     }
+#else
+        }
+    }
+
+    if ( lane_id == 0 )
+    {
+        e_hb_g[j] = e_hb_;
+    }
+#endif
 
 #undef BL
 }

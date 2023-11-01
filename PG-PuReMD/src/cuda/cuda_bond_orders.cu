@@ -67,6 +67,7 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj, rvec const * const 
 #else
         rvec_Add( BL.tf_f[pk], temp );
 #endif
+
         /* pressure */
         rvec_iMultiply( ext_press, BL.rel_box[pk], temp );
         rvec_Add( data_ext_press, ext_press );
@@ -86,7 +87,11 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj, rvec const * const 
     rvec_ScaledAdd( temp, C1dbopi2, BL.dln_BOp_pi2[pj] );
 
     /* force */
+#if defined(GPU_ACCUM_ATOMIC)
     atomic_rvecAdd( f[i], temp );
+#else
+    rvec_Add( f[i], temp );
+#endif
     /* ext pressure due to i is dropped, counting force on j will be enough */
 
     /******************************************************
@@ -101,7 +106,12 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj, rvec const * const 
         rvec_Scale( temp, -(C3dbo + C3dDelta + C4dbopi + C4dbopi2), BL.dBOp[pk] );
 
         /* force */
+#if defined(GPU_ACCUM_ATOMIC)
         atomic_rvecAdd( f[k], temp );
+#else
+        rvec_Add( BL.tf_f[pk], temp );
+#endif
+
         /* pressure */
         if ( k != i )
         {
@@ -125,7 +135,11 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj, rvec const * const 
     rvec_ScaledAdd( temp, -C1dbopi2, BL.dln_BOp_pi2[pj] );
 
     /* force */
+#if defined(GPU_ACCUM_ATOMIC)
     atomic_rvecAdd( f[j], temp );
+#else
+    rvec_Add( BL.tf_f[pj], temp );
+#endif
     /* pressure */
     rvec_iMultiply( ext_press, BL.rel_box[pj], temp );
     rvec_Add( data_ext_press, ext_press );
@@ -201,7 +215,11 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj, rvec const * const dDel
         /* 3rd, dBO; 3rd, dDelta; 4th, dBOpi; 4th, dBOpi2 */
         rvec_Scale( temp, -(C3dbo + C3dDelta + C4dbopi + C4dbopi2), BL.dBOp[pk] );
 
+#if defined(GPU_ACCUM_ATOMIC)
         atomic_rvecAdd( f[k], temp );
+#else
+        rvec_Add( BL.tf_f[pk], temp );
+#endif
     }
 
     /* 1st, dBO; 1st, dBO; 2nd, dBOpi; 2nd, dBOpi2 */
@@ -216,7 +234,11 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj, rvec const * const dDel
     /* 1st, dBOpi2 */
     rvec_ScaledAdd( temp, -C1dbopi2, BL.dln_BOp_pi2[pj] );
 
+#if defined(GPU_ACCUM_ATOMIC)
     atomic_rvecAdd( f[j], temp );
+#else
+    rvec_Add( BL.tf_f[pj], temp );
+#endif
 
 #undef BL
 }
