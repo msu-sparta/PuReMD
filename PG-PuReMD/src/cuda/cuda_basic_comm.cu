@@ -467,17 +467,18 @@ void Cuda_Dist( reax_system const * const system, storage * const workspace,
                 type_size * out_bufs[2 * d].cnt, __FILE__, __LINE__ );
 	if ( out_bufs[2 * d].index_size < sizeof(int) * out_bufs[2 * d].cnt )
 	{
-            sCudaCheckMalloc( &workspace->scratch[3], &workspace->scratch_size[3],
+            sCudaCheckMalloc( &workspace->d_workspace->scratch[3],
+                    &workspace->d_workspace->scratch_size[3],
                     out_bufs[2 * d].index_size, __FILE__, __LINE__ );
 
-            sCudaMemcpyAsync( workspace->scratch[3], out_bufs[2 * d].index,
-                    out_bufs[2 * d].index_size,
+            sCudaMemcpyAsync( workspace->d_workspace->scratch[3],
+                    out_bufs[2 * d].index, out_bufs[2 * d].index_size,
                     cudaMemcpyDeviceToDevice, s, __FILE__, __LINE__ );
             sCudaFree( out_bufs[2 * d].index, __FILE__, __LINE__ );
             sCudaMalloc( (void **) &out_bufs[2 * d].index,
                     (size_t) CEIL( (sizeof(int) * out_bufs[2 * d].cnt) * SAFE_ZONE ),
                     __FILE__, __LINE__ );
-            sCudaMemcpyAsync( out_bufs[2 * d].index, workspace->scratch[3],
+            sCudaMemcpyAsync( out_bufs[2 * d].index, workspace->d_workspace->scratch[3],
                     out_bufs[2 * d].index_size,
                     cudaMemcpyDeviceToDevice, s, __FILE__, __LINE__ );
 
@@ -495,17 +496,18 @@ void Cuda_Dist( reax_system const * const system, storage * const workspace,
                 type_size * out_bufs[2 * d + 1].cnt, __FILE__, __LINE__ );
 	if ( out_bufs[2 * d + 1].index_size < sizeof(int) * out_bufs[2 * d + 1].cnt )
 	{
-            sCudaCheckMalloc( &workspace->scratch[3], &workspace->scratch_size[3],
+            sCudaCheckMalloc( &workspace->d_workspace->scratch[3],
+                    &workspace->d_workspace->scratch_size[3],
                     out_bufs[2 * d + 1].index_size, __FILE__, __LINE__ );
 
-            sCudaMemcpyAsync( workspace->scratch[3], out_bufs[2 * d + 1].index,
+            sCudaMemcpyAsync( workspace->d_workspace->scratch[3], out_bufs[2 * d + 1].index,
                     out_bufs[2 * d + 1].index_size,
                     cudaMemcpyDeviceToDevice, s, __FILE__, __LINE__ );
             sCudaFree( out_bufs[2 * d + 1].index, __FILE__, __LINE__ );
             sCudaMalloc( (void **) &out_bufs[2 * d + 1].index,
                     (size_t) CEIL( (sizeof(int) * out_bufs[2 * d + 1].cnt) * SAFE_ZONE ),
                     __FILE__, __LINE__ );
-            sCudaMemcpyAsync( out_bufs[2 * d + 1].index, workspace->scratch[3],
+            sCudaMemcpyAsync( out_bufs[2 * d + 1].index, workspace->d_workspace->scratch[3],
                     out_bufs[2 * d + 1].index_size,
                     cudaMemcpyDeviceToDevice, s, __FILE__, __LINE__ );
 

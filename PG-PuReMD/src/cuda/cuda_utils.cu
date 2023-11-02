@@ -145,7 +145,7 @@ void sCudaFree( void *ptr, const char * const filename, int line )
  * filename: NULL-terminated source filename where function call originated
  * line: line of source file where function call originated
  */
-void sCudaFreeHost( void *ptr, const char * const filename, int line )
+void sCudaFreeHost( void * ptr, const char * const filename, int line )
 {
     int rank;
     cudaError_t ret;

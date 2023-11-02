@@ -591,17 +591,14 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
 #endif
 
 #if defined(GPU_ATOMIC_EV)
-    sCudaMemsetAsync( &data->d_my_en->e_lp,
-            0, sizeof(real), control->cuda_streams[0], __FILE__, __LINE__ );
-    sCudaMemsetAsync( &data->d_my_en->e_ov,
-            0, sizeof(real), control->cuda_streams[0], __FILE__, __LINE__ );
-    sCudaMemsetAsync( &data->d_my_en->e_un,
-            0, sizeof(real), control->cuda_streams[0], __FILE__, __LINE__ );
+    sCudaMemsetAsync( &data->d_my_en[E_OV], 0, sizeof(real) * 3,
+            control->cuda_streams[0], __FILE__, __LINE__ );
 #else
-    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
+    sCudaCheckMalloc( &workspace->d_workspace->scratch[0],
+            &workspace->d_workspace->scratch_size[0],
             sizeof(real) * 3 * system->n, __FILE__, __LINE__ );
 
-    spad = (real *) workspace->scratch[0];
+    spad = (real *) workspace->d_workspace->scratch[0];
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
 #endif
@@ -618,7 +615,7 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
 //#endif
 //          *(lists[BONDS]), system->n, system->reax_param.num_atom_types,
 //#if defined(GPU_ATOMIC_EV)
-//          &data->d_my_en->e_lp
+//          &data->d_my_en[E_LP]
 //#else
 //          spad
 //#endif
@@ -638,7 +635,7 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
 #endif
           *(lists[BONDS]), system->n, system->reax_param.num_atom_types,
 #if defined(GPU_ATOMIC_EV)
-          &data->d_my_en->e_lp
+          &data->d_my_en[E_LP]
 #else
           spad
 #endif
@@ -657,7 +654,7 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
 //#endif
 //          *(lists[BONDS]), system->n, system->reax_param.num_atom_types,
 //#if defined(GPU_ATOMIC_EV)
-//          &data->d_my_en->e_ov, &data->d_my_en->e_un
+//          &data->d_my_en[E_OV], &data->d_my_en[E_UN]
 //#else
 //          &spad[system->n], &spad[2 * system->n]
 //#endif
@@ -677,7 +674,7 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
 #endif
           *(lists[BONDS]), system->n, system->reax_param.num_atom_types,
 #if defined(GPU_ATOMIC_EV)
-          &data->d_my_en->e_ov, &data->d_my_en->e_un
+          &data->d_my_en[E_OV], &data->d_my_en[E_UN]
 #else
           &spad[system->n], &spad[2 * system->n]
 #endif
@@ -700,13 +697,13 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
 #if !defined(GPU_ATOMIC_EV)
     if ( update_energy == TRUE )
     {
-        Cuda_Reduction_Sum( spad, &data->d_my_en->e_lp, system->n, 0,
+        Cuda_Reduction_Sum( spad, &data->d_my_en[E_LP], system->n, 0,
                 control->cuda_streams[0] );
 
-        Cuda_Reduction_Sum( &spad[system->n], &data->d_my_en->e_ov, system->n, 0,
+        Cuda_Reduction_Sum( &spad[system->n], &data->d_my_en[E_OV], system->n, 0,
                 control->cuda_streams[0] );
 
-        Cuda_Reduction_Sum( &spad[2 * system->n], &data->d_my_en->e_un, system->n, 0,
+        Cuda_Reduction_Sum( &spad[2 * system->n], &data->d_my_en[E_UN], system->n, 0,
                 control->cuda_streams[0] );
     }
 #endif

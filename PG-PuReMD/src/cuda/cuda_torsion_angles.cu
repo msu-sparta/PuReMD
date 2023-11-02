@@ -1302,13 +1302,11 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
 #endif
 
 #if defined(GPU_ATOMIC_EV)
-    sCudaMemsetAsync( &data->d_my_en->e_tor,
-            0, sizeof(real), control->cuda_streams[3], __FILE__, __LINE__ );
-    sCudaMemsetAsync( &data->d_my_en->e_con,
-            0, sizeof(real), control->cuda_streams[3], __FILE__, __LINE__ );
+    sCudaMemsetAsync( &data->d_my_en[E_TOR], 0, sizeof(real) * 2,
+            control->cuda_streams[3], __FILE__, __LINE__ );
     if ( control->virial == 1 )
     {
-        sCudaMemsetAsync( &data->d_simulation_data->my_ext_press,
+        sCudaMemsetAsync( &data->d_my_ext_press,
                 0, sizeof(rvec), control->cuda_streams[3], __FILE__, __LINE__ );
     }
 #else
@@ -1320,10 +1318,10 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
     {
         s = (sizeof(real) * 2) * system->n;
     }
-    sCudaCheckMalloc( &workspace->scratch[3], &workspace->scratch_size[3],
-            s, __FILE__, __LINE__ );
+    sCudaCheckMalloc( &workspace->d_workspace->scratch[3],
+            &workspace->d_workspace->scratch_size[3], s, __FILE__, __LINE__ );
 
-    spad = (real *) workspace->scratch[3];
+    spad = (real *) workspace->d_workspace->scratch[3];
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
 #endif
@@ -1343,7 +1341,7 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
 //#endif
 //              system->n, system->reax_param.num_atom_types, 
 //#if defined(GPU_ATOMIC_EV)
-//              &data->d_my_en->e_tor, &data->d_my_en->e_con
+//              &data->d_my_en[E_TOR], &data->d_my_en[E_CON]
 //#else
 //              spad, &spad[system->n]
 //#endif
@@ -1363,7 +1361,7 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
 #endif
               system->n, system->reax_param.num_atom_types, 
 #if defined(GPU_ATOMIC_EV)
-              &data->d_my_en->e_tor, &data->d_my_en->e_con
+              &data->d_my_en[E_TOR], &data->d_my_en[E_CON]
 #else
               spad, &spad[system->n]
 #endif
@@ -1382,7 +1380,7 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
 //#endif
 //              system->n, system->reax_param.num_atom_types, 
 //#if defined(GPU_ATOMIC_EV)
-//              &data->d_my_en->e_tor, &data->d_my_en->e_con
+//              &data->d_my_en[E_TOR], &data->d_my_en[E_CON]
 //#else
 //              spad, &spad[system->n]
 //#endif
@@ -1402,8 +1400,8 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
 #endif
               system->n, system->reax_param.num_atom_types, 
 #if defined(GPU_ATOMIC_EV)
-              &data->d_my_en->e_tor, &data->d_my_en->e_con,
-              &data->d_simulation_data->my_ext_press
+              &data->d_my_en[E_TOR], &data->d_my_en[E_CON],
+              &data->d_my_ext_press
 #else
               spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
 #endif
@@ -1414,18 +1412,18 @@ void Cuda_Compute_Torsion_Angles( reax_system const * const system,
 #if !defined(GPU_ATOMIC_EV)
     if ( update_energy == TRUE )
     {
-        Cuda_Reduction_Sum( spad,
-                &data->d_my_en->e_tor, system->n, 3, control->cuda_streams[3] );
+        Cuda_Reduction_Sum( spad, &data->d_my_en[E_TOR], system->n, 3,
+                control->cuda_streams[3] );
 
-        Cuda_Reduction_Sum( &spad[system->n],
-                &data->d_my_en->e_con, system->n, 3, control->cuda_streams[3] );
+        Cuda_Reduction_Sum( &spad[system->n], &data->d_my_en[E_CON], system->n, 3,
+                control->cuda_streams[3] );
     }
 
     if ( control->virial == 1 )
     {
         rvec_spad = (rvec *) (&spad[2 * system->n]);
 
-        Cuda_Reduction_Sum( rvec_spad, &data->d_simulation_data->my_ext_press,
+        Cuda_Reduction_Sum( rvec_spad, &data->d_my_ext_press,
                 system->n, 3, control->cuda_streams[3] );
     }
 #endif

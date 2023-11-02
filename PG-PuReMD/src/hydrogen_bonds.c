@@ -163,7 +163,7 @@ void Hydrogen_Bonds( reax_system * const system, control_params * const control,
                                     + r_jk / hbp->r0_hb - 2.0 ) );
 
                         e_hb = hbp->p_hb1 * (1.0 - exp_hb2) * exp_hb3 * sin_xhz4;
-                        data->my_en->e_hb += e_hb;
+                        data->my_en[E_HB] += e_hb;
 
                         CEhb1 = hbp->p_hb1 * hbp->p_hb2 * exp_hb2 * exp_hb3 * sin_xhz4;
                         CEhb2 = -0.5 * hbp->p_hb1 * (1.0 - exp_hb2) * exp_hb3 * cos_xhz1;
@@ -219,7 +219,7 @@ void Hydrogen_Bonds( reax_system * const system, control_params * const control,
                                  "%6d%6d%6d%12.4f%12.4f%12.4f%12.4f%12.4f\n",
                                  system->my_atoms[i].orig_id, system->my_atoms[j].orig_id,
                                  system->my_atoms[k].orig_id,
-                                 r_jk, theta, bo_ij->BO, e_hb, data->my_en->e_hb );
+                                 r_jk, theta, bo_ij->BO, e_hb, data->my_en[E_HB] );
 #endif
 
 #if defined(TEST_FORCES)
@@ -248,7 +248,7 @@ void Hydrogen_Bonds( reax_system * const system, control_params * const control,
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "Number of hydrogen bonds: %d\n", num_hb_intrs );
-    fprintf( stderr, "Hydrogen Bond Energy: %g\n", data->my_en->e_hb );
+    fprintf( stderr, "Hydrogen Bond Energy: %g\n", data->my_en[E_HB] );
     fprintf( stderr, "hydbonds: ext_press (%24.15e %24.15e %24.15e)\n",
             data->ext_press[0], data->ext_press[1], data->ext_press[2] );
 #endif

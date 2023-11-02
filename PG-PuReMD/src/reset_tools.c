@@ -67,25 +67,24 @@ static void Reset_Atoms_HBond_Indices( reax_system * const system, control_param
 }
 
 
-static void Reset_Energies( energy_data * const en )
+static void Reset_Energies( real * const en )
 {
-    en->e_bond = 0.0;
-    en->e_ov = 0.0;
-    en->e_un = 0.0;
-    en->e_lp = 0.0;
-    en->e_ang = 0.0;
-    en->e_pen = 0.0;
-    en->e_coa = 0.0;
-    en->e_hb = 0.0;
-    en->e_tor = 0.0;
-    en->e_con = 0.0;
-    en->e_vdW = 0.0;
-    en->e_ele = 0.0;
-    en->e_pol = 0.0;
-
-    en->e_pot = 0.0;
-    en->e_kin = 0.0;
-    en->e_tot = 0.0;
+    en[E_BOND] = 0.0;
+    en[E_OV] = 0.0;
+    en[E_UN] = 0.0;
+    en[E_LP] = 0.0;
+    en[E_ANG] = 0.0;
+    en[E_PEN] = 0.0;
+    en[E_COA] = 0.0;
+    en[E_HB] = 0.0;
+    en[E_TOR] = 0.0;
+    en[E_CON] = 0.0;
+    en[E_VDW] = 0.0;
+    en[E_ELE] = 0.0;
+    en[E_POL] = 0.0;
+    en[E_POT] = 0.0;
+    en[E_KIN] = 0.0;
+    en[E_TOT] = 0.0;
 }
 
 

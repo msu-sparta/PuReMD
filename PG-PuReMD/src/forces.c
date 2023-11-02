@@ -674,7 +674,7 @@ static void Init_CM_Half_NT( reax_system *system, control_params *control,
     {
         if ( i < system->n && H->end[i] - H->start[i] > system->max_cm_entries[i] )
         {
-            workspace->realloc->cm = TRUE;
+            workspace->realloc[RE_CM] = TRUE;
             break;
         }
     }
@@ -890,7 +890,7 @@ static void Init_CM_Full_NT( reax_system *system, control_params *control,
     {
         if ( i < system->n && H->end[i] - H->start[i] > system->max_cm_entries[i] )
         {
-            workspace->realloc->cm = TRUE;
+            workspace->realloc[RE_CM] = TRUE;
             break;
         }
     }
@@ -971,7 +971,7 @@ static void Init_CM_Half_FS( reax_system *system, control_params *control,
     {
         if ( H->end[i] - H->start[i] > system->max_cm_entries[i] )
         {
-            workspace->realloc->cm = TRUE;
+            workspace->realloc[RE_CM] = TRUE;
             break;
         }
     }
@@ -1043,7 +1043,7 @@ static void Init_CM_Full_FS( reax_system *system, control_params *control,
     {
         if ( H->end[i] - H->start[i] > system->max_cm_entries[i] )
         {
-            workspace->realloc->cm = TRUE;
+            workspace->realloc[RE_CM] = TRUE;
             break;
         }
     }
@@ -1210,7 +1210,7 @@ static void Init_Bond_Half( reax_system *system, control_params *control,
     {
         if ( Num_Entries( i, bond_list ) > system->max_bonds[i] )
         {
-            workspace->realloc->bonds = TRUE;
+            workspace->realloc[RE_BONDS] = TRUE;
             break;
         }
     }
@@ -1221,7 +1221,7 @@ static void Init_Bond_Half( reax_system *system, control_params *control,
                 && Num_Entries( system->my_atoms[i].Hindex, hbond_list )
                 > system->max_hbonds[system->my_atoms[i].Hindex] )
         {
-            workspace->realloc->hbonds = TRUE;
+            workspace->realloc[RE_HBONDS] = TRUE;
             break;
         }
     }
@@ -1398,7 +1398,7 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
     {
         if ( Num_Entries( i, bond_list ) > system->max_bonds[i] )
         {
-            workspace->realloc->bonds = TRUE;
+            workspace->realloc[RE_BONDS] = TRUE;
             break;
         }
     }
@@ -1409,7 +1409,7 @@ static void Init_Bond_Full( reax_system *system, control_params *control,
                 && Num_Entries( system->my_atoms[i].Hindex, hbond_list )
                 > system->max_hbonds[system->my_atoms[i].Hindex] )
         {
-            workspace->realloc->hbonds = TRUE;
+            workspace->realloc[RE_HBONDS] = TRUE;
             break;
         }
     }
@@ -1990,16 +1990,16 @@ static int Init_Forces( reax_system *system, control_params *control,
     Update_Timing_Info( &time, &data->timing.init_bond );
 #endif
 
-    ret = (workspace->realloc->cm == FALSE
-            && workspace->realloc->bonds == FALSE
-            && workspace->realloc->hbonds == FALSE
+    ret = (workspace->realloc[RE_CM] == FALSE
+            && workspace->realloc[RE_BONDS] == FALSE
+            && workspace->realloc[RE_HBONDS] == FALSE
             ? SUCCESS : FAILURE);
 
-    if ( workspace->realloc->cm == FALSE )
+    if ( workspace->realloc[RE_CM] == FALSE )
     {
         cm_done = TRUE;
     }
-    if ( workspace->realloc->bonds == FALSE && workspace->realloc->hbonds == FALSE )
+    if ( workspace->realloc[RE_BONDS] == FALSE && workspace->realloc[RE_HBONDS] == FALSE )
     {
         bonds_done = TRUE;
     }
@@ -2241,7 +2241,7 @@ static int Init_Forces_No_Charges( reax_system * const system, control_params * 
     {
         if ( Num_Entries( i, bond_list ) > system->max_bonds[i] )
         {
-            workspace->realloc->bonds = TRUE;
+            workspace->realloc[RE_BONDS] = TRUE;
         }
 
         if ( i < system->n
@@ -2249,12 +2249,12 @@ static int Init_Forces_No_Charges( reax_system * const system, control_params * 
                 && Num_Entries( system->my_atoms[i].Hindex, hbond_list )
                 > system->max_hbonds[system->my_atoms[i].Hindex] )
         {
-            workspace->realloc->hbonds = TRUE;
+            workspace->realloc[RE_HBONDS] = TRUE;
         }
     }
 
-    return (workspace->realloc->bonds == TRUE 
-            || workspace->realloc->hbonds == TRUE) ? FAILURE : SUCCESS;
+    return (workspace->realloc[RE_BONDS] == TRUE 
+            || workspace->realloc[RE_HBONDS] == TRUE) ? FAILURE : SUCCESS;
 }
 
 
@@ -2309,9 +2309,9 @@ int Compute_Forces( reax_system * const system, control_params * const control,
     if ( ret != SUCCESS )
     {
         Estimate_Storages( system, control, lists, workspace,
-                workspace->realloc->cm,
-                (workspace->realloc->bonds == TRUE
-                 || workspace->realloc->hbonds == TRUE ? TRUE : FALSE),
+                workspace->realloc[RE_CM],
+                (workspace->realloc[RE_BONDS] == TRUE
+                 || workspace->realloc[RE_HBONDS] == TRUE ? TRUE : FALSE),
                 &matrix_dim, workspace->H.format );
     }
 

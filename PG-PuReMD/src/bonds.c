@@ -93,7 +93,7 @@ void Bonds( reax_system * const system, control_params * const control,
                 ebond = -twbp->De_s * bo_ij->BO_s * exp_be12
                     - twbp->De_p * bo_ij->BO_pi
                     - twbp->De_pp * bo_ij->BO_pi2;
-                data->my_en->e_bond += ebond;
+                data->my_en[E_BOND] += ebond;
 
                 /* calculate derivatives of bond orders */
                 bo_ij->Cdbo += CEbo;
@@ -105,7 +105,7 @@ void Bonds( reax_system * const system, control_params * const control,
                 fprintf( out_control->ebond, "%6d%6d%12.4f%12.4f%12.4f\n",
                          system->my_atoms[i].orig_id,
                          system->my_atoms[j].orig_id,
-                         bo_ij->BO, ebond, data->my_en->e_bond );
+                         bo_ij->BO, ebond, data->my_en[E_BOND] );
 #endif
 
 #if defined(TEST_FORCES)
@@ -135,7 +135,7 @@ void Bonds( reax_system * const system, control_params * const control,
                         hulpov = 1.0 / (1.0 + 25.0 * exphuov);
 
                         estriph = gp10 * exphu * hulpov * (exphua1 + exphub1);
-                        data->my_en->e_bond += estriph;
+                        data->my_en[E_BOND] += estriph;
 
                         decobdbo = gp10 * exphu * hulpov * (exphua1 + exphub1)
                             * ( gp3 - 2.0 * gp7 * (bo_ij->BO - 2.5) );

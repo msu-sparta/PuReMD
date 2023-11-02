@@ -1310,21 +1310,22 @@ static void Cuda_Compute_Polarization_Energy( reax_system const * const system,
         simulation_data * const data )
 {
 #if defined(GPU_ATOMIC_EV)
-    sCudaMemsetAsync( &data->d_my_en->e_pol,
-            0, sizeof(real), control->cuda_streams[5], __FILE__, __LINE__ );
+    sCudaMemsetAsync( &data->d_my_en[E_POL], 0, sizeof(real),
+            control->cuda_streams[5], __FILE__, __LINE__ );
 #else
     real *spad;
 
-    sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
+    sCudaCheckMalloc( &workspace->d_workspace->scratch[5],
+            &workspace->d_workspace->scratch_size[5],
             sizeof(real) * system->n, __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch[5];
+    spad = (real *) workspace->d_workspace->scratch[5];
 #endif
 
     k_compute_polarization_energy <<< control->blocks_n, control->gpu_block_size,
                                   0, control->cuda_streams[5] >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, system->n,
 #if defined(GPU_ATOMIC_EV)
-          &data->d_my_en->e_pol
+          &data->d_my_en[E_POL]
 #else
           spad
 #endif
@@ -1332,8 +1333,8 @@ static void Cuda_Compute_Polarization_Energy( reax_system const * const system,
     cudaCheckError( );
 
 #if !defined(GPU_ATOMIC_EV)
-    Cuda_Reduction_Sum( spad, &data->d_my_en->e_pol, system->n,
-            5, control->cuda_streams[5] );
+    Cuda_Reduction_Sum( spad, &data->d_my_en[E_POL], system->n, 5,
+            control->cuda_streams[5] );
 #endif
 }
 
@@ -1359,12 +1360,12 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
 #endif
 
 #if defined(GPU_ATOMIC_EV)
-    sCudaMemsetAsync( &data->d_my_en->e_vdW,
-            0, sizeof(real), control->cuda_streams[4], __FILE__, __LINE__ );
+    sCudaMemsetAsync( &data->d_my_en[E_VDW], 0, sizeof(real),
+            control->cuda_streams[4], __FILE__, __LINE__ );
     if ( control->virial == 1 )
     {
-        sCudaMemsetAsync( &data->d_simulation_data->my_ext_press,
-                0, sizeof(rvec), control->cuda_streams[4], __FILE__, __LINE__ );
+        sCudaMemsetAsync( &data->d_my_ext_press, 0, sizeof(rvec),
+                control->cuda_streams[4], __FILE__, __LINE__ );
     }
 #else
     if ( control->virial == 1 )
@@ -1375,9 +1376,10 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
     {
         s = sizeof(real) * system->n;
     }
-    sCudaCheckMalloc( &workspace->scratch[4], &workspace->scratch_size[4],
+    sCudaCheckMalloc( &workspace->d_workspace->scratch[4],
+            &workspace->d_workspace->scratch_size[4],
             s, __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch[4];
+    spad = (real *) workspace->d_workspace->scratch[4];
 #endif
 
     cudaStreamWaitEvent( control->cuda_streams[4],
@@ -1400,7 +1402,7 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
 #endif
                   *(lists[FAR_NBRS]), system->n, system->reax_param.num_atom_types, 
 #if defined(GPU_ATOMIC_EV)
-                  &data->d_my_en->e_vdW
+                  &data->d_my_en[E_VDW]
 #else
                   spad
 #endif
@@ -1420,7 +1422,7 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
 #endif
                   *(lists[FAR_NBRS]), system->n, system->reax_param.num_atom_types, 
 #if defined(GPU_ATOMIC_EV)
-                  &data->d_my_en->e_vdW
+                  &data->d_my_en[E_VDW]
 #else
                   spad
 #endif
@@ -1441,7 +1443,7 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
 #endif
                   *(lists[FAR_NBRS]), system->n, system->reax_param.num_atom_types, 
 #if defined(GPU_ATOMIC_EV)
-                  &data->d_my_en->e_vdW
+                  &data->d_my_en[E_VDW]
 #else
                   spad
 #endif
@@ -1463,8 +1465,8 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
 #endif
               *(lists[FAR_NBRS]), system->n, system->reax_param.num_atom_types, 
 #if defined(GPU_ATOMIC_EV)
-              &data->d_my_en->e_vdW, &data->d_my_en->e_ele,
-              &data->d_simulation_data->my_ext_press
+              &data->d_my_en[E_VDW], &data->d_my_en[E_ELE],
+              &data->d_my_ext_press
 #else
               spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
 #endif
@@ -1480,10 +1482,11 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
 #else
               workspace->d_workspace->f_vdw_clmb,
 #endif
-              *(lists[FAR_NBRS]), workspace->d_LR, system->n, system->reax_param.num_atom_types, 
+              *(lists[FAR_NBRS]), workspace->d_workspace->LR, system->n,
+              system->reax_param.num_atom_types, 
 #if defined(GPU_ATOMIC_EV)
-              &data->d_my_en->e_vdW, &data->d_my_en->e_ele,
-              &data->d_simulation_data->my_ext_press
+              &data->d_my_en[E_VDW], &data->d_my_en[E_ELE],
+              &data->d_my_ext_press
 #else
               spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
 #endif
@@ -1495,7 +1498,7 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
     if ( update_energy == TRUE )
     {
         /* reduction for vdw */
-        Cuda_Reduction_Sum( spad, &data->d_my_en->e_vdW, system->n,
+        Cuda_Reduction_Sum( spad, &data->d_my_en[E_VDW], system->n,
                 4, control->cuda_streams[4] );
     }
 
@@ -1503,7 +1506,7 @@ void Cuda_Compute_NonBonded_Forces_Part1( reax_system const * const system,
     {
         spad_rvec = (rvec *) (&spad[system->n]);
 
-        Cuda_Reduction_Sum( spad_rvec, &data->d_simulation_data->my_ext_press,
+        Cuda_Reduction_Sum( spad_rvec, &data->d_my_ext_press,
                 system->n, 4, control->cuda_streams[4] );
     }
 #endif
@@ -1536,15 +1539,16 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
 
 #if defined(GPU_ATOMIC_EV)
 #if defined(FUSED_VDW_COULOMB)
-    sCudaMemsetAsync( &data->d_my_en->e_vdW,
-            0, sizeof(real), control->cuda_streams[5], __FILE__, __LINE__ );
+    sCudaMemsetAsync( &data->d_my_en[E_VDW], 0, sizeof(real) * 2,
+            control->cuda_streams[5], __FILE__, __LINE__ );
+#else
+    sCudaMemsetAsync( &data->d_my_en[E_VDW], 0, sizeof(real),
+            control->cuda_streams[5], __FILE__, __LINE__ );
 #endif
-    sCudaMemsetAsync( &data->d_my_en->e_ele,
-            0, sizeof(real), control->cuda_streams[5], __FILE__, __LINE__ );
     if ( control->virial == 1 )
     {
-        sCudaMemsetAsync( &data->d_simulation_data->my_ext_press,
-                0, sizeof(rvec), control->cuda_streams[5], __FILE__, __LINE__ );
+        sCudaMemsetAsync( &data->d_my_ext_press, 0, sizeof(rvec),
+                control->cuda_streams[5], __FILE__, __LINE__ );
     }
 #else
     if ( control->virial == 1 )
@@ -1563,9 +1567,10 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
         s = sizeof(real) * system->n;
 #endif
     }
-    sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
+    sCudaCheckMalloc( &workspace->d_workspace->scratch[5],
+            &workspace->d_workspace->scratch_size[5],
             s, __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch[5];
+    spad = (real *) workspace->d_workspace->scratch[5];
 #endif
 
     if ( control->tabulate <= 0 && control->virial == 0 )
@@ -1583,7 +1588,7 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
 //#endif
 //             *(lists[FAR_NBRS]), system->n, system->reax_param.num_atom_types, 
 //#if defined(GPU_ATOMIC_EV)
-//              &data->d_my_en->e_vdW, &data->d_my_en->e_ele
+//              &data->d_my_en[E_VDW], &data->d_my_en[E_ELE]
 //#else
 //              spad, &spad[system->n]
 //#endif
@@ -1602,7 +1607,7 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
 #endif
               *(lists[FAR_NBRS]), system->n, system->reax_param.num_atom_types, 
 #if defined(GPU_ATOMIC_EV)
-              &data->d_my_en->e_vdW, &data->d_my_en->e_ele
+              &data->d_my_en[E_VDW], &data->d_my_en[E_ELE]
 #else
               spad, &spad[system->n]
 #endif
@@ -1621,7 +1626,7 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
 #endif
               *(lists[FAR_NBRS]), system->n, system->reax_param.num_atom_types, 
 #if defined(GPU_ATOMIC_EV)
-              &data->d_my_en->e_ele
+              &data->d_my_en[E_ELE]
 #else
               spad
 #endif
@@ -1642,8 +1647,8 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
 //#endif
 //              *(lists[FAR_NBRS]), system->n, system->reax_param.num_atom_types, 
 //#if defined(GPU_ATOMIC_EV)
-//              &data->d_my_en->e_vdW, &data->d_my_en->e_ele,
-//              &data->d_simulation_data->my_ext_press
+//              &data->d_my_en[E_VDW], &data->d_my_en[E_ELE],
+//              &data->d_my_ext_press
 //#else
 //              spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
 //#endif
@@ -1662,8 +1667,8 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
 #endif
               *(lists[FAR_NBRS]), system->n, system->reax_param.num_atom_types, 
 #if defined(GPU_ATOMIC_EV)
-              &data->d_my_en->e_vdW, &data->d_my_en->e_ele,
-              &data->d_simulation_data->my_ext_press
+              &data->d_my_en[E_VDW], &data->d_my_en[E_ELE],
+              &data->d_my_ext_press
 #else
               spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
 #endif
@@ -1679,10 +1684,11 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
 #else
               workspace->d_workspace->f_vdw_clmb,
 #endif
-              *(lists[FAR_NBRS]), workspace->d_LR, system->n, system->reax_param.num_atom_types, 
+              *(lists[FAR_NBRS]), workspace->d_workspace->LR, system->n,
+              system->reax_param.num_atom_types, 
 #if defined(GPU_ATOMIC_EV)
-              &data->d_my_en->e_vdW, &data->d_my_en->e_ele,
-              &data->d_simulation_data->my_ext_press
+              &data->d_my_en[E_VDW], &data->d_my_en[E_ELE],
+              &data->d_my_ext_press
 #else
               spad, &spad[system->n], (rvec *) (&spad[2 * system->n])
 #endif
@@ -1695,8 +1701,8 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
     {
 #if defined(FUSED_VDW_COULOMB)
         /* reduction for vdw */
-        Cuda_Reduction_Sum( spad, &data->d_my_en->e_vdW, system->n,
-                5, control->cuda_streams[5] );
+        Cuda_Reduction_Sum( spad, &data->d_my_en[E_VDW], system->n, 5,
+                control->cuda_streams[5] );
 #endif
 
         /* reduction for ele */
@@ -1706,7 +1712,7 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
 #else
                 spad,
 #endif
-                &data->d_my_en->e_ele, system->n, 5, control->cuda_streams[5] );
+                &data->d_my_en[E_ELE], system->n, 5, control->cuda_streams[5] );
     }
 
     if ( control->virial == 1 )
@@ -1717,7 +1723,7 @@ void Cuda_Compute_NonBonded_Forces_Part2( reax_system const * const system,
         spad_rvec = (rvec *) (&spad[system->n]);
 #endif
 
-        Cuda_Reduction_Sum( spad_rvec, &data->d_simulation_data->my_ext_press,
+        Cuda_Reduction_Sum( spad_rvec, &data->d_my_ext_press,
                 system->n, 5, control->cuda_streams[5] );
     }
 #endif

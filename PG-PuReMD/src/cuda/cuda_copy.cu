@@ -8,8 +8,8 @@
 
 
 /* Copy grid info from host to device */
-extern "C" void Cuda_Copy_Grid_Host_to_Device( control_params *control,
-        grid *host, grid *device )
+extern "C" void Cuda_Copy_Grid_Host_to_Device( control_params const * const control,
+        grid const * const host, grid * const device )
 {
     int total;
 
@@ -51,7 +51,8 @@ extern "C" void Cuda_Copy_Grid_Host_to_Device( control_params *control,
 
 
 /* Copy atom info from host to device */
-extern "C" void Cuda_Copy_Atoms_Host_to_Device( reax_system *system, control_params *control )
+extern "C" void Cuda_Copy_Atoms_Host_to_Device( reax_system * const system,
+        control_params const * const control )
 {
     sCudaMemcpyAsync( system->d_my_atoms, system->my_atoms, sizeof(reax_atom) * system->N,
             cudaMemcpyHostToDevice, control->cuda_streams[0], __FILE__, __LINE__ );
@@ -83,17 +84,15 @@ extern "C" void Cuda_Copy_Matrix_Host_to_Device( sparse_matrix const * const A,
 
 
 /* Copy atomic system info from host to device */
-extern "C" void Cuda_Copy_System_Host_to_Device( reax_system *system,
-        control_params *control )
+extern "C" void Cuda_Copy_System_Host_to_Device( reax_system * const system,
+        control_params const * const control )
 {
     Cuda_Copy_Atoms_Host_to_Device( system, control );
 
-    sCudaMemcpyAsync( system->d_my_box, &system->my_box,
-            sizeof(simulation_box),
+    sCudaMemcpyAsync( system->d_my_box, &system->my_box, sizeof(simulation_box),
             cudaMemcpyHostToDevice, control->cuda_streams[0], __FILE__, __LINE__ );
 
-    sCudaMemcpyAsync( system->d_my_ext_box, &system->my_ext_box,
-            sizeof(simulation_box),
+    sCudaMemcpyAsync( system->d_my_ext_box, &system->my_ext_box, sizeof(simulation_box),
             cudaMemcpyHostToDevice, control->cuda_streams[0], __FILE__, __LINE__ );
 
     sCudaMemcpyAsync( system->reax_param.d_sbp, system->reax_param.sbp,
@@ -156,17 +155,13 @@ extern "C" void Cuda_Copy_Matrix_Device_to_Host( sparse_matrix * const A,
 
 /* Copy simulation data from device to host */
 extern "C" void Cuda_Copy_Simulation_Data_Device_to_Host( control_params const * const control,
-        simulation_data * const data, simulation_data * const d_data )
+        simulation_data * const data )
 {
-    sCudaMemcpyAsync( data->my_en, data->d_my_en, sizeof(energy_data), 
+    sCudaMemcpyAsync( data->my_en, data->d_my_en, sizeof(real) * (E_N - 2), 
             cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
     if ( control->virial == 1 )
     {
-        sCudaMemcpyAsync( &data->kin_press, &d_data->kin_press, sizeof(real), 
-                cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
-        sCudaMemcpyAsync( data->int_press, d_data->int_press, sizeof(rvec), 
-                cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
-        sCudaMemcpyAsync( data->ext_press, d_data->ext_press, sizeof(rvec), 
+        sCudaMemcpyAsync( data->my_ext_press, data->d_my_ext_press, sizeof(rvec), 
                 cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
     }
 
@@ -176,8 +171,8 @@ extern "C" void Cuda_Copy_Simulation_Data_Device_to_Host( control_params const *
 
 /* Copy interaction lists from device to host,
  * with allocation for the host list */
-extern "C" void Cuda_Copy_List_Device_to_Host( control_params *control,
-        reax_list *host_list, reax_list *device_list, int type )
+extern "C" void Cuda_Copy_List_Device_to_Host( control_params const * const control,
+        reax_list * const host_list, reax_list * const device_list, int type )
 {
     int format;
 
@@ -266,8 +261,8 @@ extern "C" void Cuda_Copy_List_Device_to_Host( control_params *control,
 }
 
 /* Copy atom info from device to host */
-extern "C" void Cuda_Copy_MPI_Data_Host_to_Device( control_params *control,
-        mpi_datatypes *mpi_data )
+extern "C" void Cuda_Copy_MPI_Data_Host_to_Device( control_params const * const control,
+        mpi_datatypes * const mpi_data )
 {
     sCudaCheckMalloc( &mpi_data->d_in1_buffer, &mpi_data->d_in1_buffer_size,
             mpi_data->in1_buffer_size, __FILE__, __LINE__ );

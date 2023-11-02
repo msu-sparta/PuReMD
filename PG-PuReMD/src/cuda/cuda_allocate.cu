@@ -89,7 +89,7 @@ extern "C" void * sCudaHostCallocWrapper( size_t n, size_t size,
 }
 
 
-extern "C" void sCudaFreeHostWrapper( void *ptr, const char * const filename,
+extern "C" void sCudaFreeHostWrapper( void * ptr, const char * const filename,
         int line )
 {
     if ( ptr == NULL )
@@ -104,7 +104,7 @@ extern "C" void sCudaFreeHostWrapper( void *ptr, const char * const filename,
 }
 
 
-static void Cuda_Reallocate_List( reax_list *list, size_t n, size_t max_intrs,
+static void Cuda_Reallocate_List( reax_list * const list, size_t n, size_t max_intrs,
         int type )
 {
     Cuda_Delete_List( list );
@@ -112,15 +112,16 @@ static void Cuda_Reallocate_List( reax_list *list, size_t n, size_t max_intrs,
 }
 
 
-static void Cuda_Reallocate_System_Part1( reax_system *system,
-        control_params *control, storage *workspace, int local_cap_old )
+static void Cuda_Reallocate_System_Part1( reax_system * const system,
+        control_params const * const control, storage * const workspace,
+        int local_cap_old )
 {
     int *temp;
 
-    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
-            sizeof(int) * local_cap_old,
+    sCudaCheckMalloc( &workspace->d_workspace->scratch[0],
+            &workspace->d_workspace->scratch_size[0], sizeof(int) * local_cap_old,
             __FILE__, __LINE__ );
-    temp = (int *) workspace->scratch[0];
+    temp = (int *) workspace->d_workspace->scratch[0];
 
     sCudaMemcpyAsync( temp, system->d_cm_entries, sizeof(int) * local_cap_old,
             cudaMemcpyDeviceToDevice, control->cuda_streams[0], __FILE__, __LINE__ );
@@ -144,17 +145,19 @@ static void Cuda_Reallocate_System_Part1( reax_system *system,
 }
 
 
-static void Cuda_Reallocate_System_Part2( reax_system *system, control_params *control,
-        storage *workspace, int total_cap_old )
+static void Cuda_Reallocate_System_Part2( reax_system * const system,
+        control_params const * const control, storage * const workspace,
+        int total_cap_old )
 {
     int *temp;
     reax_atom *temp_atom;
 
-    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
+    sCudaCheckMalloc( &workspace->d_workspace->scratch[0],
+            &workspace->d_workspace->scratch_size[0],
             MAX( sizeof(reax_atom), sizeof(int) ) * total_cap_old,
             __FILE__, __LINE__ );
-    temp = (int *) workspace->scratch[0];
-    temp_atom = (reax_atom *) workspace->scratch[0];
+
+    temp_atom = (reax_atom *) workspace->d_workspace->scratch[0];
 
     /* free the existing storage for atoms, leave other info allocated */
     sCudaMemcpyAsync( temp_atom, system->d_my_atoms, sizeof(reax_atom) * total_cap_old,
@@ -163,12 +166,11 @@ static void Cuda_Reallocate_System_Part2( reax_system *system, control_params *c
     sCudaFree( system->d_my_atoms, __FILE__, __LINE__ );
     sCudaMalloc( (void **) &system->d_my_atoms,
             sizeof(reax_atom) * system->total_cap, __FILE__, __LINE__ );
-    sCudaMemsetAsync( system->d_my_atoms, FALSE,
-            sizeof(reax_atom) * system->total_cap, 
-            control->cuda_streams[0], __FILE__, __LINE__ );
     sCudaMemcpyAsync( system->d_my_atoms, temp_atom, sizeof(reax_atom) * total_cap_old,
             cudaMemcpyDeviceToDevice, control->cuda_streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->cuda_streams[0] );
+
+    temp = (int *) workspace->d_workspace->scratch[0];
 
     /* list management */
     sCudaMemcpyAsync( temp, system->d_far_nbrs, sizeof(int) * total_cap_old,
@@ -233,13 +235,14 @@ static void Cuda_Reallocate_System_Part2( reax_system *system, control_params *c
 }
 
 
-void Cuda_Allocate_Grid( reax_system *system, control_params *control )
+void Cuda_Allocate_Grid( reax_system * const system,
+        control_params const * const control )
 {
     int total;
 //    grid_cell local_cell;
     grid *host = &system->my_grid;
     grid *device = &system->d_my_grid;
-//    ivec *nbrs_x = (ivec *) workspace->scratch[0];
+//    ivec *nbrs_x = (ivec *) workspace->d_workspace->scratch[0];
 
     total = host->ncells[0] * host->ncells[1] * host->ncells[2];
     ivec_Copy( device->ncells, host->ncells );
@@ -318,7 +321,8 @@ void Cuda_Allocate_Grid( reax_system *system, control_params *control )
 }
 
 
-void Cuda_Deallocate_Grid_Cell_Atoms( reax_system *system, control_params *control )
+void Cuda_Deallocate_Grid_Cell_Atoms( reax_system * const system,
+        control_params const * const control )
 {
     int i, total;
     grid_cell local_cell;
@@ -339,8 +343,8 @@ void Cuda_Deallocate_Grid_Cell_Atoms( reax_system *system, control_params *contr
 }
 
 
-void Cuda_Allocate_Grid_Cell_Atoms( reax_system *system, control_params *control,
-        int cap )
+void Cuda_Allocate_Grid_Cell_Atoms( reax_system * const system,
+        control_params const *const control, int cap )
 {
     int i, total;
     grid_cell local_cell;
@@ -364,14 +368,12 @@ void Cuda_Allocate_Grid_Cell_Atoms( reax_system *system, control_params *control
 }
 
 
-void Cuda_Allocate_System( reax_system *system, control_params *control )
+void Cuda_Allocate_System( reax_system * const system,
+        control_params const * const control )
 {
     /* atoms */
     sCudaMalloc( (void **) &system->d_my_atoms,
             system->total_cap * sizeof(reax_atom), __FILE__, __LINE__ );
-    sCudaMemsetAsync( system->d_my_atoms, FALSE,
-            system->total_cap * sizeof(reax_atom), 
-            control->cuda_streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->cuda_streams[0] );
     sCudaMalloc( (void **) &system->d_num_H_atoms, sizeof(int), __FILE__, __LINE__ );
 
@@ -382,16 +384,12 @@ void Cuda_Allocate_System( reax_system *system, control_params *control )
             system->total_cap * sizeof(int), __FILE__, __LINE__ );
     sCudaMalloc( (void **) &system->d_total_far_nbrs,
             sizeof(int), __FILE__, __LINE__ );
-    sCudaMalloc( (void **) &system->d_realloc_far_nbrs,
-            sizeof(int), __FILE__, __LINE__ );
 
     sCudaMalloc( (void **) &system->d_bonds,
             system->total_cap * sizeof(int), __FILE__, __LINE__ );
     sCudaMalloc( (void **) &system->d_max_bonds,
             system->total_cap * sizeof(int), __FILE__, __LINE__ );
     sCudaMalloc( (void **) &system->d_total_bonds,
-            sizeof(int), __FILE__, __LINE__ );
-    sCudaMalloc( (void **) &system->d_realloc_bonds,
             sizeof(int), __FILE__, __LINE__ );
 
     sCudaMalloc( (void **) &system->d_hbonds,
@@ -400,16 +398,12 @@ void Cuda_Allocate_System( reax_system *system, control_params *control )
             system->total_cap * sizeof(int), __FILE__, __LINE__ );
     sCudaMalloc( (void **) &system->d_total_hbonds,
             sizeof(int), __FILE__, __LINE__ );
-    sCudaMalloc( (void **) &system->d_realloc_hbonds,
-            sizeof(int), __FILE__, __LINE__ );
 
     sCudaMalloc( (void **) &system->d_cm_entries,
             system->local_cap * sizeof(int), __FILE__, __LINE__ );
     sCudaMalloc( (void **) &system->d_max_cm_entries,
             system->local_cap * sizeof(int), __FILE__, __LINE__ );
     sCudaMalloc( (void **) &system->d_total_cm_entries,
-            sizeof(int), __FILE__, __LINE__ );
-    sCudaMalloc( (void **) &system->d_realloc_cm_entries,
             sizeof(int), __FILE__, __LINE__ );
 
     sCudaMalloc( (void **) &system->d_total_thbodies,
@@ -450,16 +444,12 @@ void Cuda_Allocate_System( reax_system *system, control_params *control )
 }
 
 
-void Cuda_Allocate_Simulation_Data( simulation_data *data, cudaStream_t s )
+void Cuda_Allocate_Simulation_Data( simulation_data * const data, cudaStream_t s )
 {
-    sCudaMalloc( (void **) &data->d_simulation_data,
-            sizeof(simulation_data), __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &data->d_my_ext_press,
+            sizeof(rvec), __FILE__, __LINE__ );
     sCudaMalloc( (void **) &data->d_my_en,
-            sizeof(energy_data), __FILE__, __LINE__ );
-
-    sCudaMemsetAsync( data->d_simulation_data, FALSE, sizeof(simulation_data),
-            s, __FILE__, __LINE__ );
-
+            sizeof(real) * E_N, __FILE__, __LINE__ );
     cudaStreamSynchronize( s );
 }
 
@@ -541,8 +531,6 @@ void Cuda_Allocate_Workspace_Part2( control_params const * const control,
     {
         sCudaMalloc( (void **) &workspace->Hdia_inv, total_real,
                 __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->Hdia_inv, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
     }
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
@@ -553,34 +541,20 @@ void Cuda_Allocate_Workspace_Part2( control_params const * const control,
                 __FILE__, __LINE__ );
     }
     sCudaMalloc( (void **) &workspace->b_s, total_real, __FILE__, __LINE__ );
-    sCudaMemsetAsync( workspace->b_s, FALSE, total_real, 
-            control->cuda_streams[0], __FILE__, __LINE__ );
     sCudaMalloc( (void **) &workspace->b_t, total_real, __FILE__, __LINE__ );
-    sCudaMemsetAsync( workspace->b_t, FALSE, total_real, 
-            control->cuda_streams[0], __FILE__, __LINE__ );
     sCudaMalloc( (void **) &workspace->s, total_real, __FILE__, __LINE__ );
-    sCudaMemsetAsync( workspace->s, FALSE, total_real, 
-            control->cuda_streams[0], __FILE__, __LINE__ );
     sCudaMalloc( (void **) &workspace->t, total_real, __FILE__, __LINE__ );
-    sCudaMemsetAsync( workspace->t, FALSE, total_real, 
-            control->cuda_streams[0], __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
     sCudaMalloc( (void **) &workspace->b, total_rvec2, __FILE__, __LINE__ );
-    sCudaMemsetAsync( workspace->b, FALSE, total_rvec2, 
-            control->cuda_streams[0], __FILE__, __LINE__ );
     sCudaMalloc( (void **) &workspace->x, total_rvec2, __FILE__, __LINE__ );
-    sCudaMemsetAsync( workspace->x, FALSE, total_rvec2, 
-            control->cuda_streams[0], __FILE__, __LINE__ );
 #endif
 
     switch ( control->cm_solver_type )
     {
     case GMRES_S:
     case GMRES_H_S:
-        sCudaMalloc( (void **) &workspace->b_prc,
-                total_real, __FILE__, __LINE__ );
-        sCudaMalloc( (void **) &workspace->b_prm,
-                total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->b_prc, total_real, __FILE__, __LINE__ );
+        sCudaMalloc( (void **) &workspace->b_prm, total_real, __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->y,
                 (control->cm_solver_restart + 1) * sizeof(real), __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->z,
@@ -599,236 +573,96 @@ void Cuda_Allocate_Workspace_Part2( control_params const * const control,
 
     case SDM_S:
         sCudaMalloc( (void **) &workspace->r, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->r, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->d, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->d, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->q, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->q, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->p, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->p, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
         sCudaMalloc( (void **) &workspace->r2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->r2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->d2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->d2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->q2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->q2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->p2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->p2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
 #endif
         break;
 
     case CG_S:
         sCudaMalloc( (void **) &workspace->r, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->r, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->d, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->d, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->q, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->q, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->p, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->p, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
         sCudaMalloc( (void **) &workspace->r2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->r2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->d2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->d2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->q2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->q2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->p2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->p2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
 #endif
         break;
 
     case BiCGStab_S:
         sCudaMalloc( (void **) &workspace->y, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->y, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->g, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->g, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->z, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->z, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->r, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->r, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->d, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->d, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->q, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->q, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->p, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->p, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->r_hat, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->r_hat, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->q_hat, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->q_hat, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
         sCudaMalloc( (void **) &workspace->y2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->y2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->g2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->g2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->z2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->z2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->r2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->r2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->d2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->d2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->q2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->q2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->p2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->p2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->r_hat2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->r_hat2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->q_hat2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->q_hat2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
 #endif
         break;
 
     case PIPECG_S:
         sCudaMalloc( (void **) &workspace->z, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->z, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->r, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->r, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->d, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->d, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->q, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->q, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->p, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->p, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->m, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->m, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->n, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->n, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->u, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->u, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->w, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->w, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
         sCudaMalloc( (void **) &workspace->z2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->z2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->r2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->r2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->d2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->d2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->q2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->q2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->p2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->p2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->m2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->m2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->n2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->n2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->u2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->u2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->w2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->w2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
 #endif
         break;
 
     case PIPECR_S:
         sCudaMalloc( (void **) &workspace->z, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->z, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->r, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->r, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->d, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->d, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->q, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->q, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->p, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->p, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->m, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->m, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->n, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->n, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->u, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->u, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->w, total_real, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->w, FALSE, total_real, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
         sCudaMalloc( (void **) &workspace->z2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->z2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->r2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->r2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->d2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->d2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->q2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->q2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->p2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->p2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->m2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->m2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->n2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->n2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->u2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->u2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
         sCudaMalloc( (void **) &workspace->w2, total_rvec2, __FILE__, __LINE__ );
-        sCudaMemsetAsync( workspace->w2, FALSE, total_rvec2, 
-                control->cuda_streams[0], __FILE__, __LINE__ );
 #endif
         break;
 
@@ -861,7 +695,8 @@ void Cuda_Allocate_Workspace_Part2( control_params const * const control,
 }
 
 
-void Cuda_Deallocate_Workspace_Part1( control_params *control, storage *workspace )
+void Cuda_Deallocate_Workspace_Part1( control_params const * const control,
+        storage * const workspace )
 {
     /* Nose-Hoover integrator */
     if ( control->ensemble == nhNVT )
@@ -892,7 +727,8 @@ void Cuda_Deallocate_Workspace_Part1( control_params *control, storage *workspac
 }
 
 
-void Cuda_Deallocate_Workspace_Part2( control_params *control, storage *workspace )
+void Cuda_Deallocate_Workspace_Part2( control_params const * const control,
+        storage * const workspace )
 {
     /* bond order related storage  */
     sCudaFree( workspace->total_bond_order, __FILE__, __LINE__ );
@@ -1094,7 +930,7 @@ void Cuda_Allocate_Matrix( sparse_matrix * const H, int n, int n_max, int m,
 }
 
 
-void Cuda_Deallocate_Matrix( sparse_matrix *H )
+void Cuda_Deallocate_Matrix( sparse_matrix * const H )
 {
     H->allocated = FALSE;
     H->n = 0;
@@ -1108,20 +944,21 @@ void Cuda_Deallocate_Matrix( sparse_matrix *H )
 }
 
 
-void Cuda_Reallocate_Part1( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace, reax_list **lists,
-        mpi_datatypes *mpi_data )
+void Cuda_Reallocate_Part1( reax_system * const system,
+        control_params const * const control,
+        simulation_data * const data, storage * const workspace,
+        reax_list ** const lists, mpi_datatypes * const mpi_data )
 {
     int i, j, k, renbr;
-    reallocate_data *realloc;
+    int *realloc;
     grid *g;
 
-    realloc = workspace->d_workspace->realloc;
+    realloc = workspace->realloc;
     g = &system->my_grid;
     renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
 
     /* grid */
-    if ( renbr == TRUE && realloc->gcell_atoms > -1 )
+    if ( renbr == TRUE && realloc[RE_GCELL_ATOMS] > -1 )
     {
         for ( i = g->native_str[0]; i < g->native_end[0]; i++ )
         {
@@ -1131,7 +968,7 @@ void Cuda_Reallocate_Part1( reax_system *system, control_params *control,
                 {
                     sfree( g->cells[ index_grid_3d(i,j,k,g) ].atoms, __FILE__, __LINE__ );
                     g->cells[ index_grid_3d(i,j,k,g) ].atoms = (int *)
-                            scalloc( realloc->gcell_atoms, sizeof(int), __FILE__, __LINE__ );
+                            scalloc( realloc[RE_GCELL_ATOMS], sizeof(int), __FILE__, __LINE__ );
                 }
             }
         }
@@ -1139,21 +976,22 @@ void Cuda_Reallocate_Part1( reax_system *system, control_params *control,
         fprintf( stderr, "p:%d - *** Reallocating Grid Cell Atoms *** Step:%d\n", system->my_rank, data->step );
 
 //        Cuda_Deallocate_Grid_Cell_Atoms( system );
-//        Cuda_Allocate_Grid_Cell_Atoms( system, realloc->gcell_atoms );
-        realloc->gcell_atoms = -1;
+//        Cuda_Allocate_Grid_Cell_Atoms( system, realloc[RE_GCELL_ATOMS] );
+        realloc[RE_GCELL_ATOMS] = -1;
     }
 }
 
 
-void Cuda_Reallocate_Part2( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace, reax_list **lists,
-        mpi_datatypes *mpi_data )
+void Cuda_Reallocate_Part2( reax_system * const system,
+        control_params const * const control,
+        simulation_data * const data, storage * const workspace,
+        reax_list ** const lists, mpi_datatypes * const mpi_data )
 {
     int nflag, Nflag, local_cap_old, total_cap_old, renbr, format;
-    reallocate_data *realloc;
+    int *realloc;
     sparse_matrix *H;
 
-    realloc = workspace->d_workspace->realloc;
+    realloc = workspace->realloc;
     H = &workspace->d_workspace->H;
     renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
 
@@ -1193,16 +1031,16 @@ void Cuda_Reallocate_Part2( reax_system *system, control_params *control,
     }
 
     /* far neighbors */
-    if ( renbr == TRUE && (Nflag == TRUE || realloc->far_nbrs == TRUE) )
+    if ( renbr == TRUE && (Nflag == TRUE || realloc[RE_FAR_NBRS] == TRUE) )
     {
         Cuda_Reallocate_List( lists[FAR_NBRS], system->total_cap,
                 system->total_far_nbrs, TYP_FAR_NEIGHBOR );
         Cuda_Init_Neighbor_Indices( system, control, lists[FAR_NBRS] );
-        realloc->far_nbrs = FALSE;
+        realloc[RE_FAR_NBRS] = FALSE;
     }
 
     /* charge matrix */
-    if ( nflag == TRUE || realloc->cm == TRUE )
+    if ( nflag == TRUE || realloc[RE_CM] == TRUE )
     {
         format = H->format;
 
@@ -1210,34 +1048,34 @@ void Cuda_Reallocate_Part2( reax_system *system, control_params *control,
         Cuda_Allocate_Matrix( H, system->n, system->local_cap,
                 system->total_cm_entries, format, control->cuda_streams[0] );
 
-        realloc->cm = FALSE;
+        realloc[RE_CM] = FALSE;
     }
 
     /* bonds list */
-    if ( Nflag == TRUE || realloc->bonds == TRUE )
+    if ( Nflag == TRUE || realloc[RE_BONDS] == TRUE )
     {
         Cuda_Reallocate_List( lists[BONDS], system->total_cap,
                 system->total_bonds, TYP_BOND );
 
-        realloc->bonds = FALSE;
+        realloc[RE_BONDS] = FALSE;
     }
 
     /* hydrogen bonds list */
     if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0
-            && (Nflag == TRUE || realloc->hbonds == TRUE) )
+            && (Nflag == TRUE || realloc[RE_HBONDS] == TRUE) )
     {
         Cuda_Reallocate_List( lists[HBONDS], system->total_cap,
                 system->total_hbonds, TYP_HBOND );
 
-        realloc->hbonds = FALSE;
+        realloc[RE_HBONDS] = FALSE;
     }
 
     /* 3-body list */
-    if ( Nflag == TRUE || realloc->thbody == TRUE )
+    if ( Nflag == TRUE || realloc[RE_THBODY] == TRUE )
     {
         Cuda_Reallocate_List( lists[THREE_BODIES], system->total_thbodies_indices,
                 system->total_thbodies, TYP_THREE_BODY );
 
-        realloc->thbody = FALSE;
+        realloc[RE_THBODY] = FALSE;
     }
 }

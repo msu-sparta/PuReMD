@@ -199,7 +199,7 @@ GPU_GLOBAL void k_init_cm_qeq_half_fs( reax_atom * const my_atoms,
         single_body_parameters const * const sbp, two_body_parameters const * const tbp,
         sparse_matrix H, real const * const tap_coef, real cutoff,
         reax_list far_nbr_list, int num_atom_types,
-        int * const max_cm_entries, int * const realloc_cm_entries, int N )
+        int * const max_cm_entries, int * const realloc, int N )
 {
     int i, j, pj, start_i, end_i, type_i, orig_id_i;
     int cm_top, num_cm_entries;
@@ -273,7 +273,7 @@ GPU_GLOBAL void k_init_cm_qeq_half_fs( reax_atom * const my_atoms,
     /* reallocation check */
     if ( num_cm_entries > max_cm_entries[i] )
     {
-        *realloc_cm_entries = TRUE;
+        *realloc = TRUE;
     }
 }
 
@@ -284,7 +284,7 @@ GPU_GLOBAL void k_init_cm_qeq_half_fs( reax_atom * const my_atoms,
 GPU_GLOBAL void k_init_cm_qeq_half_fs_tab( reax_atom * const my_atoms,
         single_body_parameters const * const sbp, sparse_matrix H, real cutoff,
         reax_list far_nbr_list, LR_lookup_table const * const t_LR, int num_atom_types,
-        int * const max_cm_entries, int * const realloc_cm_entries, int N )
+        int * const max_cm_entries, int * const realloc, int N )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -344,7 +344,7 @@ GPU_GLOBAL void k_init_cm_qeq_half_fs_tab( reax_atom * const my_atoms,
     /* reallocation check */
     if ( num_cm_entries > max_cm_entries[i] )
     {
-        *realloc_cm_entries = TRUE;
+        *realloc = TRUE;
     }
 }
 
@@ -356,7 +356,7 @@ GPU_GLOBAL void k_init_cm_qeq_full_fs( reax_atom * const my_atoms,
         single_body_parameters const * const sbp, two_body_parameters const * const tbp,
         sparse_matrix H, real const * const tap_coef, real cutoff,
         reax_list far_nbr_list, int num_atom_types, int * const max_cm_entries,
-        int * const realloc_cm_entries, int N )
+        int * const realloc, int N )
 {
     int i, j, pj, start_i, end_i, type_i;
     int cm_top, num_cm_entries;
@@ -426,7 +426,7 @@ GPU_GLOBAL void k_init_cm_qeq_full_fs( reax_atom * const my_atoms,
     /* reallocation check */
     if ( num_cm_entries > max_cm_entries[i] )
     {
-        *realloc_cm_entries = TRUE;
+        *realloc = TRUE;
     }
 }
 
@@ -438,7 +438,7 @@ GPU_GLOBAL void k_init_cm_qeq_full_fs_opt( reax_atom * const my_atoms,
         single_body_parameters const * const sbp, two_body_parameters const * const tbp,
         sparse_matrix H, real const * const tap_coef, real cutoff,
         reax_list far_nbr_list, int num_atom_types, int * const max_cm_entries,
-        int * const realloc_cm_entries, int N )
+        int * const realloc, int N )
 {
     extern __shared__ cub::WarpScan<int>::TempStorage temp1[];
     int i, j, pj, lane_id, itr;
@@ -526,7 +526,7 @@ GPU_GLOBAL void k_init_cm_qeq_full_fs_opt( reax_atom * const my_atoms,
         /* reallocation check */
         if ( num_cm_entries > max_cm_entries[i] )
         {
-            *realloc_cm_entries = TRUE;
+            *realloc = TRUE;
         }
     }
 }
@@ -538,7 +538,7 @@ GPU_GLOBAL void k_init_cm_qeq_full_fs_opt( reax_atom * const my_atoms,
 GPU_GLOBAL void k_init_cm_qeq_full_fs_tab( reax_atom * const my_atoms,
         single_body_parameters const * const sbp, sparse_matrix H, real cutoff,
         reax_list far_nbr_list, LR_lookup_table *t_LR, int num_atom_types,
-        int * const max_cm_entries, int * const realloc_cm_entries, int N )
+        int * const max_cm_entries, int * const realloc, int N )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -587,7 +587,7 @@ GPU_GLOBAL void k_init_cm_qeq_full_fs_tab( reax_atom * const my_atoms,
     /* reallocation check */
     if ( num_cm_entries > max_cm_entries[i] )
     {
-        *realloc_cm_entries = TRUE;
+        *realloc = TRUE;
     }
 }
 
@@ -597,7 +597,7 @@ GPU_GLOBAL void k_init_bonds( reax_atom * const my_atoms,
         real * const total_bond_order, rvec * const dDeltap_self,
         real cutoff1, real cutoff2, real bo_cut,
         reax_list far_nbr_list, reax_list bond_list, int n, int N,
-        int num_atom_types, int * const max_bonds, int * const realloc_bonds )
+        int num_atom_types, int * const max_bonds, int * const realloc )
 {
     int i, j, pj, start_i, end_i;
     int type_i, type_j, tbp_ij;
@@ -722,7 +722,7 @@ GPU_GLOBAL void k_init_bonds( reax_atom * const my_atoms,
     /* reallocation check */
     if ( num_bonds > max_bonds[i] )
     {
-        *realloc_bonds = TRUE;
+        *realloc = TRUE;
     }
 }
 
@@ -732,7 +732,7 @@ GPU_GLOBAL void k_init_bonds_opt( reax_atom * const my_atoms,
         real * const total_bond_order, rvec * const dDeltap_self,
         real cutoff1, real cutoff2, real bo_cut,
         reax_list far_nbr_list, reax_list bond_list, int n, int N,
-        int num_atom_types, int * const max_bonds, int * const realloc_bonds )
+        int num_atom_types, int * const max_bonds, int * const realloc )
 {
     extern __shared__ cub::WarpScan<int>::TempStorage temp21[];
     cub::WarpReduce<double>::TempStorage *temp22;
@@ -883,7 +883,7 @@ GPU_GLOBAL void k_init_bonds_opt( reax_atom * const my_atoms,
         /* reallocation check */
         if ( num_bonds > max_bonds[i] )
         {
-            *realloc_bonds = TRUE;
+            *realloc = TRUE;
         }
     }
 }
@@ -893,7 +893,7 @@ GPU_GLOBAL void k_init_bonds_opt( reax_atom * const my_atoms,
 GPU_GLOBAL void k_init_hbonds( reax_atom * const my_atoms,
         single_body_parameters const * const sbp, real cutoff,
         reax_list far_nbr_list, reax_list hbond_list,
-        int n, int N, int num_atom_types, int * const max_hbonds, int * const realloc_hbonds )
+        int n, int N, int num_atom_types, int * const max_hbonds, int * const realloc )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -991,7 +991,7 @@ GPU_GLOBAL void k_init_hbonds( reax_atom * const my_atoms,
     /* reallocation check */
     if ( num_hbonds > max_hbonds[i] )
     {
-        *realloc_hbonds = TRUE;
+        *realloc = TRUE;
     }
 }
 
@@ -1000,7 +1000,7 @@ GPU_GLOBAL void k_init_hbonds( reax_atom * const my_atoms,
 GPU_GLOBAL void k_init_hbonds_opt( reax_atom * const my_atoms,
         single_body_parameters const * const sbp, real cutoff,
         reax_list far_nbr_list, reax_list hbond_list,
-        int n, int N, int num_atom_types, int * const max_hbonds, int * const realloc_hbonds )
+        int n, int N, int num_atom_types, int * const max_hbonds, int * const realloc )
 {
     extern __shared__ cub::WarpScan<int>::TempStorage temp3[];
     int i, j, pj, lane_id, itr;
@@ -1118,7 +1118,7 @@ GPU_GLOBAL void k_init_hbonds_opt( reax_atom * const my_atoms,
         /* reallocation check */
         if ( num_hbonds > max_hbonds[i] )
         {
-            *realloc_hbonds = TRUE;
+            *realloc = TRUE;
         }
     }
 }
@@ -1872,9 +1872,10 @@ void Cuda_Init_HBond_Indices( reax_system * const system, storage * const worksp
     blocks = system->total_cap / block_size
         + (system->total_cap % block_size == 0 ? 0 : 1);
 
-    sCudaCheckMalloc( &workspace->scratch[2], &workspace->scratch_size[2],
+    sCudaCheckMalloc( &workspace->d_workspace->scratch[2],
+            &workspace->d_workspace->scratch_size[2],
             sizeof(int) * system->total_cap, __FILE__, __LINE__ );
-    temp = (int *) workspace->scratch[2];
+    temp = (int *) workspace->d_workspace->scratch[2];
 
     /* init indices and end_indices */
     Cuda_Scan_Excl_Sum( system->d_max_hbonds, temp, system->total_cap, 2, s );
@@ -2122,17 +2123,17 @@ int Cuda_Init_Forces( reax_system * const system, control_params * const control
     /* reset reallocation flags on device */
     if ( cm_done == FALSE )
     {
-        sCudaMemsetAsync( system->d_realloc_cm_entries, FALSE, sizeof(int), 
+        sCudaMemsetAsync( &workspace->d_workspace->realloc[RE_CM], FALSE, sizeof(int), 
                 control->cuda_streams[5], __FILE__, __LINE__ );
     }
     if ( bonds_done == FALSE )
     {
-        sCudaMemsetAsync( system->d_realloc_bonds, FALSE, sizeof(int), 
+        sCudaMemsetAsync( &workspace->d_workspace->realloc[RE_BONDS], FALSE, sizeof(int), 
                 control->cuda_streams[1], __FILE__, __LINE__ );
     }
     if ( hbonds_done == FALSE )
     {
-        sCudaMemsetAsync( system->d_realloc_hbonds, FALSE, sizeof(int), 
+        sCudaMemsetAsync( &workspace->d_workspace->realloc[RE_HBONDS], FALSE, sizeof(int), 
                 control->cuda_streams[2], __FILE__, __LINE__ );
     }
 
@@ -2188,7 +2189,7 @@ int Cuda_Init_Forces( reax_system * const system, control_params * const control
                   workspace->d_workspace->H, workspace->d_workspace->tap_coef,
                   control->nonb_cut, *(lists[FAR_NBRS]),
                   system->reax_param.num_atom_types, system->d_max_cm_entries,
-                  system->d_realloc_cm_entries, workspace->d_workspace->H.n_max );
+                  &workspace->d_workspace->realloc[RE_CM], workspace->d_workspace->H.n_max );
         }
         else if ( workspace->d_workspace->H.format == SYM_HALF_MATRIX && control->tabulate > 0 )
         {
@@ -2196,8 +2197,8 @@ int Cuda_Init_Forces( reax_system * const system, control_params * const control
                                       0, control->cuda_streams[5] >>>
                 ( system->d_my_atoms, system->reax_param.d_sbp,
                   workspace->d_workspace->H, control->nonb_cut, *(lists[FAR_NBRS]),
-                  workspace->d_LR, system->reax_param.num_atom_types,
-                  system->d_max_cm_entries, system->d_realloc_cm_entries,
+                  workspace->d_workspace->LR, system->reax_param.num_atom_types,
+                  system->d_max_cm_entries, &workspace->d_workspace->realloc[RE_CM],
                   workspace->d_workspace->H.n_max );
         }
         else if ( workspace->d_workspace->H.format == SYM_FULL_MATRIX && control->tabulate <= 0 )
@@ -2206,7 +2207,8 @@ int Cuda_Init_Forces( reax_system * const system, control_params * const control
 //                ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
 //                  workspace->d_workspace->H, workspace->d_workspace->tap_coef, control->nonb_cut,
 //                  *(lists[FAR_NBRS]), system->reax_param.num_atom_types,
-//                  system->d_max_cm_entries, system->d_realloc_cm_entries, workspace->d_workspace->H.n_max );
+//                  system->d_max_cm_entries, &workspace->d_workspace->realloc[RE_CM],
+//                  workspace->d_workspace->H.n_max );
 
             blocks = workspace->d_workspace->H.n_max * WARP_SIZE / control->gpu_block_size
                 + (workspace->d_workspace->H.n_max * WARP_SIZE % control->gpu_block_size == 0 ? 0 : 1);
@@ -2217,15 +2219,17 @@ int Cuda_Init_Forces( reax_system * const system, control_params * const control
                 ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
                   workspace->d_workspace->H, workspace->d_workspace->tap_coef, control->nonb_cut,
                   *(lists[FAR_NBRS]), system->reax_param.num_atom_types,
-                  system->d_max_cm_entries, system->d_realloc_cm_entries, workspace->d_workspace->H.n_max );
+                  system->d_max_cm_entries, &workspace->d_workspace->realloc[RE_CM],
+                  workspace->d_workspace->H.n_max );
         }
         else if ( workspace->d_workspace->H.format == SYM_FULL_MATRIX && control->tabulate > 0 )
         {
             k_init_cm_qeq_full_fs_tab <<< blocks, control->gpu_block_size, 0,
                                       control->cuda_streams[5] >>>
                 ( system->d_my_atoms, system->reax_param.d_sbp, workspace->d_workspace->H,
-                  control->nonb_cut, *(lists[FAR_NBRS]), workspace->d_LR, system->reax_param.num_atom_types,
-                  system->d_max_cm_entries, system->d_realloc_cm_entries, workspace->d_workspace->H.n_max );
+                  control->nonb_cut, *(lists[FAR_NBRS]), workspace->d_workspace->LR,
+                  system->reax_param.num_atom_types, system->d_max_cm_entries,
+                  &workspace->d_workspace->realloc[RE_CM], workspace->d_workspace->H.n_max );
         }
         cudaCheckError( );
 
@@ -2257,7 +2261,7 @@ int Cuda_Init_Forces( reax_system * const system, control_params * const control
 //              workspace->d_workspace->dDeltap_self, MIN( control->nonb_cut, control->bond_cut ),
 //              control->bond_cut, control->bo_cut, *(lists[FAR_NBRS]), *(lists[BONDS]),
 //              system->n, system->N, system->reax_param.num_atom_types,
-//              system->d_max_bonds, system->d_realloc_bonds );
+//              system->d_max_bonds, &workspace->d_workspace->realloc[RE_BONDS] );
 //        cudaCheckError( );
 
         k_init_bonds_opt <<< control->blocks_warp_N, control->gpu_block_size,
@@ -2269,7 +2273,7 @@ int Cuda_Init_Forces( reax_system * const system, control_params * const control
               workspace->d_workspace->dDeltap_self, MIN( control->nonb_cut, control->bond_cut ),
               control->bond_cut, control->bo_cut, *(lists[FAR_NBRS]), *(lists[BONDS]),
               system->n, system->N, system->reax_param.num_atom_types,
-              system->d_max_bonds, system->d_realloc_bonds );
+              system->d_max_bonds, &workspace->d_workspace->realloc[RE_BONDS] );
         cudaCheckError( );
 
 #if defined(LOG_PERFORMANCE)
@@ -2283,8 +2287,8 @@ int Cuda_Init_Forces( reax_system * const system, control_params * const control
         cudaEventRecord( control->cuda_time_events[TE_INIT_HBOND_START], control->cuda_streams[2] );
 #endif
 
-        Cuda_Init_HBond_Indices( system, workspace, lists[HBONDS], control->gpu_block_size,
-                control->cuda_streams[2] );
+        Cuda_Init_HBond_Indices( system, workspace, lists[HBONDS],
+                control->gpu_block_size, control->cuda_streams[2] );
 
         if ( renbr == FALSE )
         {
@@ -2295,7 +2299,7 @@ int Cuda_Init_Forces( reax_system * const system, control_params * const control
 //            ( system->d_my_atoms, system->reax_param.d_sbp,
 //              MIN( control->nonb_cut, control->hbond_cut ), *(lists[FAR_NBRS]), *(lists[HBONDS]),
 //              system->n, system->N, system->reax_param.num_atom_types,
-//              system->d_max_hbonds, system->d_realloc_hbonds );
+//              system->d_max_hbonds, &workspace->d_workspace->realloc[RE_HBONDS] );
 //        cudaCheckError( );
 
         k_init_hbonds_opt <<< control->blocks_warp_N, control->gpu_block_size,
@@ -2304,7 +2308,7 @@ int Cuda_Init_Forces( reax_system * const system, control_params * const control
             ( system->d_my_atoms, system->reax_param.d_sbp,
               MIN( control->nonb_cut, control->hbond_cut ), *(lists[FAR_NBRS]), *(lists[HBONDS]),
               system->n, system->N, system->reax_param.num_atom_types,
-              system->d_max_hbonds, system->d_realloc_hbonds );
+              system->d_max_hbonds, &workspace->d_workspace->realloc[RE_HBONDS] );
         cudaCheckError( );
 
 #if defined(LOG_PERFORMANCE)
@@ -2315,33 +2319,33 @@ int Cuda_Init_Forces( reax_system * const system, control_params * const control
     /* check reallocation flags on device */
     if ( cm_done == FALSE )
     {
-        sCudaMemcpyAsync( &workspace->d_workspace->realloc->cm,
-                system->d_realloc_cm_entries, sizeof(int), 
+        sCudaMemcpyAsync( &workspace->realloc[RE_CM],
+                &workspace->d_workspace->realloc[RE_CM], sizeof(int), 
                 cudaMemcpyDeviceToHost, control->cuda_streams[5], __FILE__, __LINE__ );
     }
     else
     {
-        workspace->d_workspace->realloc->cm = FALSE;
+        workspace->realloc[RE_CM] = FALSE;
     }
     if ( bonds_done == FALSE )
     {
-        sCudaMemcpyAsync( &workspace->d_workspace->realloc->bonds,
-                system->d_realloc_bonds, sizeof(int), 
+        sCudaMemcpyAsync( &workspace->realloc[RE_BONDS],
+                &workspace->d_workspace->realloc[RE_BONDS], sizeof(int), 
                 cudaMemcpyDeviceToHost, control->cuda_streams[1], __FILE__, __LINE__ );
     }
     else
     {
-        workspace->d_workspace->realloc->bonds = FALSE;
+        workspace->realloc[RE_BONDS] = FALSE;
     }
     if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 && hbonds_done == FALSE )
     {
-        sCudaMemcpyAsync( &workspace->d_workspace->realloc->hbonds,
-                system->d_realloc_hbonds, sizeof(int), 
+        sCudaMemcpyAsync( &workspace->realloc[RE_HBONDS],
+                &workspace->d_workspace->realloc[RE_HBONDS], sizeof(int), 
                 cudaMemcpyDeviceToHost, control->cuda_streams[2], __FILE__, __LINE__ );
     }
     else
     {
-        workspace->d_workspace->realloc->hbonds = FALSE;
+        workspace->realloc[RE_HBONDS] = FALSE;
     }
 
     cudaStreamSynchronize( control->cuda_streams[0] );
@@ -2349,12 +2353,11 @@ int Cuda_Init_Forces( reax_system * const system, control_params * const control
     cudaStreamSynchronize( control->cuda_streams[1] );
     cudaStreamSynchronize( control->cuda_streams[2] );
 
-    ret = (workspace->d_workspace->realloc->cm == FALSE
-            && workspace->d_workspace->realloc->bonds == FALSE
-            && workspace->d_workspace->realloc->hbonds == FALSE
-            ? SUCCESS : FAILURE);
+    ret = (workspace->realloc[RE_CM] == FALSE
+            && workspace->realloc[RE_BONDS] == FALSE
+            && workspace->realloc[RE_HBONDS] == FALSE ? SUCCESS : FAILURE);
 
-    if ( workspace->d_workspace->realloc->cm == FALSE )
+    if ( workspace->realloc[RE_CM] == FALSE )
     {
         cm_done = TRUE;
     }
@@ -2366,7 +2369,7 @@ int Cuda_Init_Forces( reax_system * const system, control_params * const control
         data->timing.init_cm += (real) (time_elapsed / 1000.0);
     }
 #endif
-    if ( workspace->d_workspace->realloc->bonds == FALSE )
+    if ( workspace->realloc[RE_BONDS] == FALSE )
     {
         bonds_done = TRUE;
     }
@@ -2378,7 +2381,7 @@ int Cuda_Init_Forces( reax_system * const system, control_params * const control
         data->timing.init_bond += (real) (time_elapsed / 1000.0);
     }
 #endif
-    if ( workspace->d_workspace->realloc->hbonds == FALSE )
+    if ( workspace->realloc[RE_HBONDS] == FALSE )
     {
         hbonds_done = TRUE;
     }
@@ -2446,10 +2449,8 @@ int Cuda_Init_Forces( reax_system * const system, control_params * const control
     else
     {
         Cuda_Estimate_Storages( system, control, data, workspace, lists,
-               workspace->d_workspace->realloc->cm,
-               workspace->d_workspace->realloc->bonds,
-               workspace->d_workspace->realloc->hbonds,
-               data->step - data->prev_steps );
+               workspace->realloc[RE_CM], workspace->realloc[RE_BONDS],
+               workspace->realloc[RE_HBONDS], data->step - data->prev_steps );
     }
 
     return ret;
@@ -2471,12 +2472,12 @@ int Cuda_Init_Forces_No_Charges( reax_system * const system, control_params * co
     /* reset reallocation flags on device */
     if ( bonds_done == FALSE )
     {
-        sCudaMemsetAsync( system->d_realloc_bonds, FALSE, sizeof(int), 
+        sCudaMemsetAsync( &workspace->d_workspace->realloc[RE_BONDS], FALSE, sizeof(int), 
                 control->cuda_streams[1], __FILE__, __LINE__ );
     }
     if ( hbonds_done == FALSE )
     {
-        sCudaMemsetAsync( system->d_realloc_hbonds, FALSE, sizeof(int), 
+        sCudaMemsetAsync( &workspace->d_workspace->realloc[RE_HBONDS], FALSE, sizeof(int), 
                 control->cuda_streams[2], __FILE__, __LINE__ );
     }
 
@@ -2524,7 +2525,7 @@ int Cuda_Init_Forces_No_Charges( reax_system * const system, control_params * co
 //              workspace->d_workspace->dDeltap_self, MIN( control->nonb_cut, control->bond_cut ),
 //              control->bond_cut, control->bo_cut, *(lists[FAR_NBRS]), *(lists[BONDS]),
 //              system->n, system->N, system->reax_param.num_atom_types,
-//              system->d_max_bonds, system->d_realloc_bonds );
+//              system->d_max_bonds, &workspace->d_workspace->realloc[RE_BONDS] );
 
         k_init_bonds_opt <<< control->blocks_warp_N, control->gpu_block_size,
                      sizeof(cub::WarpScan<int>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
@@ -2534,7 +2535,7 @@ int Cuda_Init_Forces_No_Charges( reax_system * const system, control_params * co
               workspace->d_workspace->dDeltap_self, MIN( control->nonb_cut, control->bond_cut ),
               control->bond_cut, control->bo_cut, *(lists[FAR_NBRS]), *(lists[BONDS]),
               system->n, system->N, system->reax_param.num_atom_types,
-              system->d_max_bonds, system->d_realloc_bonds );
+              system->d_max_bonds, &workspace->d_workspace->realloc[RE_BONDS] );
         cudaCheckError( );
 
 #if defined(LOG_PERFORMANCE)
@@ -2560,7 +2561,7 @@ int Cuda_Init_Forces_No_Charges( reax_system * const system, control_params * co
 //            ( system->d_my_atoms, system->reax_param.d_sbp,
 //              MIN( control->nonb_cut, control->hbond_cut ), *(lists[FAR_NBRS]), *(lists[HBONDS]),
 //              system->n, system->N, system->reax_param.num_atom_types,
-//              system->d_max_hbonds, system->d_realloc_hbonds );
+//              system->d_max_hbonds, &workspace->d_workspace->realloc[RE_HBONDS] );
 //        cudaCheckError( );
 
         k_init_hbonds_opt <<< control->blocks_warp_N, control->gpu_block_size,
@@ -2569,7 +2570,7 @@ int Cuda_Init_Forces_No_Charges( reax_system * const system, control_params * co
             ( system->d_my_atoms, system->reax_param.d_sbp,
               MIN( control->nonb_cut, control->hbond_cut ), *(lists[FAR_NBRS]), *(lists[HBONDS]),
               system->n, system->N, system->reax_param.num_atom_types,
-              system->d_max_hbonds, system->d_realloc_hbonds );
+              system->d_max_hbonds, &workspace->d_workspace->realloc[RE_HBONDS] );
         cudaCheckError( );
 
 #if defined(LOG_PERFORMANCE)
@@ -2580,34 +2581,33 @@ int Cuda_Init_Forces_No_Charges( reax_system * const system, control_params * co
     /* check reallocation flags on device */
     if ( bonds_done == FALSE )
     {
-        sCudaMemcpyAsync( &workspace->d_workspace->realloc->bonds,
-                system->d_realloc_bonds, sizeof(int), 
+        sCudaMemcpyAsync( &workspace->realloc[RE_BONDS],
+                &workspace->d_workspace->realloc[RE_BONDS], sizeof(int), 
                 cudaMemcpyDeviceToHost, control->cuda_streams[1], __FILE__, __LINE__ );
     }
     else
     {
-        workspace->d_workspace->realloc->bonds = FALSE;
+        workspace->realloc[RE_BONDS] = FALSE;
     }
     if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 && hbonds_done == FALSE )
     {
-        sCudaMemcpyAsync( &workspace->d_workspace->realloc->hbonds,
-                system->d_realloc_hbonds, sizeof(int), 
+        sCudaMemcpyAsync( &workspace->realloc[RE_HBONDS],
+                &workspace->d_workspace->realloc[RE_HBONDS], sizeof(int), 
                 cudaMemcpyDeviceToHost, control->cuda_streams[2], __FILE__, __LINE__ );
     }
     else
     {
-        workspace->d_workspace->realloc->hbonds = FALSE;
+        workspace->realloc[RE_HBONDS] = FALSE;
     }
 
     cudaStreamSynchronize( control->cuda_streams[0] );
     cudaStreamSynchronize( control->cuda_streams[1] );
     cudaStreamSynchronize( control->cuda_streams[2] );
 
-    ret = (workspace->d_workspace->realloc->bonds == FALSE
-            && workspace->d_workspace->realloc->hbonds == FALSE
-            ? SUCCESS : FAILURE);
+    ret = (workspace->realloc[RE_BONDS] == FALSE
+            && workspace->realloc[RE_HBONDS] == FALSE ? SUCCESS : FAILURE);
 
-    if ( workspace->d_workspace->realloc->bonds == FALSE )
+    if ( workspace->realloc[RE_BONDS] == FALSE )
     {
         bonds_done = TRUE;
     }
@@ -2619,7 +2619,7 @@ int Cuda_Init_Forces_No_Charges( reax_system * const system, control_params * co
         data->timing.init_bond += (real) (time_elapsed / 1000.0);
     }
 #endif
-    if ( workspace->d_workspace->realloc->hbonds == FALSE )
+    if ( workspace->realloc[RE_HBONDS] == FALSE )
     {
         hbonds_done = TRUE;
     }
@@ -2686,9 +2686,8 @@ int Cuda_Init_Forces_No_Charges( reax_system * const system, control_params * co
     else
     {
         Cuda_Estimate_Storages( system, control, data, workspace, lists,
-               FALSE, workspace->d_workspace->realloc->bonds,
-               workspace->d_workspace->realloc->hbonds,
-               data->step - data->prev_steps );
+               FALSE, workspace->realloc[RE_BONDS],
+               workspace->realloc[RE_HBONDS], data->step - data->prev_steps );
     }
 
     return ret;
@@ -2743,10 +2742,10 @@ static void Cuda_Compute_Total_Force( reax_system * const system, control_params
         simulation_data * const data, storage * const workspace,
         reax_list ** const lists, mpi_datatypes * const mpi_data )
 {
-    sCudaHostAllocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
+    sCudaHostAllocCheck( &workspace->scratch[0], &workspace->scratch_size[0],
             sizeof(rvec) * system->N, cudaHostAllocPortable, TRUE, SAFE_ZONE,
             __FILE__, __LINE__ );
-    memset( workspace->host_scratch, 0, sizeof(rvec) * system->N );
+    memset( workspace->scratch[0], 0, sizeof(rvec) * system->N );
 
     Cuda_Total_Forces_Part1( system, control, data, workspace, lists );
 
@@ -2754,15 +2753,15 @@ static void Cuda_Compute_Total_Force( reax_system * const system, control_params
      * based on the neighbors information each processor has had.
      * final values of force on each atom needs to be computed by adding up
      * all partially-final pieces */
-    sCudaMemcpyAsync( workspace->host_scratch, workspace->d_workspace->f,
+    sCudaMemcpyAsync( workspace->scratch[0], workspace->d_workspace->f,
             sizeof(rvec) * system->N, cudaMemcpyDeviceToHost,
             control->cuda_streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->cuda_streams[0] );
 
-    Coll( system, mpi_data, workspace->host_scratch, RVEC_PTR_TYPE,
+    Coll( system, mpi_data, workspace->scratch[0], RVEC_PTR_TYPE,
             mpi_data->mpi_rvec );
 
-    sCudaMemcpyAsync( workspace->d_workspace->f, workspace->host_scratch,
+    sCudaMemcpyAsync( workspace->d_workspace->f, workspace->scratch[0],
             sizeof(rvec) * system->N, cudaMemcpyHostToDevice,
             control->cuda_streams[0], __FILE__, __LINE__ );
 

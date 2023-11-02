@@ -29,7 +29,8 @@
  * type: list interaction type
  * l: pointer to list to be allocated
  * */
-extern "C" void Cuda_Make_List( int n, int max_intrs, int type, reax_list * const l )
+extern "C" void Cuda_Make_List( int n, int max_intrs, int type,
+        reax_list * const l )
 {
     if ( l->allocated == TRUE )
     {
@@ -177,7 +178,7 @@ extern "C" void Cuda_Make_List( int n, int max_intrs, int type, reax_list * cons
 }
 
 
-extern "C" void Cuda_Delete_List( reax_list *l )
+extern "C" void Cuda_Delete_List( reax_list * const l )
 {
     if ( l->allocated == FALSE )
     {

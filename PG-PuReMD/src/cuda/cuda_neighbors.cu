@@ -59,7 +59,7 @@ GPU_DEVICE static inline real Cuda_DistSqr_to_Special_Point( rvec cp, rvec x )
 GPU_GLOBAL void k_generate_neighbor_lists_full( reax_atom const * const my_atoms, 
         simulation_box my_ext_box, grid g, reax_list far_nbr_list,
         int n, int N, int * const far_nbrs, int * const max_far_nbrs,
-        int * const realloc_far_nbrs, real cutoff2 )
+        int * const realloc, real cutoff2 )
 {
     int i, j, k, l, m, itr, num_far, my_num_far, flag;
     real d, cutoff;
@@ -175,7 +175,7 @@ GPU_GLOBAL void k_generate_neighbor_lists_full( reax_atom const * const my_atoms
     /* reallocation check */
     if ( my_num_far > max_far_nbrs[l] )
     {
-        *realloc_far_nbrs = TRUE;
+        *realloc = TRUE;
     }
 }
 
@@ -185,7 +185,7 @@ GPU_GLOBAL void k_generate_neighbor_lists_full( reax_atom const * const my_atoms
 GPU_GLOBAL void k_generate_neighbor_lists_full_opt( reax_atom const * const my_atoms, 
         simulation_box my_ext_box, grid g, reax_list far_nbr_list,
         int n, int N, int * const far_nbrs, int * const max_far_nbrs,
-        int * const realloc_far_nbrs, real cutoff2 )
+        int * const realloc, real cutoff2 )
 {
     extern __shared__ cub::WarpScan<int>::TempStorage temp1[];
     int i, j, k, l, m, itr, num_far, my_num_far, lane_id, itr2;
@@ -317,7 +317,7 @@ GPU_GLOBAL void k_generate_neighbor_lists_full_opt( reax_atom const * const my_a
         /* reallocation check */
         if ( my_num_far > max_far_nbrs[l] )
         {
-            *realloc_far_nbrs = TRUE;
+            *realloc = TRUE;
         }
     }
 }
@@ -583,33 +583,32 @@ extern "C" int Cuda_Generate_Neighbor_Lists( reax_system * const system,
     /* reset reallocation flag on device */
     /* careful: this wrapper around cudaMemset(...) performs a byte-wide assignment
      * to the provided literal */
-    sCudaMemsetAsync( system->d_realloc_far_nbrs, FALSE, sizeof(int), 
+    sCudaMemsetAsync( &workspace->d_workspace->realloc[RE_FAR_NBRS], FALSE, sizeof(int), 
             control->cuda_streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->cuda_streams[0] );
 
-//    k_generate_neighbor_lists_full <<< control->blocks_N, control->gpu_block_size, 0, control->cuda_streams[0] >>>
-//        ( system->d_my_atoms, system->my_ext_box,
-//          system->d_my_grid, *(lists[FAR_NBRS]),
-//          system->n, system->N,
+//    k_generate_neighbor_lists_full <<< control->blocks_N, control->gpu_block_size,
+//                                       0, control->cuda_streams[0] >>>
+//        ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
+//          *(lists[FAR_NBRS]), system->n, system->N,
 //          system->d_far_nbrs, system->d_max_far_nbrs,
-//          system->d_realloc_far_nbrs, SQR( control->bond_cut ) );
+//          &workspace->d_workspace->realloc[RE_FAR_NBRS], SQR( control->bond_cut ) );
     k_generate_neighbor_lists_full_opt <<< control->blocks_warp_N, control->gpu_block_size,
                                        sizeof(cub::WarpScan<int>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                        control->cuda_streams[0] >>>
-        ( system->d_my_atoms, system->my_ext_box,
-          system->d_my_grid, *(lists[FAR_NBRS]),
-          system->n, system->N,
-          system->d_far_nbrs, system->d_max_far_nbrs, system->d_realloc_far_nbrs,
-          SQR( control->bond_cut ) );
+        ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
+          *(lists[FAR_NBRS]), system->n, system->N,
+          system->d_far_nbrs, system->d_max_far_nbrs,
+          &workspace->d_workspace->realloc[RE_FAR_NBRS], SQR( control->bond_cut ) );
     cudaCheckError( );
 
     /* check reallocation flag on device */
-    sCudaMemcpyAsync( &workspace->d_workspace->realloc->far_nbrs,
-            system->d_realloc_far_nbrs, sizeof(int), 
+    sCudaMemcpyAsync( &workspace->realloc[RE_FAR_NBRS],
+            &workspace->d_workspace->realloc[RE_FAR_NBRS], sizeof(int), 
             cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->cuda_streams[0] );
 
-    ret = (workspace->d_workspace->realloc->far_nbrs == FALSE) ? SUCCESS : FAILURE;
+    ret = (workspace->realloc[RE_FAR_NBRS] == FALSE) ? SUCCESS : FAILURE;
 
 #if defined(LOG_PERFORMANCE)
     cudaEventRecord( control->cuda_time_events[TE_NBRS_STOP], control->cuda_streams[0] );

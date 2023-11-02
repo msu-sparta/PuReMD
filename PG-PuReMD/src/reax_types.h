@@ -360,6 +360,66 @@
 #endif
 
 
+/* indices of energy terms */
+enum energy_data
+{
+    /* bond energy */
+    E_BOND = 0,
+    /* over coordination */
+    E_OV = 1,
+    /* under coordination energy */
+    E_UN = 2,
+    /* lone pair energy */
+    E_LP = 3,
+    /* valance angle energy */
+    E_ANG = 4,
+    /* penalty energy */
+    E_PEN = 5,
+    /* three body conjugation energy */
+    E_COA = 6,
+    /* hydrogen bond energy */
+    E_HB = 7,
+    /* torsional energy */
+    E_TOR = 8,
+    /* four body conjugation energy */
+    E_CON = 9,
+    /* van der Waals energy */
+    E_VDW = 10,
+    /* electrostatics energy */
+    E_ELE = 11,
+    /* polarization energy */
+    E_POL = 12,
+    /* kinetic energy */
+    E_KIN = 13,
+    /* potential energy */
+    E_POT = 14,
+    /* total energy */
+    E_TOT = 15,
+    /* total number of energy terms */
+    E_N = 16,
+};
+
+
+/* indices of flags used to determine if and how much space should be reallocated */
+enum reallocate_data
+{
+    /* far neighbor list reallocation */
+    RE_FAR_NBRS = 0,
+    /* charge matrix reallocation */
+    RE_CM = 1,
+    /* bond list reallocation */
+    RE_BONDS = 2,
+    /* hbond list reallocation */
+    RE_HBONDS = 3,
+    /* three body list reallocation */
+    RE_THBODY = 4,
+    /* grid reallocation count */
+    RE_GCELL_ATOMS = 5,
+    /* total number of reallocation terms */
+    RE_N = 6,
+};
+
+
 /* ensemble type */
 enum ensemble
 {
@@ -667,7 +727,6 @@ typedef struct thermostat thermostat;
 typedef struct isotropic_barostat isotropic_barostat;
 typedef struct flexible_barostat flexible_barostat;
 typedef struct reax_timing reax_timing;
-typedef struct energy_data energy_data;
 typedef struct simulation_data simulation_data;
 typedef struct three_body_interaction_data three_body_interaction_data;
 #if defined(HAVE_CUDA) || defined(HAVE_HIP)
@@ -683,7 +742,6 @@ typedef struct bond_data bond_data;
 typedef struct bond_data_gpu bond_data_gpu;
 #endif
 typedef struct sparse_matrix sparse_matrix;
-typedef struct reallocate_data reallocate_data;
 typedef struct storage storage;
 typedef struct reax_list reax_list;
 typedef struct output_controls output_controls;
@@ -1437,8 +1495,6 @@ struct reax_system
     int num_H_atoms;
     /* total num. hydrogen atoms in the simulation */
     int total_H_atoms;
-    /* num. hydrogen atoms (local AND ghost) owned by this process (GPU) */
-    int *d_num_H_atoms;
     /* upper bound of the num. of local atoms owned by this process */
     int local_cap;
     /* upper bound of the num. of local and ghost atoms owned by this process */
@@ -1458,27 +1514,16 @@ struct reax_system
     simulation_box my_box;
     /* local simulation box of owned AND ghost atoms per processor */
     simulation_box my_ext_box;
-    /* global simulation box (GPU) */
-    simulation_box *d_big_box;
-    /* local simulation box of owned atoms per processor (GPU) */
-    simulation_box *d_my_box;
-    /* local simulation box of owned AND ghost atoms per processor (GPU) */
-    simulation_box *d_my_ext_box;
 
     /* grid specifying domain (i.e., spatial) decompisition
      * of atoms within simulation box */
     grid my_grid;
-    /* grid specifying domain (i.e., spatial) decompisition
-     * of atoms within simulation box (GPU) */
-    grid d_my_grid;
 
     /* boundary cutoffs, in ??? */
     boundary_cutoff bndry_cuts;
 
     /* collection of atomic info. */
     reax_atom *my_atoms;
-    /* collection of atomic info. (GPU) */
-    reax_atom *d_my_atoms;
 
     /* current num. of far neighbors per atom */
     int *far_nbrs;
@@ -1486,15 +1531,6 @@ struct reax_system
     int *max_far_nbrs;
     /* total num. of (max) far neighbors across all atoms */
     int total_far_nbrs;
-    /* current num. of far neighbors per atom (GPU) */
-    int *d_far_nbrs;
-    /* max num. of far neighbors per atom (GPU) */
-    int *d_max_far_nbrs;
-    /* total num. of (max) far neighbors across all atoms (GPU) */
-    int *d_total_far_nbrs;
-    /* TRUE if far neighbors list requires reallocation,
-     * FALSE otherwise (GPU) */
-    int *d_realloc_far_nbrs;
 
     /* num. bonds per atom */
     int *bonds;
@@ -1502,14 +1538,6 @@ struct reax_system
     int *max_bonds;
     /* total num. bonds (sum over max) */
     int total_bonds;
-    /* num. bonds per atom (GPU) */
-    int *d_bonds;
-    /* max. num. bonds per atom (GPU) */
-    int *d_max_bonds;
-    /* total num. bonds (sum over max) (GPU) */
-    int *d_total_bonds;
-    /* TRUE if bonds list requires reallocation, FALSE otherwise (GPU) */
-    int *d_realloc_bonds;
 
     /* num. hydrogen bonds per atom */
     int *hbonds;
@@ -1517,14 +1545,6 @@ struct reax_system
     int *max_hbonds;
     /* total num. hydrogen bonds (sum over max) */
     int total_hbonds;
-    /* num. hydrogen bonds per atom (GPU) */
-    int *d_hbonds;
-    /* max. num. hydrogen bonds per atom (GPU) */
-    int *d_max_hbonds;
-    /* total num. hydrogen bonds (sum over max) (GPU) */
-    int *d_total_hbonds;
-    /* TRUE if hydrogen bonds list requires reallocation, FALSE otherwise (GPU) */
-    int *d_realloc_hbonds;
 
     /* num. matrix entries per row */
     int *cm_entries;
@@ -1532,21 +1552,58 @@ struct reax_system
     int *max_cm_entries;
     /* total num. matrix entries (sum over max) */
     int total_cm_entries;
+
+    /* total num. three body list indices */
+    int total_thbodies_indices;
+    /* total num. three body interactions */
+    int total_thbodies;
+
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
+    /* num. hydrogen atoms (local AND ghost) owned by this process (GPU) */
+    int *d_num_H_atoms;
+    /* global simulation box (GPU) */
+    simulation_box *d_big_box;
+    /* local simulation box of owned atoms per processor (GPU) */
+    simulation_box *d_my_box;
+    /* local simulation box of owned AND ghost atoms per processor (GPU) */
+    simulation_box *d_my_ext_box;
+    /* grid specifying domain (i.e., spatial) decompisition
+     * of atoms within simulation box (GPU) */
+    grid d_my_grid;
+    /* collection of atomic info. (GPU) */
+    reax_atom *d_my_atoms;
+
+    /* current num. of far neighbors per atom (GPU) */
+    int *d_far_nbrs;
+    /* max num. of far neighbors per atom (GPU) */
+    int *d_max_far_nbrs;
+    /* total num. of (max) far neighbors across all atoms (GPU) */
+    int *d_total_far_nbrs;
+
+    /* num. bonds per atom (GPU) */
+    int *d_bonds;
+    /* max. num. bonds per atom (GPU) */
+    int *d_max_bonds;
+    /* total num. bonds (sum over max) (GPU) */
+    int *d_total_bonds;
+
+    /* num. hydrogen bonds per atom (GPU) */
+    int *d_hbonds;
+    /* max. num. hydrogen bonds per atom (GPU) */
+    int *d_max_hbonds;
+    /* total num. hydrogen bonds (sum over max) (GPU) */
+    int *d_total_hbonds;
+
     /* num. matrix entries per row (GPU) */
     int *d_cm_entries;
     /* max. num. matrix entries per row (GPU) */
     int *d_max_cm_entries;
     /* total num. matrix entries (sum over max) (GPU) */
     int *d_total_cm_entries;
-    /* TRUE if charge matrix requires reallocation, FALSE otherwise (GPU) */
-    int *d_realloc_cm_entries;
 
-    /* total num. three body list indices */
-    int total_thbodies_indices;
-    /* total num. three body interactions */
-    int total_thbodies;
     /* total num. three body interactions (GPU) */
     int *d_total_thbodies;
+#endif
 };
 
 
@@ -1908,43 +1965,6 @@ struct reax_timing
 };
 
 
-struct energy_data
-{
-    /* total energy */
-    real e_tot;
-    /* kinetic energy */
-    real e_kin;
-    /* potential energy */
-    real e_pot;
-    /* bond energy */
-    real e_bond;
-    /* over coordination */
-    real e_ov;
-    /* under coordination energy */
-    real e_un;
-    /* lone pair energy */
-    real e_lp;
-    /* valance angle energy */
-    real e_ang;
-    /* penalty energy */
-    real e_pen;
-    /* three body conjugation energy */
-    real e_coa;
-    /* hydrogen bond energy */
-    real e_hb;
-    /* torsional energy */
-    real e_tor;
-    /* four body conjugation energy */
-    real e_con;
-    /* van der Waals energy */
-    real e_vdW;
-    /* electrostatics energy */
-    real e_ele;
-    /* polarization energy */
-    real e_pol;
-};
-
-
 /**/
 struct simulation_data
 {
@@ -1981,9 +2001,9 @@ struct simulation_data
     /* hydrodynamic virial */
     rtensor virial;
     /* energies for ReaxFF potential terms and system (partials for this processor) */
-    energy_data *my_en;
+    real *my_en;
     /* energies for ReaxFF potential terms and system (for the entire system) */
-    energy_data *sys_en;
+    real *sys_en;
     /* number of degrees of freedom */
     real N_f;
     /**/
@@ -2011,11 +2031,12 @@ struct simulation_data
     rvec tot_press;
     /* struct containing timing of various simulation functions */
     reax_timing timing;
-
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
     /* energies for ReaxFF potential terms and system (partials for this processor) (GPU) */
-    energy_data *d_my_en;
+    real *d_my_en;
     /**/
-    simulation_data *d_simulation_data;
+    rvec d_my_ext_press;
+#endif
 };
 
 
@@ -2306,29 +2327,6 @@ struct sparse_matrix
 };
 
 
-/* used to determine if and how much space should be reallocated */
-struct reallocate_data
-{
-    /* TRUE if far neighbor list needs
-     * to be reallocated, FALSE otherwise */
-    int far_nbrs;
-    /* TRUE if charge matrix needs
-     * to be reallocated, FALSE otherwise */
-    int cm;
-    /* TRUE if hbond list needs
-     * to be reallocated, FALSE otherwise */
-    int hbonds;
-    /* TRUE if bond list needs
-     * to be reallocated, FALSE otherwise */
-    int bonds;
-    /* TRUE if three body list needs
-     * to be reallocated, FALSE otherwise */
-    int thbody;
-    /**/
-    int gcell_atoms;
-};
-
-
 struct storage
 {
     /* bond order related storage */
@@ -2548,21 +2546,16 @@ struct storage
     /**/
     rvec *f_all;
 #endif
-    /**/
-    reallocate_data *realloc;
+    /* flags used to determine if and how much space should be reallocated;
+     * TRUE if reallocation for particular data structure needed, FALSE otherwise */
+    int *realloc;
     /* lookup table for force tabulation */
     LR_lookup_table *LR;
 #if defined(HAVE_CUDA) || defined(HAVE_HIP)
-    /* temporary host workspace */
-    void *host_scratch;
-    /* size of temporary host workspace, in bytes */
-    size_t host_scratch_size;
-    /* temporary workspace (GPU) */
+    /* temporary workspace */
     void *scratch[MAX_GPU_STREAMS];
-    /* size of temporary workspace (GPU), in bytes */
+    /* size of temporary workspace, in bytes */
     size_t scratch_size[MAX_GPU_STREAMS];
-    /* lookup table for force tabulation (GPU) */
-    LR_lookup_table *d_LR;
     /* storage (GPU) */
     storage *d_workspace;
 #endif

@@ -239,10 +239,11 @@ void Sort_Matrix_Rows( sparse_matrix * const A, storage * const workspace,
             cudaMemcpyDeviceToHost, s, __FILE__, __LINE__ );
 
     /* make copies of column indices and non-zero values */
-    sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
+    sCudaCheckMalloc( &workspace->d_workspace->scratch[5],
+            &workspace->d_workspace->scratch_size[5],
             (sizeof(int) + sizeof(real)) * A->m, __FILE__, __LINE__ );
-    d_j_temp = (int *) workspace->scratch[5];
-    d_val_temp = (real *) &((int *) workspace->scratch[5])[A->m];
+    d_j_temp = (int *) workspace->d_workspace->scratch[5];
+    d_val_temp = (real *) &((int *) workspace->d_workspace->scratch[5])[A->m];
     sCudaMemcpyAsync( d_j_temp, A->j, sizeof(int) * A->m,
             cudaMemcpyDeviceToDevice, s, __FILE__, __LINE__ );
     sCudaMemcpyAsync( d_val_temp, A->val, sizeof(real) * A->m,
@@ -460,9 +461,10 @@ static void Extrapolate_Charges_QEq_Part2( reax_system const * const system,
 #endif
 
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
-    sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
+    sCudaCheckMalloc( &workspace->d_workspace->scratch[5],
+            &workspace->d_workspace->scratch_size[5],
             sizeof(real) * system->n, __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch[5];
+    spad = (real *) workspace->d_workspace->scratch[5];
     sCudaMemsetAsync( spad, 0, sizeof(real) * system->n,
             s, __FILE__, __LINE__ );
 #endif
@@ -500,9 +502,10 @@ static void Update_Ghost_Atom_Charges( reax_system const * const system,
         + (((system->N - system->n) % control->gpu_block_size == 0) ? 0 : 1);
 
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
-    sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
+    sCudaCheckMalloc( &workspace->d_workspace->scratch[5],
+            &workspace->d_workspace->scratch_size[5],
             sizeof(real) * (system->N - system->n), __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch[5];
+    spad = (real *) workspace->d_workspace->scratch[5];
 
     sCudaMemcpyAsync( spad, &q[system->n], sizeof(real) * (system->N - system->n),
             cudaMemcpyHostToDevice, s, __FILE__, __LINE__ );
@@ -536,9 +539,10 @@ static void Calculate_Charges_QEq( reax_system const * const system,
 #endif
 
 #if defined(DUAL_SOLVER)
-    sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
+    sCudaCheckMalloc( &workspace->d_workspace->scratch[5],
+            &workspace->d_workspace->scratch_size[5],
             sizeof(rvec2), __FILE__, __LINE__ );
-    spad = (rvec2 *) workspace->scratch[5];
+    spad = (rvec2 *) workspace->d_workspace->scratch[5];
 
     /* compute local sums of pseudo-charges in s and t on device */
     Cuda_Reduction_Sum( workspace->d_workspace->x, spad, system->n, 5, s );
@@ -546,9 +550,10 @@ static void Calculate_Charges_QEq( reax_system const * const system,
     sCudaMemcpyAsync( &my_sum, spad, sizeof(rvec2), cudaMemcpyDeviceToHost,
             s, __FILE__, __LINE__ );
 #else
-    sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
+    sCudaCheckMalloc( &workspace->d_workspace->scratch[5],
+            &workspace->d_workspace->scratch_size[5],
             sizeof(real) * 2, __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch[5];
+    spad = (real *) workspace->d_workspace->scratch[5];
 
     /* local reductions (sums) on device */
     Cuda_Reduction_Sum( workspace->d_workspace->s, &spad[0], system->n, 5, s );
@@ -568,11 +573,12 @@ static void Calculate_Charges_QEq( reax_system const * const system,
     u = all_sum[0] / all_sum[1];
 
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
-    sCudaHostAllocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
+    sCudaHostAllocCheck( &workspace->scratch[5], &workspace->scratch_size[5],
             sizeof(real) * system->N, cudaHostAllocPortable, TRUE, SAFE_ZONE,
             __FILE__, __LINE__ );
 #else
-    sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
+    sCudaCheckMalloc( &workspace->d_workspace->scratch[5],
+            &workspace->d_workspace->scratch_size[5],
             sizeof(real) * system->N, __FILE__, __LINE__ );
 #endif
 
@@ -580,26 +586,26 @@ static void Calculate_Charges_QEq( reax_system const * const system,
      * and set up extrapolation for next time step */
     Extrapolate_Charges_QEq_Part2( system, control, workspace,
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
-            (real *) workspace->host_scratch,
-#else
             (real *) workspace->scratch[5],
+#else
+            (real *) workspace->d_workspace->scratch[5],
 #endif
             u, s );
 
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
-    Dist( system, mpi_data, workspace->host_scratch, REAL_PTR_TYPE,
+    Dist( system, mpi_data, workspace->scratch[5], REAL_PTR_TYPE,
             MPI_DOUBLE );
 #else
-    Cuda_Dist( system, workspace, mpi_data, workspace->scratch[5],
+    Cuda_Dist( system, workspace, mpi_data, workspace->d_workspace->scratch[5],
             REAL_PTR_TYPE, MPI_DOUBLE, control->gpu_block_size, s );
 #endif
 
     /* copy atomic charges to ghost atoms in case of ownership transfer */
     Update_Ghost_Atom_Charges( system, control, workspace,
 #if !defined(MPIX_CUDA_AWARE_SUPPORT) || !MPIX_CUDA_AWARE_SUPPORT
-            (real *) workspace->host_scratch,
-#else
             (real *) workspace->scratch[5],
+#else
+            (real *) workspace->d_workspace->scratch[5],
 #endif
             s );
 }

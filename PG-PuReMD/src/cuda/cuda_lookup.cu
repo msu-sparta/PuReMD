@@ -18,7 +18,7 @@ extern "C" void Cuda_Copy_LR_Lookup_Table_Host_to_Device( reax_system *system,
 
     fprintf( stderr, "Copying the LR Lookyp Table to the device ... \n" );
 
-    sCudaMalloc( (void **) &workspace->d_LR,
+    sCudaMalloc( (void **) &workspace->d_workspace->LR,
             sizeof(LR_lookup_table) * num_atom_types * num_atom_types,
             __FILE__, __LINE__ );
 
@@ -30,7 +30,7 @@ extern "C" void Cuda_Copy_LR_Lookup_Table_Host_to_Device( reax_system *system,
        existing_types[ system->atoms[i].type ] = 1;
      */
 
-    sCudaMemcpyAsync( workspace->d_LR, workspace->LR,
+    sCudaMemcpyAsync( workspace->d_workspace->LR, workspace->LR,
             sizeof(LR_lookup_table) * (num_atom_types * num_atom_types), 
             cudaMemcpyHostToDevice, control->cuda_streams[0], __FILE__, __LINE__ );
 
@@ -48,7 +48,7 @@ extern "C" void Cuda_Copy_LR_Lookup_Table_Host_to_Device( reax_system *system,
                     sCudaMemcpyAsync( d_y, workspace->LR[ index_lr(i, j, num_atom_types) ].y,
                             sizeof(LR_data) * (control->tabulate + 1),
                             cudaMemcpyHostToDevice, control->cuda_streams[0], __FILE__, __LINE__ );
-                    sCudaMemcpyAsync( &workspace->d_LR[ index_lr(i, j, num_atom_types) ].y, &d_y,
+                    sCudaMemcpyAsync( &workspace->d_workspace->LR[ index_lr(i, j, num_atom_types) ].y, &d_y,
                             sizeof(LR_data *),
                             cudaMemcpyHostToDevice, control->cuda_streams[0], __FILE__, __LINE__ );
 
@@ -57,7 +57,7 @@ extern "C" void Cuda_Copy_LR_Lookup_Table_Host_to_Device( reax_system *system,
                     sCudaMemcpyAsync( temp, workspace->LR[ index_lr(i, j, num_atom_types) ].H,
                             sizeof(cubic_spline_coef) * (control->tabulate + 1),
                             cudaMemcpyHostToDevice, control->cuda_streams[0], __FILE__, __LINE__ );
-                    sCudaMemcpyAsync( &workspace->d_LR[ index_lr(i, j, num_atom_types) ].H, &temp,
+                    sCudaMemcpyAsync( &workspace->d_workspace->LR[ index_lr(i, j, num_atom_types) ].H, &temp,
                             sizeof(cubic_spline_coef *),
                             cudaMemcpyHostToDevice, control->cuda_streams[0], __FILE__, __LINE__ );
 
@@ -66,7 +66,7 @@ extern "C" void Cuda_Copy_LR_Lookup_Table_Host_to_Device( reax_system *system,
                     sCudaMemcpyAsync( temp, workspace->LR[ index_lr(i, j, num_atom_types) ].vdW,
                             sizeof(cubic_spline_coef) * (control->tabulate + 1),
                             cudaMemcpyHostToDevice, control->cuda_streams[0], __FILE__, __LINE__ );
-                    sCudaMemcpyAsync( &workspace->d_LR[ index_lr(i, j, num_atom_types) ].vdW, &temp,
+                    sCudaMemcpyAsync( &workspace->d_workspace->LR[ index_lr(i, j, num_atom_types) ].vdW, &temp,
                             sizeof(cubic_spline_coef *),
                             cudaMemcpyHostToDevice, control->cuda_streams[0], __FILE__, __LINE__ );
 
@@ -76,7 +76,7 @@ extern "C" void Cuda_Copy_LR_Lookup_Table_Host_to_Device( reax_system *system,
                     sCudaMemcpyAsync( temp, workspace->LR[ index_lr(i, j, num_atom_types) ].CEvd,
                             sizeof(cubic_spline_coef) * (control->tabulate + 1),
                             cudaMemcpyHostToDevice, control->cuda_streams[0], __FILE__, __LINE__ );
-                    sCudaMemcpyAsync( &workspace->d_LR[ index_lr(i, j, num_atom_types) ].CEvd, &temp,
+                    sCudaMemcpyAsync( &workspace->d_workspace->LR[ index_lr(i, j, num_atom_types) ].CEvd, &temp,
                             sizeof(cubic_spline_coef *),
                             cudaMemcpyHostToDevice, control->cuda_streams[0], __FILE__, __LINE__ );
 
@@ -86,7 +86,7 @@ extern "C" void Cuda_Copy_LR_Lookup_Table_Host_to_Device( reax_system *system,
                     sCudaMemcpyAsync( temp,workspace->LR[ index_lr(i, j, num_atom_types) ].ele,
                             sizeof(cubic_spline_coef) * (control->tabulate + 1),
                             cudaMemcpyHostToDevice, control->cuda_streams[0], __FILE__, __LINE__ );
-                    sCudaMemcpyAsync( &workspace->d_LR[ index_lr(i, j, num_atom_types) ].ele, &temp,
+                    sCudaMemcpyAsync( &workspace->d_workspace->LR[ index_lr(i, j, num_atom_types) ].ele, &temp,
                             sizeof(cubic_spline_coef *),
                             cudaMemcpyHostToDevice, control->cuda_streams[0], __FILE__, __LINE__ );
 
@@ -96,7 +96,7 @@ extern "C" void Cuda_Copy_LR_Lookup_Table_Host_to_Device( reax_system *system,
                     sCudaMemcpyAsync( temp, workspace->LR[ index_lr(i, j, num_atom_types) ].CEclmb,
                             sizeof(cubic_spline_coef) * (control->tabulate + 1),
                             cudaMemcpyHostToDevice, control->cuda_streams[0], __FILE__, __LINE__ );
-                    sCudaMemcpyAsync( &workspace->d_LR[ index_lr(i, j, num_atom_types) ].CEclmb, &temp,
+                    sCudaMemcpyAsync( &workspace->d_workspace->LR[ index_lr(i, j, num_atom_types) ].CEclmb, &temp,
                             sizeof(cubic_spline_coef *),
                             cudaMemcpyHostToDevice, control->cuda_streams[0], __FILE__, __LINE__ );
                 }

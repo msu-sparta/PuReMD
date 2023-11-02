@@ -723,18 +723,19 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
 #endif
 
 #if defined(GPU_ATOMIC_EV)
-    sCudaMemsetAsync( &data->d_my_en->e_hb,
-            0, sizeof(real), control->cuda_streams[2], __FILE__, __LINE__ );
+    sCudaMemsetAsync( &data->d_my_en[E_HB], 0, sizeof(real),
+            control->cuda_streams[2], __FILE__, __LINE__ );
     if ( control->virial == 1 )
     {
-        sCudaMemsetAsync( &data->d_simulation_data->my_ext_press,
-                0, sizeof(rvec), control->cuda_streams[2], __FILE__, __LINE__ );
+        sCudaMemsetAsync( &data->d_my_ext_press, 0, sizeof(rvec),
+                control->cuda_streams[2], __FILE__, __LINE__ );
     }
 #else
-    sCudaCheckMalloc( &workspace->scratch[2], &workspace->scratch_size[2],
+    sCudaCheckMalloc( &workspace->d_workspace->scratch[2],
+            &workspace->d_workspace->scratch_size[2],
             (sizeof(real) * 3 + sizeof(rvec)) * system->N + sizeof(rvec) * control->blocks_N,
             __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch[2];
+    spad = (real *) workspace->d_workspace->scratch[2];
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
 #endif
@@ -753,7 +754,7 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
 //                  *(lists[FAR_NBRS]), *(lists[BONDS]), *(lists[HBONDS]),
 //                  system->n, system->reax_param.num_atom_types,
 //#if defined(GPU_ATOMIC_EV)
-//                  &data->d_my_en->e_hb
+//                  &data->d_my_en[E_HB]
 //#else
 //                  spad
 //#endif
@@ -771,7 +772,7 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
                   *(lists[FAR_NBRS]), *(lists[BONDS]), *(lists[HBONDS]),
                   system->n, system->reax_param.num_atom_types,
 #if defined(GPU_ATOMIC_EV)
-                  &data->d_my_en->e_hb
+                  &data->d_my_en[E_HB]
 #else
                   spad
 #endif
@@ -790,7 +791,7 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
                   *(lists[FAR_NBRS]), *(lists[BONDS]), *(lists[HBONDS]),
                   system->n, system->reax_param.num_atom_types,
 #if defined(GPU_ATOMIC_EV)
-                  &data->d_my_en->e_hb, &data->d_simulation_data->my_ext_press
+                  &data->d_my_en[E_HB], &data->d_my_ext_press
 #else
                   spad, (rvec *) (&spad[system->n])
 #endif
@@ -801,15 +802,15 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
 #if !defined(GPU_ATOMIC_EV)
     if ( update_energy == TRUE )
     {
-        Cuda_Reduction_Sum( spad, &data->d_my_en->e_hb,
-                system->n, 2, control->cuda_streams[2] );
+        Cuda_Reduction_Sum( spad, &data->d_my_en[E_HB], system->n, 2,
+                control->cuda_streams[2] );
     }
 
     if ( control->virial == 1 )
     {
         rvec_spad = (rvec *) (&spad[system->n]);
 
-        Cuda_Reduction_Sum( rvec_spad, &data->d_simulation_data->my_ext_press,
+        Cuda_Reduction_Sum( rvec_spad, &data->d_my_ext_press,
                 system->n, 2, control->cuda_streams[2] );
     }
 #endif

@@ -277,13 +277,14 @@ void Cuda_Compute_Bonds( reax_system const * const system,
 #endif
 
 #if defined(GPU_ATOMIC_EV)
-    sCudaMemsetAsync( &data->d_my_en->e_bond,
-            0, sizeof(real), control->cuda_streams[1], __FILE__, __LINE__ );
+    sCudaMemsetAsync( &data->d_my_en[E_BOND], 0, sizeof(real),
+            control->cuda_streams[1], __FILE__, __LINE__ );
 #else
-    sCudaCheckMalloc( &workspace->scratch[1], &workspace->scratch_size[1],
+    sCudaCheckMalloc( &workspace->d_workspace->scratch[1],
+            &workspace->d_workspace->scratch_size[1],
             sizeof(real) * system->n, __FILE__, __LINE__ );
 
-    spad = (real *) workspace->scratch[1];
+    spad = (real *) workspace->d_workspace->scratch[1];
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
 #endif
@@ -301,7 +302,7 @@ void Cuda_Compute_Bonds( reax_system const * const system,
 //#endif
 //          *(lists[BONDS]), system->n, system->reax_param.num_atom_types,
 //#if defined(GPU_ATOMIC_EV)
-//          &data->d_my_en->e_bond
+//          &data->d_my_en[E_BOND]
 //#else
 //          spad
 //#endif
@@ -321,7 +322,7 @@ void Cuda_Compute_Bonds( reax_system const * const system,
 #endif
           *(lists[BONDS]), system->n, system->reax_param.num_atom_types,
 #if defined(GPU_ATOMIC_EV)
-          &data->d_my_en->e_bond
+          &data->d_my_en[E_BOND]
 #else
           spad
 #endif
@@ -331,7 +332,7 @@ void Cuda_Compute_Bonds( reax_system const * const system,
 #if !defined(GPU_ATOMIC_EV)
     if ( update_energy == TRUE )
     {
-        Cuda_Reduction_Sum( spad, &data->d_my_en->e_bond,
+        Cuda_Reduction_Sum( spad, &data->d_my_en[E_BOND],
                 system->n, 1, control->cuda_streams[1] );
     }
 #endif

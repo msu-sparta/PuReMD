@@ -480,8 +480,9 @@ GPU_GLOBAL void k_compute_pressure( reax_atom const * const my_atoms,
 }
 
 
-static void Cuda_Compute_Momentum( reax_system *system, control_params *control,
-        storage *workspace, rvec xcm, rvec vcm, rvec amcm )
+static void Cuda_Compute_Momentum( reax_system * const system,
+        control_params const * const control,
+        storage * const workspace, rvec xcm, rvec vcm, rvec amcm )
 {
     int blocks;
     rvec *spad;
@@ -489,14 +490,15 @@ static void Cuda_Compute_Momentum( reax_system *system, control_params *control,
     blocks = system->n / GPU_BLOCK_SIZE
         + (system->n % GPU_BLOCK_SIZE == 0 ? 0 : 1);
 
-    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
+    sCudaCheckMalloc( &workspace->d_workspace->scratch[0],
+            &workspace->d_workspace->scratch_size[0],
 #if !defined(GPU_ACCUM_ATOMIC)
             sizeof(rvec) * (blocks + 1),
 #else
             sizeof(rvec),
 #endif
             __FILE__, __LINE__ );
-    spad = (rvec *) workspace->scratch[0];
+    spad = (rvec *) workspace->d_workspace->scratch[0];
 
     // xcm
     k_center_of_mass_xcm <<< blocks, GPU_BLOCK_SIZE,
@@ -560,14 +562,16 @@ static void Cuda_Compute_Momentum( reax_system *system, control_params *control,
 }
 
 
-static void Cuda_Compute_Inertial_Tensor( reax_system *system, control_params *control,
-        storage *workspace, real *t, rvec my_xcm )
+static void Cuda_Compute_Inertial_Tensor( reax_system * const system,
+        control_params const * const control, storage * const workspace,
+        real * const t, rvec my_xcm )
 {
     real *spad;
 
-    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
+    sCudaCheckMalloc( &workspace->d_workspace->scratch[0],
+            &workspace->d_workspace->scratch_size[0],
             sizeof(real) * 6 * (control->blocks_n + 1), __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch[0];
+    spad = (real *) workspace->d_workspace->scratch[0];
     sCudaMemsetAsync( spad, 0, sizeof(real) * 6 * (control->blocks_n + 1),
             control->cuda_streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->cuda_streams[0] );
@@ -651,16 +655,17 @@ void Cuda_Generate_Initial_Velocities( reax_system * const system,
 }
 
 
-extern "C" void Cuda_Compute_Kinetic_Energy( reax_system *system,
-        control_params *control, storage *workspace, simulation_data *data,
-        MPI_Comm comm )
+extern "C" void Cuda_Compute_Kinetic_Energy( reax_system * const system,
+        control_params const * const control, storage * const workspace,
+        simulation_data * const data, MPI_Comm comm )
 {
     int ret;
     real *kinetic_energy;
 
-    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
+    sCudaCheckMalloc( &workspace->d_workspace->scratch[0],
+            &workspace->d_workspace->scratch_size[0],
             sizeof(real) * (system->n + 1), __FILE__, __LINE__ );
-    kinetic_energy = (real *) workspace->scratch[0];
+    kinetic_energy = (real *) workspace->d_workspace->scratch[0];
 
     k_compute_kinetic_energy <<< control->blocks_n, control->gpu_block_size,
                              0, control->cuda_streams[0] >>>
@@ -672,15 +677,15 @@ extern "C" void Cuda_Compute_Kinetic_Energy( reax_system *system,
     Cuda_Reduction_Sum( kinetic_energy, &kinetic_energy[system->n], system->n,
             0, control->cuda_streams[0] );
 
-    sCudaMemcpyAsync( &data->my_en->e_kin, &kinetic_energy[system->n],
+    sCudaMemcpyAsync( &data->my_en[E_KIN], &kinetic_energy[system->n],
             sizeof(real), cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->cuda_streams[0] );
 
-    ret = MPI_Allreduce( &data->my_en->e_kin, &data->sys_en->e_kin,
+    ret = MPI_Allreduce( &data->my_en[E_KIN], &data->sys_en[E_KIN],
             1, MPI_DOUBLE, MPI_SUM, comm );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-    data->therm.T = (2.0 * data->sys_en->e_kin) / (data->N_f * K_B);
+    data->therm.T = (2.0 * data->sys_en[E_KIN]) / (data->N_f * K_B);
 
     /* avoid T being an absolute zero, might cause F.P.E! */
     if ( FABS(data->therm.T) < ALMOST_ZERO )
@@ -690,15 +695,17 @@ extern "C" void Cuda_Compute_Kinetic_Energy( reax_system *system,
 }
 
 
-void Cuda_Compute_Total_Mass( reax_system *system, control_params *control,
-        storage *workspace, simulation_data *data, MPI_Comm comm  )
+void Cuda_Compute_Total_Mass( reax_system * const system,
+        control_params const * const control,
+        storage * const workspace, simulation_data * const data, MPI_Comm comm )
 {
     int ret;
     real my_M, *spad;
 
-    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
+    sCudaCheckMalloc( &workspace->d_workspace->scratch[0],
+            &workspace->d_workspace->scratch_size[0],
             sizeof(real) * (system->n + 1), __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch[0];
+    spad = (real *) workspace->d_workspace->scratch[0];
 
     k_compute_total_mass <<< control->blocks_n, control->gpu_block_size,
                          0, control->cuda_streams[0]  >>>
@@ -718,9 +725,10 @@ void Cuda_Compute_Total_Mass( reax_system *system, control_params *control,
 }
 
 
-extern "C" void Cuda_Compute_Center_of_Mass( reax_system *system,
-        control_params *control, storage *workspace, simulation_data *data,
-        mpi_datatypes *mpi_data, MPI_Comm comm )
+extern "C" void Cuda_Compute_Center_of_Mass( reax_system * const system,
+        control_params const * const control, storage * const workspace,
+        simulation_data * const data, mpi_datatypes * const mpi_data,
+        MPI_Comm comm )
 {
     int ret;
     real det; //xx, xy, xz, yy, yz, zz;
@@ -766,12 +774,12 @@ extern "C" void Cuda_Compute_Center_of_Mass( reax_system *system,
         mat[2][2] = tot_mat[0] + tot_mat[3];  // xx + yy;
 
         /* invert the inertial tensor */
-        det = ( mat[0][0] * mat[1][1] * mat[2][2] +
-                mat[0][1] * mat[1][2] * mat[2][0] +
-                mat[0][2] * mat[1][0] * mat[2][1] ) -
-              ( mat[0][0] * mat[1][2] * mat[2][1] +
-                mat[0][1] * mat[1][0] * mat[2][2] +
-                mat[0][2] * mat[1][1] * mat[2][0] );
+        det = ( mat[0][0] * mat[1][1] * mat[2][2]
+                + mat[0][1] * mat[1][2] * mat[2][0]
+                + mat[0][2] * mat[1][0] * mat[2][1] )
+            - ( mat[0][0] * mat[1][2] * mat[2][1]
+                    + mat[0][1] * mat[1][0] * mat[2][2]
+                    + mat[0][2] * mat[1][1] * mat[2][0] );
 
         inv[0][0] = mat[1][1] * mat[2][2] - mat[1][2] * mat[2][1];
         inv[0][1] = mat[0][2] * mat[2][1] - mat[0][1] * mat[2][2];
@@ -831,8 +839,10 @@ extern "C" void Cuda_Compute_Center_of_Mass( reax_system *system,
  *  corrections to short-range interactions present.
  *  We may want to add that for more accuracy.
  */
-void Cuda_Compute_Pressure( reax_system* system, control_params *control,
-        storage *workspace, simulation_data* data, mpi_datatypes *mpi_data )
+void Cuda_Compute_Pressure( reax_system * const system,
+        control_params const * const control,
+        storage * const workspace, simulation_data * const  data,
+        mpi_datatypes * const mpi_data )
 {
     int ret;
     rvec *spad_rvec, int_press;
@@ -843,9 +853,10 @@ void Cuda_Compute_Pressure( reax_system* system, control_params *control,
     /* 0: both int and ext, 1: ext only, 2: int only */
     if ( control->press_mode == 0 || control->press_mode == 2 )
     {
-        sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
+        sCudaCheckMalloc( &workspace->d_workspace->scratch[0],
+                &workspace->d_workspace->scratch_size[0],
                 sizeof(rvec) * (system->n + 1), __FILE__, __LINE__ );
-        spad_rvec = (rvec *) workspace->scratch[0];
+        spad_rvec = (rvec *) workspace->d_workspace->scratch[0];
 
         k_compute_pressure <<< control->blocks_n, control->gpu_block_size,
                            0, control->cuda_streams[0] >>>
@@ -869,7 +880,7 @@ void Cuda_Compute_Pressure( reax_system* system, control_params *control,
     Check_MPI_Error( ret, __FILE__, __LINE__ );
 
     /* kinetic contribution */
-    data->kin_press = 2.0 * (E_CONV * data->sys_en->e_kin)
+    data->kin_press = 2.0 * (E_CONV * data->sys_en[E_KIN])
         / (3.0 * big_box->V * P_CONV);
 
     /* Calculate total pressure in each direction */

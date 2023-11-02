@@ -166,7 +166,7 @@ void Init_System( reax_system * const system, control_params * const control,
     /* since all processors read in all atoms and select their local atoms
      * intially, no local atoms comm needed and just bin local atoms */
     Bin_My_Atoms( system, workspace );
-    Reorder_My_Atoms( system, workspace );
+    Reorder_My_Atoms( system );
 
     system->N = SendRecv( system, mpi_data, mpi_data->boundary_atom_type,
             &Count_Boundary_Atoms, &Sort_Boundary_Atoms,
@@ -249,8 +249,8 @@ void Init_System( reax_system * const system, control_params * const control,
 void Init_Simulation_Data( reax_system * const system, control_params * const control,
         simulation_data * const data, mpi_datatypes * const mpi_data )
 {
-    data->my_en = smalloc( sizeof(energy_data), __FILE__, __LINE__ );
-    data->sys_en = smalloc( sizeof(energy_data), __FILE__, __LINE__ );
+    data->my_en = smalloc( sizeof(real) * E_N, __FILE__, __LINE__ );
+    data->sys_en = smalloc( sizeof(real) * E_N, __FILE__, __LINE__ );
 
     Reset_Simulation_Data( data );
     Reset_Timing( &data->timing );
@@ -283,7 +283,7 @@ void Init_Simulation_Data( reax_system * const system, control_params * const co
         if ( !control->restart || (control->restart && control->random_vel) )
         {
             data->therm.G_xi = control->Tau_T
-                * (2.0 * data->sys_en->e_kin - data->N_f * K_B * control->T );
+                * (2.0 * data->sys_en[E_KIN] - data->N_f * K_B * control->T );
             data->therm.v_xi = data->therm.G_xi * control->dt;
             data->therm.v_xi_old = 0;
             data->therm.xi = 0;
@@ -324,7 +324,7 @@ void Init_Simulation_Data( reax_system * const system, control_params * const co
 //        if( !control->restart )
 //        {
 //            data->therm.G_xi = control->Tau_T
-//                * (2.0 * data->my_en->e_kin - data->N_f * K_B * control->T );
+//                * (2.0 * data->my_en[E_KIN] - data->N_f * K_B * control->T );
 //            data->therm.v_xi = data->therm.G_xi * control->dt;
 //            data->iso_bar.eps = (1.0 / 3.0) * LOG(system->box.volume);
 //            data->inv_W = 1.0
@@ -374,8 +374,8 @@ void Init_System( reax_system * const system )
 void Init_Simulation_Data( reax_system * const system, control_params * const control,
         simulation_data * const data )
 {
-    data->my_en = smalloc( sizeof(energy_data), __FILE__, __LINE__ );
-    data->sys_en = smalloc( sizeof(energy_data), __FILE__, __LINE__ );
+    data->my_en = smalloc( sizeof(real) * E_N, __FILE__, __LINE__ );
+    data->sys_en = smalloc( sizeof(real) * E_N, __FILE__, __LINE__ );
 
     Reset_Simulation_Data( data );
     Reset_Timing( &data->timing );
@@ -451,12 +451,12 @@ void Init_Workspace( reax_system * const system, control_params * const control,
     workspace->tap_coef = smalloc( sizeof(real) * TAPER_COEF_SIZE, __FILE__, __LINE__ );
     workspace->dtap_coef = smalloc( sizeof(real) * DTAPER_COEF_SIZE, __FILE__, __LINE__ );
 
-    workspace->realloc->far_nbrs = FALSE;
-    workspace->realloc->cm = FALSE;
-    workspace->realloc->hbonds = FALSE;
-    workspace->realloc->bonds = FALSE;
-    workspace->realloc->thbody = FALSE;
-    workspace->realloc->gcell_atoms = 0;
+    workspace->realloc[RE_FAR_NBRS] = FALSE;
+    workspace->realloc[RE_CM] = FALSE;
+    workspace->realloc[RE_HBONDS] = FALSE;
+    workspace->realloc[RE_BONDS] = FALSE;
+    workspace->realloc[RE_THBODY] = FALSE;
+    workspace->realloc[RE_GCELL_ATOMS] = 0;
 
     if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
@@ -753,7 +753,7 @@ void Initialize( reax_system * const system, control_params * const control,
     Init_Simulation_Data( system, control, data, mpi_data );
 
     /* early allocation before Init_Workspace for Bin_My_Atoms inside Init_System */
-    workspace->realloc = smalloc( sizeof(reallocate_data), __FILE__, __LINE__ );
+    workspace->realloc = smalloc( sizeof(int) * RE_N, __FILE__, __LINE__ );
 
     Init_System( system, control, data, workspace, mpi_data );
     /* reset for step 0 */
@@ -783,7 +783,7 @@ void Initialize( reax_system * const system, control_params * const control,
     Init_Simulation_Data( system, control, data );
 
     /* early allocation before Init_Workspace for Bin_My_Atoms inside Init_System */
-    workspace->realloc = smalloc( sizeof(reallocate_data), __FILE__, __LINE__ );
+    workspace->realloc = smalloc( sizeof(int) * RE_N, __FILE__, __LINE__ );
 
     Init_System( system );
     /* reset for step 0 */

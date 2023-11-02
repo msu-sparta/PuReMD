@@ -32,7 +32,7 @@ static void Cuda_Init_System( reax_system * const system, control_params * const
     /* since all processors read in all atoms and select their local atoms
      * intially, no local atoms comm needed and just bin local atoms */
     Bin_My_Atoms( system, workspace );
-    Reorder_My_Atoms( system, workspace );
+    Reorder_My_Atoms( system );
 
     system->N = SendRecv( system, mpi_data, mpi_data->boundary_atom_type,
             &Count_Boundary_Atoms, &Sort_Boundary_Atoms,
@@ -78,8 +78,8 @@ static void Cuda_Init_System( reax_system * const system, control_params * const
 void Cuda_Init_Simulation_Data( reax_system * const system, control_params * const control,
         simulation_data * const data )
 {
-    data->my_en = (energy_data *) smalloc_pinned( sizeof(energy_data), __FILE__, __LINE__ );
-    data->sys_en = (energy_data *) smalloc( sizeof(energy_data), __FILE__, __LINE__ );
+    data->my_en = (real *) smalloc_pinned( sizeof(real) * E_N, __FILE__, __LINE__ );
+    data->sys_en = (real *) smalloc( sizeof(real) * E_N, __FILE__, __LINE__ );
 
     Cuda_Allocate_Simulation_Data( data, control->cuda_streams[0] );
 
@@ -114,7 +114,7 @@ void Cuda_Init_Simulation_Data( reax_system * const system, control_params * con
         if ( !control->restart || (control->restart && control->random_vel) )
         {
             data->therm.G_xi = control->Tau_T
-                * (2.0 * data->sys_en->e_kin - data->N_f * K_B * control->T );
+                * (2.0 * data->sys_en[E_KIN] - data->N_f * K_B * control->T );
             data->therm.v_xi = data->therm.G_xi * control->dt;
             data->therm.v_xi_old = 0;
             data->therm.xi = 0;
@@ -170,26 +170,21 @@ void Cuda_Init_Workspace( reax_system const * const system, control_params * con
 
     /* one-off allocations (not to be rerun after reneighboring)
      * and not needed earlier during input file parsing (in PreAllocate_Space) */
-    workspace->tap_coef = (real *) smalloc( sizeof(real) * TAPER_COEF_SIZE, __FILE__, __LINE__ );
-    workspace->dtap_coef = (real *) smalloc( sizeof(real) * DTAPER_COEF_SIZE, __FILE__, __LINE__ );
+    workspace->tap_coef = (real *) smalloc( sizeof(real) * TAPER_COEF_SIZE,
+            __FILE__, __LINE__ );
+    workspace->dtap_coef = (real *) smalloc( sizeof(real) * DTAPER_COEF_SIZE,
+            __FILE__, __LINE__ );
     sCudaMalloc( (void **) &workspace->d_workspace->tap_coef, sizeof(real) * TAPER_COEF_SIZE,
             __FILE__, __LINE__ );
     sCudaMalloc( (void **) &workspace->d_workspace->dtap_coef, sizeof(real) * DTAPER_COEF_SIZE,
             __FILE__, __LINE__ );
 
-    workspace->realloc->far_nbrs = FALSE;
-    workspace->realloc->cm = FALSE;
-    workspace->realloc->bonds = FALSE;
-    workspace->realloc->hbonds = FALSE;
-    workspace->realloc->thbody = FALSE;
-    workspace->realloc->gcell_atoms = 0;
-
-    workspace->d_workspace->realloc->far_nbrs = FALSE;
-    workspace->d_workspace->realloc->cm = FALSE;
-    workspace->d_workspace->realloc->bonds = FALSE;
-    workspace->d_workspace->realloc->hbonds = FALSE;
-    workspace->d_workspace->realloc->thbody = FALSE;
-    workspace->d_workspace->realloc->gcell_atoms = 0;
+    workspace->realloc[RE_FAR_NBRS] = FALSE;
+    workspace->realloc[RE_CM] = FALSE;
+    workspace->realloc[RE_BONDS] = FALSE;
+    workspace->realloc[RE_HBONDS] = FALSE;
+    workspace->realloc[RE_THBODY] = FALSE;
+    workspace->realloc[RE_GCELL_ATOMS] = 0;
 
     if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
@@ -322,14 +317,16 @@ extern "C" void Cuda_Initialize( reax_system * const system, control_params * co
         workspace->scratch[i] = NULL;
         workspace->scratch_size[i] = 0;
     }
-    workspace->host_scratch = NULL;
-    workspace->host_scratch_size = 0;
+    for ( i = 0; i < MAX_GPU_STREAMS; ++i )
+    {
+        workspace->d_workspace->scratch[i] = NULL;
+        workspace->d_workspace->scratch_size[i] = 0;
+    }
 
     /* early allocation before Cuda_Init_Workspace for Bin_My_Atoms inside Cuda_Init_System */
-    workspace->realloc = (reallocate_data *) smalloc(
-            sizeof(reallocate_data), __FILE__, __LINE__ );
-    workspace->d_workspace->realloc = (reallocate_data *) smalloc_pinned(
-            sizeof(reallocate_data), __FILE__, __LINE__ );
+    workspace->realloc = (int *) smalloc( sizeof(int) * RE_N, __FILE__, __LINE__ );
+    sCudaMalloc( (void **) &workspace->d_workspace->realloc, sizeof(int) * RE_N,
+            __FILE__, __LINE__ );
 
     Cuda_Init_System( system, control, data, workspace, mpi_data );
     /* reset for step 0 */

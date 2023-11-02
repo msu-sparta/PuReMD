@@ -752,7 +752,7 @@ void Comm_Atoms( reax_system * const system, control_params * const control,
                 &Unpack_Transfer_Message, TRUE );
 
         Bin_My_Atoms( system, workspace );
-        Reorder_My_Atoms( system, workspace );
+        Reorder_My_Atoms( system );
 
         /* exchange ghost region info with neighbors */
         system->N = SendRecv( system, mpi_data, mpi_data->boundary_atom_type,

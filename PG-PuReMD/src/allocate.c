@@ -885,13 +885,13 @@ void Reallocate_Part1( reax_system * const system, control_params * const contro
         mpi_datatypes * const mpi_data )
 {
     int i, j, k, renbr;
-    reallocate_data * const realloc = workspace->realloc;
+    int * const realloc = workspace->realloc;
     grid * const g = &system->my_grid;
 
     renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
 
     /* grid */
-    if ( renbr == TRUE && realloc->gcell_atoms > -1 )
+    if ( renbr == TRUE && realloc[RE_GCELL_ATOMS] > -1 )
     {
         for ( i = g->native_str[0]; i < g->native_end[0]; i++ )
         {
@@ -901,13 +901,13 @@ void Reallocate_Part1( reax_system * const system, control_params * const contro
                 {
                     sfree( g->cells[ index_grid_3d(i, j, k, g) ].atoms,
                             __FILE__, __LINE__ );
-                    g->cells[ index_grid_3d(i, j, k, g) ].atoms = scalloc( realloc->gcell_atoms,
+                    g->cells[ index_grid_3d(i, j, k, g) ].atoms = scalloc( realloc[RE_GCELL_ATOMS],
                             sizeof(int), __FILE__, __LINE__ );
                 }
             }
         }
 
-        realloc->gcell_atoms = -1;
+        realloc[RE_GCELL_ATOMS] = -1;
     }
 }
 
@@ -917,7 +917,7 @@ void Reallocate_Part2( reax_system * const system, control_params * const contro
         mpi_datatypes * const mpi_data )
 {
     int nflag, Nflag, renbr, total_cap_old;
-    reallocate_data * const realloc = workspace->realloc;
+    int * const realloc = workspace->realloc;
     sparse_matrix * const H = &workspace->H;
 
     renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
@@ -967,15 +967,15 @@ void Reallocate_Part2( reax_system * const system, control_params * const contro
     }
 
     /* far neighbors */
-    if ( renbr == TRUE && (Nflag == TRUE || realloc->far_nbrs == TRUE) )
+    if ( renbr == TRUE && (Nflag == TRUE || realloc[RE_FAR_NBRS] == TRUE) )
     {
         Reallocate_Neighbor_List( lists[FAR_NBRS], system->total_cap, system->total_far_nbrs );
         Init_List_Indices( lists[FAR_NBRS], system->max_far_nbrs );
-        realloc->far_nbrs = FALSE;
+        realloc[RE_FAR_NBRS] = FALSE;
     }
 
     /* charge matrix */
-    if ( nflag == TRUE || realloc->cm == TRUE )
+    if ( nflag == TRUE || realloc[RE_CM] == TRUE )
     {
 #if defined(NEUTRAL_TERRITORY)
         Reallocate_Matrix( H, H->n, system->local_cap,
@@ -984,35 +984,35 @@ void Reallocate_Part2( reax_system * const system, control_params * const contro
         Reallocate_Matrix( H, system->n, system->local_cap, system->total_cm_entries );
 #endif
 
-        realloc->cm = FALSE;
+        realloc[RE_CM] = FALSE;
     }
 
     /* bonds list */
-    if ( Nflag == TRUE || realloc->bonds == TRUE )
+    if ( Nflag == TRUE || realloc[RE_BONDS] == TRUE )
     {
         Reallocate_List( lists[BONDS], system->total_cap, system->total_bonds,
                TYP_BOND, lists[BONDS]->format );
 
-        realloc->bonds = FALSE;
-        realloc->thbody = TRUE;
+        realloc[RE_BONDS] = FALSE;
+        realloc[RE_THBODY] = TRUE;
     }
 
     /* hydrogen bonds list */
     if ( control->hbond_cut > 0.0
-            && (Nflag == TRUE || realloc->hbonds == TRUE) )
+            && (Nflag == TRUE || realloc[RE_HBONDS] == TRUE) )
     {
         Reallocate_List( lists[HBONDS], system->total_cap, system->total_hbonds,
                TYP_HBOND, lists[HBONDS]->format );
 
-        realloc->hbonds = FALSE;
+        realloc[RE_HBONDS] = FALSE;
     }
 
     /* 3-body list */
-    if ( realloc->thbody == TRUE )
+    if ( realloc[RE_THBODY] == TRUE )
     {
         Reallocate_List( lists[THREE_BODIES], system->total_bonds, system->total_thbodies,
                TYP_THREE_BODY, lists[THREE_BODIES]->format );
 
-        realloc->thbody = FALSE;
+        realloc[RE_THBODY] = FALSE;
     }
 }

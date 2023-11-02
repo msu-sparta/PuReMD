@@ -1880,7 +1880,7 @@ static int Cuda_Estimate_Storage_Three_Body( reax_system * const system,
                     system->total_bonds );
         }
 
-        workspace->d_workspace->realloc->thbody = TRUE;
+        workspace->realloc[RE_THBODY] = TRUE;
         ret = FAILURE;
     }
 
@@ -1927,12 +1927,12 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
             (sizeof(real) * 3 + sizeof(rvec)) * system->N ),
 #endif
 
-    sCudaCheckMalloc( &workspace->scratch[3], &workspace->scratch_size[3],
-            s, __FILE__, __LINE__ );
+    sCudaCheckMalloc( &workspace->d_workspace->scratch[3],
+            &workspace->d_workspace->scratch_size[3], s, __FILE__, __LINE__ );
 
-    thbody = (int *) workspace->scratch[3];
+    thbody = (int *) workspace->d_workspace->scratch[3];
 #if !defined(GPU_ATOMIC_EV)
-    spad = (real *) workspace->scratch[3];
+    spad = (real *) workspace->d_workspace->scratch[3];
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
 #endif
@@ -1947,15 +1947,11 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
         Cuda_Init_Three_Body_Indices( control, thbody, system->total_thbodies_indices, lists );
 
 #if defined(GPU_ATOMIC_EV)
-        sCudaMemsetAsync( &data->d_my_en->e_ang,
-                0, sizeof(real), control->cuda_streams[3], __FILE__, __LINE__ );
-        sCudaMemsetAsync( &data->d_my_en->e_pen,
-                0, sizeof(real), control->cuda_streams[3], __FILE__, __LINE__ );
-        sCudaMemsetAsync( &data->d_my_en->e_coa,
-                0, sizeof(real), control->cuda_streams[3], __FILE__, __LINE__ );
+        sCudaMemsetAsync( &data->d_my_en[E_ANG], 0, sizeof(real) * 3,
+                control->cuda_streams[3], __FILE__, __LINE__ );
         if ( control->virial == 1 )
         {
-            sCudaMemsetAsync( &data->d_simulation_data->my_ext_press,
+            sCudaMemsetAsync( &data->d_my_ext_press,
                     0, sizeof(rvec), control->cuda_streams[3], __FILE__, __LINE__ );
         }
 #endif
@@ -1977,7 +1973,7 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
 //                  *(lists[BONDS]), *(lists[THREE_BODIES]),
 //                  system->n, system->N, system->reax_param.num_atom_types, 
 //#if defined(GPU_ATOMIC_EV)
-//                  &data->d_my_en->e_ang, &data->d_my_en->e_pen, &data->d_my_en->e_coa
+//                  &data->d_my_en[E_ANG], &data->d_my_en[E_PEN], &data->d_my_en[E_COA]
 //#else
 //                  spad, &spad[system->N], &spad[2 * system->N]
 //#endif
@@ -2000,7 +1996,7 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
                   *(lists[BONDS]), *(lists[THREE_BODIES]), system->n, system->N,
                   system->reax_param.num_atom_types, 
 #if defined(GPU_ATOMIC_EV)
-                  &data->d_my_en->e_ang, &data->d_my_en->e_pen, &data->d_my_en->e_coa
+                  &data->d_my_en[E_ANG], &data->d_my_en[E_PEN], &data->d_my_en[E_COA]
 #else
                   spad, &spad[system->N], &spad[2 * system->N]
 #endif
@@ -2023,7 +2019,7 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
 //                  *(lists[BONDS]), system->n, system->N,
 //                  system->reax_param.num_atom_types, 
 //#if defined(GPU_ATOMIC_EV)
-//                  &data->d_my_en->e_ang, &data->d_my_en->e_pen, &data->d_my_en->e_coa
+//                  &data->d_my_en[E_ANG], &data->d_my_en[E_PEN], &data->d_my_en[E_COA]
 //#else
 //                  spad, &spad[system->N], &spad[2 * system->N]
 //#endif
@@ -2046,8 +2042,8 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
                   *(lists[BONDS]), *(lists[THREE_BODIES]), system->n, system->N,
                   system->reax_param.num_atom_types, 
 #if defined(GPU_ATOMIC_EV)
-                  &data->d_my_en->e_ang, &data->d_my_en->e_pen, &data->d_my_en->e_coa,
-                  &data->d_simulation_data->my_ext_press
+                  &data->d_my_en[E_ANG], &data->d_my_en[E_PEN], &data->d_my_en[E_COA],
+                  &data->d_my_ext_press
 #else
                   spad, &spad[system->N], &spad[2 * system->N], (rvec *) (&spad[3 * system->N])
 #endif
@@ -2058,20 +2054,20 @@ int Cuda_Compute_Valence_Angles( reax_system * const system,
 #if !defined(GPU_ATOMIC_EV)
         if ( update_energy == TRUE )
         {
-            Cuda_Reduction_Sum( spad,
-                    &data->d_my_en->e_ang, system->N, 3, control->cuda_streams[3] );
+            Cuda_Reduction_Sum( spad, &data->d_my_en[E_ANG], system->N, 3,
+                    control->cuda_streams[3] );
 
-            Cuda_Reduction_Sum( &spad[system->N],
-                    &data->d_my_en->e_pen, system->N, 3, control->cuda_streams[3] );
+            Cuda_Reduction_Sum( &spad[system->N], &data->d_my_en[E_PEN], system->N, 3,
+                    control->cuda_streams[3] );
 
-            Cuda_Reduction_Sum( &spad[2 * system->N],
-                    &data->d_my_en->e_coa, system->N, 3, control->cuda_streams[3] );
+            Cuda_Reduction_Sum( &spad[2 * system->N], &data->d_my_en[E_COA], system->N, 3,
+                    control->cuda_streams[3] );
 
             if ( control->virial == 1 )
             {
                 rvec_spad = (rvec *) (&spad[3 * system->N]);
 
-                Cuda_Reduction_Sum( rvec_spad, &data->d_simulation_data->my_ext_press,
+                Cuda_Reduction_Sum( rvec_spad, &data->d_my_ext_press,
                         system->N, 3, control->cuda_streams[3] );
             }
         }

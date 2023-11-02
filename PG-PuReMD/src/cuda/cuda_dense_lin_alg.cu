@@ -826,9 +826,10 @@ real Dot( storage * const workspace,
 
     /* global reduction (sum) of local device sums and store on host */
 #if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
-    sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
+    sCudaCheckMalloc( &workspace->d_workspace->scratch[5],
+            &workspace->d_workspace->scratch_size[5],
             sizeof(real), __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch[5];
+    spad = (real *) workspace->d_workspace->scratch[5];
 
     ret_cublas = cublasDdot( handle, k, v1, 1, v2, 1, &spad );
 
@@ -860,9 +861,10 @@ real Dot( storage * const workspace,
     real temp;
 #endif
 
-    sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
+    sCudaCheckMalloc( &workspace->d_workspace->scratch[5],
+            &workspace->d_workspace->scratch_size[5],
             sizeof(real) * (k + 1), __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch[5];
+    spad = (real *) workspace->d_workspace->scratch[5];
 
     Vector_Mult( spad, v1, v2, k, block_size, s );
 
@@ -923,9 +925,10 @@ real Dot_local( storage * const workspace,
 #else
     real sum, *spad;
 
-    sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
+    sCudaCheckMalloc( &workspace->d_workspace->scratch[5],
+            &workspace->d_workspace->scratch_size[5],
             sizeof(real) * (k + 1), __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch[5];
+    spad = (real *) workspace->d_workspace->scratch[5];
 
     Vector_Mult( spad, v1, v2, k, block_size, s );
 
@@ -984,9 +987,10 @@ void Dot_local_rvec2( storage * const workspace,
 #else
     rvec2 sum, *spad;
 
-    sCudaCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
+    sCudaCheckMalloc( &workspace->d_workspace->scratch[5],
+            &workspace->d_workspace->scratch_size[5],
             sizeof(rvec2) * (k + 1), __FILE__, __LINE__ );
-    spad = (rvec2 *) workspace->scratch[5];
+    spad = (rvec2 *) workspace->d_workspace->scratch[5];
 
     Vector_Mult_rvec2( spad, v1, v2, k, block_size, s );
 

@@ -614,25 +614,18 @@ void Bin_My_Atoms( reax_system * const system, storage * const workspace )
     /* check if current num. of max atoms per grid cell is safe */
     if ( max_atoms >= (int) CEIL( g->max_atoms * DANGER_ZONE ) )
     {
-        workspace->realloc->gcell_atoms = MAX( (int) CEIL( max_atoms * SAFE_ZONE ),
+        workspace->realloc[RE_GCELL_ATOMS] = MAX( (int) CEIL( max_atoms * SAFE_ZONE ),
                 MIN_GCELL_POPL );
-#if defined(HAVE_CUDA) || defined(HAVE_HIP)
-        workspace->d_workspace->realloc->gcell_atoms = MAX( (int) CEIL( max_atoms * SAFE_ZONE ),
-                MIN_GCELL_POPL );
-#endif
     }
     else
     {
-        workspace->realloc->gcell_atoms = -1;
-#if defined(HAVE_CUDA) || defined(HAVE_HIP)
-        workspace->d_workspace->realloc->gcell_atoms = -1;
-#endif
+        workspace->realloc[RE_GCELL_ATOMS] = -1;
     }
 }
 
 
 /* Reorder atoms falling into the same gcell together in the atom list */
-void Reorder_My_Atoms( reax_system * const system, storage * const workspace )
+void Reorder_My_Atoms( reax_system * const system )
 {
     int i, l, x, y, z;
     int top, old_id;

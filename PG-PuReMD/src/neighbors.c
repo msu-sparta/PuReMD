@@ -143,7 +143,7 @@ static int Generate_Neighbor_Lists_Half( reax_system * const system,
         /* reallocation check */
         if ( Num_Entries( i, far_nbr_list ) > system->max_far_nbrs[i] )
         {
-            workspace->realloc->far_nbrs = TRUE;
+            workspace->realloc[RE_FAR_NBRS] = TRUE;
         }
     }
 
@@ -160,7 +160,7 @@ static int Generate_Neighbor_Lists_Half( reax_system * const system,
     }
 #endif
 
-    return (workspace->realloc->far_nbrs == FALSE) ? SUCCESS : FAILURE;
+    return (workspace->realloc[RE_FAR_NBRS] == FALSE) ? SUCCESS : FAILURE;
 }
 
 
@@ -269,7 +269,7 @@ static int Generate_Neighbor_Lists_Full( reax_system * const system,
         /* reallocation check */
         if ( Num_Entries( i, far_nbr_list ) > system->max_far_nbrs[i] )
         {
-            workspace->realloc->far_nbrs = TRUE;
+            workspace->realloc[RE_FAR_NBRS] = TRUE;
         }
     }
 
@@ -286,7 +286,7 @@ static int Generate_Neighbor_Lists_Full( reax_system * const system,
     }
 #endif
 
-    return (workspace->realloc->far_nbrs == FALSE) ? SUCCESS : FAILURE;
+    return (workspace->realloc[RE_FAR_NBRS] == FALSE) ? SUCCESS : FAILURE;
 }
 
 

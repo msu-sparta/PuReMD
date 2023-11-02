@@ -1079,9 +1079,10 @@ void Cuda_Total_Forces_Part1( reax_system const * const system,
     }
     else
     {
-        sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
+        sCudaCheckMalloc( &workspace->d_workspace->scratch[0],
+                &workspace->d_workspace->scratch_size[0],
                 sizeof(rvec) * 2 * system->N, __FILE__, __LINE__ );
-        spad_rvec = (rvec *) workspace->scratch[0];
+        spad_rvec = (rvec *) workspace->d_workspace->scratch[0];
         sCudaMemsetAsync( spad_rvec, 0, sizeof(rvec) * 2 * system->N,
                 control->cuda_streams[0], __FILE__, __LINE__ );
         cudaStreamSynchronize( control->cuda_streams[0] );
@@ -1092,7 +1093,7 @@ void Cuda_Total_Forces_Part1( reax_system const * const system,
               workspace->d_workspace->f, *(lists[BONDS]), spad_rvec, system->N );
         cudaCheckError( );
 
-        Cuda_Reduction_Sum( spad_rvec, &data->d_simulation_data->my_ext_press,
+        Cuda_Reduction_Sum( spad_rvec, &data->d_my_ext_press,
                 system->N, 0, control->cuda_streams[0] );
     }
 

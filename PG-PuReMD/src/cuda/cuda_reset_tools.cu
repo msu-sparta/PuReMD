@@ -127,9 +127,10 @@ void Cuda_Reset_Atoms_HBond_Indices( reax_system * const system, control_params 
 #else
     int *hindex;
 
-    sCudaCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
+    sCudaCheckMalloc( &workspace->d_workspace->scratch[0],
+            &workspace->d_workspace->scratch_size[0],
             sizeof(int) * system->total_cap, __FILE__, __LINE__ );
-    hindex = (int *) workspace->scratch[0];
+    hindex = (int *) workspace->d_workspace->scratch[0];
 #endif
 
     k_reset_hindex <<< control->blocks_N, control->gpu_block_size,

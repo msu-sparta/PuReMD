@@ -83,7 +83,7 @@ void Atom_Energy( reax_system * const system, control_params * const control,
 
         /* calculate the energy */
         e_lp = p_lp2 * workspace->Delta_lp[i] * inv_expvd2;
-        data->my_en->e_lp += e_lp;
+        data->my_en[E_LP] += e_lp;
 
         dElp = p_lp2 * inv_expvd2 + 75.0 * p_lp2 * workspace->Delta_lp[i]
             * expvd2 * SQR(inv_expvd2);
@@ -95,7 +95,7 @@ void Atom_Energy( reax_system * const system, control_params * const control,
         fprintf( out_control->elp, "%23.15e%23.15e%23.15e%23.15e\n",
                  p_lp2, workspace->Delta_lp_temp[i], expvd2, dElp );
         fprintf( out_control->elp, "%6d%23.15e%23.15e%23.15e\n",
-                 workspace->orig_id[i] + 1, workspace->nlp[i], e_lp, data->my_en->e_lp );
+                 workspace->orig_id[i] + 1, workspace->nlp[i], e_lp, data->my_en[E_LP] );
 #endif
 
 #if defined(TEST_FORCES)
@@ -127,7 +127,7 @@ void Atom_Energy( reax_system * const system, control_params * const control,
                         if ( vov3 > 3.0 )
                         {
                             e_lph = p_lp3 * SQR( vov3 - 3.0 );
-                            data->my_en->e_lp += e_lph;
+                            data->my_en[E_LP] += e_lph;
 
                             deahu2dbo = 2.0 * p_lp3 * (vov3 - 3.0);
                             deahu2dsbo = 2.0 * p_lp3 * (vov3 - 3.0)
@@ -198,7 +198,7 @@ void Atom_Energy( reax_system * const system, control_params * const control,
         CEover1 = Delta_lpcorr * DlpVi * inv_exp_ovun2;
 
         e_ov = sum_ovun1 * CEover1;
-        data->my_en->e_ov += e_ov;
+        data->my_en[E_OV] += e_ov;
 
         CEover2 = sum_ovun1 * DlpVi * inv_exp_ovun2 * (1.0 - Delta_lpcorr
                 * ( DlpVi + p_ovun2 * exp_ovun2 * inv_exp_ovun2 ));
@@ -219,7 +219,7 @@ void Atom_Energy( reax_system * const system, control_params * const control,
         inv_exp_ovun8 = 1.0 / (1.0 + exp_ovun8);
 
         e_un = -p_ovun5 * (1.0 - exp_ovun6) * inv_exp_ovun2n * inv_exp_ovun8;
-        data->my_en->e_un += e_un;
+        data->my_en[E_UN] += e_un;
 
         CEunder1 = inv_exp_ovun2n * ( p_ovun5 * p_ovun6 * exp_ovun6 * inv_exp_ovun8
                 + p_ovun2 * e_un * exp_ovun2n );
@@ -314,17 +314,17 @@ void Atom_Energy( reax_system * const system, control_params * const control,
         //fprintf( out_control->elp, "%6d%24.15e%24.15e%24.15e\n",
         //fprintf( out_control->elp, "%6d%12.4f%12.4f%12.4f\n",
         //     system->my_atoms[i].orig_id, workspace->nlp[i],
-        //     e_lp, data->my_en->e_lp );
+        //     e_lp, data->my_en[E_LP] );
 
         //fprintf( out_control->eov, "%6d%24.15e%24.15e\n",
         fprintf( out_control->eov, "%6d%12.4f%12.4f\n",
                  system->my_atoms[i].orig_id,
-                 e_ov, data->my_en->e_ov + data->my_en->e_un );
+                 e_ov, data->my_en[E_OV] + data->my_en[E_UN] );
 
         //fprintf( out_control->eun, "%6d%24.15e%24.15e\n",
         fprintf( out_control->eun, "%6d%12.4f%12.4f\n",
                  system->my_atoms[i].orig_id,
-                 e_un, data->my_en->e_ov + data->my_en->e_un );
+                 e_un, data->my_en[E_OV] + data->my_en[E_UN] );
 #endif
     }
 }

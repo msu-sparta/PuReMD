@@ -1255,35 +1255,35 @@ void Output_Results( reax_system *system, control_params *control,
 #if !defined(DEBUG) && !defined(DEBUG_FOCUS)
                 fprintf( out_control->out,
                          "%-6d%14.2f%14.2f%14.2f%11.2f%13.2f%13.5f\n",
-                         data->step, data->sys_en->e_tot, data->sys_en->e_pot,
-                         E_CONV * data->sys_en->e_kin, data->therm.T,
+                         data->step, data->sys_en[E_TOT], data->sys_en[E_POT],
+                         E_CONV * data->sys_en[E_KIN], data->therm.T,
                          system->big_box.V, data->iso_bar.P );
 
                 fprintf( out_control->pot,
                          "%-6d%14.2f%14.2f%14.2f%14.2f%14.2f%14.2f%14.2f%14.2f%14.2f%14.2f%14.2f\n",
                          data->step,
-                         data->sys_en->e_bond,
-                         data->sys_en->e_ov + data->sys_en->e_un,  data->sys_en->e_lp,
-                         data->sys_en->e_ang + data->sys_en->e_pen, data->sys_en->e_coa,
-                         data->sys_en->e_hb,
-                         data->sys_en->e_tor, data->sys_en->e_con,
-                         data->sys_en->e_vdW, data->sys_en->e_ele, data->sys_en->e_pol);
+                         data->sys_en[E_BOND],
+                         data->sys_en[E_OV] + data->sys_en[E_UN], data->sys_en[E_LP],
+                         data->sys_en[E_ANG] + data->sys_en[E_PEN], data->sys_en[E_COA],
+                         data->sys_en[E_HB],
+                         data->sys_en[E_TOR], data->sys_en[E_CON],
+                         data->sys_en[E_VDW], data->sys_en[E_ELE], data->sys_en[E_POL] );
 #else
                 fprintf( out_control->out,
                         "%-6d%24.15f%24.15f%24.15f%13.5f%16.5f%13.5f\n",
-                        data->step, data->sys_en->e_tot, data->sys_en->e_pot,
-                        E_CONV * data->sys_en->e_kin, data->therm.T,
+                        data->step, data->sys_en[E_TOT], data->sys_en[E_POT],
+                        E_CONV * data->sys_en[E_KIN], data->therm.T,
                         system->big_box.V, data->iso_bar.P );
 
                 fprintf( out_control->pot,
                         "%-6d%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f\n",
                         data->step,
-                        data->sys_en->e_bond,
-                        data->sys_en->e_ov + data->sys_en->e_un,  data->sys_en->e_lp,
-                        data->sys_en->e_ang + data->sys_en->e_pen, data->sys_en->e_coa,
-                        data->sys_en->e_hb,
-                        data->sys_en->e_tor, data->sys_en->e_con,
-                        data->sys_en->e_vdW, data->sys_en->e_ele, data->sys_en->e_pol);
+                        data->sys_en[E_BOND],
+                        data->sys_en[E_OV] + data->sys_en[E_UN], data->sys_en[E_LP],
+                        data->sys_en[E_ANG] + data->sys_en[E_PEN], data->sys_en[E_COA],
+                        data->sys_en[E_HB],
+                        data->sys_en[E_TOR], data->sys_en[E_CON],
+                        data->sys_en[E_VDW], data->sys_en[E_ELE], data->sys_en[E_POL] );
 
                 fflush( out_control->out );
                 fflush( out_control->pot );
