@@ -337,7 +337,7 @@
 
 /* max. num. of main simulation loop retries;
  * retries occur when memory allocation checks determine more memory is needed */
-#define MAX_RETRIES (3)
+#define MAX_RETRIES (4)
 
 /* num. coefficients for tapering 7th order polynomial function used for Coulomb interactions */
 #define TAPER_COEF_SIZE (8)

@@ -1018,16 +1018,18 @@ void Cuda_Reallocate_Part2( reax_system * const system,
     {
         Cuda_Reallocate_System_Part1( system, control, workspace, local_cap_old );
 
-        Cuda_Deallocate_Workspace_Part1( control, workspace );
-        Cuda_Allocate_Workspace_Part1( control, workspace, system->local_cap );
+        Cuda_Deallocate_Workspace_Part1( control, workspace->d_workspace );
+        Cuda_Allocate_Workspace_Part1( control, workspace->d_workspace,
+                system->local_cap );
     }
 
     if ( Nflag == TRUE )
     {
         Cuda_Reallocate_System_Part2( system, control, workspace, total_cap_old );
 
-        Cuda_Deallocate_Workspace_Part2( control, workspace );
-        Cuda_Allocate_Workspace_Part2( control, workspace, system->total_cap );
+        Cuda_Deallocate_Workspace_Part2( control, workspace->d_workspace );
+        Cuda_Allocate_Workspace_Part2( control, workspace->d_workspace,
+                system->total_cap );
     }
 
     /* far neighbors */
