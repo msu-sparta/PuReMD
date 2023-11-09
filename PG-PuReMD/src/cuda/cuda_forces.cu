@@ -82,21 +82,28 @@ GPU_GLOBAL void k_init_end_index( int const * const intr_cnt,
 GPU_GLOBAL void k_init_hbond_indices( reax_atom * const atoms,
         single_body_parameters const * const sbp,
         int const * const hbonds, int const * const max_hbonds,
-        int * const indices, int * const end_indices, int N )
+        int * const indices, int * const end_indices, int N, int N_max )
 {
     int i, hindex, flag;
 
     i = blockIdx.x * blockDim.x  + threadIdx.x;
 
-    if ( i >= N )
+    if ( i >= N_max )
     {
         return;
     }
 
-    hindex = atoms[i].Hindex;
+    if ( i < N )
+    {
+        hindex = atoms[i].Hindex;
 
-    flag = (sbp[atoms[i].type].p_hbond == H_ATOM
-            || sbp[atoms[i].type].p_hbond == H_BONDING_ATOM ? TRUE : FALSE);
+        flag = (sbp[atoms[i].type].p_hbond == H_ATOM
+                || sbp[atoms[i].type].p_hbond == H_BONDING_ATOM ? TRUE : FALSE);
+    }
+    else
+    {
+        flag = FALSE;
+    }
 
     indices[hindex] = (flag == TRUE ? max_hbonds[i] : 0);
     end_indices[hindex] = (flag == TRUE ? indices[hindex] + hbonds[i] : 0);
@@ -936,10 +943,9 @@ GPU_GLOBAL void k_init_hbonds( reax_atom * const my_atoms,
                     hbond_list.hbond_list.nbr[ihb_top] = j;
                     hbond_list.hbond_list.scl[ihb_top] = -1;
                     hbond_list.hbond_list.ptr[ihb_top] = pj;
-
 #if !defined(GPU_ACCUM_ATOMIC)
-                    hbond_list.hbond_list.sym_index[ihb_top] = -1;
-                    rvec_MakeZero( hbond_list.hbond_list.hb_f[ihb_top] );
+//                    hbond_list.hbond_list.sym_index[ihb_top] = -1;
+//                    rvec_MakeZero( hbond_list.hbond_list.f_hb[ihb_top] );
 #endif
 
                     ++ihb_top;
@@ -952,10 +958,9 @@ GPU_GLOBAL void k_init_hbonds( reax_atom * const my_atoms,
                     hbond_list.hbond_list.nbr[ihb_top] = j;
                     hbond_list.hbond_list.scl[ihb_top] = 1;
                     hbond_list.hbond_list.ptr[ihb_top] = pj;
-
 #if !defined(GPU_ACCUM_ATOMIC)
-                    hbond_list.hbond_list.sym_index[ihb_top] = -1;
-                    rvec_MakeZero( hbond_list.hbond_list.hb_f[ihb_top] );
+//                    hbond_list.hbond_list.sym_index[ihb_top] = -1;
+//                    rvec_MakeZero( hbond_list.hbond_list.f_hb[ihb_top] );
 #endif
 
                     ++ihb_top;
@@ -968,10 +973,9 @@ GPU_GLOBAL void k_init_hbonds( reax_atom * const my_atoms,
                     hbond_list.hbond_list.nbr[ihb_top] = j;
                     hbond_list.hbond_list.scl[ihb_top] = -1;
                     hbond_list.hbond_list.ptr[ihb_top] = pj;
-
 #if !defined(GPU_ACCUM_ATOMIC)
-                    hbond_list.hbond_list.sym_index[ihb_top] = -1;
-                    rvec_MakeZero( hbond_list.hbond_list.hb_f[ihb_top] );
+//                    hbond_list.hbond_list.sym_index[ihb_top] = -1;
+//                    rvec_MakeZero( hbond_list.hbond_list.f_hb[ihb_top] );
 #endif
 
                     ++ihb_top;
@@ -1061,10 +1065,9 @@ GPU_GLOBAL void k_init_hbonds_opt( reax_atom * const my_atoms,
                     hbond_list.hbond_list.nbr[ihb_top + offset] = j;
                     hbond_list.hbond_list.scl[ihb_top + offset] = -1;
                     hbond_list.hbond_list.ptr[ihb_top + offset] = pj;
-
 #if !defined(GPU_ACCUM_ATOMIC)
-                    hbond_list.hbond_list.sym_index[ihb_top + offset] = -1;
-                    rvec_MakeZero( hbond_list.hbond_list.hb_f[ihb_top + offset] );
+//                    hbond_list.hbond_list.sym_index[ihb_top + offset] = -1;
+//                    rvec_MakeZero( hbond_list.hbond_list.f_hb[ihb_top + offset] );
 #endif
                 }
                 /* atom i: H atom, native
@@ -1075,10 +1078,9 @@ GPU_GLOBAL void k_init_hbonds_opt( reax_atom * const my_atoms,
                     hbond_list.hbond_list.nbr[ihb_top + offset] = j;
                     hbond_list.hbond_list.scl[ihb_top + offset] = 1;
                     hbond_list.hbond_list.ptr[ihb_top + offset] = pj;
-
 #if !defined(GPU_ACCUM_ATOMIC)
-                    hbond_list.hbond_list.sym_index[ihb_top + offset] = -1;
-                    rvec_MakeZero( hbond_list.hbond_list.hb_f[ihb_top + offset] );
+//                    hbond_list.hbond_list.sym_index[ihb_top + offset] = -1;
+//                    rvec_MakeZero( hbond_list.hbond_list.f_hb[ihb_top + offset] );
 #endif
                 }
                 /* atom i: H bonding atom, native
@@ -1089,10 +1091,9 @@ GPU_GLOBAL void k_init_hbonds_opt( reax_atom * const my_atoms,
                     hbond_list.hbond_list.nbr[ihb_top + offset] = j;
                     hbond_list.hbond_list.scl[ihb_top + offset] = -1;
                     hbond_list.hbond_list.ptr[ihb_top + offset] = pj;
-
 #if !defined(GPU_ACCUM_ATOMIC)
-                    hbond_list.hbond_list.sym_index[ihb_top + offset] = -1;
-                    rvec_MakeZero( hbond_list.hbond_list.hb_f[ihb_top + offset] );
+//                    hbond_list.hbond_list.sym_index[ihb_top + offset] = -1;
+//                    rvec_MakeZero( hbond_list.hbond_list.f_hb[ihb_top + offset] );
 #endif
                 }
             }
@@ -1716,48 +1717,47 @@ GPU_GLOBAL void k_update_sym_dbond_indices_opt( reax_list bond_list, int N )
 
 
 #if !defined(GPU_ACCUM_ATOMIC)
-GPU_GLOBAL void k_update_sym_hbond_indices_opt( reax_atom const * const my_atoms,
-        reax_list hbond_list, int N )
-{
-    int i, pi, pj, nbr;
-    int start_i, end_i, flag, lane_id;
-
-    i = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
-
-    if ( i > N )
-    {
-        return;
-    }
-
-    lane_id = (blockIdx.x * blockDim.x + threadIdx.x) % warpSize; 
-    start_i = Start_Index( my_atoms[i].Hindex, &hbond_list );
-    end_i = End_Index( my_atoms[i].Hindex, &hbond_list );
-    pi = start_i + lane_id;
-
-    while ( pi < end_i )
-    {
-        nbr = hbond_list.hbond_list.nbr[pi];
-        flag = FALSE;
-
-        for ( pj = Start_Index( my_atoms[nbr].Hindex, &hbond_list );
-                pj < End_Index( my_atoms[nbr].Hindex, &hbond_list ); pj++ )
-        {
-            if ( hbond_list.hbond_list.nbr[pj] == i )
-            {
-                flag = TRUE;
-                break;
-            }
-        }
-
-        if ( flag == TRUE )
-        {
-            hbond_list.hbond_list.sym_index[pi] = pj;
-            hbond_list.hbond_list.sym_index[pj] = pi;
-        }
-
-        pi += warpSize;
-    }
-}
+//GPU_GLOBAL void k_update_sym_hbond_indices_opt( reax_atom const * const my_atoms,
+//        reax_list hbond_list, int N )
+//{
+//    int i, pj, pk, nbr_ij;
+//    int start_i, end_i, flag, lane_id;
+//
+//    i = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
+//
+//    if ( i >= N )
+//    {
+//        return;
+//    }
+//
+//    lane_id = (blockIdx.x * blockDim.x + threadIdx.x) % warpSize; 
+//    start_i = Start_Index( my_atoms[i].Hindex, &hbond_list );
+//    end_i = End_Index( my_atoms[i].Hindex, &hbond_list );
+//
+//    /* i-j H-bonds */
+//    for ( pj = start_i + lane_id; pj < end_i; pj += warpSize )
+//    {
+//        nbr_ij = hbond_list.hbond_list.nbr[pj];
+//        flag = FALSE;
+//
+//        /* j-k H-bonds */
+//        for ( pk = Start_Index( my_atoms[nbr_ij].Hindex, &hbond_list );
+//                pk < End_Index( my_atoms[nbr_ij].Hindex, &hbond_list ); ++pk )
+//        {
+//            if ( i == hbond_list.hbond_list.nbr[pk] )
+//            {
+//                flag = TRUE;
+//                break;
+//            }
+//        }
+//
+//        if ( flag == TRUE )
+//        {
+//            hbond_list.hbond_list.sym_index[pj] = pk;
+//            hbond_list.hbond_list.sym_index[pk] = pj;
+//        }
+//    }
+//}
 #endif
 
 
@@ -1803,9 +1803,9 @@ GPU_GLOBAL void k_print_hbonds( reax_atom const * const my_atoms,
 #if !defined(GPU_ACCUM_ATOMIC)
         printf( "p%03d, step %05d: %8d: %8d, %24.15f, %24.15f, %24.15f\n",
                 rank, step, my_atoms[i].Hindex, k,
-                hbond_jk->hb_f[0],
-                hbond_jk->hb_f[1],
-                hbond_jk->hb_f[2] );
+                hbond_jk->f_hb[0],
+                hbond_jk->f_hb[1],
+                hbond_jk->f_hb[2] );
 #else
         printf( "p%03d, step %05d: %8d: %8d\n",
                 rank, step, my_atoms[i].Hindex, k );
@@ -1869,20 +1869,20 @@ void Cuda_Init_HBond_Indices( reax_system * const system, storage * const worksp
 {
     int blocks, *temp;
 
-    blocks = system->total_cap / block_size
-        + (system->total_cap % block_size == 0 ? 0 : 1);
+    blocks = hbond_list->n / block_size
+        + (hbond_list->n % block_size == 0 ? 0 : 1);
 
     sCudaCheckMalloc( &workspace->d_workspace->scratch[2],
             &workspace->d_workspace->scratch_size[2],
-            sizeof(int) * system->total_cap, __FILE__, __LINE__ );
+            sizeof(int) * hbond_list->n, __FILE__, __LINE__ );
     temp = (int *) workspace->d_workspace->scratch[2];
 
     /* init indices and end_indices */
-    Cuda_Scan_Excl_Sum( system->d_max_hbonds, temp, system->total_cap, 2, s );
+    Cuda_Scan_Excl_Sum( system->d_max_hbonds, temp, hbond_list->n, 2, s );
 
     k_init_hbond_indices <<< blocks, block_size, 0, s >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, system->d_hbonds, temp, 
-          hbond_list->index, hbond_list->end_index, system->total_cap );
+          hbond_list->index, hbond_list->end_index, system->N, hbond_list->n );
     cudaCheckError( );
 }
 
@@ -2419,26 +2419,26 @@ int Cuda_Init_Forces( reax_system * const system, control_params * const control
 #endif
 
 #if !defined(GPU_ACCUM_ATOMIC)
-        if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 )
-        {
-#if defined(LOG_PERFORMANCE)
-            cudaEventElapsedTime( &time_elapsed, control->cuda_time_events[TE_INIT_HBOND_START],
-                    control->cuda_time_events[TE_INIT_HBOND_STOP] ); 
-            data->timing.init_hbond += (real) (time_elapsed / 1000.0);
-
-            cudaEventRecord( control->cuda_time_events[TE_INIT_HBOND_START], control->cuda_streams[2] );
-#endif
-
-            /* make hbond_list symmetric */
-            k_update_sym_hbond_indices_opt <<< control->blocks_warp_N, control->gpu_block_size,
-                                           0, control->cuda_streams[2] >>>
-                ( system->d_my_atoms, *(lists[HBONDS]), system->N );
-            cudaCheckError( );
-
-#if defined(LOG_PERFORMANCE)
-            cudaEventRecord( control->cuda_time_events[TE_INIT_HBOND_STOP], control->cuda_streams[2] );
-#endif
-        }
+//        if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 )
+//        {
+//#if defined(LOG_PERFORMANCE)
+//            cudaEventElapsedTime( &time_elapsed, control->cuda_time_events[TE_INIT_HBOND_START],
+//                    control->cuda_time_events[TE_INIT_HBOND_STOP] ); 
+//            data->timing.init_hbond += (real) (time_elapsed / 1000.0);
+//
+//            cudaEventRecord( control->cuda_time_events[TE_INIT_HBOND_START], control->cuda_streams[2] );
+//#endif
+//
+//            /* make hbond_list symmetric */
+//            k_update_sym_hbond_indices_opt <<< control->blocks_warp_N, control->gpu_block_size,
+//                                           0, control->cuda_streams[2] >>>
+//                ( system->d_my_atoms, *(lists[HBONDS]), system->N );
+//            cudaCheckError( );
+//
+//#if defined(LOG_PERFORMANCE)
+//            cudaEventRecord( control->cuda_time_events[TE_INIT_HBOND_STOP], control->cuda_streams[2] );
+//#endif
+//        }
 #endif
 
         dist_done = FALSE;
@@ -2657,26 +2657,26 @@ int Cuda_Init_Forces_No_Charges( reax_system * const system, control_params * co
 #endif
 
 #if !defined(GPU_ACCUM_ATOMIC)
-        if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 )
-        {
-#if defined(LOG_PERFORMANCE)
-            cudaEventElapsedTime( &time_elapsed, control->cuda_time_events[TE_INIT_HBOND_START],
-                    control->cuda_time_events[TE_INIT_HBOND_STOP] ); 
-            data->timing.init_hbond += (real) (time_elapsed / 1000.0);
-
-            cudaEventRecord( control->cuda_time_events[TE_INIT_HBOND_START], control->cuda_streams[2] );
-#endif
-
-            /* make hbond_list symmetric */
-            k_update_sym_hbond_indices_opt <<< control->blocks_warp_N, control->gpu_block_size,
-                                           0, control->cuda_streams[2] >>>
-                ( system->d_my_atoms, *(lists[HBONDS]), system->N );
-            cudaCheckError( );
-
-#if defined(LOG_PERFORMANCE)
-            cudaEventRecord( control->cuda_time_events[TE_INIT_HBOND_STOP], control->cuda_streams[2] );
-#endif
-        }
+//        if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 )
+//        {
+//#if defined(LOG_PERFORMANCE)
+//            cudaEventElapsedTime( &time_elapsed, control->cuda_time_events[TE_INIT_HBOND_START],
+//                    control->cuda_time_events[TE_INIT_HBOND_STOP] ); 
+//            data->timing.init_hbond += (real) (time_elapsed / 1000.0);
+//
+//            cudaEventRecord( control->cuda_time_events[TE_INIT_HBOND_START], control->cuda_streams[2] );
+//#endif
+//
+//            /* make hbond_list symmetric */
+//            k_update_sym_hbond_indices_opt <<< control->blocks_warp_N, control->gpu_block_size,
+//                                           0, control->cuda_streams[2] >>>
+//                ( system->d_my_atoms, *(lists[HBONDS]), system->N );
+//            cudaCheckError( );
+//
+//#if defined(LOG_PERFORMANCE)
+//            cudaEventRecord( control->cuda_time_events[TE_INIT_HBOND_STOP], control->cuda_streams[2] );
+//#endif
+//        }
 #endif
 
         dist_done = FALSE;

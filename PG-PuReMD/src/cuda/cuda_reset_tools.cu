@@ -76,15 +76,15 @@ GPU_GLOBAL void k_reset_hindex( reax_atom * const my_atoms,
     if ( sbp[ my_atoms[i].type ].p_hbond == H_ATOM
             || sbp[ my_atoms[i].type ].p_hbond == H_BONDING_ATOM )
     {
-#if !defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_ACCUM_ATOMIC)
+        atomicAdd( hindex, 1 );
+    }
+#else
         hindex[i] = 1;
     }
     else
     {
         hindex[i] = 0;
-    }
-#else
-        atomicAdd( hindex, 1 );
     }
 #endif
 }
@@ -118,8 +118,8 @@ void Cuda_Reset_Workspace( reax_system const * const system,
 }
 
 
-void Cuda_Reset_Atoms_HBond_Indices( reax_system * const system, control_params const * const control,
-        storage * const workspace )
+void Cuda_Reset_Atoms_HBond_Indices( reax_system * const system,
+        control_params const * const control, storage * const workspace )
 {
 #if defined(GPU_ACCUM_ATOMIC)
     sCudaMemsetAsync( system->d_num_H_atoms, 0, sizeof(int), 
@@ -129,7 +129,7 @@ void Cuda_Reset_Atoms_HBond_Indices( reax_system * const system, control_params 
 
     sCudaCheckMalloc( &workspace->d_workspace->scratch[0],
             &workspace->d_workspace->scratch_size[0],
-            sizeof(int) * system->total_cap, __FILE__, __LINE__ );
+            sizeof(int) * system->N, __FILE__, __LINE__ );
     hindex = (int *) workspace->d_workspace->scratch[0];
 #endif
 
@@ -141,11 +141,12 @@ void Cuda_Reset_Atoms_HBond_Indices( reax_system * const system, control_params 
 #else
           hindex, 
 #endif
-          system->total_cap );
+          system->N );
     cudaCheckError( );
 
 #if !defined(GPU_ACCUM_ATOMIC)
-    Cuda_Reduction_Sum( hindex, system->d_num_H_atoms, system->N, 0, control->cuda_streams[0] );
+    Cuda_Reduction_Sum( hindex, system->d_num_H_atoms, system->N, 0,
+            control->cuda_streams[0] );
 #endif
 
     sCudaMemcpyAsync( &system->num_H_atoms, system->d_num_H_atoms, sizeof(int), 

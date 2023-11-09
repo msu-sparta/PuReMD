@@ -321,11 +321,11 @@ GPU_GLOBAL void k_sparse_matvec_full_opt_csr( int const * const row_ptr_start,
     pj = si + lane_id;
     for ( itr = 0; itr < (ei - si + warpSize - 1) / warpSize; ++itr )
     {
-        vals_l = vals[pj];
-        col_ind_l = col_ind[pj];
-
         if ( pj < ei )
         {
+            vals_l = vals[pj];
+            col_ind_l = col_ind[pj];
+
             sum += vals_l * x[col_ind_l];
         }
 
@@ -523,11 +523,11 @@ GPU_GLOBAL void k_dual_sparse_matvec_full_opt_csr( int const * const row_ptr_sta
     pj = si + lane_id;
     for ( itr = 0; itr < (ei - si + warpSize - 1) / warpSize; ++itr )
     {
-        vals_l = vals[pj];
-        col_ind_l = col_ind[pj];
-
         if ( pj < ei )
         {
+            vals_l = vals[pj];
+            col_ind_l = col_ind[pj];
+
             sum[0] += vals_l * x[col_ind_l][0];
             sum[1] += vals_l * x[col_ind_l][1];
         }

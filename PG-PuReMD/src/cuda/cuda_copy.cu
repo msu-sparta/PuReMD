@@ -157,7 +157,7 @@ extern "C" void Cuda_Copy_Matrix_Device_to_Host( sparse_matrix * const A,
 extern "C" void Cuda_Copy_Simulation_Data_Device_to_Host( control_params const * const control,
         simulation_data * const data )
 {
-    sCudaMemcpyAsync( data->my_en, data->d_my_en, sizeof(real) * (E_N - 2), 
+    sCudaMemcpyAsync( data->my_en, data->d_my_en, sizeof(real) * (E_N - 3),
             cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
     if ( control->virial == 1 )
     {
@@ -233,12 +233,12 @@ extern "C" void Cuda_Copy_List_Device_to_Host( control_params const * const cont
                     sizeof(int) * device_list->max_intrs,
                     cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
 #if (defined(HAVE_CUDA) || defined(HAVE_HIP)) && !defined(GPU_ACCUM_ATOMIC)
-            sCudaMemcpyAsync( host_list->hbond_list.sym_index, device_list->hbond_list.sym_index,
-                    sizeof(int) * device_list->max_intrs,
-                    cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
-            sCudaMemcpyAsync( host_list->hbond_list.hb_f, device_list->hbond_list.hb_f,
-                    sizeof(int) * device_list->max_intrs,
-                    cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
+//            sCudaMemcpyAsync( host_list->hbond_list.sym_index, device_list->hbond_list.sym_index,
+//                    sizeof(int) * device_list->max_intrs,
+//                    cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
+//            sCudaMemcpyAsync( host_list->hbond_list.f_hb, device_list->hbond_list.f_hb,
+//                    sizeof(int) * device_list->max_intrs,
+//                    cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
 #endif
             break;
 

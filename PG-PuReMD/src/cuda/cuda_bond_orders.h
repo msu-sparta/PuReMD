@@ -75,16 +75,15 @@ GPU_DEVICE static inline void Cuda_Compute_BOp( reax_list bond_list, real bo_cut
     BL.Cdbo[btop_i] = 0.0;
     BL.Cdbopi[btop_i] = 0.0;
     BL.Cdbopi2[btop_i] = 0.0;
-
 #if !defined(GPU_ACCUM_ATOMIC)
-    BL.ae_CdDelta[btop_i] = 0.0;
-    BL.va_CdDelta[btop_i] = 0.0;
-    rvec_MakeZero( BL.va_f[btop_i] );
-    BL.ta_CdDelta[btop_i] = 0.0;
-    BL.ta_Cdbo[btop_i] = 0.0;
-    rvec_MakeZero( BL.ta_f[btop_i] );
-    rvec_MakeZero( BL.hb_f[btop_i] );
-    rvec_MakeZero( BL.tf_f[btop_i] );
+    BL.Cdbo_tor[btop_i] = 0.0;
+    BL.CdDelta_multi[btop_i] = 0.0;
+    BL.CdDelta_val[btop_i] = 0.0;
+    BL.CdDelta_tor[btop_i] = 0.0;
+    rvec_MakeZero( BL.f_hb[btop_i] );
+    rvec_MakeZero( BL.f_val[btop_i] );
+    rvec_MakeZero( BL.f_tor[btop_i] );
+    rvec_MakeZero( BL.f_bo[btop_i] );
 #endif
 
 #undef BL

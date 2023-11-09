@@ -12,8 +12,9 @@
 #include <cub/warp/warp_reduce.cuh>
 
 
-GPU_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj, rvec const * const dDeltap_self,
-        real const * const CdDelta, rvec * const f, reax_list * const bond_list,
+GPU_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
+        rvec const * const dDeltap_self, real const * const CdDelta,
+        rvec * const f, reax_list * const bond_list, rvec * const f_i,
         rvec data_ext_press )
 {
     int k, j, pk, sym_index;
@@ -52,20 +53,15 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj, rvec const * const 
     ************************************/
     for ( pk = Start_Index(i, bond_list); pk < End_Index(i, bond_list); ++pk )
     {
-        k = BL.nbr[pk];
-
-#if !defined(GPU_ACCUM_ATOMIC)
-        rvec_MakeZero( BL.tf_f[pk] );
-#endif
-
         /* 2nd, dBO; 2nd, dDelta; 3rd, dBOpi; 3rd, dBOpi2 */
         rvec_Scale( temp, -(C2dbo + C2dDelta + C3dbopi + C3dbopi2), BL.dBOp[pk] );
 
         /* force */
 #if defined(GPU_ACCUM_ATOMIC)
+        k = BL.nbr[pk];
         atomic_rvecAdd( f[k], temp );
 #else
-        rvec_Add( BL.tf_f[pk], temp );
+        atomic_rvecAdd( BL.f_bo[pk], temp );
 #endif
 
         /* pressure */
@@ -87,11 +83,7 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj, rvec const * const 
     rvec_ScaledAdd( temp, C1dbopi2, BL.dln_BOp_pi2[pj] );
 
     /* force */
-#if defined(GPU_ACCUM_ATOMIC)
-    atomic_rvecAdd( f[i], temp );
-#else
-    rvec_Add( f[i], temp );
-#endif
+    rvec_Add( *f_i, temp );
     /* ext pressure due to i is dropped, counting force on j will be enough */
 
     /******************************************************
@@ -109,7 +101,7 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj, rvec const * const 
 #if defined(GPU_ACCUM_ATOMIC)
         atomic_rvecAdd( f[k], temp );
 #else
-        rvec_Add( BL.tf_f[pk], temp );
+        atomic_rvecAdd( BL.f_bo[pk], temp );
 #endif
 
         /* pressure */
@@ -138,7 +130,7 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj, rvec const * const 
 #if defined(GPU_ACCUM_ATOMIC)
     atomic_rvecAdd( f[j], temp );
 #else
-    rvec_Add( BL.tf_f[pj], temp );
+    atomic_rvecAdd( BL.f_bo[pj], temp );
 #endif
     /* pressure */
     rvec_iMultiply( ext_press, BL.rel_box[pj], temp );
@@ -148,10 +140,14 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj, rvec const * const 
 }
 
 
-GPU_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj, rvec const * const dDeltap_self,
-        real const * const CdDelta, rvec * const f, reax_list * const bond_list, rvec * const f_i )
+GPU_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
+        rvec const * const dDeltap_self, real const * const CdDelta,
+        rvec * const f, reax_list * const bond_list, rvec * const f_i )
 {
-    int j, k, pk, sym_index;
+    int j, pk, sym_index;
+#if defined(GPU_ACCUM_ATOMIC)
+    int k;
+#endif
     real C1dbo, C2dbo, C3dbo;
     real C1dbopi, C2dbopi, C3dbopi, C4dbopi;
     real C1dbopi2, C2dbopi2, C3dbopi2, C4dbopi2;
@@ -182,15 +178,14 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj, rvec const * const dDel
 
     for ( pk = Start_Index(i, bond_list); pk < End_Index(i, bond_list); ++pk )
     {
-        k = BL.nbr[pk];
-
         /* 2nd, dBO, dDelta, dBOpi, dBOpi2 */
         rvec_Scale( temp, -(C2dbo + C2dDelta + C3dbopi + C3dbopi2), BL.dBOp[pk] );
 
 #if defined(GPU_ACCUM_ATOMIC)
+        k = BL.nbr[pk];
         atomic_rvecAdd( f[k], temp );
 #else
-        rvec_Add( BL.tf_f[pk], temp );
+        atomic_rvecAdd( BL.f_bo[pk], temp );
 #endif
     }
 
@@ -210,15 +205,14 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj, rvec const * const dDel
 
     for ( pk = Start_Index(j, bond_list); pk < End_Index(j, bond_list); ++pk )
     {
-        k = BL.nbr[pk];
-
         /* 3rd, dBO; 3rd, dDelta; 4th, dBOpi; 4th, dBOpi2 */
         rvec_Scale( temp, -(C3dbo + C3dDelta + C4dbopi + C4dbopi2), BL.dBOp[pk] );
 
 #if defined(GPU_ACCUM_ATOMIC)
+        k = BL.nbr[pk];
         atomic_rvecAdd( f[k], temp );
 #else
-        rvec_Add( BL.tf_f[pk], temp );
+        atomic_rvecAdd( BL.f_bo[pk], temp );
 #endif
     }
 
@@ -237,7 +231,7 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj, rvec const * const dDel
 #if defined(GPU_ACCUM_ATOMIC)
     atomic_rvecAdd( f[j], temp );
 #else
-    rvec_Add( BL.tf_f[pj], temp );
+    atomic_rvecAdd( BL.f_bo[pj], temp );
 #endif
 
 #undef BL
@@ -810,11 +804,7 @@ GPU_GLOBAL void k_total_forces_part1( rvec const * const dDeltap_self,
         }
     }
 
-#if defined(GPU_ACCUM_ATOMIC)
     atomic_rvecAdd( f[i], f_i );
-#else
-    rvec_Add( f[i], f_i );
-#endif
 
 #undef BL
 }
@@ -861,11 +851,7 @@ GPU_GLOBAL void k_total_forces_part1_opt( rvec const * const dDeltap_self,
 
     if ( lane_id == 0 )
     {
-#if defined(GPU_ACCUM_ATOMIC)
         atomic_rvecAdd( f[i], f_i );
-#else
-        rvec_Add( f[i], f_i );
-#endif
     }
 
 #undef BL
@@ -877,6 +863,7 @@ GPU_GLOBAL void k_total_forces_virial_part1( rvec const * const dDeltap_self,
         rvec * const data_ext_press, int N )
 {
     int i, pj;
+    rvec f_i;
 #define BL (bond_list.bond_list_gpu)
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -886,14 +873,18 @@ GPU_GLOBAL void k_total_forces_virial_part1( rvec const * const dDeltap_self,
         return;
     }
 
+    rvec_MakeZero( f_i );
+
     for ( pj = Start_Index( i, &bond_list ); pj < End_Index( i, &bond_list ); ++pj )
     {
         if ( i < BL.nbr[pj] )
         {
             Cuda_Add_dBond_to_Forces_NPT( i, pj, dDeltap_self, CdDelta,
-                    f, &bond_list, data_ext_press[i] );
+                    f, &bond_list, &f_i, data_ext_press[i] );
         }
     }
+
+    atomic_rvecAdd( f[i], f_i );
 
 #undef BL
 }
@@ -903,6 +894,7 @@ GPU_GLOBAL void k_total_forces_virial_part1( rvec const * const dDeltap_self,
 GPU_GLOBAL void k_total_forces_part1_2( reax_list bond_list, rvec * const f, int N )
 {
     int i, pk;
+    rvec f_i;
 #define BL (bond_list.bond_list_gpu)
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -912,10 +904,14 @@ GPU_GLOBAL void k_total_forces_part1_2( reax_list bond_list, rvec * const f, int
         return;
     }
 
+    rvec_MakeZero( f_i );
+
     for ( pk = Start_Index( i, &bond_list ); pk < End_Index( i, &bond_list ); ++pk )
     {
-        rvec_Add( f[i], BL.tf_f[BL.sym_index[pk]] );
+        rvec_Add( f_i, BL.f_bo[BL.sym_index[pk]] );
     }
+
+    rvec_Add( f[i], f_i );
 
 #undef BL
 }

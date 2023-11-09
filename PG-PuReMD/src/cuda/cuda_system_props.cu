@@ -49,12 +49,12 @@ GPU_GLOBAL void k_center_of_mass_xcm( single_body_parameters const * const sbp,
      * of the reduction back to global memory */
     if ( threadIdx.x == 0 )
     {
-#if !defined(GPU_ACCUM_ATOMIC)
-        rvec_Copy( xcm_g[blockIdx.x], xcm );
-#else
+#if defined(GPU_ACCUM_ATOMIC)
         atomicAdd( (double *) &xcm_g[0][0], (double) xcm[0] );
         atomicAdd( (double *) &xcm_g[0][1], (double) xcm[1] );
         atomicAdd( (double *) &xcm_g[0][2], (double) xcm[2] );
+#else
+        rvec_Copy( xcm_g[blockIdx.x], xcm );
 #endif
     }
 }
@@ -90,12 +90,12 @@ GPU_GLOBAL void k_center_of_mass_vcm( single_body_parameters const * const sbp,
      * of the reduction back to global memory */
     if ( threadIdx.x == 0 )
     {
-#if !defined(GPU_ACCUM_ATOMIC)
-        rvec_Copy( vcm_g[blockIdx.x], vcm );
-#else
+#if defined(GPU_ACCUM_ATOMIC)
         atomicAdd( (double *) &vcm_g[0][0], (double) vcm[0] );
         atomicAdd( (double *) &vcm_g[0][1], (double) vcm[1] );
         atomicAdd( (double *) &vcm_g[0][2], (double) vcm[2] );
+#else
+        rvec_Copy( vcm_g[blockIdx.x], vcm );
 #endif
     }
 }
@@ -132,12 +132,12 @@ GPU_GLOBAL void k_center_of_mass_amcm( single_body_parameters const * const sbp,
      * of the reduction back to global memory */
     if ( threadIdx.x == 0 )
     {
-#if !defined(GPU_ACCUM_ATOMIC)
-        rvec_Copy( amcm_g[blockIdx.x], amcm );
-#else
+#if defined(GPU_ACCUM_ATOMIC)
         atomicAdd( (double *) &amcm_g[0][0], (double) amcm[0] );
         atomicAdd( (double *) &amcm_g[0][1], (double) amcm[1] );
         atomicAdd( (double *) &amcm_g[0][2], (double) amcm[2] );
+#else
+        rvec_Copy( amcm_g[blockIdx.x], amcm );
 #endif
     }
 }
@@ -200,7 +200,8 @@ GPU_GLOBAL void k_compute_inertial_tensor_blocks( real const * const input,
 
 
 GPU_GLOBAL void k_compute_inertial_tensor_xx_xy( single_body_parameters const * const sbp,
-        reax_atom const * const atoms, real * const t_g, real xcm0, real xcm1, real xcm2, size_t n )
+        reax_atom const * const atoms, real * const t_g, real xcm0, real xcm1,
+        real xcm2, size_t n )
 {
     extern __shared__ real xx_xy_s[];
     unsigned int i, index, mask;
@@ -260,7 +261,8 @@ GPU_GLOBAL void k_compute_inertial_tensor_xx_xy( single_body_parameters const * 
 
 
 GPU_GLOBAL void k_compute_inertial_tensor_xz_yy( single_body_parameters const * const sbp,
-        reax_atom const * const atoms, real * const t_g, real xcm0, real xcm1, real xcm2, size_t n )
+        reax_atom const * const atoms, real * const t_g, real xcm0, real xcm1,
+        real xcm2, size_t n )
 {
     extern __shared__ real xz_yy_s[];
     unsigned int i, index, mask;
@@ -320,7 +322,8 @@ GPU_GLOBAL void k_compute_inertial_tensor_xz_yy( single_body_parameters const * 
 
 
 GPU_GLOBAL void k_compute_inertial_tensor_yz_zz( single_body_parameters const * const sbp,
-        reax_atom const * const atoms, real * const t_g, real xcm0, real xcm1, real xcm2, size_t n )
+        reax_atom const * const atoms, real * const t_g, real xcm0, real xcm1,
+        real xcm2, size_t n )
 {
     extern __shared__ real yz_zz_s[];
     unsigned int i, index, mask;
@@ -492,10 +495,10 @@ static void Cuda_Compute_Momentum( reax_system * const system,
 
     sCudaCheckMalloc( &workspace->d_workspace->scratch[0],
             &workspace->d_workspace->scratch_size[0],
-#if !defined(GPU_ACCUM_ATOMIC)
-            sizeof(rvec) * (blocks + 1),
-#else
+#if defined(GPU_ACCUM_ATOMIC)
             sizeof(rvec),
+#else
+            sizeof(rvec) * (blocks + 1),
 #endif
             __FILE__, __LINE__ );
     spad = (rvec *) workspace->d_workspace->scratch[0];
@@ -512,12 +515,13 @@ static void Cuda_Compute_Momentum( reax_system * const system,
 #endif
 
     sCudaMemcpyAsync( xcm,
-#if !defined(GPU_ACCUM_ATOMIC)
-            &spad[blocks],
-#else
+#if defined(GPU_ACCUM_ATOMIC)
             spad,
+#else
+            &spad[blocks],
 #endif
-            sizeof(rvec), cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
+            sizeof(rvec), cudaMemcpyDeviceToHost, control->cuda_streams[0],
+            __FILE__, __LINE__ );
     cudaStreamSynchronize( control->cuda_streams[0] );
     
     // vcm
@@ -532,12 +536,13 @@ static void Cuda_Compute_Momentum( reax_system * const system,
 #endif
 
     sCudaMemcpyAsync( vcm,
-#if !defined(GPU_ACCUM_ATOMIC)
-            &spad[blocks],
-#else
+#if defined(GPU_ACCUM_ATOMIC)
             spad,
+#else
+            &spad[blocks],
 #endif
-            sizeof(rvec), cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
+            sizeof(rvec), cudaMemcpyDeviceToHost, control->cuda_streams[0],
+            __FILE__, __LINE__ );
     cudaStreamSynchronize( control->cuda_streams[0] );
     
     // amcm
@@ -552,12 +557,13 @@ static void Cuda_Compute_Momentum( reax_system * const system,
 #endif
 
     sCudaMemcpyAsync( amcm, 
-#if !defined(GPU_ACCUM_ATOMIC)
-            &spad[blocks],
-#else
+#if defined(GPU_ACCUM_ATOMIC)
             spad,
+#else
+            &spad[blocks],
 #endif
-            sizeof(rvec), cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
+            sizeof(rvec), cudaMemcpyDeviceToHost, control->cuda_streams[0],
+            __FILE__, __LINE__ );
     cudaStreamSynchronize( control->cuda_streams[0] );
 }
 
@@ -678,7 +684,8 @@ extern "C" void Cuda_Compute_Kinetic_Energy( reax_system * const system,
             0, control->cuda_streams[0] );
 
     sCudaMemcpyAsync( &data->my_en[E_KIN], &kinetic_energy[system->n],
-            sizeof(real), cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
+            sizeof(real), cudaMemcpyDeviceToHost, control->cuda_streams[0],
+            __FILE__, __LINE__ );
     cudaStreamSynchronize( control->cuda_streams[0] );
 
     ret = MPI_Allreduce( &data->my_en[E_KIN], &data->sys_en[E_KIN],
@@ -867,7 +874,8 @@ void Cuda_Compute_Pressure( reax_system * const system,
                 0, control->cuda_streams[0] );
 
         sCudaMemcpyAsync( &int_press, &spad_rvec[system->n],
-                sizeof(rvec), cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
+                sizeof(rvec), cudaMemcpyDeviceToHost, control->cuda_streams[0],
+                __FILE__, __LINE__ );
         cudaStreamSynchronize( control->cuda_streams[0] );
     }
 

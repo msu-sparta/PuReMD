@@ -2105,12 +2105,12 @@ struct hbond_data
     int *scl;
     /* position of neighbor in far neighbor list */
     int *ptr;
-#if (defined(HAVE_CUDA) || defined(HAVE_HIP)) && !defined(GPU_ACCUM_ATOMIC)
-    /**/
-    int *sym_index;
-    /**/
-    rvec *hb_f;
-#endif
+//#if (defined(HAVE_CUDA) || defined(HAVE_HIP)) && !defined(GPU_ACCUM_ATOMIC)
+//    /**/
+//    int *sym_index;
+//    /**/
+//    rvec *f_hb;
+//#endif
 };
 
 
@@ -2274,22 +2274,22 @@ struct bond_data_gpu
     /**/
     rvec *dln_BOp_pi2;
 #if !defined(GPU_ACCUM_ATOMIC)
-    /* (torsion) */
-    real *ta_Cdbo;
+    /* Bond order derivative coefficients (torsion) */
+    real *Cdbo_tor;
     /* coefficient of dDelta (multi_body) */
-    real *ae_CdDelta;
+    real *CdDelta_multi;
     /* coefficient of dDelta (valence angles) */
-    real *va_CdDelta;
+    real *CdDelta_val;
     /* coefficient of dDelta (torsion) */
-    real *ta_CdDelta;
+    real *CdDelta_tor;
     /* atomic forces (hydrogen bonds) */
-    rvec *hb_f;
+    rvec *f_hb;
     /* atomic forces (valence angles) */
-    rvec *va_f;
+    rvec *f_val;
     /* atomic forces (torsion) */
-    rvec *ta_f;
+    rvec *f_tor;
     /* atomic forces (bond orders) */
-    rvec *tf_f;
+    rvec *f_bo;
 #endif
 };
 #endif

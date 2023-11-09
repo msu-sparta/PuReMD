@@ -357,7 +357,7 @@ GPU_GLOBAL void k_atom_energy_part2( reax_atom const * const my_atoms,
         atomicAdd( &CdDelta[j], (CEover4 + CEunder4) * (1.0 - dfvl * dDelta_lp[j])
             * (BL.BO_pi[pj] + BL.BO_pi2[pj]) );
 #else
-        BL.ae_CdDelta[pj] += (CEover4 + CEunder4) * (1.0 - dfvl * dDelta_lp[j])
+        BL.CdDelta_multi[pj] = (CEover4 + CEunder4) * (1.0 - dfvl * dDelta_lp[j])
             * (BL.BO_pi[pj] + BL.BO_pi2[pj]);
 #endif
         // OvCoor-3b, UnCoor-2b
@@ -534,7 +534,7 @@ GPU_GLOBAL void k_atom_energy_part2_opt( reax_atom const * const my_atoms,
             atomicAdd( &CdDelta[j], (CEover4 + CEunder4) * (1.0 - dfvl * dDelta_lp[j])
                 * (BL.BO_pi[pj] + BL.BO_pi2[pj]) );
 #else
-            BL.ae_CdDelta[pj] += (CEover4 + CEunder4) * (1.0 - dfvl * dDelta_lp[j])
+            BL.CdDelta_multi[pj] = (CEover4 + CEunder4) * (1.0 - dfvl * dDelta_lp[j])
                 * (BL.BO_pi[pj] + BL.BO_pi2[pj]);
 #endif
             // OvCoor-3b, UnCoor-2b
@@ -557,6 +557,7 @@ GPU_GLOBAL void k_atom_energy_part2_opt( reax_atom const * const my_atoms,
 GPU_GLOBAL void k_atom_energy_part3( reax_list bond_list, real * const CdDelta, int n )
 {
     int i, pj;
+    real CdDelta_i;
 #define BL (bond_list.bond_list_gpu)
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -566,10 +567,18 @@ GPU_GLOBAL void k_atom_energy_part3( reax_list bond_list, real * const CdDelta, 
         return;
     }
 
+    CdDelta_i = 0.0;
+
     for ( pj = Start_Index(i, &bond_list); pj < End_Index(i, &bond_list); ++pj )
     {
-        CdDelta[i] += BL.ae_CdDelta[BL.sym_index[pj]];
+        CdDelta_i += BL.CdDelta_multi[BL.sym_index[pj]];
     }
+
+#if defined(GPU_STREAM_SINGLE_ACCUM)
+    atomicAdd( &CdDelta[i], CdDelta_i );
+#else
+    CdDelta[i] += CdDelta_i;
+#endif
 
 #undef BL
 }

@@ -364,7 +364,7 @@ GPU_GLOBAL void k_valence_angles_part1( reax_atom const * const my_atoms,
 #if defined(GPU_ACCUM_ATOMIC)
                                 atomicAdd( &CdDelta[k], CEcoa5 );
 #else
-                                BL.va_CdDelta[pk] += CEcoa5;
+                                BL.CdDelta_val[pk] += CEcoa5;
 #endif
 
                                 for ( t = start_j; t < end_j; ++t )
@@ -373,15 +373,9 @@ GPU_GLOBAL void k_valence_angles_part1( reax_atom const * const my_atoms,
                                     temp = CUBE( temp_bo_jt );
                                     pBOjt7 = temp * temp * temp_bo_jt;
 
-#if defined(GPU_ACCUM_ATOMIC)
                                     atomicAdd( &BL.Cdbo[t], CEval6 * pBOjt7 );
                                     atomicAdd( &BL.Cdbopi[t], CEval5 );
                                     atomicAdd( &BL.Cdbopi2[t], CEval5 );
-#else
-                                    BL.Cdbo[t] += CEval6 * pBOjt7;
-                                    BL.Cdbopi[t] += CEval5;
-                                    BL.Cdbopi2[t] += CEval5;
-#endif
                                 }
 
                                 rvec_ScaledAdd( f_i, CEval8, TBL.dcos_di[num_thb_intrs] );
@@ -389,20 +383,19 @@ GPU_GLOBAL void k_valence_angles_part1( reax_atom const * const my_atoms,
 #if defined(GPU_ACCUM_ATOMIC)
                                 atomic_rvecScaledAdd( f[k], CEval8, TBL.dcos_dk[num_thb_intrs] );
 #else
-                                rvec_ScaledAdd( BL.va_f[pk], CEval8, TBL.dcos_dk[num_thb_intrs] );
+                                rvec_ScaledAdd( BL.f_val[pk], CEval8, TBL.dcos_dk[num_thb_intrs] );
 #endif
                             }
                         }
                     }
 
-#if defined(GPU_ACCUM_ATOMIC)
                     atomicAdd( &BL.Cdbo[pi], Cdbo_ij );
+#if defined(GPU_ACCUM_ATOMIC)
                     atomicAdd( &CdDelta[i], CdDelta_i );
                     atomic_rvecAdd( f[i], f_i );
 #else
-                    BL.Cdbo[pi] += Cdbo_ij;
-                    BL.va_CdDelta[pi] += CdDelta_i;
-                    rvec_Add( BL.va_f[pi], f_i );
+                    BL.CdDelta_val[pi] += CdDelta_i;
+                    rvec_Add( BL.f_val[pi], f_i );
 #endif
                 }
             }
@@ -410,16 +403,12 @@ GPU_GLOBAL void k_valence_angles_part1( reax_atom const * const my_atoms,
             Set_End_Index( pi, num_thb_intrs, &thb_list );
         }
 
-#if defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_ACCUM_ATOMIC) || defined(GPU_STREAM_SINGLE_ACCUM)
         atomic_rvecAdd( f[j], f_j );
         atomicAdd( &CdDelta[j], CdDelta_j );
 #else
         rvec_Add( f[j], f_j );
-#if defined(GPU_STREAM_SINGLE_ACCUM)
-        atomicAdd( &CdDelta[j], CdDelta_j );
-#else
         CdDelta[j] += CdDelta_j;
-#endif
 #endif
 #if defined(GPU_ATOMIC_EV)
         atomicAdd( (double *) e_ang_g, (double) e_ang_ );
@@ -771,7 +760,7 @@ GPU_GLOBAL void k_valence_angles_part1_opt( reax_atom const * const my_atoms,
 #if defined(GPU_ACCUM_ATOMIC)
                                         atomicAdd( &CdDelta[k], CEcoa5 );
 #else
-                                        BL.va_CdDelta[pk] += CEcoa5;
+                                        BL.CdDelta_val[pk] += CEcoa5;
 #endif
 
                                         for ( t = start_j; t < end_j; ++t )
@@ -780,15 +769,9 @@ GPU_GLOBAL void k_valence_angles_part1_opt( reax_atom const * const my_atoms,
                                             temp = CUBE( temp_bo_jt );
                                             pBOjt7 = temp * temp * temp_bo_jt;
 
-#if defined(GPU_ACCUM_ATOMIC)
                                             atomicAdd( &BL.Cdbo[t], CEval6 * pBOjt7 );
                                             atomicAdd( &BL.Cdbopi[t], CEval5 );
                                             atomicAdd( &BL.Cdbopi2[t], CEval5 );
-#else
-                                            BL.Cdbo[t] += (CEval6 * pBOjt7);
-                                            BL.Cdbopi[t] += CEval5;
-                                            BL.Cdbopi2[t] += CEval5;
-#endif
                                         }
 
                                         rvec_ScaledAdd( f_i, CEval8, TBL.dcos_di[num_thb_intrs + offset] );
@@ -796,7 +779,7 @@ GPU_GLOBAL void k_valence_angles_part1_opt( reax_atom const * const my_atoms,
 #if defined(GPU_ACCUM_ATOMIC)
                                         atomic_rvecScaledAdd( f[k], CEval8, TBL.dcos_dk[num_thb_intrs + offset] );
 #else
-                                        rvec_ScaledAdd( BL.va_f[pk], CEval8, TBL.dcos_dk[num_thb_intrs + offset] );
+                                        rvec_ScaledAdd( BL.f_val[pk], CEval8, TBL.dcos_dk[num_thb_intrs + offset] );
 #endif
                                     }
                                 }
@@ -818,14 +801,13 @@ GPU_GLOBAL void k_valence_angles_part1_opt( reax_atom const * const my_atoms,
 
                     if ( lane_id == 0 )
                     {
-#if defined(GPU_ACCUM_ATOMIC)
                         atomicAdd( &BL.Cdbo[pi], Cdbo_ij );
+#if defined(GPU_ACCUM_ATOMIC)
                         atomicAdd( &CdDelta[i], CdDelta_i );
                         atomic_rvecAdd( f[i], f_i );
 #else
-                        BL.Cdbo[pi] += Cdbo_ij;
-                        BL.va_CdDelta[pi] += CdDelta_i;
-                        rvec_Add( BL.va_f[pi], f_i );
+                        BL.CdDelta_val[pi] += CdDelta_i;
+                        rvec_Add( BL.f_val[pi], f_i );
 #endif
                     }
                 }
@@ -847,16 +829,12 @@ GPU_GLOBAL void k_valence_angles_part1_opt( reax_atom const * const my_atoms,
 
         if ( lane_id == 0 )
         {
-#if defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_ACCUM_ATOMIC) || defined(GPU_STREAM_SINGLE_ACCUM)
             atomic_rvecAdd( f[j], f_j );
             atomicAdd( &CdDelta[j], CdDelta_j );
 #else
             rvec_Add( f[j], f_j );
-#if defined(GPU_STREAM_SINGLE_ACCUM)
-            atomicAdd( &CdDelta[j], CdDelta_j );
-#else
             CdDelta[j] += CdDelta_j;
-#endif
 #endif
 #if defined(GPU_ATOMIC_EV)
             atomicAdd( (double *) e_ang_g, (double) e_ang_ );
@@ -1201,7 +1179,7 @@ GPU_GLOBAL void k_valence_angles_part1_no_cache_opt( reax_atom const * const my_
 #if defined(GPU_ACCUM_ATOMIC)
                                         atomicAdd( &CdDelta[k], CEcoa5 );
 #else
-                                        BL.va_CdDelta[pk] += CEcoa5;
+                                        BL.CdDelta_val[pk] += CEcoa5;
 #endif
 
                                         for ( t = start_j; t < end_j; ++t )
@@ -1210,15 +1188,9 @@ GPU_GLOBAL void k_valence_angles_part1_no_cache_opt( reax_atom const * const my_
                                             temp = CUBE( temp_bo_jt );
                                             pBOjt7 = temp * temp * temp_bo_jt;
 
-#if defined(GPU_ACCUM_ATOMIC)
                                             atomicAdd( &BL.Cdbo[t], CEval6 * pBOjt7 );
                                             atomicAdd( &BL.Cdbopi[t], CEval5 );
                                             atomicAdd( &BL.Cdbopi2[t], CEval5 );
-#else
-                                            BL.Cdbo[t] += (CEval6 * pBOjt7);
-                                            BL.Cdbopi[t] += CEval5;
-                                            BL.Cdbopi2[t] += CEval5;
-#endif
                                         }
 
                                         rvec_ScaledAdd( f_i, CEval8, dcos_di );
@@ -1226,7 +1198,7 @@ GPU_GLOBAL void k_valence_angles_part1_no_cache_opt( reax_atom const * const my_
 #if defined(GPU_ACCUM_ATOMIC)
                                         atomic_rvecScaledAdd( f[k], CEval8, dcos_dk );
 #else
-                                        rvec_ScaledAdd( BL.va_f[pk], CEval8, dcos_dk );
+                                        rvec_ScaledAdd( BL.f_val[pk], CEval8, dcos_dk );
 #endif
                                     }
                                 }
@@ -1244,14 +1216,13 @@ GPU_GLOBAL void k_valence_angles_part1_no_cache_opt( reax_atom const * const my_
 
                     if ( lane_id == 0 )
                     {
-#if defined(GPU_ACCUM_ATOMIC)
                         atomicAdd( &BL.Cdbo[pi], Cdbo_ij );
+#if defined(GPU_ACCUM_ATOMIC)
                         atomicAdd( &CdDelta[i], CdDelta_i );
                         atomic_rvecAdd( f[i], f_i );
 #else
-                        BL.Cdbo[pi] += Cdbo_ij;
-                        BL.va_CdDelta[pi] += CdDelta_i;
-                        rvec_Add( BL.va_f[pi], f_i );
+                        BL.CdDelta_val[pi] += CdDelta_i;
+                        rvec_Add( BL.f_val[pi], f_i );
 #endif
                     }
                 }
@@ -1268,16 +1239,12 @@ GPU_GLOBAL void k_valence_angles_part1_no_cache_opt( reax_atom const * const my_
 
         if ( lane_id == 0 )
         {
-#if defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_ACCUM_ATOMIC) || defined(GPU_STREAM_SINGLE_ACCUM)
             atomic_rvecAdd( f[j], f_j );
             atomicAdd( &CdDelta[j], CdDelta_j );
 #else
             rvec_Add( f[j], f_j );
-#if defined(GPU_STREAM_SINGLE_ACCUM)
-            atomicAdd( &CdDelta[j], CdDelta_j );
-#else
             CdDelta[j] += CdDelta_j;
-#endif
 #endif
 #if defined(GPU_ATOMIC_EV)
             atomicAdd( (double *) e_ang_g, (double) e_ang_ );
@@ -1604,7 +1571,7 @@ GPU_GLOBAL void k_valence_angles_virial_part1( reax_atom const * const my_atoms,
 #if defined(GPU_ACCUM_ATOMIC)
                         atomicAdd( &CdDelta[k], CEcoa5 );
 #else
-                        BL.va_CdDelta[pk] += CEcoa5;
+                        BL.CdDelta_val[pk] += CEcoa5;
 #endif
 
                         for ( t = start_j; t < end_j; ++t )
@@ -1613,15 +1580,9 @@ GPU_GLOBAL void k_valence_angles_virial_part1( reax_atom const * const my_atoms,
                             temp = CUBE( temp_bo_jt );
                             pBOjt7 = temp * temp * temp_bo_jt;
 
-#if defined(GPU_ACCUM_ATOMIC)
                             atomicAdd( &BL.Cdbo[t], CEval6 * pBOjt7 );
                             atomicAdd( &BL.Cdbopi[t], CEval5 );
                             atomicAdd( &BL.Cdbopi2[t], CEval5 );
-#else
-                            BL.Cdbo[t] += (CEval6 * pBOjt7);
-                            BL.Cdbopi[t] += CEval5;
-                            BL.Cdbopi2[t] += CEval5;
-#endif
                         }
 
                         /* terms not related to bond order derivatives are
@@ -1637,7 +1598,7 @@ GPU_GLOBAL void k_valence_angles_virial_part1( reax_atom const * const my_atoms,
 #if defined(GPU_ACCUM_ATOMIC)
                         atomic_rvecAdd( f[k], rvec_temp );
 #else
-                        rvec_Add( BL.va_f[pk], rvec_temp );
+                        rvec_Add( BL.f_val[pk], rvec_temp );
 #endif
                         rvec_iMultiply( rvec_temp, BL.rel_box[pk], rvec_temp );
                         rvec_Add( ext_press, rvec_temp );
@@ -1645,30 +1606,25 @@ GPU_GLOBAL void k_valence_angles_virial_part1( reax_atom const * const my_atoms,
                 }
             }
 
-#if defined(GPU_ACCUM_ATOMIC)
             atomicAdd( &BL.Cdbo[pi], Cdbo_ij );
+#if defined(GPU_ACCUM_ATOMIC)
             atomicAdd( &CdDelta[i], CdDelta_i );
             atomic_rvecAdd( f[i], f_i );
 #else
-            BL.Cdbo[pi] += Cdbo_ij;
-            BL.va_CdDelta[pi] += CdDelta_i;
-            rvec_Add( BL.va_f[pi], f_i );
+            BL.CdDelta_val[pi] += CdDelta_i;
+            rvec_Add( BL.f_val[pi], f_i );
 #endif
         }
 
         Set_End_Index( pi, num_thb_intrs, &thb_list );
     }
 
-#if defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_ACCUM_ATOMIC) || defined(GPU_STREAM_SINGLE_ACCUM)
     atomic_rvecAdd( f[j], f_j );
     atomicAdd( &CdDelta[j], CdDelta_j );
 #else
     rvec_Add( f[j], f_j );
-#if defined(GPU_STREAM_SINGLE_ACCUM)
-    atomicAdd( &CdDelta[j], CdDelta_j );
-#else
     CdDelta[j] += CdDelta_j;
-#endif
 #endif
 #if defined(GPU_ATOMIC_EV)
     atomicAdd( (double *) e_ang_g, (double) e_ang_ );
@@ -1692,6 +1648,8 @@ GPU_GLOBAL void k_valence_angles_part2( real * const CdDelta, rvec * const f,
         reax_list bond_list, int N )
 {
     int i, pj;
+    real CdDelta_i;
+    rvec f_i;
 #define BL (bond_list.bond_list_gpu)
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -1701,11 +1659,22 @@ GPU_GLOBAL void k_valence_angles_part2( real * const CdDelta, rvec * const f,
         return;
     }
 
+    CdDelta_i = 0.0;
+    rvec_MakeZero( f_i );
+
     for ( pj = Start_Index(i, &bond_list); pj < End_Index(i, &bond_list); ++pj )
     {
-        CdDelta[i] += BL.va_CdDelta[BL.sym_index[pj]];
-        rvec_Add( f[i], BL.va_f[BL.sym_index[pj]] );
+        CdDelta_i += BL.CdDelta_val[BL.sym_index[pj]];
+        rvec_Add( f_i, BL.f_val[BL.sym_index[pj]] );
     }
+
+#if defined(GPU_STREAM_SINGLE_ACCUM)
+    atomicAdd( &CdDelta[i], CdDelta_i );
+    atomic_rvecAdd( f[i], f_i );
+#else
+    CdDelta[i] += CdDelta_i;
+    rvec_Add( f[i], f_i );
+#endif
 
 #undef BL
 }

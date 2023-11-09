@@ -166,6 +166,9 @@ static void Cuda_Reallocate_System_Part2( reax_system * const system,
     sCudaFree( system->d_my_atoms, __FILE__, __LINE__ );
     sCudaMalloc( (void **) &system->d_my_atoms,
             sizeof(reax_atom) * system->total_cap, __FILE__, __LINE__ );
+    sCudaMemsetAsync( system->d_my_atoms, FALSE,
+            sizeof(reax_atom) * system->total_cap,
+            control->cuda_streams[0], __FILE__, __LINE__ );
     sCudaMemcpyAsync( system->d_my_atoms, temp_atom, sizeof(reax_atom) * total_cap_old,
             cudaMemcpyDeviceToDevice, control->cuda_streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->cuda_streams[0] );
@@ -374,6 +377,9 @@ void Cuda_Allocate_System( reax_system * const system,
     /* atoms */
     sCudaMalloc( (void **) &system->d_my_atoms,
             system->total_cap * sizeof(reax_atom), __FILE__, __LINE__ );
+    sCudaMemsetAsync( system->d_my_atoms, FALSE,
+            system->total_cap * sizeof(reax_atom),
+            control->cuda_streams[0], __FILE__, __LINE__ );
     cudaStreamSynchronize( control->cuda_streams[0] );
     sCudaMalloc( (void **) &system->d_num_H_atoms, sizeof(int), __FILE__, __LINE__ );
 
