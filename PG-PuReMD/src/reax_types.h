@@ -108,11 +108,11 @@
 #if defined(MPIX_CUDA_AWARE_SUPPORT) && MPIX_CUDA_AWARE_SUPPORT
   #define GPU_DEVICE_PACK
 #endif
-/* accumulate forces using atomic operations */
-#define GPU_ACCUM_ATOMIC
-/* accumulate energies and virials using atomic operations */
+/* use atomic operations for inter-kernel accumulation or race condition resolution */
+#define GPU_KERNEL_ATOMIC
+/* use atomic operation for accumulating energies and virials */
 //#define GPU_ATOMIC_EV
-/* accumulate CdDelta and forces across streams using single arrays */
+/* use single array for accumulating across streams (CdDelta, forces)  */
 //#define GPU_STREAM_SINGLE_ACCUM
 
 /* disable assertions if NOT compiling with debug support --
@@ -2105,7 +2105,7 @@ struct hbond_data
     int *scl;
     /* position of neighbor in far neighbor list */
     int *ptr;
-//#if (defined(HAVE_CUDA) || defined(HAVE_HIP)) && !defined(GPU_ACCUM_ATOMIC)
+//#if (defined(HAVE_CUDA) || defined(HAVE_HIP)) && !defined(GPU_KERNEL_ATOMIC)
 //    /**/
 //    int *sym_index;
 //    /**/
@@ -2273,9 +2273,7 @@ struct bond_data_gpu
     rvec *dln_BOp_pi;
     /**/
     rvec *dln_BOp_pi2;
-#if !defined(GPU_ACCUM_ATOMIC)
-    /* Bond order derivative coefficients (torsion) */
-    real *Cdbo_tor;
+#if !defined(GPU_KERNEL_ATOMIC)
     /* coefficient of dDelta (multi_body) */
     real *CdDelta_multi;
     /* coefficient of dDelta (valence angles) */
@@ -2290,6 +2288,26 @@ struct bond_data_gpu
     rvec *f_tor;
     /* atomic forces (bond orders) */
     rvec *f_bo;
+#endif
+#if !defined(GPU_STREAM_SINGLE_ACCUM)
+    /* bond order derivative coefficients (bonds) */
+    real *Cdbo_bonds;
+    /* bond order derivative coefficients (multi_body) */
+    real *Cdbo_multi;
+    /* bond order derivative coefficients (hbonds) */
+    real *Cdbo_hbonds;
+    /* bond order derivative coefficients (torsion) */
+    real *Cdbo_tor;
+    /* bond order pi derivative coefficients (bonds) */
+    real *Cdbopi_bonds;
+    /* bond order pi derivative coefficients (multi_body) */
+    real *Cdbopi_multi;
+    /* bond order pi derivative coefficients (torsion) */
+    real *Cdbopi_tor;
+    /* bond order pi-pi derivative coefficients (bonds) */
+    real *Cdbopi2_bonds;
+    /* bond order pi-pi derivative coefficients (multi_body) */
+    real *Cdbopi2_multi;
 #endif
 };
 #endif
@@ -2490,8 +2508,6 @@ struct storage
     real *CdDelta_multi;
     /* coefficient of dDelta (torsion) */
     real *CdDelta_tor;
-    /* coefficient of dDelta (valence angles) */
-    real *CdDelta_val;
     /* atomic forces (hydrogen bonds) */
     rvec *f_hb;
     /* atomic forces (van der Waals and Coulomb) */
@@ -2502,8 +2518,6 @@ struct storage
     rvec *f_clmb;
     /* atomic forces (torsion) */
     rvec *f_tor;
-    /* atomic forces (valence angles) */
-    rvec *f_val;
 #endif
 #if defined(TEST_FORCES)
     /**/

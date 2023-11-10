@@ -232,7 +232,7 @@ extern "C" void Cuda_Copy_List_Device_to_Host( control_params const * const cont
             sCudaMemcpyAsync( host_list->hbond_list.ptr, device_list->hbond_list.ptr,
                     sizeof(int) * device_list->max_intrs,
                     cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );
-#if (defined(HAVE_CUDA) || defined(HAVE_HIP)) && !defined(GPU_ACCUM_ATOMIC)
+#if (defined(HAVE_CUDA) || defined(HAVE_HIP)) && !defined(GPU_KERNEL_ATOMIC)
 //            sCudaMemcpyAsync( host_list->hbond_list.sym_index, device_list->hbond_list.sym_index,
 //                    sizeof(int) * device_list->max_intrs,
 //                    cudaMemcpyDeviceToHost, control->cuda_streams[0], __FILE__, __LINE__ );

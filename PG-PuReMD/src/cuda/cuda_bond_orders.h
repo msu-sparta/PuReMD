@@ -75,8 +75,7 @@ GPU_DEVICE static inline void Cuda_Compute_BOp( reax_list bond_list, real bo_cut
     BL.Cdbo[btop_i] = 0.0;
     BL.Cdbopi[btop_i] = 0.0;
     BL.Cdbopi2[btop_i] = 0.0;
-#if !defined(GPU_ACCUM_ATOMIC)
-    BL.Cdbo_tor[btop_i] = 0.0;
+#if !defined(GPU_KERNEL_ATOMIC)
     BL.CdDelta_multi[btop_i] = 0.0;
     BL.CdDelta_val[btop_i] = 0.0;
     BL.CdDelta_tor[btop_i] = 0.0;
@@ -84,6 +83,17 @@ GPU_DEVICE static inline void Cuda_Compute_BOp( reax_list bond_list, real bo_cut
     rvec_MakeZero( BL.f_val[btop_i] );
     rvec_MakeZero( BL.f_tor[btop_i] );
     rvec_MakeZero( BL.f_bo[btop_i] );
+#endif
+#if !defined(GPU_STREAM_SINGLE_ACCUM)
+    BL.Cdbo_bonds[btop_i] = 0.0;
+    BL.Cdbo_multi[btop_i] = 0.0;
+    BL.Cdbo_hbonds[btop_i] = 0.0;
+    BL.Cdbo_tor[btop_i] = 0.0;
+    BL.Cdbopi_bonds[btop_i] = 0.0;
+    BL.Cdbopi_multi[btop_i] = 0.0;
+    BL.Cdbopi_tor[btop_i] = 0.0;
+    BL.Cdbopi2_bonds[btop_i] = 0.0;
+    BL.Cdbopi2_multi[btop_i] = 0.0;
 #endif
 
 #undef BL

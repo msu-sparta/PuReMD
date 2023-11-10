@@ -49,7 +49,7 @@ GPU_GLOBAL void k_center_of_mass_xcm( single_body_parameters const * const sbp,
      * of the reduction back to global memory */
     if ( threadIdx.x == 0 )
     {
-#if defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_KERNEL_ATOMIC)
         atomicAdd( (double *) &xcm_g[0][0], (double) xcm[0] );
         atomicAdd( (double *) &xcm_g[0][1], (double) xcm[1] );
         atomicAdd( (double *) &xcm_g[0][2], (double) xcm[2] );
@@ -90,7 +90,7 @@ GPU_GLOBAL void k_center_of_mass_vcm( single_body_parameters const * const sbp,
      * of the reduction back to global memory */
     if ( threadIdx.x == 0 )
     {
-#if defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_KERNEL_ATOMIC)
         atomicAdd( (double *) &vcm_g[0][0], (double) vcm[0] );
         atomicAdd( (double *) &vcm_g[0][1], (double) vcm[1] );
         atomicAdd( (double *) &vcm_g[0][2], (double) vcm[2] );
@@ -132,7 +132,7 @@ GPU_GLOBAL void k_center_of_mass_amcm( single_body_parameters const * const sbp,
      * of the reduction back to global memory */
     if ( threadIdx.x == 0 )
     {
-#if defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_KERNEL_ATOMIC)
         atomicAdd( (double *) &amcm_g[0][0], (double) amcm[0] );
         atomicAdd( (double *) &amcm_g[0][1], (double) amcm[1] );
         atomicAdd( (double *) &amcm_g[0][2], (double) amcm[2] );
@@ -495,7 +495,7 @@ static void Cuda_Compute_Momentum( reax_system * const system,
 
     sCudaCheckMalloc( &workspace->d_workspace->scratch[0],
             &workspace->d_workspace->scratch_size[0],
-#if defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_KERNEL_ATOMIC)
             sizeof(rvec),
 #else
             sizeof(rvec) * (blocks + 1),
@@ -510,12 +510,12 @@ static void Cuda_Compute_Momentum( reax_system * const system,
         ( system->reax_param.d_sbp, system->d_my_atoms, spad, system->n );
     cudaCheckError( );
     
-#if !defined(GPU_ACCUM_ATOMIC)
+#if !defined(GPU_KERNEL_ATOMIC)
     Cuda_Reduction_Sum( spad, &spad[blocks], blocks, 0, control->cuda_streams[0] );
 #endif
 
     sCudaMemcpyAsync( xcm,
-#if defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_KERNEL_ATOMIC)
             spad,
 #else
             &spad[blocks],
@@ -531,12 +531,12 @@ static void Cuda_Compute_Momentum( reax_system * const system,
         ( system->reax_param.d_sbp, system->d_my_atoms, spad, system->n );
     cudaCheckError( );
     
-#if !defined(GPU_ACCUM_ATOMIC)
+#if !defined(GPU_KERNEL_ATOMIC)
     Cuda_Reduction_Sum( spad, &spad[blocks], blocks, 0, control->cuda_streams[0] );
 #endif
 
     sCudaMemcpyAsync( vcm,
-#if defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_KERNEL_ATOMIC)
             spad,
 #else
             &spad[blocks],
@@ -552,12 +552,12 @@ static void Cuda_Compute_Momentum( reax_system * const system,
         ( system->reax_param.d_sbp, system->d_my_atoms, spad, system->n );
     cudaCheckError( );
     
-#if !defined(GPU_ACCUM_ATOMIC)
+#if !defined(GPU_KERNEL_ATOMIC)
     Cuda_Reduction_Sum( spad, &spad[blocks], blocks, 0, control->cuda_streams[0] );
 #endif
 
     sCudaMemcpyAsync( amcm, 
-#if defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_KERNEL_ATOMIC)
             spad,
 #else
             &spad[blocks],

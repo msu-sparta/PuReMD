@@ -44,7 +44,7 @@ GPU_GLOBAL void k_bonds( reax_atom const * const my_atoms, real const * const gp
     real pow_BOs_be2, exp_be12, CEbo, e_bond_;
     real exphu, exphua1, exphub1, exphuov, hulpov;
     real decobdbo, decobdboua, decobdboub;
-    real total_bond_order_i, Delta_i, CdDelta_i;
+    real total_bond_order_i, Delta_i, CdDelta_i, Cdbo_ij;
 #define BL (bond_list.bond_list_gpu)
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -90,9 +90,14 @@ GPU_GLOBAL void k_bonds( reax_atom const * const my_atoms, real const * const gp
                 - twbp->De_pp * BL.BO_pi2[pj];
 
             /* calculate derivatives of bond orders */
-            atomicAdd( &BL.Cdbo[pj], CEbo );
+            Cdbo_ij = CEbo;
+#if defined(GPU_STREAM_SINGLE_ACCUM)
             atomicAdd( &BL.Cdbopi[pj], -1.0 * (CEbo + twbp->De_p) );
             atomicAdd( &BL.Cdbopi2[pj], -1.0 * (CEbo + twbp->De_pp) );
+#else
+            BL.Cdbopi_bonds[pj] = -1.0 * (CEbo + twbp->De_p);
+            BL.Cdbopi2_bonds[pj] = -1.0 * (CEbo + twbp->De_pp);
+#endif
 
             /* Stabilisation terminal triple bond */
             if ( BL.BO[pj] >= 1.00 )
@@ -119,11 +124,17 @@ GPU_GLOBAL void k_bonds( reax_atom const * const my_atoms, real const * const gp
                     decobdboub = -gp10 * exphu * hulpov
                         * (gp3 * exphub1 + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
 
-                    atomicAdd( &BL.Cdbo[pj], decobdbo );
+                    Cdbo_ij += decobdbo;
                     CdDelta_i += decobdboua;
                     atomicAdd( &CdDelta[j], decobdboub );
                 }
             }
+
+#if defined(GPU_STREAM_SINGLE_ACCUM)
+            atomicAdd( &BL.Cdbo[pj], Cdbo_ij );
+#else
+            BL.Cdbo_bonds[pj] = Cdbo_ij;
+#endif
         }
     }
 
@@ -151,7 +162,7 @@ GPU_GLOBAL void k_bonds_opt( reax_atom const * const my_atoms, real const * cons
     real pow_BOs_be2, exp_be12, CEbo, e_bond_;
     real exphu, exphua1, exphub1, exphuov, hulpov;
     real decobdbo, decobdboua, decobdboub;
-    real total_bond_order_i, Delta_i, CdDelta_i;
+    real total_bond_order_i, Delta_i, CdDelta_i, Cdbo_ij;
 #define BL (bond_list.bond_list_gpu)
 
     thread_id = blockIdx.x * blockDim.x + threadIdx.x;
@@ -204,9 +215,14 @@ GPU_GLOBAL void k_bonds_opt( reax_atom const * const my_atoms, real const * cons
                     - twbp->De_pp * BL.BO_pi2[pj];
 
                 /* calculate derivatives of bond orders */
-                atomicAdd( &BL.Cdbo[pj], CEbo );
+                Cdbo_ij = CEbo;
+#if defined(GPU_STREAM_SINGLE_ACCUM)
                 atomicAdd( &BL.Cdbopi[pj], -1.0 * (CEbo + twbp->De_p) );
                 atomicAdd( &BL.Cdbopi2[pj], -1.0 * (CEbo + twbp->De_pp) );
+#else
+                BL.Cdbopi_bonds[pj] = -1.0 * (CEbo + twbp->De_p);
+                BL.Cdbopi2_bonds[pj] = -1.0 * (CEbo + twbp->De_pp);
+#endif
 
                 /* Stabilisation terminal triple bond */
                 if ( BL.BO[pj] >= 1.00 )
@@ -233,11 +249,17 @@ GPU_GLOBAL void k_bonds_opt( reax_atom const * const my_atoms, real const * cons
                         decobdboub = -gp10 * exphu * hulpov
                             * (gp3 * exphub1 + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
 
-                        atomicAdd( &BL.Cdbo[pj], decobdbo );
+                        Cdbo_ij += decobdbo;
                         CdDelta_i += decobdboua;
                         atomicAdd( &CdDelta[j], decobdboub );
                     }
                 }
+
+#if defined(GPU_STREAM_SINGLE_ACCUM)
+                atomicAdd( &BL.Cdbo[pj], Cdbo_ij );
+#else
+                BL.Cdbo_bonds[pj] = Cdbo_ij;
+#endif
             }
         }
 

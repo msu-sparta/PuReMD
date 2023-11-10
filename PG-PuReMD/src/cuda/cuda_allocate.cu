@@ -687,7 +687,6 @@ void Cuda_Allocate_Workspace_Part2( control_params const * const control,
     sCudaMalloc( (void **) &workspace->CdDelta_bonds, total_real, __FILE__, __LINE__ );
     sCudaMalloc( (void **) &workspace->CdDelta_multi, total_real, __FILE__, __LINE__ );
     sCudaMalloc( (void **) &workspace->CdDelta_tor, total_real, __FILE__, __LINE__ );
-    sCudaMalloc( (void **) &workspace->CdDelta_val, total_real, __FILE__, __LINE__ );
     sCudaMalloc( (void **) &workspace->f_hb, total_rvec, __FILE__, __LINE__ );
 #if defined(FUSED_VDW_COULOMB)
     sCudaMalloc( (void **) &workspace->f_vdw_clmb, total_rvec, __FILE__, __LINE__ );
@@ -696,7 +695,6 @@ void Cuda_Allocate_Workspace_Part2( control_params const * const control,
     sCudaMalloc( (void **) &workspace->f_clmb, total_rvec, __FILE__, __LINE__ );
 #endif
     sCudaMalloc( (void **) &workspace->f_tor, total_rvec, __FILE__, __LINE__ );
-    sCudaMalloc( (void **) &workspace->f_val, total_rvec, __FILE__, __LINE__ );
 #endif
 }
 
@@ -898,7 +896,6 @@ void Cuda_Deallocate_Workspace_Part2( control_params const * const control,
     sCudaFree( workspace->CdDelta_bonds, __FILE__, __LINE__ );
     sCudaFree( workspace->CdDelta_multi, __FILE__, __LINE__ );
     sCudaFree( workspace->CdDelta_tor, __FILE__, __LINE__ );
-    sCudaFree( workspace->CdDelta_val, __FILE__, __LINE__ );
     sCudaFree( workspace->f_hb, __FILE__, __LINE__ );
 #if defined(FUSED_VDW_COULOMB)
     sCudaFree( workspace->f_vdw_clmb, __FILE__, __LINE__ );
@@ -907,7 +904,6 @@ void Cuda_Deallocate_Workspace_Part2( control_params const * const control,
     sCudaFree( workspace->f_clmb, __FILE__, __LINE__ );
 #endif
     sCudaFree( workspace->f_tor, __FILE__, __LINE__ );
-    sCudaFree( workspace->f_val, __FILE__, __LINE__ );
 #endif
 }
 

@@ -339,7 +339,7 @@ GPU_GLOBAL void k_atom_energy_part2( reax_atom const * const my_atoms,
 
     /* forces */
     // OvCoor - 2nd term, UnCoor - 1st term
-#if defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_KERNEL_ATOMIC)
     atomicAdd( &CdDelta[i], CEover3 + CEunder3 );
 #else
     CdDelta[i] += CEover3 + CEunder3;
@@ -353,7 +353,7 @@ GPU_GLOBAL void k_atom_energy_part2( reax_atom const * const my_atoms,
         // OvCoor-1st 
         atomicAdd( &BL.Cdbo[pj], CEover1 * tbp[tbp_ij].p_ovun1 * tbp[tbp_ij].De_s );
         // OvCoor-3a, UnCoor - 2a
-#if defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_KERNEL_ATOMIC)
         atomicAdd( &CdDelta[j], (CEover4 + CEunder4) * (1.0 - dfvl * dDelta_lp[j])
             * (BL.BO_pi[pj] + BL.BO_pi2[pj]) );
 #else
@@ -361,11 +361,17 @@ GPU_GLOBAL void k_atom_energy_part2( reax_atom const * const my_atoms,
             * (BL.BO_pi[pj] + BL.BO_pi2[pj]);
 #endif
         // OvCoor-3b, UnCoor-2b
+#if defined(GPU_STREAM_SINGLE_ACCUM)
         atomicAdd( &BL.Cdbopi[pj], (CEover4 + CEunder4) * (Delta[j] - dfvl
                 * Delta_lp_temp[j]) );
-        // OvCoor-3b, UnCoor-2b
         atomicAdd( &BL.Cdbopi2[pj], (CEover4 + CEunder4) * (Delta[j] - dfvl
                 * Delta_lp_temp[j]) );
+#else
+        BL.Cdbopi_multi[pj] = (CEover4 + CEunder4) * (Delta[j] - dfvl
+                * Delta_lp_temp[j]);
+        BL.Cdbopi2_multi[pj] = (CEover4 + CEunder4) * (Delta[j] - dfvl
+                * Delta_lp_temp[j]);
+#endif
     }
 
 #undef BL
@@ -513,7 +519,7 @@ GPU_GLOBAL void k_atom_energy_part2_opt( reax_atom const * const my_atoms,
 
     if ( lane_id == 0 )
     {
-#if defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_KERNEL_ATOMIC)
         atomicAdd( &CdDelta[i], CdDelta_i );
 #else
         CdDelta[i] += CdDelta_i;
@@ -530,7 +536,7 @@ GPU_GLOBAL void k_atom_energy_part2_opt( reax_atom const * const my_atoms,
             // OvCoor-1st 
             atomicAdd( &BL.Cdbo[pj], CEover1 * tbp[tbp_ij].p_ovun1 * tbp[tbp_ij].De_s );
             // OvCoor-3a, UnCoor - 2a
-#if defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_KERNEL_ATOMIC)
             atomicAdd( &CdDelta[j], (CEover4 + CEunder4) * (1.0 - dfvl * dDelta_lp[j])
                 * (BL.BO_pi[pj] + BL.BO_pi2[pj]) );
 #else
@@ -538,11 +544,17 @@ GPU_GLOBAL void k_atom_energy_part2_opt( reax_atom const * const my_atoms,
                 * (BL.BO_pi[pj] + BL.BO_pi2[pj]);
 #endif
             // OvCoor-3b, UnCoor-2b
+#if defined(GPU_STREAM_SINGLE_ACCUM)
             atomicAdd( &BL.Cdbopi[pj], (CEover4 + CEunder4) * (Delta[j] - dfvl
                     * Delta_lp_temp[j]) );
-            // OvCoor-3b, UnCoor-2b
             atomicAdd( &BL.Cdbopi2[pj], (CEover4 + CEunder4) * (Delta[j] - dfvl
                     * Delta_lp_temp[j]) );
+#else
+            BL.Cdbopi_multi[pj] = (CEover4 + CEunder4) * (Delta[j] - dfvl
+                    * Delta_lp_temp[j]);
+            BL.Cdbopi2_multi[pj] = (CEover4 + CEunder4) * (Delta[j] - dfvl
+                    * Delta_lp_temp[j]);
+#endif
         }
 
         pj += warpSize;
@@ -552,7 +564,7 @@ GPU_GLOBAL void k_atom_energy_part2_opt( reax_atom const * const my_atoms,
 }
 
 
-#if !defined(GPU_ACCUM_ATOMIC)
+#if !defined(GPU_KERNEL_ATOMIC)
 /* Traverse bond list and accumulate lone pair contributions from bonded neighbors */
 GPU_GLOBAL void k_atom_energy_part3( reax_list bond_list, real * const CdDelta, int n )
 {
@@ -690,7 +702,7 @@ void Cuda_Compute_Atom_Energy( reax_system const * const system,
          );
     cudaCheckError( );
 
-#if !defined(GPU_ACCUM_ATOMIC)
+#if !defined(GPU_KERNEL_ATOMIC)
     k_atom_energy_part3 <<< control->blocks_n, control->gpu_block_size,
                         0, control->cuda_streams[0] >>>
         ( *(lists[BONDS]),

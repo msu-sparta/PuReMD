@@ -156,10 +156,14 @@ GPU_GLOBAL void k_hydrogen_bonds_part1( reax_atom const * const my_atoms,
 
                     /* hydrogen bond forces */
                     /* dbo term */
+#if defined(GPU_STREAM_SINGLE_ACCUM)
                     atomicAdd( &BL.Cdbo[pi], CEhb1 );
+#else
+                    BL.Cdbo_hbonds[pi] += CEhb1;
+#endif
 
                     /* dcos terms */
-#if defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_KERNEL_ATOMIC)
                     atomic_rvecScaledAdd( f[i], CEhb2, dcos_theta_di );
 #else
                     rvec_ScaledAdd( BL.f_hb[pi], CEhb2, dcos_theta_di ); 
@@ -173,7 +177,7 @@ GPU_GLOBAL void k_hydrogen_bonds_part1( reax_atom const * const my_atoms,
                 }
             }
 
-//#if defined(GPU_ACCUM_ATOMIC)
+//#if defined(GPU_KERNEL_ATOMIC)
             atomic_rvecAdd( f[k], f_k );
 //#else
 //            rvec_Copy( hbond_list.hbond_list.f_hb[pk], f_k );
@@ -185,7 +189,7 @@ GPU_GLOBAL void k_hydrogen_bonds_part1( reax_atom const * const my_atoms,
             free( hblist );
         }
 
-#if defined(GPU_ACCUM_ATOMIC) || defined(GPU_STREAM_SINGLE_ACCUM)
+#if defined(GPU_KERNEL_ATOMIC) || defined(GPU_STREAM_SINGLE_ACCUM)
         atomic_rvecAdd( f[j], f_j );
 #else
         rvec_Copy( f[j], f_j );
@@ -304,10 +308,14 @@ GPU_GLOBAL void k_hydrogen_bonds_part1_opt( reax_atom const * const my_atoms,
 
                         /* hydrogen bond forces */
                         /* dbo term */
+#if defined(GPU_STREAM_SINGLE_ACCUM)
                         atomicAdd( &BL.Cdbo[pi], CEhb1 );
+#else
+                        BL.Cdbo_hbonds[pi] += CEhb1;
+#endif
 
                         /* dcos terms */
-#if defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_KERNEL_ATOMIC)
                         atomic_rvecScaledAdd( f[i], CEhb2, dcos_theta_di );
 #else
                         rvec_ScaledAdd( BL.f_hb[pi], CEhb2, dcos_theta_di ); 
@@ -330,7 +338,7 @@ GPU_GLOBAL void k_hydrogen_bonds_part1_opt( reax_atom const * const my_atoms,
 
             if ( lane_id == 0 )
             {
-//#if defined(GPU_ACCUM_ATOMIC)
+//#if defined(GPU_KERNEL_ATOMIC)
                 atomic_rvecAdd( f[k], f_k );
 //#else
 //                rvec_Copy( hbond_list.hbond_list.f_hb[pk], f_k );
@@ -345,7 +353,7 @@ GPU_GLOBAL void k_hydrogen_bonds_part1_opt( reax_atom const * const my_atoms,
 
         if ( lane_id == 0 )
         {
-#if defined(GPU_ACCUM_ATOMIC) || defined(GPU_STREAM_SINGLE_ACCUM)
+#if defined(GPU_KERNEL_ATOMIC) || defined(GPU_STREAM_SINGLE_ACCUM)
             atomic_rvecAdd( f[j], f_j );
 #else
             rvec_Copy( f[j], f_j );
@@ -487,13 +495,17 @@ GPU_GLOBAL void k_hydrogen_bonds_virial_part1( reax_atom const * const my_atoms,
 
                     /* hydrogen bond forces */
                     /* dbo term */
+#if defined(GPU_STREAM_SINGLE_ACCUM)
                     atomicAdd( &BL.Cdbo[pi], CEhb1 );
+#else
+                    BL.Cdbo_hbonds[pi] += CEhb1;
+#endif
 
                     /* for pressure coupling, terms that are not related to bond order
                      * derivatives are added directly into pressure vector/tensor */
                     /* dcos terms */
                     rvec_Scale( temp, CEhb2, dcos_theta_di );
-#if defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_KERNEL_ATOMIC)
                     atomic_rvecAdd( f[i], temp );
 #else
                     rvec_Add( BL.f_hb[pi], temp );
@@ -506,7 +518,7 @@ GPU_GLOBAL void k_hydrogen_bonds_virial_part1( reax_atom const * const my_atoms,
                     ivec_Scale( rel_jk, hbond_list.hbond_list.scl[pk],
                             far_nbr_list.far_nbr_list.rel_box[nbr_jk] );
                     rvec_Scale( temp, CEhb2, dcos_theta_dk );
-//#if defined(GPU_ACCUM_ATOMIC)
+//#if defined(GPU_KERNEL_ATOMIC)
                     atomic_rvecAdd( f[k], temp );
 //#else
 //                    rvec_Add( hbond_list.hbond_list.f_hb[pk], temp );
@@ -518,7 +530,7 @@ GPU_GLOBAL void k_hydrogen_bonds_virial_part1( reax_atom const * const my_atoms,
                     rvec_ScaledAdd( f_j, -1.0 * CEhb3 / r_jk, dvec_jk ); 
 
                     rvec_Scale( temp, CEhb3 / r_jk, dvec_jk );
-//#if defined(GPU_ACCUM_ATOMIC)
+//#if defined(GPU_KERNEL_ATOMIC)
                     atomic_rvecAdd( f[k], temp );
 //#else
 //                    rvec_Add( hbond_list.hbond_list.f_hb[pk], temp );
@@ -535,7 +547,7 @@ GPU_GLOBAL void k_hydrogen_bonds_virial_part1( reax_atom const * const my_atoms,
         }
     }
 
-#if defined(GPU_ACCUM_ATOMIC) || defined(GPU_STREAM_SINGLE_ACCUM)
+#if defined(GPU_KERNEL_ATOMIC) || defined(GPU_STREAM_SINGLE_ACCUM)
     atomic_rvecAdd( f[j], f_j );
 #else
     rvec_Add( f[j], f_j );
@@ -552,7 +564,7 @@ GPU_GLOBAL void k_hydrogen_bonds_virial_part1( reax_atom const * const my_atoms,
 }
 
 
-#if !defined(GPU_ACCUM_ATOMIC)
+#if !defined(GPU_KERNEL_ATOMIC)
 /* Accumulate forces stored in the bond list
  * using a one thread per atom implementation */
 GPU_GLOBAL void k_hydrogen_bonds_part2( reax_atom const * const my_atoms,
@@ -816,7 +828,7 @@ void Cuda_Compute_Hydrogen_Bonds( reax_system const * const system,
     }
 #endif
 
-#if !defined(GPU_ACCUM_ATOMIC)
+#if !defined(GPU_KERNEL_ATOMIC)
 //    k_hydrogen_bonds_part2 <<< control->blocks_n, control->gpu_block_size,
 //                           0, control->cuda_streams[2] >>>
 //        ( system->d_my_atoms, system->reax_param.d_sbp,

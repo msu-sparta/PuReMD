@@ -57,7 +57,7 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
         rvec_Scale( temp, -(C2dbo + C2dDelta + C3dbopi + C3dbopi2), BL.dBOp[pk] );
 
         /* force */
-#if defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_KERNEL_ATOMIC)
         k = BL.nbr[pk];
         atomic_rvecAdd( f[k], temp );
 #else
@@ -98,7 +98,7 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
         rvec_Scale( temp, -(C3dbo + C3dDelta + C4dbopi + C4dbopi2), BL.dBOp[pk] );
 
         /* force */
-#if defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_KERNEL_ATOMIC)
         atomic_rvecAdd( f[k], temp );
 #else
         atomic_rvecAdd( BL.f_bo[pk], temp );
@@ -127,7 +127,7 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces_NPT( int i, int pj,
     rvec_ScaledAdd( temp, -C1dbopi2, BL.dln_BOp_pi2[pj] );
 
     /* force */
-#if defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_KERNEL_ATOMIC)
     atomic_rvecAdd( f[j], temp );
 #else
     atomic_rvecAdd( BL.f_bo[pj], temp );
@@ -145,7 +145,7 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
         rvec * const f, reax_list * const bond_list, rvec * const f_i )
 {
     int j, pk, sym_index;
-#if defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_KERNEL_ATOMIC)
     int k;
 #endif
     real C1dbo, C2dbo, C3dbo;
@@ -181,7 +181,7 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
         /* 2nd, dBO, dDelta, dBOpi, dBOpi2 */
         rvec_Scale( temp, -(C2dbo + C2dDelta + C3dbopi + C3dbopi2), BL.dBOp[pk] );
 
-#if defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_KERNEL_ATOMIC)
         k = BL.nbr[pk];
         atomic_rvecAdd( f[k], temp );
 #else
@@ -208,7 +208,7 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
         /* 3rd, dBO; 3rd, dDelta; 4th, dBOpi; 4th, dBOpi2 */
         rvec_Scale( temp, -(C3dbo + C3dDelta + C4dbopi + C4dbopi2), BL.dBOp[pk] );
 
-#if defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_KERNEL_ATOMIC)
         k = BL.nbr[pk];
         atomic_rvecAdd( f[k], temp );
 #else
@@ -228,7 +228,7 @@ GPU_DEVICE void Cuda_Add_dBond_to_Forces( int i, int pj,
     /* 1st, dBOpi2 */
     rvec_ScaledAdd( temp, -C1dbopi2, BL.dln_BOp_pi2[pj] );
 
-#if defined(GPU_ACCUM_ATOMIC)
+#if defined(GPU_KERNEL_ATOMIC)
     atomic_rvecAdd( f[j], temp );
 #else
     atomic_rvecAdd( BL.f_bo[pj], temp );
@@ -890,7 +890,7 @@ GPU_GLOBAL void k_total_forces_virial_part1( rvec const * const dDeltap_self,
 }
 
 
-#if !defined(GPU_ACCUM_ATOMIC)
+#if !defined(GPU_KERNEL_ATOMIC)
 GPU_GLOBAL void k_total_forces_part1_2( reax_list bond_list, rvec * const f, int N )
 {
     int i, pk;
@@ -935,30 +935,15 @@ GPU_GLOBAL void k_total_forces_part2( reax_atom * const my_atoms, int n,
 
 
 #if !defined(GPU_STREAM_SINGLE_ACCUM)
-GPU_GLOBAL void k_reduction_CdDelta_stream( real const * const CdDelta_bonds,
+GPU_GLOBAL void k_reduction_stream_part1( real const * const CdDelta_bonds,
         real const * const CdDelta_multi, real const * const CdDelta_tor,
-        real const * const CdDelta_val, real * const CdDelta, int N )
-{
-    int i;
-
-    i = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if ( i >= N )
-    {
-        return;
-    }
-
-    CdDelta[i] = CdDelta_bonds[i] + CdDelta_multi[i] + CdDelta_tor[i] + CdDelta_val[i];
-}
-
-
-GPU_GLOBAL void k_reduction_f_stream( rvec const * const f_hb,
+        real * const CdDelta, rvec const * const f_hb,
 #if defined(FUSED_VDW_COULOMB)
         rvec const * const f_vdw_clmb,
 #else
         rvec const * const f_vdw, rvec const * const f_clmb,
 #endif
-        rvec const * const f_tor, rvec const * const f_val, rvec * const f, int N )
+        rvec const * const f_tor, rvec * const f, int N )
 {
     int i;
 
@@ -969,15 +954,77 @@ GPU_GLOBAL void k_reduction_f_stream( rvec const * const f_hb,
         return;
     }
 
+    CdDelta[i] += CdDelta_bonds[i] + CdDelta_multi[i] + CdDelta_tor[i];
+
 #if defined(FUSED_VDW_COULOMB)
-    f[i][0] += f_hb[i][0] + f_vdw_clmb[i][0] + f_tor[i][0] + f_val[i][0];
-    f[i][1] += f_hb[i][1] + f_vdw_clmb[i][1] + f_tor[i][1] + f_val[i][1];
-    f[i][2] += f_hb[i][2] + f_vdw_clmb[i][2] + f_tor[i][2] + f_val[i][2];
+    f[i][0] += f_hb[i][0] + f_vdw_clmb[i][0] + f_tor[i][0];
+    f[i][1] += f_hb[i][1] + f_vdw_clmb[i][1] + f_tor[i][1];
+    f[i][2] += f_hb[i][2] + f_vdw_clmb[i][2] + f_tor[i][2];
 #else
-    f[i][0] += f_hb[i][0] + f_vdw[i][0] + f_clmb[i][0] + f_tor[i][0] + f_val[i][0];
-    f[i][1] += f_hb[i][1] + f_vdw[i][1] + f_clmb[i][1] + f_tor[i][1] + f_val[i][1];
-    f[i][2] += f_hb[i][2] + f_vdw[i][2] + f_clmb[i][2] + f_tor[i][2] + f_val[i][2];
+    f[i][0] += f_hb[i][0] + f_vdw[i][0] + f_clmb[i][0] + f_tor[i][0];
+    f[i][1] += f_hb[i][1] + f_vdw[i][1] + f_clmb[i][1] + f_tor[i][1];
+    f[i][2] += f_hb[i][2] + f_vdw[i][2] + f_clmb[i][2] + f_tor[i][2];
 #endif
+}
+
+
+GPU_GLOBAL void k_reduction_stream_part2( reax_list bond_list, int N )
+{
+    int i, pj;
+#define BL (bond_list.bond_list_gpu)
+
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= N )
+    {
+        return;
+    }
+
+    for ( pj = Start_Index( i, &bond_list ); pj < End_Index( i, &bond_list ); ++pj )
+    {
+        BL.Cdbo[pj] += BL.Cdbo_bonds[pj] + BL.Cdbo_multi[pj]
+            + BL.Cdbo_hbonds[pj] + BL.Cdbo_tor[pj];
+        BL.Cdbopi[pj] += BL.Cdbopi_bonds[pj] + BL.Cdbopi_multi[pj]
+            + BL.Cdbopi_tor[pj];
+        BL.Cdbopi2[pj] += BL.Cdbopi2_bonds[pj] + BL.Cdbopi2_multi[pj];
+    }
+
+#undef BL
+}
+
+
+GPU_GLOBAL void k_reduction_stream_part2_opt( reax_list bond_list, int N )
+{
+    int i, pj, start_i, end_i, thread_id, lane_id, itr;
+#define BL (bond_list.bond_list_gpu)
+
+    thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+    i = thread_id / warpSize;
+
+    if ( i >= N )
+    {
+        return;
+    }
+
+    lane_id = thread_id % warpSize;
+    start_i = Start_Index( i, &bond_list );
+    end_i = End_Index( i, &bond_list );
+
+    for ( itr = 0, pj = start_i + lane_id; itr < (end_i - start_i + warpSize - 1) / warpSize; ++itr )
+    {
+        if ( pj < end_i )
+        {
+            BL.Cdbo[pj] += BL.Cdbo_bonds[pj] + BL.Cdbo_multi[pj]
+                + BL.Cdbo_hbonds[pj] + BL.Cdbo_tor[pj];
+            BL.Cdbopi[pj] += BL.Cdbopi_bonds[pj] + BL.Cdbopi_multi[pj]
+                + BL.Cdbopi_tor[pj];
+            BL.Cdbopi2[pj] += BL.Cdbopi2_bonds[pj] + BL.Cdbopi2_multi[pj];
+        }
+
+        pj += warpSize;
+    }
+
+#undef BL
 }
 #endif
 
@@ -1050,11 +1097,27 @@ void Cuda_Total_Forces_Part1( reax_system const * const system,
 
 
 #if !defined(GPU_STREAM_SINGLE_ACCUM)
-    k_reduction_CdDelta_stream <<< control->blocks_N, control->gpu_block_size,
+    k_reduction_stream_part1 <<< control->blocks_N, control->gpu_block_size,
                          0, control->cuda_streams[0] >>>
         ( workspace->d_workspace->CdDelta_bonds, workspace->d_workspace->CdDelta_multi,
-          workspace->d_workspace->CdDelta_tor, workspace->d_workspace->CdDelta_val,
-          workspace->d_workspace->CdDelta, system->N );
+          workspace->d_workspace->CdDelta_tor, workspace->d_workspace->CdDelta,
+          workspace->d_workspace->f_hb,
+#if defined(FUSED_VDW_COULOMB)
+          workspace->d_workspace->f_vdw_clmb,
+#else
+          workspace->d_workspace->f_vdw, workspace->d_workspace->f_clmb,
+#endif
+          workspace->d_workspace->f_tor, workspace->d_workspace->f, system->N );
+    cudaCheckError( );
+
+//    k_reduction_stream_part2 <<< control->blocks_N, control->gpu_block_size,
+//                         0, control->cuda_streams[0] >>>
+//        ( *(lists[BONDS]), system->N );
+//    cudaCheckError( );
+
+    k_reduction_stream_part2_opt <<< control->blocks_warp_N, control->gpu_block_size,
+                         0, control->cuda_streams[0] >>>
+        ( *(lists[BONDS]), system->N );
     cudaCheckError( );
 #endif
 
@@ -1093,21 +1156,7 @@ void Cuda_Total_Forces_Part1( reax_system const * const system,
                 system->N, 0, control->cuda_streams[0] );
     }
 
-#if !defined(GPU_STREAM_SINGLE_ACCUM)
-    k_reduction_f_stream <<< control->blocks_N, control->gpu_block_size,
-                         0, control->cuda_streams[0] >>>
-        ( workspace->d_workspace->f_hb,
-#if defined(FUSED_VDW_COULOMB)
-          workspace->d_workspace->f_vdw_clmb,
-#else
-          workspace->d_workspace->f_vdw, workspace->d_workspace->f_clmb,
-#endif
-          workspace->d_workspace->f_tor, workspace->d_workspace->f_val,
-          workspace->d_workspace->f, system->N );
-    cudaCheckError( );
-#endif
-
-#if !defined(GPU_ACCUM_ATOMIC)
+#if !defined(GPU_KERNEL_ATOMIC)
     /* post processing for the atomic forces */
     k_total_forces_part1_2 <<< control->blocks_N, control->gpu_block_size,
                            0, control->cuda_streams[0] >>>

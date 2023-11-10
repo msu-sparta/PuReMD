@@ -118,9 +118,7 @@ extern "C" void Cuda_Make_List( int n, int max_intrs, int type,
                     sizeof(rvec) * l->max_intrs, __FILE__, __LINE__ );
             sCudaMalloc( (void **) &l->bond_list_gpu.dln_BOp_pi2,
                     sizeof(rvec) * l->max_intrs, __FILE__, __LINE__ );
-#if !defined(GPU_ACCUM_ATOMIC)
-            sCudaMalloc( (void **) &l->bond_list_gpu.Cdbo_tor,
-                    sizeof(real) * l->max_intrs, __FILE__, __LINE__ );
+#if !defined(GPU_KERNEL_ATOMIC)
             sCudaMalloc( (void **) &l->bond_list_gpu.CdDelta_multi,
                     sizeof(real) * l->max_intrs, __FILE__, __LINE__ );
             sCudaMalloc( (void **) &l->bond_list_gpu.CdDelta_val,
@@ -136,6 +134,26 @@ extern "C" void Cuda_Make_List( int n, int max_intrs, int type,
             sCudaMalloc( (void **) &l->bond_list_gpu.f_bo,
                     sizeof(rvec) * l->max_intrs, __FILE__, __LINE__ );
 #endif
+#if !defined(GPU_STREAM_SINGLE_ACCUM)
+            sCudaMalloc( (void **) &l->bond_list_gpu.Cdbo_bonds,
+                    sizeof(real) * l->max_intrs, __FILE__, __LINE__ );
+            sCudaMalloc( (void **) &l->bond_list_gpu.Cdbo_multi,
+                    sizeof(real) * l->max_intrs, __FILE__, __LINE__ );
+            sCudaMalloc( (void **) &l->bond_list_gpu.Cdbo_hbonds,
+                    sizeof(real) * l->max_intrs, __FILE__, __LINE__ );
+            sCudaMalloc( (void **) &l->bond_list_gpu.Cdbo_tor,
+                    sizeof(real) * l->max_intrs, __FILE__, __LINE__ );
+            sCudaMalloc( (void **) &l->bond_list_gpu.Cdbopi_bonds,
+                    sizeof(real) * l->max_intrs, __FILE__, __LINE__ );
+            sCudaMalloc( (void **) &l->bond_list_gpu.Cdbopi_multi,
+                    sizeof(real) * l->max_intrs, __FILE__, __LINE__ );
+            sCudaMalloc( (void **) &l->bond_list_gpu.Cdbopi_tor,
+                    sizeof(real) * l->max_intrs, __FILE__, __LINE__ );
+            sCudaMalloc( (void **) &l->bond_list_gpu.Cdbopi2_bonds,
+                    sizeof(real) * l->max_intrs, __FILE__, __LINE__ );
+            sCudaMalloc( (void **) &l->bond_list_gpu.Cdbopi2_multi,
+                    sizeof(real) * l->max_intrs, __FILE__, __LINE__ );
+#endif
             break;
 
         case TYP_HBOND:
@@ -145,7 +163,7 @@ extern "C" void Cuda_Make_List( int n, int max_intrs, int type,
                     sizeof(int) * l->max_intrs, __FILE__, __LINE__ );
             sCudaMalloc( (void **) &l->hbond_list.ptr, 
                     sizeof(int) * l->max_intrs, __FILE__, __LINE__ );
-#if (defined(HAVE_CUDA) || defined(HAVE_HIP)) && !defined(GPU_ACCUM_ATOMIC)
+#if (defined(HAVE_CUDA) || defined(HAVE_HIP)) && !defined(GPU_KERNEL_ATOMIC)
 //            sCudaMalloc( (void **) &l->hbond_list.sym_index, 
 //                    sizeof(int) * l->max_intrs, __FILE__, __LINE__ );
 //            sCudaMalloc( (void **) &l->hbond_list.f_hb, 
@@ -232,8 +250,7 @@ extern "C" void Cuda_Delete_List( reax_list * const l )
             sCudaFree( l->bond_list_gpu.dln_BOp_s, __FILE__, __LINE__ );
             sCudaFree( l->bond_list_gpu.dln_BOp_pi, __FILE__, __LINE__ );
             sCudaFree( l->bond_list_gpu.dln_BOp_pi2, __FILE__, __LINE__ );
-#if !defined(GPU_ACCUM_ATOMIC)
-            sCudaFree( l->bond_list_gpu.Cdbo_tor, __FILE__, __LINE__ );
+#if !defined(GPU_KERNEL_ATOMIC)
             sCudaFree( l->bond_list_gpu.CdDelta_multi, __FILE__, __LINE__ );
             sCudaFree( l->bond_list_gpu.CdDelta_val, __FILE__, __LINE__ );
             sCudaFree( l->bond_list_gpu.CdDelta_tor, __FILE__, __LINE__ );
@@ -242,13 +259,24 @@ extern "C" void Cuda_Delete_List( reax_list * const l )
             sCudaFree( l->bond_list_gpu.f_hb, __FILE__, __LINE__ );
             sCudaFree( l->bond_list_gpu.f_bo, __FILE__, __LINE__ );
 #endif
+#if !defined(GPU_STREAM_SINGLE_ACCUM)
+            sCudaFree( l->bond_list_gpu.Cdbo_bonds, __FILE__, __LINE__ );
+            sCudaFree( l->bond_list_gpu.Cdbo_multi, __FILE__, __LINE__ );
+            sCudaFree( l->bond_list_gpu.Cdbo_hbonds, __FILE__, __LINE__ );
+            sCudaFree( l->bond_list_gpu.Cdbo_tor, __FILE__, __LINE__ );
+            sCudaFree( l->bond_list_gpu.Cdbopi_bonds, __FILE__, __LINE__ );
+            sCudaFree( l->bond_list_gpu.Cdbopi_multi, __FILE__, __LINE__ );
+            sCudaFree( l->bond_list_gpu.Cdbopi_tor, __FILE__, __LINE__ );
+            sCudaFree( l->bond_list_gpu.Cdbopi2_bonds, __FILE__, __LINE__ );
+            sCudaFree( l->bond_list_gpu.Cdbopi2_multi, __FILE__, __LINE__ );
+#endif
             break;
 
         case TYP_HBOND:
             sCudaFree( l->hbond_list.nbr, __FILE__, __LINE__ );
             sCudaFree( l->hbond_list.scl, __FILE__, __LINE__ );
             sCudaFree( l->hbond_list.ptr, __FILE__, __LINE__ );
-#if (defined(HAVE_CUDA) || defined(HAVE_HIP)) && !defined(GPU_ACCUM_ATOMIC)
+#if (defined(HAVE_CUDA) || defined(HAVE_HIP)) && !defined(GPU_KERNEL_ATOMIC)
 //            sCudaFree( l->hbond_list.sym_index, __FILE__, __LINE__ );
 //            sCudaFree( l->hbond_list.f_hb, __FILE__, __LINE__ );
 #endif
