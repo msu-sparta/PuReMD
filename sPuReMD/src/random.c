@@ -21,11 +21,14 @@
 
 #include "random.h"
 
+#include <stdlib.h>
+#include <time.h>
+
 
 /* This function seeds the system pseudo random number generator with
  * current time. Use this function once in the begining to initialize
  * the system. */
 void Randomize( )
 {
-    srandom( time(NULL) );
+    srand( time(NULL) );
 }

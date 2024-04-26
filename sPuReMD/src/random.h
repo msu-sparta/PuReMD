@@ -24,28 +24,33 @@
 
 #include "reax_types.h"
 
-#include <time.h>
 #include <stdlib.h>
+#include <time.h>
 
 
-/* This function seeds the system pseudo random number generator with
-   current time. Use this function once in the begining to initialize
-   the system */
+/* initialize and seed the system pseudo random number generator with
+ * current time (use once) */
 void Randomize( );
 
 
-/* System random number generator used linear congruance method with
- * large periodicity for generation of pseudo random number. Function
- * Random returns this random number appropriately scaled so that
- * 0 <= Random(range) < range. */
-static inline double Random( double range )
+/* generate a random number in range [0.0, limit] */
+static inline double Random( double limit )
 {
-    return (random( ) * range) / 2147483647L;
+    int divisor, ret;
+
+    divisor = RAND_MAX / (limit + 1);
+
+    do
+    {
+        ret = rand() / divisor;
+    } while (ret > limit);
+
+    return ret;
 }
 
 
-/* GRandom return random number with gaussian distribution with mean
- * and standard deviation "sigma." */
+/* generate a random number from a Gaussian distribution with
+ * prescribed mean and standard deviation */
 static inline double GRandom( double mean, double sigma )
 {
     double v1 = Random(2.0) - 1.0;
