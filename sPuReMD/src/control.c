@@ -93,6 +93,11 @@ int Set_Control_Parameter( const char * const keyword,
         // skip since not applicable to shared memory code
         ;
     }
+    else if ( strncmp(keyword, "gpu_block_size", MAX_LINE) == 0 )
+    {
+        // skip since not applicable to shared memory code
+        ;
+    }
     else if ( strncmp(keyword, "proc_by_dim", MAX_LINE) == 0 )
     {
         // skip since not applicable to shared memory code
@@ -375,6 +380,11 @@ int Set_Control_Parameter( const char * const keyword,
             out_control->write_header = &Write_xyz_Header;
             out_control->append_traj_frame = &Append_xyz_Frame;
         }
+    }
+    else if ( strncmp(keyword, "traj_method", MAX_LINE) == 0 )
+    {
+        // skip since not applicable to shared memory code
+        ;
     }
     else if ( strncmp(keyword, "traj_title", MAX_LINE) == 0 )
     {
