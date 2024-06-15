@@ -400,12 +400,12 @@ void Init_Taper( control_params const * const control,  storage * const workspac
 
     if ( FABS( swa ) > 0.01 )
     {
-        fprintf( stderr, "[WARNING] non-zero lower Taper-radius cutoff in force field parameters\n" );
+        fprintf( stderr, "[WARNING] non-zero lower Taper-radius cutoff in force field parameters (%f)\n", swa );
     }
 
     if ( swb < 0.0 )
     {
-        fprintf( stderr, "[ERROR] negative upper Taper-radius cutoff in force field parameters\n" );
+        fprintf( stderr, "[ERROR] negative upper Taper-radius cutoff in force field parameters (%f)\n", swb );
         MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
     }
     else if ( swb < 5.0 )
@@ -428,7 +428,7 @@ void Init_Taper( control_params const * const control,  storage * const workspac
     workspace->tap_coef[2] = -210.0 * (swa3 * swb2 + swa2 * swb3) / d7;
     workspace->tap_coef[1] = 140.0 * swa3 * swb3 / d7;
     workspace->tap_coef[0] = (-35.0 * swa3 * swb2 * swb2 + 21.0 * swa2 * swb3 * swb2
-            + 7.0 * swa * swb3 * swb3 + swb3 * swb3 * swb ) / d7;
+            - 7.0 * swa * swb3 * swb3 + swb3 * swb3 * swb ) / d7;
 
     workspace->dtap_coef[6] = 7.0 * workspace->tap_coef[7];
     workspace->dtap_coef[5] = 6.0 * workspace->tap_coef[6];

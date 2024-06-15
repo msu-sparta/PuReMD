@@ -224,6 +224,7 @@
 #define LOG (log)
 #define EXP (exp)
 #define SQRT (sqrt)
+#define CBRT cbrt
 #define POW (pow)
 #define ACOS (acos)
 #define COS (cos)
@@ -1676,8 +1677,10 @@ struct static_storage
     /* coefficient of dDelta for force calculations */
     real *CdDelta;
 
-    /* coefficients of Taper function applied to Coulomb interactions */
-    real Tap[8];
+    /* coefficients of 7-th order polynomial taper function (charges, Coulomb, van der Waals) */
+    real tap_coef[8];
+    /* coefficients of 6-th order polynomial taper derivative function (charges, Coulomb, van der Waals) */
+    real dtap_coef[7];
 
     int *mark;
     int *old_mark;  // storage for analysis

@@ -307,17 +307,17 @@ static void Init_Taper( control_params const * const control,
 
     if ( FABS( swa ) > 0.01 )
     {
-        fprintf( stderr, "[WARNING] non-zero value for lower Taper-radius cutoff (%f)\n", swa );
+        fprintf( stderr, "[WARNING] non-zero lower Taper-radius cutoff in force field parameters (%f)\n", swa );
     }
 
     if ( swb < 0.0 )
     {
-        fprintf( stderr, "[ERROR] Negative value for upper Taper-radius cutoff\n" );
+        fprintf( stderr, "[ERROR] negative upper Taper-radius cutoff in force field parameters (%f)\n", swb );
         exit( INVALID_INPUT );
     }
     else if ( swb < 5.0 )
     {
-        fprintf( stderr, "[WARNING] Low value for upper Taper-radius cutoff (%f)\n", swb );
+        fprintf( stderr, "[WARNING] very low Taper-radius cutoff in force field parameters (%f)\n", swb );
     }
 
     d1 = swb - swa;
@@ -327,15 +327,23 @@ static void Init_Taper( control_params const * const control,
     swb2 = SQR( swb );
     swb3 = swb2 * swb;
 
-    workspace->Tap[7] =  20.0 / d7;
-    workspace->Tap[6] = -70.0 * (swa + swb) / d7;
-    workspace->Tap[5] =  84.0 * (swa2 + 3.0 * swa * swb + swb2) / d7;
-    workspace->Tap[4] = -35.0 * (swa3 + 9.0 * swa2 * swb + 9.0 * swa * swb2 + swb3 ) / d7;
-    workspace->Tap[3] = 140.0 * (swa3 * swb + 3.0 * swa2 * swb2 + swa * swb3 ) / d7;
-    workspace->Tap[2] = -210.0 * (swa3 * swb2 + swa2 * swb3) / d7;
-    workspace->Tap[1] = 140.0 * swa3 * swb3 / d7;
-    workspace->Tap[0] = (-35.0 * swa3 * swb2 * swb2 + 21.0 * swa2 * swb3 * swb2 +
-            7.0 * swa * swb3 * swb3 + swb3 * swb3 * swb ) / d7;
+    workspace->tap_coef[7] =  20.0 / d7;
+    workspace->tap_coef[6] = -70.0 * (swa + swb) / d7;
+    workspace->tap_coef[5] =  84.0 * (swa2 + 3.0 * swa * swb + swb2) / d7;
+    workspace->tap_coef[4] = -35.0 * (swa3 + 9.0 * swa2 * swb + 9.0 * swa * swb2 + swb3 ) / d7;
+    workspace->tap_coef[3] = 140.0 * (swa3 * swb + 3.0 * swa2 * swb2 + swa * swb3 ) / d7;
+    workspace->tap_coef[2] = -210.0 * (swa3 * swb2 + swa2 * swb3) / d7;
+    workspace->tap_coef[1] = 140.0 * swa3 * swb3 / d7;
+    workspace->tap_coef[0] = (-35.0 * swa3 * swb2 * swb2 + 21.0 * swa2 * swb3 * swb2
+            - 7.0 * swa * swb3 * swb3 + swb3 * swb3 * swb ) / d7;
+
+    workspace->dtap_coef[6] = 7.0 * workspace->tap_coef[7];
+    workspace->dtap_coef[5] = 6.0 * workspace->tap_coef[6];
+    workspace->dtap_coef[4] = 5.0 * workspace->tap_coef[5];
+    workspace->dtap_coef[3] = 4.0 * workspace->tap_coef[4];
+    workspace->dtap_coef[2] = 3.0 * workspace->tap_coef[3];
+    workspace->dtap_coef[1] = 2.0 * workspace->tap_coef[2];
+    workspace->dtap_coef[0] = workspace->tap_coef[1];
 }
 
 

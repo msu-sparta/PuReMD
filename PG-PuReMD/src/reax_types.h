@@ -160,7 +160,7 @@
   /* Boltzmann constant, AMU * A^2 / (ps^2 * K) */
 //  #define K_B (0.831687)
   #define K_B (0.8314510)
-  /* unit conversion for atomic force to AMU * A / ps^2 */
+  /* unit conversion for atomic force, kcal to J */
   #define F_CONV (4.184e2)
   /* energy conversion constant from electron volts to kilo-calories per mole */
   #define KCALpMOL_to_EV (23.02)
@@ -2473,9 +2473,9 @@ struct storage
     rvec2 *u2;
     rvec2 *w2;
 
-    /* coefficients of 7-th order polynomial taper function */
+    /* coefficients of 7-th order polynomial taper function (charges, Coulomb, van der Waals) */
     real *tap_coef;
-    /* coefficients of 6-th order polynomial taper derivative function */
+    /* coefficients of 6-th order polynomial taper derivative function (charges, Coulomb, van der Waals) */
     real *dtap_coef;
 
     /* storage for analysis */

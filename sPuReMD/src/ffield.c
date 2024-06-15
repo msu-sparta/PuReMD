@@ -586,8 +586,8 @@ void Read_Force_Field( const char * const ffield_file,
                 reax->tbp[i][j].gamma_w = SQRT( reax->sbp[i].gamma_w * reax->sbp[j].gamma_w );
                 reax->tbp[j][i].gamma_w = SQRT( reax->sbp[j].gamma_w * reax->sbp[i].gamma_w );
 
-                reax->tbp[i][j].gamma = SQRT( reax->sbp[i].gamma * reax->sbp[j].gamma );
-                reax->tbp[j][i].gamma = SQRT( reax->sbp[j].gamma * reax->sbp[i].gamma );
+                reax->tbp[i][j].gamma = POW( SQRT( reax->sbp[i].gamma * reax->sbp[j].gamma ), -3.0 );
+                reax->tbp[j][i].gamma = POW( SQRT( reax->sbp[j].gamma * reax->sbp[i].gamma ), -3.0 );
 
                 reax->tbp[i][j].acore = SQRT( reax->sbp[i].acore2 * reax->sbp[j].acore2 );
                 reax->tbp[j][i].acore = SQRT( reax->sbp[j].acore2 * reax->sbp[i].acore2 );
