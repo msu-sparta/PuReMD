@@ -20,8 +20,7 @@ static void compute_nearest_multiple_warp( int blocks, int *new_blocks )
 extern "C" void Hip_Setup_Environment( reax_system const * const system,
         control_params * const control )
 {
-    int i;
-//    int least_priority, greatest_priority, is_stream_priority_supported;
+    int i, least_priority, greatest_priority, is_stream_priority_supported;
     int deviceCount;
     hipError_t ret;
 #if defined(USE_HIPBLAS)
@@ -62,13 +61,13 @@ extern "C" void Hip_Setup_Environment( reax_system const * const system,
 //    ret = hipDeviceGetAttribute( &is_stream_priority_supported,
 //            hipDeviceAttributeStreamPrioritiesSupported,
 //            system->my_rank % control->gpus_per_node );
-
+//
 //    if ( ret != hipSuccess )
 //    {
 //        fprintf( stderr, "[ERROR] hipDeviceGetAttribute failure. Terminating...\n" );
 //        exit( CANNOT_INITIALIZE );
 //    }
-
+//
 //    if ( is_stream_priority_supported == 1 )
 //    {
 //        ret = hipDeviceGetStreamPriorityRange( &least_priority, &greatest_priority );

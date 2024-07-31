@@ -145,7 +145,7 @@ void sHipFree( void *ptr, const char * const filename, int line )
  * filename: NULL-terminated source filename where function call originated
  * line: line of source file where function call originated
  */
-void sHipHostFree( void *ptr, const char * const filename, int line )
+void sHipHostFree( void * ptr, const char * const filename, int line )
 {
     int rank;
     hipError_t ret;
@@ -223,7 +223,7 @@ void sHipMemset( void *ptr, int data, size_t count,
  * ptr: address to device memory for which to set memory
  * data: value to set each byte of memory
  * count: num. bytes of memory to set beginning at specified address
- * s: HIP stream to perform memset in
+ * s: GPU stream to perform memset in
  * filename: NULL-terminated source filename where function call originated
  * line: line of source file where function call originated
  */
@@ -297,7 +297,7 @@ void sHipCheckMalloc( void **ptr, size_t *cur_size, size_t new_size,
  * dest: address to be copied to
  * src: address to be copied from
  * count: num. bytes to copy
- * dir: HIP enum specifying address types for dest and src
+ * dir: GPU enum specifying address types for dest and src
  * filename: NULL-terminated source filename where function call originated
  * line: line of source file where function call originated
  */
@@ -330,8 +330,8 @@ void sHipMemcpy( void * const dest, void const * const src, size_t count,
  * dest: address to be copied to
  * src: address to be copied from
  * count: num. bytes to copy
- * dir: HIP enum specifying address types for dest and src
- * s: HIP stream to perform the copy in
+ * dir: GPU enum specifying address types for dest and src
+ * s: GPU stream to perform the copy in
  * filename: NULL-terminated source filename where function call originated
  * line: line of source file where function call originated
  */

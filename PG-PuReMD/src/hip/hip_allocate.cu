@@ -13,7 +13,7 @@
 #include "../vector.h"
 
 
-GPU_GLOBAL void k_init_nbrs( ivec *nbrs, int N )
+GPU_GLOBAL void k_init_nbrs( ivec * const nbrs, int N )
 {
     int i;
    
@@ -89,7 +89,7 @@ extern "C" void * sHipHostCallocWrapper( size_t n, size_t size,
 }
 
 
-extern "C" void sHipHostFreeWrapper( void *ptr, const char * const filename,
+extern "C" void sHipHostFreeWrapper( void * ptr, const char * const filename,
         int line )
 {
     if ( ptr == NULL )
@@ -104,7 +104,7 @@ extern "C" void sHipHostFreeWrapper( void *ptr, const char * const filename,
 }
 
 
-static void Hip_Reallocate_List( reax_list *list, size_t n, size_t max_intrs,
+static void Hip_Reallocate_List( reax_list * const list, size_t n, size_t max_intrs,
         int type )
 {
     Hip_Delete_List( list );
@@ -112,15 +112,16 @@ static void Hip_Reallocate_List( reax_list *list, size_t n, size_t max_intrs,
 }
 
 
-static void Hip_Reallocate_System_Part1( reax_system *system,
-        control_params *control, storage *workspace, int local_cap_old )
+static void Hip_Reallocate_System_Part1( reax_system * const system,
+        control_params const * const control, storage * const workspace,
+        int local_cap_old )
 {
     int *temp;
 
-    sHipCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
-            sizeof(int) * local_cap_old,
+    sHipCheckMalloc( &workspace->d_workspace->scratch[0],
+            &workspace->d_workspace->scratch_size[0], sizeof(int) * local_cap_old,
             __FILE__, __LINE__ );
-    temp = (int *) workspace->scratch[0];
+    temp = (int *) workspace->d_workspace->scratch[0];
 
     sHipMemcpyAsync( temp, system->d_cm_entries, sizeof(int) * local_cap_old,
             hipMemcpyDeviceToDevice, control->hip_streams[0], __FILE__, __LINE__ );
@@ -144,17 +145,19 @@ static void Hip_Reallocate_System_Part1( reax_system *system,
 }
 
 
-static void Hip_Reallocate_System_Part2( reax_system *system, control_params *control,
-        storage *workspace, int total_cap_old )
+static void Hip_Reallocate_System_Part2( reax_system * const system,
+        control_params const * const control, storage * const workspace,
+        int total_cap_old )
 {
     int *temp;
     reax_atom *temp_atom;
 
-    sHipCheckMalloc( &workspace->scratch[0], &workspace->scratch_size[0],
+    sHipCheckMalloc( &workspace->d_workspace->scratch[0],
+            &workspace->d_workspace->scratch_size[0],
             MAX( sizeof(reax_atom), sizeof(int) ) * total_cap_old,
             __FILE__, __LINE__ );
-    temp = (int *) workspace->scratch[0];
-    temp_atom = (reax_atom *) workspace->scratch[0];
+
+    temp_atom = (reax_atom *) workspace->d_workspace->scratch[0];
 
     /* free the existing storage for atoms, leave other info allocated */
     sHipMemcpyAsync( temp_atom, system->d_my_atoms, sizeof(reax_atom) * total_cap_old,
@@ -164,11 +167,13 @@ static void Hip_Reallocate_System_Part2( reax_system *system, control_params *co
     sHipMalloc( (void **) &system->d_my_atoms,
             sizeof(reax_atom) * system->total_cap, __FILE__, __LINE__ );
     sHipMemsetAsync( system->d_my_atoms, FALSE,
-            sizeof(reax_atom) * system->total_cap, 
+            sizeof(reax_atom) * system->total_cap,
             control->hip_streams[0], __FILE__, __LINE__ );
     sHipMemcpyAsync( system->d_my_atoms, temp_atom, sizeof(reax_atom) * total_cap_old,
             hipMemcpyDeviceToDevice, control->hip_streams[0], __FILE__, __LINE__ );
     hipStreamSynchronize( control->hip_streams[0] );
+
+    temp = (int *) workspace->d_workspace->scratch[0];
 
     /* list management */
     sHipMemcpyAsync( temp, system->d_far_nbrs, sizeof(int) * total_cap_old,
@@ -233,24 +238,14 @@ static void Hip_Reallocate_System_Part2( reax_system *system, control_params *co
 }
 
 
-void Hip_Allocate_Control( control_params *control )
-{
-    sHipMalloc( (void **)&control->d_control_params,
-            sizeof(control_params), __FILE__, __LINE__ );
-    sHipMemcpyAsync( control->d_control_params, control,
-            sizeof(control_params), hipMemcpyHostToDevice,
-            control->hip_streams[0], __FILE__, __LINE__ );
-    hipStreamSynchronize( control->hip_streams[0] );
-}
-
-
-void Hip_Allocate_Grid( reax_system *system, control_params *control )
+void Hip_Allocate_Grid( reax_system * const system,
+        control_params const * const control )
 {
     int total;
 //    grid_cell local_cell;
     grid *host = &system->my_grid;
     grid *device = &system->d_my_grid;
-//    ivec *nbrs_x = (ivec *) workspace->scratch[0];
+//    ivec *nbrs_x = (ivec *) workspace->d_workspace->scratch[0];
 
     total = host->ncells[0] * host->ncells[1] * host->ncells[2];
     ivec_Copy( device->ncells, host->ncells );
@@ -329,7 +324,8 @@ void Hip_Allocate_Grid( reax_system *system, control_params *control )
 }
 
 
-void Hip_Deallocate_Grid_Cell_Atoms( reax_system *system, control_params *control )
+void Hip_Deallocate_Grid_Cell_Atoms( reax_system * const system,
+        control_params const * const control )
 {
     int i, total;
     grid_cell local_cell;
@@ -350,8 +346,8 @@ void Hip_Deallocate_Grid_Cell_Atoms( reax_system *system, control_params *contro
 }
 
 
-void Hip_Allocate_Grid_Cell_Atoms( reax_system *system, control_params *control,
-        int cap )
+void Hip_Allocate_Grid_Cell_Atoms( reax_system * const system,
+        control_params const *const control, int cap )
 {
     int i, total;
     grid_cell local_cell;
@@ -375,13 +371,14 @@ void Hip_Allocate_Grid_Cell_Atoms( reax_system *system, control_params *control,
 }
 
 
-void Hip_Allocate_System( reax_system *system, control_params *control )
+void Hip_Allocate_System( reax_system * const system,
+        control_params const * const control )
 {
     /* atoms */
     sHipMalloc( (void **) &system->d_my_atoms,
             system->total_cap * sizeof(reax_atom), __FILE__, __LINE__ );
     sHipMemsetAsync( system->d_my_atoms, FALSE,
-            system->total_cap * sizeof(reax_atom), 
+            system->total_cap * sizeof(reax_atom),
             control->hip_streams[0], __FILE__, __LINE__ );
     hipStreamSynchronize( control->hip_streams[0] );
     sHipMalloc( (void **) &system->d_num_H_atoms, sizeof(int), __FILE__, __LINE__ );
@@ -393,16 +390,12 @@ void Hip_Allocate_System( reax_system *system, control_params *control )
             system->total_cap * sizeof(int), __FILE__, __LINE__ );
     sHipMalloc( (void **) &system->d_total_far_nbrs,
             sizeof(int), __FILE__, __LINE__ );
-    sHipMalloc( (void **) &system->d_realloc_far_nbrs,
-            sizeof(int), __FILE__, __LINE__ );
 
     sHipMalloc( (void **) &system->d_bonds,
             system->total_cap * sizeof(int), __FILE__, __LINE__ );
     sHipMalloc( (void **) &system->d_max_bonds,
             system->total_cap * sizeof(int), __FILE__, __LINE__ );
     sHipMalloc( (void **) &system->d_total_bonds,
-            sizeof(int), __FILE__, __LINE__ );
-    sHipMalloc( (void **) &system->d_realloc_bonds,
             sizeof(int), __FILE__, __LINE__ );
 
     sHipMalloc( (void **) &system->d_hbonds,
@@ -411,16 +404,12 @@ void Hip_Allocate_System( reax_system *system, control_params *control )
             system->total_cap * sizeof(int), __FILE__, __LINE__ );
     sHipMalloc( (void **) &system->d_total_hbonds,
             sizeof(int), __FILE__, __LINE__ );
-    sHipMalloc( (void **) &system->d_realloc_hbonds,
-            sizeof(int), __FILE__, __LINE__ );
 
     sHipMalloc( (void **) &system->d_cm_entries,
             system->local_cap * sizeof(int), __FILE__, __LINE__ );
     sHipMalloc( (void **) &system->d_max_cm_entries,
             system->local_cap * sizeof(int), __FILE__, __LINE__ );
     sHipMalloc( (void **) &system->d_total_cm_entries,
-            sizeof(int), __FILE__, __LINE__ );
-    sHipMalloc( (void **) &system->d_realloc_cm_entries,
             sizeof(int), __FILE__, __LINE__ );
 
     sHipMalloc( (void **) &system->d_total_thbodies,
@@ -455,31 +444,24 @@ void Hip_Allocate_System( reax_system *system, control_params *control )
             SQR( SQR( system->reax_param.num_atom_types ) ) * sizeof(four_body_header),
             __FILE__, __LINE__ );
 
-    sHipMalloc( (void **) &system->reax_param.d_gp.l,
+    sHipMalloc( (void **) &system->reax_param.gp.d_l,
             system->reax_param.gp.n_global * sizeof(real),
             __FILE__, __LINE__ );
-
-    system->reax_param.d_gp.n_global = 0;
-    system->reax_param.d_gp.vdw_type = 0;
 }
 
 
-void Hip_Allocate_Simulation_Data( simulation_data *data, hipStream_t s )
+void Hip_Allocate_Simulation_Data( simulation_data * const data, hipStream_t s )
 {
-    sHipMalloc( (void **) &data->d_simulation_data,
-            sizeof(simulation_data), __FILE__, __LINE__ );
+    sHipMalloc( (void **) &data->d_my_ext_press,
+            sizeof(rvec), __FILE__, __LINE__ );
     sHipMalloc( (void **) &data->d_my_en,
-            sizeof(energy_data), __FILE__, __LINE__ );
-
-    sHipMemsetAsync( data->d_simulation_data, FALSE, sizeof(simulation_data),
-            s, __FILE__, __LINE__ );
-
+            sizeof(real) * E_N, __FILE__, __LINE__ );
     hipStreamSynchronize( s );
 }
 
 
-void Hip_Allocate_Workspace_Part1( reax_system *system, control_params *control, 
-        storage *workspace, int local_cap )
+void Hip_Allocate_Workspace_Part1( control_params const * const control, 
+        storage * const workspace, int local_cap )
 {
     int local_rvec;
 
@@ -518,8 +500,8 @@ void Hip_Allocate_Workspace_Part1( reax_system *system, control_params *control,
 }
 
 
-void Hip_Allocate_Workspace_Part2( reax_system *system, control_params *control, 
-        storage *workspace, int total_cap )
+void Hip_Allocate_Workspace_Part2( control_params const * const control, 
+        storage * const workspace, int total_cap )
 {
     int total_real, total_rvec;
 #if defined(DUAL_SOLVER)
@@ -555,8 +537,6 @@ void Hip_Allocate_Workspace_Part2( reax_system *system, control_params *control,
     {
         sHipMalloc( (void **) &workspace->Hdia_inv, total_real,
                 __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->Hdia_inv, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
     }
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
@@ -567,34 +547,20 @@ void Hip_Allocate_Workspace_Part2( reax_system *system, control_params *control,
                 __FILE__, __LINE__ );
     }
     sHipMalloc( (void **) &workspace->b_s, total_real, __FILE__, __LINE__ );
-    sHipMemsetAsync( workspace->b_s, FALSE, total_real, 
-            control->hip_streams[0], __FILE__, __LINE__ );
     sHipMalloc( (void **) &workspace->b_t, total_real, __FILE__, __LINE__ );
-    sHipMemsetAsync( workspace->b_t, FALSE, total_real, 
-            control->hip_streams[0], __FILE__, __LINE__ );
     sHipMalloc( (void **) &workspace->s, total_real, __FILE__, __LINE__ );
-    sHipMemsetAsync( workspace->s, FALSE, total_real, 
-            control->hip_streams[0], __FILE__, __LINE__ );
     sHipMalloc( (void **) &workspace->t, total_real, __FILE__, __LINE__ );
-    sHipMemsetAsync( workspace->t, FALSE, total_real, 
-            control->hip_streams[0], __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
     sHipMalloc( (void **) &workspace->b, total_rvec2, __FILE__, __LINE__ );
-    sHipMemsetAsync( workspace->b, FALSE, total_rvec2, 
-            control->hip_streams[0], __FILE__, __LINE__ );
     sHipMalloc( (void **) &workspace->x, total_rvec2, __FILE__, __LINE__ );
-    sHipMemsetAsync( workspace->x, FALSE, total_rvec2, 
-            control->hip_streams[0], __FILE__, __LINE__ );
 #endif
 
     switch ( control->cm_solver_type )
     {
     case GMRES_S:
     case GMRES_H_S:
-        sHipMalloc( (void **) &workspace->b_prc,
-                total_real, __FILE__, __LINE__ );
-        sHipMalloc( (void **) &workspace->b_prm,
-                total_real, __FILE__, __LINE__ );
+        sHipMalloc( (void **) &workspace->b_prc, total_real, __FILE__, __LINE__ );
+        sHipMalloc( (void **) &workspace->b_prm, total_real, __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->y,
                 (control->cm_solver_restart + 1) * sizeof(real), __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->z,
@@ -613,236 +579,96 @@ void Hip_Allocate_Workspace_Part2( reax_system *system, control_params *control,
 
     case SDM_S:
         sHipMalloc( (void **) &workspace->r, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->r, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->d, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->d, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->q, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->q, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->p, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->p, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
         sHipMalloc( (void **) &workspace->r2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->r2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->d2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->d2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->q2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->q2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->p2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->p2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
 #endif
         break;
 
     case CG_S:
         sHipMalloc( (void **) &workspace->r, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->r, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->d, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->d, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->q, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->q, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->p, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->p, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
         sHipMalloc( (void **) &workspace->r2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->r2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->d2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->d2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->q2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->q2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->p2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->p2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
 #endif
         break;
 
     case BiCGStab_S:
         sHipMalloc( (void **) &workspace->y, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->y, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->g, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->g, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->z, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->z, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->r, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->r, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->d, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->d, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->q, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->q, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->p, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->p, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->r_hat, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->r_hat, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->q_hat, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->q_hat, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
         sHipMalloc( (void **) &workspace->y2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->y2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->g2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->g2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->z2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->z2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->r2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->r2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->d2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->d2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->q2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->q2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->p2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->p2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->r_hat2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->r_hat2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->q_hat2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->q_hat2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
 #endif
         break;
 
     case PIPECG_S:
         sHipMalloc( (void **) &workspace->z, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->z, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->r, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->r, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->d, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->d, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->q, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->q, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->p, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->p, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->m, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->m, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->n, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->n, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->u, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->u, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->w, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->w, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
         sHipMalloc( (void **) &workspace->z2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->z2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->r2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->r2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->d2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->d2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->q2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->q2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->p2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->p2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->m2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->m2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->n2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->n2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->u2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->u2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->w2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->w2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
 #endif
         break;
 
     case PIPECR_S:
         sHipMalloc( (void **) &workspace->z, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->z, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->r, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->r, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->d, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->d, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->q, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->q, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->p, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->p, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->m, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->m, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->n, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->n, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->u, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->u, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->w, total_real, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->w, FALSE, total_real, 
-                control->hip_streams[0], __FILE__, __LINE__ );
 #if defined(DUAL_SOLVER)
         sHipMalloc( (void **) &workspace->z2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->z2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->r2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->r2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->d2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->d2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->q2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->q2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->p2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->p2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->m2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->m2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->n2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->n2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->u2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->u2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
         sHipMalloc( (void **) &workspace->w2, total_rvec2, __FILE__, __LINE__ );
-        sHipMemsetAsync( workspace->w2, FALSE, total_rvec2, 
-                control->hip_streams[0], __FILE__, __LINE__ );
 #endif
         break;
 
@@ -855,12 +681,26 @@ void Hip_Allocate_Workspace_Part2( reax_system *system, control_params *control,
     hipStreamSynchronize( control->hip_streams[0] );
 
     /* force related storage */
-    sHipMalloc( (void **) &workspace->f, total_rvec, __FILE__, __LINE__ );
     sHipMalloc( (void **) &workspace->CdDelta, total_real, __FILE__, __LINE__ );
+    sHipMalloc( (void **) &workspace->f, total_rvec, __FILE__, __LINE__ );
+#if !defined(GPU_STREAM_SINGLE_ACCUM)
+    sHipMalloc( (void **) &workspace->CdDelta_bonds, total_real, __FILE__, __LINE__ );
+    sHipMalloc( (void **) &workspace->CdDelta_multi, total_real, __FILE__, __LINE__ );
+    sHipMalloc( (void **) &workspace->CdDelta_tor, total_real, __FILE__, __LINE__ );
+    sHipMalloc( (void **) &workspace->f_hb, total_rvec, __FILE__, __LINE__ );
+#if defined(FUSED_VDW_COULOMB)
+    sHipMalloc( (void **) &workspace->f_vdw_clmb, total_rvec, __FILE__, __LINE__ );
+#else
+    sHipMalloc( (void **) &workspace->f_vdw, total_rvec, __FILE__, __LINE__ );
+    sHipMalloc( (void **) &workspace->f_clmb, total_rvec, __FILE__, __LINE__ );
+#endif
+    sHipMalloc( (void **) &workspace->f_tor, total_rvec, __FILE__, __LINE__ );
+#endif
 }
 
 
-void Hip_Deallocate_Workspace_Part1( control_params *control, storage *workspace )
+void Hip_Deallocate_Workspace_Part1( control_params const * const control,
+        storage * const workspace )
 {
     /* Nose-Hoover integrator */
     if ( control->ensemble == nhNVT )
@@ -891,7 +731,8 @@ void Hip_Deallocate_Workspace_Part1( control_params *control, storage *workspace
 }
 
 
-void Hip_Deallocate_Workspace_Part2( control_params *control, storage *workspace )
+void Hip_Deallocate_Workspace_Part2( control_params const * const control,
+        storage * const workspace )
 {
     /* bond order related storage  */
     sHipFree( workspace->total_bond_order, __FILE__, __LINE__ );
@@ -1049,8 +890,21 @@ void Hip_Deallocate_Workspace_Part2( control_params *control, storage *workspace
     }
 
     /* force related storage */
-    sHipFree( workspace->f, __FILE__, __LINE__ );
     sHipFree( workspace->CdDelta, __FILE__, __LINE__ );
+    sHipFree( workspace->f, __FILE__, __LINE__ );
+#if !defined(GPU_STREAM_SINGLE_ACCUM)
+    sHipFree( workspace->CdDelta_bonds, __FILE__, __LINE__ );
+    sHipFree( workspace->CdDelta_multi, __FILE__, __LINE__ );
+    sHipFree( workspace->CdDelta_tor, __FILE__, __LINE__ );
+    sHipFree( workspace->f_hb, __FILE__, __LINE__ );
+#if defined(FUSED_VDW_COULOMB)
+    sHipFree( workspace->f_vdw_clmb, __FILE__, __LINE__ );
+#else
+    sHipFree( workspace->f_vdw, __FILE__, __LINE__ );
+    sHipFree( workspace->f_clmb, __FILE__, __LINE__ );
+#endif
+    sHipFree( workspace->f_tor, __FILE__, __LINE__ );
+#endif
 }
 
 
@@ -1078,7 +932,7 @@ void Hip_Allocate_Matrix( sparse_matrix * const H, int n, int n_max, int m,
 }
 
 
-void Hip_Deallocate_Matrix( sparse_matrix *H )
+void Hip_Deallocate_Matrix( sparse_matrix * const H )
 {
     H->allocated = FALSE;
     H->n = 0;
@@ -1092,20 +946,21 @@ void Hip_Deallocate_Matrix( sparse_matrix *H )
 }
 
 
-void Hip_Reallocate_Part1( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace, reax_list **lists,
-        mpi_datatypes *mpi_data )
+void Hip_Reallocate_Part1( reax_system * const system,
+        control_params const * const control,
+        simulation_data * const data, storage * const workspace,
+        reax_list ** const lists, mpi_datatypes * const mpi_data )
 {
     int i, j, k, renbr;
-    reallocate_data *realloc;
+    int *realloc;
     grid *g;
 
-    realloc = workspace->d_workspace->realloc;
+    realloc = workspace->realloc;
     g = &system->my_grid;
     renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
 
     /* grid */
-    if ( renbr == TRUE && realloc->gcell_atoms > -1 )
+    if ( renbr == TRUE && realloc[RE_GCELL_ATOMS] > -1 )
     {
         for ( i = g->native_str[0]; i < g->native_end[0]; i++ )
         {
@@ -1115,7 +970,7 @@ void Hip_Reallocate_Part1( reax_system *system, control_params *control,
                 {
                     sfree( g->cells[ index_grid_3d(i,j,k,g) ].atoms, __FILE__, __LINE__ );
                     g->cells[ index_grid_3d(i,j,k,g) ].atoms = (int *)
-                            scalloc( realloc->gcell_atoms, sizeof(int), __FILE__, __LINE__ );
+                            scalloc( realloc[RE_GCELL_ATOMS], sizeof(int), __FILE__, __LINE__ );
                 }
             }
         }
@@ -1123,21 +978,22 @@ void Hip_Reallocate_Part1( reax_system *system, control_params *control,
         fprintf( stderr, "p:%d - *** Reallocating Grid Cell Atoms *** Step:%d\n", system->my_rank, data->step );
 
 //        Hip_Deallocate_Grid_Cell_Atoms( system );
-//        Hip_Allocate_Grid_Cell_Atoms( system, realloc->gcell_atoms );
-        realloc->gcell_atoms = -1;
+//        Hip_Allocate_Grid_Cell_Atoms( system, realloc[RE_GCELL_ATOMS] );
+        realloc[RE_GCELL_ATOMS] = -1;
     }
 }
 
 
-void Hip_Reallocate_Part2( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace, reax_list **lists,
-        mpi_datatypes *mpi_data )
+void Hip_Reallocate_Part2( reax_system * const system,
+        control_params const * const control,
+        simulation_data * const data, storage * const workspace,
+        reax_list ** const lists, mpi_datatypes * const mpi_data )
 {
     int nflag, Nflag, local_cap_old, total_cap_old, renbr, format;
-    reallocate_data *realloc;
+    int *realloc;
     sparse_matrix *H;
 
-    realloc = workspace->d_workspace->realloc;
+    realloc = workspace->realloc;
     H = &workspace->d_workspace->H;
     renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
 
@@ -1164,8 +1020,8 @@ void Hip_Reallocate_Part2( reax_system *system, control_params *control,
     {
         Hip_Reallocate_System_Part1( system, control, workspace, local_cap_old );
 
-        Hip_Deallocate_Workspace_Part1( control, workspace );
-        Hip_Allocate_Workspace_Part1( system, control, workspace,
+        Hip_Deallocate_Workspace_Part1( control, workspace->d_workspace );
+        Hip_Allocate_Workspace_Part1( control, workspace->d_workspace,
                 system->local_cap );
     }
 
@@ -1173,22 +1029,22 @@ void Hip_Reallocate_Part2( reax_system *system, control_params *control,
     {
         Hip_Reallocate_System_Part2( system, control, workspace, total_cap_old );
 
-        Hip_Deallocate_Workspace_Part2( control, workspace );
-        Hip_Allocate_Workspace_Part2( system, control, workspace,
+        Hip_Deallocate_Workspace_Part2( control, workspace->d_workspace );
+        Hip_Allocate_Workspace_Part2( control, workspace->d_workspace,
                 system->total_cap );
     }
 
     /* far neighbors */
-    if ( renbr == TRUE && (Nflag == TRUE || realloc->far_nbrs == TRUE) )
+    if ( renbr == TRUE && (Nflag == TRUE || realloc[RE_FAR_NBRS] == TRUE) )
     {
         Hip_Reallocate_List( lists[FAR_NBRS], system->total_cap,
                 system->total_far_nbrs, TYP_FAR_NEIGHBOR );
         Hip_Init_Neighbor_Indices( system, control, lists[FAR_NBRS] );
-        realloc->far_nbrs = FALSE;
+        realloc[RE_FAR_NBRS] = FALSE;
     }
 
     /* charge matrix */
-    if ( nflag == TRUE || realloc->cm == TRUE )
+    if ( nflag == TRUE || realloc[RE_CM] == TRUE )
     {
         format = H->format;
 
@@ -1196,34 +1052,34 @@ void Hip_Reallocate_Part2( reax_system *system, control_params *control,
         Hip_Allocate_Matrix( H, system->n, system->local_cap,
                 system->total_cm_entries, format, control->hip_streams[0] );
 
-        realloc->cm = FALSE;
+        realloc[RE_CM] = FALSE;
     }
 
     /* bonds list */
-    if ( Nflag == TRUE || realloc->bonds == TRUE )
+    if ( Nflag == TRUE || realloc[RE_BONDS] == TRUE )
     {
         Hip_Reallocate_List( lists[BONDS], system->total_cap,
                 system->total_bonds, TYP_BOND );
 
-        realloc->bonds = FALSE;
+        realloc[RE_BONDS] = FALSE;
     }
 
     /* hydrogen bonds list */
     if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0
-            && (Nflag == TRUE || realloc->hbonds == TRUE) )
+            && (Nflag == TRUE || realloc[RE_HBONDS] == TRUE) )
     {
         Hip_Reallocate_List( lists[HBONDS], system->total_cap,
                 system->total_hbonds, TYP_HBOND );
 
-        realloc->hbonds = FALSE;
+        realloc[RE_HBONDS] = FALSE;
     }
 
     /* 3-body list */
-    if ( Nflag == TRUE || realloc->thbody == TRUE )
+    if ( Nflag == TRUE || realloc[RE_THBODY] == TRUE )
     {
         Hip_Reallocate_List( lists[THREE_BODIES], system->total_thbodies_indices,
                 system->total_thbodies, TYP_THREE_BODY );
 
-        realloc->thbody = FALSE;
+        realloc[RE_THBODY] = FALSE;
     }
 }

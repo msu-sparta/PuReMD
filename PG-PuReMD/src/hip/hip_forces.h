@@ -18,7 +18,7 @@ void Hip_Init_Sparse_Matrix_Indices( reax_system * const, sparse_matrix * const,
 
 void Hip_Init_Three_Body_Indices( int *, int, reax_list ** );
 
-void Hip_Estimate_Storages( reax_system * const, control_params * const,
+void Hip_Estimate_Storages( reax_system * const, control_params const * const,
         simulation_data * const, storage * const, reax_list ** const,
         int, int, int, int );
 

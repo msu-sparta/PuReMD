@@ -8,8 +8,8 @@
 
 
 /* Copy grid info from host to device */
-extern "C" void Hip_Copy_Grid_Host_to_Device( control_params *control,
-        grid *host, grid *device )
+extern "C" void Hip_Copy_Grid_Host_to_Device( control_params const * const control,
+        grid const * const host, grid * const device )
 {
     int total;
 
@@ -51,7 +51,8 @@ extern "C" void Hip_Copy_Grid_Host_to_Device( control_params *control,
 
 
 /* Copy atom info from host to device */
-extern "C" void Hip_Copy_Atoms_Host_to_Device( reax_system *system, control_params *control )
+extern "C" void Hip_Copy_Atoms_Host_to_Device( reax_system * const system,
+        control_params const * const control )
 {
     sHipMemcpyAsync( system->d_my_atoms, system->my_atoms, sizeof(reax_atom) * system->N,
             hipMemcpyHostToDevice, control->hip_streams[0], __FILE__, __LINE__ );
@@ -83,17 +84,15 @@ extern "C" void Hip_Copy_Matrix_Host_to_Device( sparse_matrix const * const A,
 
 
 /* Copy atomic system info from host to device */
-extern "C" void Hip_Copy_System_Host_to_Device( reax_system *system,
-        control_params *control )
+extern "C" void Hip_Copy_System_Host_to_Device( reax_system * const system,
+        control_params const * const control )
 {
     Hip_Copy_Atoms_Host_to_Device( system, control );
 
-    sHipMemcpyAsync( system->d_my_box, &system->my_box,
-            sizeof(simulation_box),
+    sHipMemcpyAsync( system->d_my_box, &system->my_box, sizeof(simulation_box),
             hipMemcpyHostToDevice, control->hip_streams[0], __FILE__, __LINE__ );
 
-    sHipMemcpyAsync( system->d_my_ext_box, &system->my_ext_box,
-            sizeof(simulation_box),
+    sHipMemcpyAsync( system->d_my_ext_box, &system->my_ext_box, sizeof(simulation_box),
             hipMemcpyHostToDevice, control->hip_streams[0], __FILE__, __LINE__ );
 
     sHipMemcpyAsync( system->reax_param.d_sbp, system->reax_param.sbp,
@@ -112,14 +111,11 @@ extern "C" void Hip_Copy_System_Host_to_Device( reax_system *system,
             sizeof(four_body_header) * POW(system->reax_param.num_atom_types, 4),
             hipMemcpyHostToDevice, control->hip_streams[0], __FILE__, __LINE__ );
 
-    sHipMemcpyAsync( system->reax_param.d_gp.l, system->reax_param.gp.l,
+    sHipMemcpyAsync( system->reax_param.gp.d_l, system->reax_param.gp.l,
             sizeof(real) * system->reax_param.gp.n_global,
             hipMemcpyHostToDevice, control->hip_streams[0], __FILE__, __LINE__ );
 
     hipStreamSynchronize( control->hip_streams[0] );
-
-    system->reax_param.d_gp.n_global = system->reax_param.gp.n_global; 
-    system->reax_param.d_gp.vdw_type = system->reax_param.gp.vdw_type; 
 }
 
 
@@ -159,17 +155,13 @@ extern "C" void Hip_Copy_Matrix_Device_to_Host( sparse_matrix * const A,
 
 /* Copy simulation data from device to host */
 extern "C" void Hip_Copy_Simulation_Data_Device_to_Host( control_params const * const control,
-        simulation_data * const data, simulation_data * const d_data )
+        simulation_data * const data )
 {
-    sHipMemcpyAsync( data->my_en, data->d_my_en, sizeof(energy_data), 
+    sHipMemcpyAsync( data->my_en, data->d_my_en, sizeof(real) * (E_N - 3),
             hipMemcpyDeviceToHost, control->hip_streams[0], __FILE__, __LINE__ );
     if ( control->virial == 1 )
     {
-        sHipMemcpyAsync( &data->kin_press, &d_data->kin_press, sizeof(real), 
-                hipMemcpyDeviceToHost, control->hip_streams[0], __FILE__, __LINE__ );
-        sHipMemcpyAsync( data->int_press, d_data->int_press, sizeof(rvec), 
-                hipMemcpyDeviceToHost, control->hip_streams[0], __FILE__, __LINE__ );
-        sHipMemcpyAsync( data->ext_press, d_data->ext_press, sizeof(rvec), 
+        sHipMemcpyAsync( data->my_ext_press, data->d_my_ext_press, sizeof(rvec), 
                 hipMemcpyDeviceToHost, control->hip_streams[0], __FILE__, __LINE__ );
     }
 
@@ -179,8 +171,8 @@ extern "C" void Hip_Copy_Simulation_Data_Device_to_Host( control_params const * 
 
 /* Copy interaction lists from device to host,
  * with allocation for the host list */
-extern "C" void Hip_Copy_List_Device_to_Host( control_params *control,
-        reax_list *host_list, reax_list *device_list, int type )
+extern "C" void Hip_Copy_List_Device_to_Host( control_params const * const control,
+        reax_list * const host_list, reax_list * const device_list, int type )
 {
     int format;
 
@@ -195,7 +187,7 @@ extern "C" void Hip_Copy_List_Device_to_Host( control_params *control,
     }
     Make_List( device_list->n, device_list->max_intrs, type, format, host_list );
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     fprintf( stderr, " [INFO] trying to copy %d list from device to host\n", type );
 #endif
 
@@ -224,18 +216,34 @@ extern "C" void Hip_Copy_List_Device_to_Host( control_params *control,
             break;
 
         case TYP_BOND:
+            //TODO: update for bond_list_gpu (convert between data struct formats)
             sHipMemcpyAsync( host_list->bond_list, device_list->bond_list,
                     sizeof(bond_data) * device_list->max_intrs,
                     hipMemcpyDeviceToHost, control->hip_streams[0], __FILE__, __LINE__ );
             break;
 
         case TYP_HBOND:
-            sHipMemcpyAsync( host_list->hbond_list, device_list->hbond_list,
-                    sizeof(hbond_data) * device_list->max_intrs,
+            sHipMemcpyAsync( host_list->hbond_list.nbr, device_list->hbond_list.nbr,
+                    sizeof(int) * device_list->max_intrs,
                     hipMemcpyDeviceToHost, control->hip_streams[0], __FILE__, __LINE__ );
+            sHipMemcpyAsync( host_list->hbond_list.scl, device_list->hbond_list.scl,
+                    sizeof(int) * device_list->max_intrs,
+                    hipMemcpyDeviceToHost, control->hip_streams[0], __FILE__, __LINE__ );
+            sHipMemcpyAsync( host_list->hbond_list.ptr, device_list->hbond_list.ptr,
+                    sizeof(int) * device_list->max_intrs,
+                    hipMemcpyDeviceToHost, control->hip_streams[0], __FILE__, __LINE__ );
+#if (defined(HAVE_CUDA) || defined(HAVE_HIP)) && !defined(GPU_KERNEL_ATOMIC)
+//            sHipMemcpyAsync( host_list->hbond_list.sym_index, device_list->hbond_list.sym_index,
+//                    sizeof(int) * device_list->max_intrs,
+//                    hipMemcpyDeviceToHost, control->hip_streams[0], __FILE__, __LINE__ );
+//            sHipMemcpyAsync( host_list->hbond_list.f_hb, device_list->hbond_list.f_hb,
+//                    sizeof(int) * device_list->max_intrs,
+//                    hipMemcpyDeviceToHost, control->hip_streams[0], __FILE__, __LINE__ );
+#endif
             break;
 
         case TYP_THREE_BODY:
+            //TODO: update for three_body_list_gpu (convert between data struct formats)
             sHipMemcpyAsync( host_list->three_body_list,
                     device_list->three_body_list,
                     sizeof(three_body_interaction_data ) * device_list->max_intrs,
@@ -253,8 +261,8 @@ extern "C" void Hip_Copy_List_Device_to_Host( control_params *control,
 }
 
 /* Copy atom info from device to host */
-extern "C" void Hip_Copy_MPI_Data_Host_to_Device( control_params *control,
-        mpi_datatypes *mpi_data )
+extern "C" void Hip_Copy_MPI_Data_Host_to_Device( control_params const * const control,
+        mpi_datatypes * const mpi_data )
 {
     sHipCheckMalloc( &mpi_data->d_in1_buffer, &mpi_data->d_in1_buffer_size,
             mpi_data->in1_buffer_size, __FILE__, __LINE__ );

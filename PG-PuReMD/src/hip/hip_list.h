@@ -30,9 +30,9 @@
 extern "C" {
 #endif
 
-void Hip_Make_List( int, int, int, reax_list * );
+void Hip_Make_List( int, int, int, reax_list * const );
 
-void Hip_Delete_List( reax_list * );
+void Hip_Delete_List( reax_list * const );
 
 #ifdef __cplusplus
 }

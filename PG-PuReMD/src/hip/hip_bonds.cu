@@ -24,7 +24,9 @@
 
 #include "hip_list.h"
 #include "hip_helpers.h"
-#include "hip_reduction.h"
+#if !defined(GPU_ATOMIC_EV)
+  #include "hip_reduction.h"
+#endif
 #include "hip_utils.h"
 
 #include "../index_utils.h"
@@ -32,24 +34,19 @@
 #include <hipcub/warp/warp_reduce.hpp>
 
 
-GPU_GLOBAL void k_bonds( reax_atom *my_atoms, global_parameters gp, 
-        single_body_parameters *sbp, two_body_parameters *tbp, 
-        storage p_workspace, reax_list p_bond_list, int n, int num_atom_types, 
-        real *e_bond_g )
+GPU_GLOBAL void k_bonds( reax_atom const * const my_atoms, real const * const gp_l, 
+        single_body_parameters const * const sbp, two_body_parameters const * const tbp, 
+        real const * const total_bond_order, real const * const Delta, real * const CdDelta,
+        reax_list bond_list, int n, int num_atom_types, real * const e_bond_g )
 {
-    int i, j, pj;
+    int i, j, pj, orig_id_i;
     int start_i, end_i;
     int type_i, type_j;
     real pow_BOs_be2, exp_be12, CEbo, e_bond_;
-    real gp3, gp4, gp7, gp10;
     real exphu, exphua1, exphub1, exphuov, hulpov;
     real decobdbo, decobdboua, decobdboub;
-    real CdDelta_i;
-    single_body_parameters *sbp_i, *sbp_j;
-    two_body_parameters *twbp;
-    bond_order_data *bo_ij;
-    reax_list *bond_list;
-    storage *workspace;
+    real total_bond_order_i, Delta_i, CdDelta_i, Cdbo_ij;
+#define BL (bond_list.bond_list_gpu)
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -58,110 +55,116 @@ GPU_GLOBAL void k_bonds( reax_atom *my_atoms, global_parameters gp,
         return;
     }
 
-    bond_list = &p_bond_list;
-    workspace = &p_workspace;
-    gp3 = gp.l[3];
-    gp4 = gp.l[4];
-    gp7 = gp.l[7];
-    gp10 = gp.l[10];
+    const real gp3 = gp_l[3];
+    const real gp4 = gp_l[4];
+    const real gp7 = gp_l[7];
+    const real gp10 = gp_l[10];
     e_bond_ = 0.0;
+    orig_id_i = my_atoms[i].orig_id;
+    total_bond_order_i = total_bond_order[i];
+    Delta_i = Delta[i];
     CdDelta_i = 0.0;
 
-    start_i = Start_Index( i, bond_list );
-    end_i = End_Index( i, bond_list );
+    start_i = Start_Index( i, &bond_list );
+    end_i = End_Index( i, &bond_list );
+    type_i = my_atoms[i].type;
+    const int flag_i_C = Hip_strncmp( sbp[type_i].name, "C", sizeof(sbp[type_i].name) );
+    const int flag_i_O = Hip_strncmp( sbp[type_i].name, "O", sizeof(sbp[type_i].name) );
 
     for ( pj = start_i; pj < end_i; ++pj )
     {
-        j = bond_list->bond_list[pj].nbr;
+        j = BL.nbr[pj];
 
-        if ( my_atoms[i].orig_id <= my_atoms[j].orig_id )
+        if ( orig_id_i <= my_atoms[j].orig_id )
         {
-            type_i = my_atoms[i].type;
             type_j = my_atoms[j].type;
-            sbp_i = &sbp[type_i];
-            sbp_j = &sbp[type_j];
-            twbp = &tbp[ index_tbp(type_i,type_j, num_atom_types) ];
-            bo_ij = &bond_list->bond_list[pj].bo_data;
+            two_body_parameters const * const twbp = &tbp[ index_tbp(type_i, type_j, num_atom_types) ];
 
-            pow_BOs_be2 = POW( bo_ij->BO_s, twbp->p_be2 );
+            pow_BOs_be2 = POW( BL.BO_s[pj], twbp->p_be2 );
             exp_be12 = EXP( twbp->p_be1 * ( 1.0 - pow_BOs_be2 ) );
             CEbo = -twbp->De_s * exp_be12
                 * (1.0 - twbp->p_be1 * twbp->p_be2 * pow_BOs_be2);
 
             /* calculate bond energy */
-            e_bond_ += -twbp->De_s * bo_ij->BO_s * exp_be12
-                - twbp->De_p * bo_ij->BO_pi
-                - twbp->De_pp * bo_ij->BO_pi2;
+            e_bond_ += -twbp->De_s * BL.BO_s[pj] * exp_be12
+                - twbp->De_p * BL.BO_pi[pj]
+                - twbp->De_pp * BL.BO_pi2[pj];
 
             /* calculate derivatives of bond orders */
-            atomicAdd( &bo_ij->Cdbo, CEbo );
-            atomicAdd( &bo_ij->Cdbopi, -1.0 * (CEbo + twbp->De_p) );
-            atomicAdd( &bo_ij->Cdbopi2, -1.0 * (CEbo + twbp->De_pp) );
+            Cdbo_ij = CEbo;
+#if defined(GPU_STREAM_SINGLE_ACCUM)
+            atomicAdd( &BL.Cdbopi[pj], -1.0 * (CEbo + twbp->De_p) );
+            atomicAdd( &BL.Cdbopi2[pj], -1.0 * (CEbo + twbp->De_pp) );
+#else
+            BL.Cdbopi_bonds[pj] = -1.0 * (CEbo + twbp->De_p);
+            BL.Cdbopi2_bonds[pj] = -1.0 * (CEbo + twbp->De_pp);
+#endif
 
             /* Stabilisation terminal triple bond */
-            if ( bo_ij->BO >= 1.00 )
+            if ( BL.BO[pj] >= 1.00 )
             {
-                if ( (Hip_strncmp( sbp_i->name, "C", sizeof(sbp_i->name) ) == 0
-                            && Hip_strncmp( sbp_j->name, "O", sizeof(sbp_j->name) ) == 0)
-                        || (Hip_strncmp( sbp_i->name, "O", sizeof(sbp_i->name) ) == 0
-                            && Hip_strncmp( sbp_j->name, "C", sizeof(sbp_j->name) ) == 0) )
+                if ( (flag_i_C == 0 && Hip_strncmp( sbp[type_j].name, "O", sizeof(sbp[type_j].name) ) == 0)
+                        || (flag_i_O == 0 && Hip_strncmp( sbp[type_j].name, "C", sizeof(sbp[type_j].name) ) == 0) )
                 {
-                    //ba = SQR( bo_ij->BO - 2.5 );
-                    exphu = EXP( -gp7 * SQR(bo_ij->BO - 2.5) );
+                    //ba = SQR( BL.BO[pj] - 2.5 );
+                    exphu = EXP( -gp7 * SQR(BL.BO[pj] - 2.5) );
                     //oboa = abo(j1) - boa;
                     //obob = abo(j2) - boa;
-                    exphua1 = EXP(-gp3 * (workspace->total_bond_order[i] - bo_ij->BO));
-                    exphub1 = EXP(-gp3 * (workspace->total_bond_order[j] - bo_ij->BO));
+                    exphua1 = EXP(-gp3 * (total_bond_order_i - BL.BO[pj]));
+                    exphub1 = EXP(-gp3 * (total_bond_order[j] - BL.BO[pj]));
                     //ovoab = abo(j1) - aval(it1) + abo(j2) - aval(it2);
-                    exphuov = EXP(gp4 * (workspace->Delta[i] + workspace->Delta[j]));
+                    exphuov = EXP(gp4 * (Delta_i + Delta[j]));
                     hulpov = 1.0 / (1.0 + 25.0 * exphuov);
 
                     e_bond_ += gp10 * exphu * hulpov * (exphua1 + exphub1);
 
                     decobdbo = gp10 * exphu * hulpov * (exphua1 + exphub1)
-                        * ( gp3 - 2.0 * gp7 * (bo_ij->BO - 2.5) );
+                        * ( gp3 - 2.0 * gp7 * (BL.BO[pj] - 2.5) );
                     decobdboua = -gp10 * exphu * hulpov
                         * (gp3 * exphua1 + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
                     decobdboub = -gp10 * exphu * hulpov
                         * (gp3 * exphub1 + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
 
-                    atomicAdd( &bo_ij->Cdbo, decobdbo );
+                    Cdbo_ij += decobdbo;
                     CdDelta_i += decobdboua;
-                    atomicAdd( &workspace->CdDelta[j], decobdboub );
+                    atomicAdd( &CdDelta[j], decobdboub );
                 }
             }
+
+#if defined(GPU_STREAM_SINGLE_ACCUM)
+            atomicAdd( &BL.Cdbo[pj], Cdbo_ij );
+#else
+            BL.Cdbo_bonds[pj] = Cdbo_ij;
+#endif
         }
     }
 
-    atomicAdd( &workspace->CdDelta[i], CdDelta_i );
+    atomicAdd( &CdDelta[i], CdDelta_i );
 
-#if !defined(GPU_ACCUM_ATOMIC)
-    e_bond_g[i] = e_bond_;
-#else
+#if defined(GPU_ATOMIC_EV)
     atomicAdd( (double *) e_bond_g, (double) e_bond_ );
+#else
+    e_bond_g[i] = e_bond_;
 #endif
+
+#undef BL
 }
 
 
-GPU_GLOBAL void k_bonds_opt( reax_atom *my_atoms, global_parameters gp, 
-        single_body_parameters *sbp, two_body_parameters *tbp, 
-        storage p_workspace, reax_list p_bond_list, int n, int num_atom_types, 
-        real *e_bond_g )
+GPU_GLOBAL void k_bonds_opt( reax_atom const * const my_atoms, real const * const gp_l, 
+        single_body_parameters const * const sbp, two_body_parameters const * const tbp, 
+        real const * const total_bond_order, real const * const Delta, real * const CdDelta,
+        reax_list bond_list, int n, int num_atom_types, real *e_bond_g )
 {
     extern __shared__ hipcub::WarpReduce<double>::TempStorage temp_d[];
-    int i, j, pj, thread_id, warp_id, lane_id, itr;;
+    int i, j, pj, orig_id_i, thread_id, warp_id, lane_id, itr;
     int start_i, end_i;
     int type_i, type_j;
     real pow_BOs_be2, exp_be12, CEbo, e_bond_;
-    real gp3, gp4, gp7, gp10;
     real exphu, exphua1, exphub1, exphuov, hulpov;
     real decobdbo, decobdboua, decobdboub;
-    real CdDelta_i;
-    single_body_parameters *sbp_i, *sbp_j;
-    two_body_parameters *twbp;
-    bond_order_data *bo_ij;
-    reax_list *bond_list;
-    storage *workspace;
+    real total_bond_order_i, Delta_i, CdDelta_i, Cdbo_ij;
+#define BL (bond_list.bond_list_gpu)
 
     thread_id = blockIdx.x * blockDim.x + threadIdx.x;
     /* all threads within a warp are assigned the interactions
@@ -175,80 +178,89 @@ GPU_GLOBAL void k_bonds_opt( reax_atom *my_atoms, global_parameters gp,
 
     warp_id = threadIdx.x / warpSize;
     lane_id = thread_id % warpSize;
-    bond_list = &p_bond_list;
-    workspace = &p_workspace;
-    gp3 = gp.l[3];
-    gp4 = gp.l[4];
-    gp7 = gp.l[7];
-    gp10 = gp.l[10];
+    const real gp3 = gp_l[3];
+    const real gp4 = gp_l[4];
+    const real gp7 = gp_l[7];
+    const real gp10 = gp_l[10];
     e_bond_ = 0.0;
+    orig_id_i = my_atoms[i].orig_id;
+    total_bond_order_i = total_bond_order[i];
+    Delta_i = Delta[i];
     CdDelta_i = 0.0;
 
-    start_i = Start_Index( i, bond_list );
-    end_i = End_Index( i, bond_list );
+    start_i = Start_Index( i, &bond_list );
+    end_i = End_Index( i, &bond_list );
+    type_i = my_atoms[i].type;
+    const int flag_i_C = Hip_strncmp( sbp[type_i].name, "C", sizeof(sbp[type_i].name) );
+    const int flag_i_O = Hip_strncmp( sbp[type_i].name, "O", sizeof(sbp[type_i].name) );
 
     for ( itr = 0, pj = start_i + lane_id; itr < (end_i - start_i + warpSize - 1) / warpSize; ++itr )
     {
         if ( pj < end_i )
         {
-            j = bond_list->bond_list[pj].nbr;
+            j = BL.nbr[pj];
 
-            if ( my_atoms[i].orig_id <= my_atoms[j].orig_id )
+            if ( orig_id_i <= my_atoms[j].orig_id )
             {
-                type_i = my_atoms[i].type;
                 type_j = my_atoms[j].type;
-                sbp_i = &sbp[type_i];
-                sbp_j = &sbp[type_j];
-                twbp = &tbp[ index_tbp(type_i,type_j, num_atom_types) ];
-                bo_ij = &bond_list->bond_list[pj].bo_data;
+                two_body_parameters const * const twbp = &tbp[ index_tbp(type_i, type_j, num_atom_types) ];
 
-                pow_BOs_be2 = POW( bo_ij->BO_s, twbp->p_be2 );
+                pow_BOs_be2 = POW( BL.BO_s[pj], twbp->p_be2 );
                 exp_be12 = EXP( twbp->p_be1 * ( 1.0 - pow_BOs_be2 ) );
                 CEbo = -twbp->De_s * exp_be12
                     * (1.0 - twbp->p_be1 * twbp->p_be2 * pow_BOs_be2);
 
                 /* calculate bond energy */
-                e_bond_ += -twbp->De_s * bo_ij->BO_s * exp_be12
-                    - twbp->De_p * bo_ij->BO_pi
-                    - twbp->De_pp * bo_ij->BO_pi2;
+                e_bond_ += -twbp->De_s * BL.BO_s[pj] * exp_be12
+                    - twbp->De_p * BL.BO_pi[pj]
+                    - twbp->De_pp * BL.BO_pi2[pj];
 
                 /* calculate derivatives of bond orders */
-                atomicAdd( &bo_ij->Cdbo, CEbo );
-                atomicAdd( &bo_ij->Cdbopi, -1.0 * (CEbo + twbp->De_p) );
-                atomicAdd( &bo_ij->Cdbopi2, -1.0 * (CEbo + twbp->De_pp) );
+                Cdbo_ij = CEbo;
+#if defined(GPU_STREAM_SINGLE_ACCUM)
+                atomicAdd( &BL.Cdbopi[pj], -1.0 * (CEbo + twbp->De_p) );
+                atomicAdd( &BL.Cdbopi2[pj], -1.0 * (CEbo + twbp->De_pp) );
+#else
+                BL.Cdbopi_bonds[pj] = -1.0 * (CEbo + twbp->De_p);
+                BL.Cdbopi2_bonds[pj] = -1.0 * (CEbo + twbp->De_pp);
+#endif
 
                 /* Stabilisation terminal triple bond */
-                if ( bo_ij->BO >= 1.00 )
+                if ( BL.BO[pj] >= 1.00 )
                 {
-                    if ( (Hip_strncmp( sbp_i->name, "C", sizeof(sbp_i->name) ) == 0
-                                && Hip_strncmp( sbp_j->name, "O", sizeof(sbp_j->name) ) == 0)
-                            || (Hip_strncmp( sbp_i->name, "O", sizeof(sbp_i->name) ) == 0
-                                && Hip_strncmp( sbp_j->name, "C", sizeof(sbp_j->name) ) == 0) )
+                    if ( (flag_i_C == 0 && Hip_strncmp( sbp[type_j].name, "O", sizeof(sbp[type_j].name) ) == 0)
+                            || (flag_i_O == 0 && Hip_strncmp( sbp[type_j].name, "C", sizeof(sbp[type_j].name) ) == 0) )
                     {
-                        //ba = SQR( bo_ij->BO - 2.5 );
-                        exphu = EXP( -gp7 * SQR(bo_ij->BO - 2.5) );
+                        //ba = SQR( BL.BO[pj] - 2.5 );
+                        exphu = EXP( -gp7 * SQR(BL.BO[pj] - 2.5) );
                         //oboa = abo(j1) - boa;
                         //obob = abo(j2) - boa;
-                        exphua1 = EXP(-gp3 * (workspace->total_bond_order[i] - bo_ij->BO));
-                        exphub1 = EXP(-gp3 * (workspace->total_bond_order[j] - bo_ij->BO));
+                        exphua1 = EXP(-gp3 * (total_bond_order_i - BL.BO[pj]));
+                        exphub1 = EXP(-gp3 * (total_bond_order[j] - BL.BO[pj]));
                         //ovoab = abo(j1) - aval(it1) + abo(j2) - aval(it2);
-                        exphuov = EXP(gp4 * (workspace->Delta[i] + workspace->Delta[j]));
+                        exphuov = EXP(gp4 * (Delta_i + Delta[j]));
                         hulpov = 1.0 / (1.0 + 25.0 * exphuov);
 
                         e_bond_ += gp10 * exphu * hulpov * (exphua1 + exphub1);
 
                         decobdbo = gp10 * exphu * hulpov * (exphua1 + exphub1)
-                            * ( gp3 - 2.0 * gp7 * (bo_ij->BO - 2.5) );
+                            * ( gp3 - 2.0 * gp7 * (BL.BO[pj] - 2.5) );
                         decobdboua = -gp10 * exphu * hulpov
                             * (gp3 * exphua1 + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
                         decobdboub = -gp10 * exphu * hulpov
                             * (gp3 * exphub1 + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
 
-                        atomicAdd( &bo_ij->Cdbo, decobdbo );
+                        Cdbo_ij += decobdbo;
                         CdDelta_i += decobdboua;
-                        atomicAdd( &workspace->CdDelta[j], decobdboub );
+                        atomicAdd( &CdDelta[j], decobdboub );
                     }
                 }
+
+#if defined(GPU_STREAM_SINGLE_ACCUM)
+                atomicAdd( &BL.Cdbo[pj], Cdbo_ij );
+#else
+                BL.Cdbo_bonds[pj] = Cdbo_ij;
+#endif
             }
         }
 
@@ -260,14 +272,16 @@ GPU_GLOBAL void k_bonds_opt( reax_atom *my_atoms, global_parameters gp,
 
     if ( lane_id == 0 )
     {
-        atomicAdd( &workspace->CdDelta[i], CdDelta_i );
+        atomicAdd( &CdDelta[i], CdDelta_i );
 
-#if !defined(GPU_ACCUM_ATOMIC)
-        e_bond_g[i] = e_bond_;
-#else
+#if defined(GPU_ATOMIC_EV)
         atomicAdd( (double *) e_bond_g, (double) e_bond_ );
+#else
+        e_bond_g[i] = e_bond_;
 #endif
     }
+
+#undef BL
 }
 
 
@@ -276,7 +290,7 @@ void Hip_Compute_Bonds( reax_system const * const system,
         storage * const workspace, reax_list **lists,
         output_controls const * const out_control )
 {
-#if !defined(GPU_ACCUM_ATOMIC)
+#if !defined(GPU_ATOMIC_EV)
     int update_energy;
     real *spad;
 #endif
@@ -285,29 +299,35 @@ void Hip_Compute_Bonds( reax_system const * const system,
     hipEventRecord( control->hip_time_events[TE_BONDS_START], control->hip_streams[1] );
 #endif
 
-#if !defined(GPU_ACCUM_ATOMIC)
-    sHipCheckMalloc( &workspace->scratch[1], &workspace->scratch_size[1],
+#if defined(GPU_ATOMIC_EV)
+    sHipMemsetAsync( &data->d_my_en[E_BOND], 0, sizeof(real),
+            control->hip_streams[1], __FILE__, __LINE__ );
+#else
+    sHipCheckMalloc( &workspace->d_workspace->scratch[1],
+            &workspace->d_workspace->scratch_size[1],
             sizeof(real) * system->n, __FILE__, __LINE__ );
 
-    spad = (real *) workspace->scratch[1];
+    spad = (real *) workspace->d_workspace->scratch[1];
     update_energy = (out_control->energy_update_freq > 0
             && data->step % out_control->energy_update_freq == 0) ? TRUE : FALSE;
-#else
-    sHipMemsetAsync( &data->d_my_en->e_bond,
-            0, sizeof(real), control->hip_streams[1], __FILE__, __LINE__ );
 #endif
 
     hipStreamWaitEvent( control->hip_streams[1], control->hip_stream_events[SE_BOND_ORDER_DONE], 0 );
 
 //    k_bonds <<< control->blocks_n, control->gpu_block_size, 0, control->hip_streams[1] >>>
-//        ( system->d_my_atoms, system->reax_param.d_gp,
+//        ( system->d_my_atoms, system->reax_param.gp.d_l,
 //          system->reax_param.d_sbp, system->reax_param.d_tbp,
-//          *(workspace->d_workspace), *(lists[BONDS]), 
-//          system->n, system->reax_param.num_atom_types,
-//#if !defined(GPU_ACCUM_ATOMIC)
-//          spad
+//          workspace->d_workspace->total_bond_order, workspace->d_workspace->Delta, 
+//#if defined(GPU_STREAM_SINGLE_ACCUM)
+//          workspace->d_workspace->CdDelta,
 //#else
-//          &data->d_my_en->e_bond
+//          workspace->d_workspace->CdDelta_bonds,
+//#endif
+//          *(lists[BONDS]), system->n, system->reax_param.num_atom_types,
+//#if defined(GPU_ATOMIC_EV)
+//          &data->d_my_en[E_BOND]
+//#else
+//          spad
 //#endif
 //        );
 //    hipCheckError( );
@@ -315,22 +335,27 @@ void Hip_Compute_Bonds( reax_system const * const system,
     k_bonds_opt <<< control->blocks_warp_n, control->gpu_block_size,
                 sizeof(hipcub::WarpReduce<double>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                 control->hip_streams[1] >>>
-        ( system->d_my_atoms, system->reax_param.d_gp,
+        ( system->d_my_atoms, system->reax_param.gp.d_l,
           system->reax_param.d_sbp, system->reax_param.d_tbp,
-          *(workspace->d_workspace), *(lists[BONDS]), 
-          system->n, system->reax_param.num_atom_types,
-#if !defined(GPU_ACCUM_ATOMIC)
-          spad
+          workspace->d_workspace->total_bond_order, workspace->d_workspace->Delta, 
+#if defined(GPU_STREAM_SINGLE_ACCUM)
+          workspace->d_workspace->CdDelta,
 #else
-          &data->d_my_en->e_bond
+          workspace->d_workspace->CdDelta_bonds,
+#endif
+          *(lists[BONDS]), system->n, system->reax_param.num_atom_types,
+#if defined(GPU_ATOMIC_EV)
+          &data->d_my_en[E_BOND]
+#else
+          spad
 #endif
         );
     hipCheckError( );
 
-#if !defined(GPU_ACCUM_ATOMIC)
+#if !defined(GPU_ATOMIC_EV)
     if ( update_energy == TRUE )
     {
-        Hip_Reduction_Sum( spad, &data->d_my_en->e_bond,
+        Hip_Reduction_Sum( spad, &data->d_my_en[E_BOND],
                 system->n, 1, control->hip_streams[1] );
     }
 #endif

@@ -10,6 +10,7 @@
 #include "hip_neighbors.h"
 #include "hip_reset_tools.h"
 #include "hip_system_props.h"
+#include "hip_utils.h"
 
 #include "../box.h"
 #include "../comm_tools.h"
@@ -23,15 +24,15 @@
 #include "../vector.h"
 
 
-static void Hip_Init_System( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace, mpi_datatypes *mpi_data )
+static void Hip_Init_System( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace, mpi_datatypes * const mpi_data )
 {
     Setup_New_Grid( system, control, MPI_COMM_WORLD );
 
     /* since all processors read in all atoms and select their local atoms
      * intially, no local atoms comm needed and just bin local atoms */
     Bin_My_Atoms( system, workspace );
-    Reorder_My_Atoms( system, workspace );
+    Reorder_My_Atoms( system );
 
     system->N = SendRecv( system, mpi_data, mpi_data->boundary_atom_type,
             &Count_Boundary_Atoms, &Sort_Boundary_Atoms,
@@ -74,11 +75,11 @@ static void Hip_Init_System( reax_system *system, control_params *control,
 }
 
 
-void Hip_Init_Simulation_Data( reax_system *system, control_params *control,
-        simulation_data *data )
+void Hip_Init_Simulation_Data( reax_system * const system, control_params * const control,
+        simulation_data * const data )
 {
-    data->my_en = (energy_data *) smalloc_pinned( sizeof(energy_data), __FILE__, __LINE__ );
-    data->sys_en = (energy_data *) smalloc( sizeof(energy_data), __FILE__, __LINE__ );
+    data->my_en = (real *) smalloc_pinned( sizeof(real) * E_N, __FILE__, __LINE__ );
+    data->sys_en = (real *) smalloc( sizeof(real) * E_N, __FILE__, __LINE__ );
 
     Hip_Allocate_Simulation_Data( data, control->hip_streams[0] );
 
@@ -113,7 +114,7 @@ void Hip_Init_Simulation_Data( reax_system *system, control_params *control,
         if ( !control->restart || (control->restart && control->random_vel) )
         {
             data->therm.G_xi = control->Tau_T
-                * (2.0 * data->sys_en->e_kin - data->N_f * K_B * control->T );
+                * (2.0 * data->sys_en[E_KIN] - data->N_f * K_B * control->T );
             data->therm.v_xi = data->therm.G_xi * control->dt;
             data->therm.v_xi_old = 0;
             data->therm.xi = 0;
@@ -161,27 +162,29 @@ void Hip_Init_Simulation_Data( reax_system *system, control_params *control,
 }
 
 
-void Hip_Init_Workspace( reax_system *system, control_params *control,
-        storage *workspace, mpi_datatypes *mpi_data )
+void Hip_Init_Workspace( reax_system const * const system, control_params * const control,
+        storage * const workspace, mpi_datatypes * const mpi_data )
 {
-    Hip_Allocate_Workspace_Part1( system, control, workspace->d_workspace,
-            system->local_cap );
-    Hip_Allocate_Workspace_Part2( system, control, workspace->d_workspace,
-            system->total_cap );
+    Hip_Allocate_Workspace_Part1( control, workspace->d_workspace, system->local_cap );
+    Hip_Allocate_Workspace_Part2( control, workspace->d_workspace, system->total_cap );
 
-    workspace->realloc->far_nbrs = FALSE;
-    workspace->realloc->cm = FALSE;
-    workspace->realloc->bonds = FALSE;
-    workspace->realloc->hbonds = FALSE;
-    workspace->realloc->thbody = FALSE;
-    workspace->realloc->gcell_atoms = 0;
+    /* one-off allocations (not to be rerun after reneighboring)
+     * and not needed earlier during input file parsing (in PreAllocate_Space) */
+    workspace->tap_coef = (real *) smalloc( sizeof(real) * TAPER_COEF_SIZE,
+            __FILE__, __LINE__ );
+    workspace->dtap_coef = (real *) smalloc( sizeof(real) * DTAPER_COEF_SIZE,
+            __FILE__, __LINE__ );
+    sHipMalloc( (void **) &workspace->d_workspace->tap_coef, sizeof(real) * TAPER_COEF_SIZE,
+            __FILE__, __LINE__ );
+    sHipMalloc( (void **) &workspace->d_workspace->dtap_coef, sizeof(real) * DTAPER_COEF_SIZE,
+            __FILE__, __LINE__ );
 
-    workspace->d_workspace->realloc->far_nbrs = FALSE;
-    workspace->d_workspace->realloc->cm = FALSE;
-    workspace->d_workspace->realloc->bonds = FALSE;
-    workspace->d_workspace->realloc->hbonds = FALSE;
-    workspace->d_workspace->realloc->thbody = FALSE;
-    workspace->d_workspace->realloc->gcell_atoms = 0;
+    workspace->realloc[RE_FAR_NBRS] = FALSE;
+    workspace->realloc[RE_CM] = FALSE;
+    workspace->realloc[RE_BONDS] = FALSE;
+    workspace->realloc[RE_HBONDS] = FALSE;
+    workspace->realloc[RE_THBODY] = FALSE;
+    workspace->realloc[RE_GCELL_ATOMS] = 0;
 
     if ( control->cm_solver_pre_comp_type == SAI_PC )
     {
@@ -196,13 +199,20 @@ void Hip_Init_Workspace( reax_system *system, control_params *control,
 
     Hip_Reset_Workspace( system, control, workspace );
 
-    Init_Taper( control, workspace->d_workspace, mpi_data );
+    Init_Taper( control, workspace, mpi_data );
+
+    sHipMemcpyAsync( workspace->d_workspace->tap_coef, workspace->tap_coef,
+            sizeof(real) * TAPER_COEF_SIZE, hipMemcpyHostToDevice,
+            control->hip_streams[0], __FILE__, __LINE__ );
+    sHipMemcpyAsync( workspace->d_workspace->dtap_coef, workspace->dtap_coef,
+            sizeof(real) * DTAPER_COEF_SIZE, hipMemcpyHostToDevice,
+            control->hip_streams[0], __FILE__, __LINE__ );
 }
 
 
-void Hip_Init_Lists( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace, reax_list **lists,
-        mpi_datatypes *mpi_data )
+void Hip_Init_Lists( reax_system * const system, control_params const * const control,
+        simulation_data * const data, storage * const workspace, reax_list ** const lists,
+        mpi_datatypes * const mpi_data )
 {
     Hip_Estimate_Num_Neighbors( system, control, data );
 
@@ -247,10 +257,10 @@ void Hip_Init_Lists( reax_system *system, control_params *control,
 }
 
 
-extern "C" void Hip_Initialize( reax_system *system, control_params *control,
-        simulation_data *data, storage *workspace,
-        reax_list **lists, output_controls *out_control,
-        mpi_datatypes *mpi_data )
+extern "C" void Hip_Initialize( reax_system * const system, control_params * const control,
+        simulation_data * const data, storage * const workspace,
+        reax_list ** const lists, output_controls * const out_control,
+        mpi_datatypes * const mpi_data )
 {
     int i;
 
@@ -279,7 +289,7 @@ extern "C" void Hip_Initialize( reax_system *system, control_params *control,
     if ( MPIX_Query_rocm_support( ) != 1 )
     {
         fprintf( stderr, "[ERROR] ROCm device-side MPI buffer packing/unpacking enabled "
-                "but no ROCm-aware support detected. Terminating...\n" );
+                "but no CUDA-aware support detected. Terminating...\n" );
         MPI_Abort( MPI_COMM_WORLD, INVALID_INPUT );
     }
 
@@ -307,14 +317,16 @@ extern "C" void Hip_Initialize( reax_system *system, control_params *control,
         workspace->scratch[i] = NULL;
         workspace->scratch_size[i] = 0;
     }
-    workspace->host_scratch = NULL;
-    workspace->host_scratch_size = 0;
+    for ( i = 0; i < MAX_GPU_STREAMS; ++i )
+    {
+        workspace->d_workspace->scratch[i] = NULL;
+        workspace->d_workspace->scratch_size[i] = 0;
+    }
 
     /* early allocation before Hip_Init_Workspace for Bin_My_Atoms inside Hip_Init_System */
-    workspace->realloc = (reallocate_data *) smalloc(
-            sizeof(reallocate_data), __FILE__, __LINE__ );
-    workspace->d_workspace->realloc = (reallocate_data *) smalloc_pinned(
-            sizeof(reallocate_data), __FILE__, __LINE__ );
+    workspace->realloc = (int *) smalloc( sizeof(int) * RE_N, __FILE__, __LINE__ );
+    sHipMalloc( (void **) &workspace->d_workspace->realloc, sizeof(int) * RE_N,
+            __FILE__, __LINE__ );
 
     Hip_Init_System( system, control, data, workspace, mpi_data );
     /* reset for step 0 */
@@ -325,8 +337,6 @@ extern "C" void Hip_Initialize( reax_system *system, control_params *control,
 
     Hip_Init_Workspace( system, control, workspace, mpi_data );
 
-    Hip_Allocate_Control( control );
-
     Hip_Init_Lists( system, control, data, workspace, lists, mpi_data );
 
     Init_Output_Files( system, control, out_control, mpi_data );
@@ -336,7 +346,7 @@ extern "C" void Hip_Initialize( reax_system *system, control_params *control,
         Make_LR_Lookup_Table( system, control, workspace->d_workspace, mpi_data );
     }
 
-#if defined(DEBUG)
+#if defined(DEBUG_FOCUS)
     Hip_Print_Mem_Usage( data );
 #endif
 }

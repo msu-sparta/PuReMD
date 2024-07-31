@@ -209,7 +209,7 @@ GPU_GLOBAL void k_rvec2_unpacker( rvec2 const * const src, rvec2 * const dest,
 
 
 static void int_packer( void const * const src, mpi_out_data * const out_buf,
-       int block_size, hipStream_t s )
+        int block_size, hipStream_t s )
 {
     int blocks;
 
@@ -225,7 +225,7 @@ static void int_packer( void const * const src, mpi_out_data * const out_buf,
 
 
 static void real_packer( void const * const src, mpi_out_data * const out_buf,
-       int block_size, hipStream_t s )
+        int block_size, hipStream_t s )
 {
     int blocks;
 
@@ -241,7 +241,7 @@ static void real_packer( void const * const src, mpi_out_data * const out_buf,
 
 
 static void rvec_packer( void const * const src, mpi_out_data * const out_buf,
-       int block_size, hipStream_t s )
+        int block_size, hipStream_t s )
 {
     int blocks;
 
@@ -257,7 +257,7 @@ static void rvec_packer( void const * const src, mpi_out_data * const out_buf,
 
 
 static void rvec2_packer( void const * const src, mpi_out_data * const out_buf,
-       int block_size, hipStream_t s )
+        int block_size, hipStream_t s )
 {
     int blocks;
 
@@ -467,17 +467,18 @@ void Hip_Dist( reax_system const * const system, storage * const workspace,
                 type_size * out_bufs[2 * d].cnt, __FILE__, __LINE__ );
 	if ( out_bufs[2 * d].index_size < sizeof(int) * out_bufs[2 * d].cnt )
 	{
-            sHipCheckMalloc( &workspace->scratch[3], &workspace->scratch_size[3],
+            sHipCheckMalloc( &workspace->d_workspace->scratch[3],
+                    &workspace->d_workspace->scratch_size[3],
                     out_bufs[2 * d].index_size, __FILE__, __LINE__ );
 
-            sHipMemcpyAsync( workspace->scratch[3], out_bufs[2 * d].index,
-                    out_bufs[2 * d].index_size,
+            sHipMemcpyAsync( workspace->d_workspace->scratch[3],
+                    out_bufs[2 * d].index, out_bufs[2 * d].index_size,
                     hipMemcpyDeviceToDevice, s, __FILE__, __LINE__ );
             sHipFree( out_bufs[2 * d].index, __FILE__, __LINE__ );
             sHipMalloc( (void **) &out_bufs[2 * d].index,
                     (size_t) CEIL( (sizeof(int) * out_bufs[2 * d].cnt) * SAFE_ZONE ),
                     __FILE__, __LINE__ );
-            sHipMemcpyAsync( out_bufs[2 * d].index, workspace->scratch[3],
+            sHipMemcpyAsync( out_bufs[2 * d].index, workspace->d_workspace->scratch[3],
                     out_bufs[2 * d].index_size,
                     hipMemcpyDeviceToDevice, s, __FILE__, __LINE__ );
 
@@ -495,17 +496,18 @@ void Hip_Dist( reax_system const * const system, storage * const workspace,
                 type_size * out_bufs[2 * d + 1].cnt, __FILE__, __LINE__ );
 	if ( out_bufs[2 * d + 1].index_size < sizeof(int) * out_bufs[2 * d + 1].cnt )
 	{
-            sHipCheckMalloc( &workspace->scratch[3], &workspace->scratch_size[3],
+            sHipCheckMalloc( &workspace->d_workspace->scratch[3],
+                    &workspace->d_workspace->scratch_size[3],
                     out_bufs[2 * d + 1].index_size, __FILE__, __LINE__ );
 
-            sHipMemcpyAsync( workspace->scratch[3], out_bufs[2 * d + 1].index,
+            sHipMemcpyAsync( workspace->d_workspace->scratch[3], out_bufs[2 * d + 1].index,
                     out_bufs[2 * d + 1].index_size,
                     hipMemcpyDeviceToDevice, s, __FILE__, __LINE__ );
             sHipFree( out_bufs[2 * d + 1].index, __FILE__, __LINE__ );
             sHipMalloc( (void **) &out_bufs[2 * d + 1].index,
                     (size_t) CEIL( (sizeof(int) * out_bufs[2 * d + 1].cnt) * SAFE_ZONE ),
                     __FILE__, __LINE__ );
-            sHipMemcpyAsync( out_bufs[2 * d + 1].index, workspace->scratch[3],
+            sHipMemcpyAsync( out_bufs[2 * d + 1].index, workspace->d_workspace->scratch[3],
                     out_bufs[2 * d + 1].index_size,
                     hipMemcpyDeviceToDevice, s, __FILE__, __LINE__ );
 

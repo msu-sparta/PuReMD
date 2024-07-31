@@ -60,7 +60,7 @@ GPU_DEVICE static inline real Hip_DistSqr_to_Special_Point( rvec cp, rvec x )
 GPU_GLOBAL void k_generate_neighbor_lists_full( reax_atom const * const my_atoms, 
         simulation_box my_ext_box, grid g, reax_list far_nbr_list,
         int n, int N, int * const far_nbrs, int * const max_far_nbrs,
-        int * const realloc_far_nbrs, real cutoff2 )
+        int * const realloc, real cutoff2 )
 {
     int i, j, k, l, m, itr, num_far, my_num_far, flag;
     real d, cutoff;
@@ -176,7 +176,7 @@ GPU_GLOBAL void k_generate_neighbor_lists_full( reax_atom const * const my_atoms
     /* reallocation check */
     if ( my_num_far > max_far_nbrs[l] )
     {
-        *realloc_far_nbrs = TRUE;
+        *realloc = TRUE;
     }
 }
 
@@ -186,7 +186,7 @@ GPU_GLOBAL void k_generate_neighbor_lists_full( reax_atom const * const my_atoms
 GPU_GLOBAL void k_generate_neighbor_lists_full_opt( reax_atom const * const my_atoms, 
         simulation_box my_ext_box, grid g, reax_list far_nbr_list,
         int n, int N, int * const far_nbrs, int * const max_far_nbrs,
-        int * const realloc_far_nbrs, real cutoff2 )
+        int * const realloc, real cutoff2 )
 {
     extern __shared__ hipcub::WarpScan<int>::TempStorage temp1[];
     int i, j, k, l, m, itr, num_far, my_num_far, lane_id, itr2;
@@ -318,7 +318,7 @@ GPU_GLOBAL void k_generate_neighbor_lists_full_opt( reax_atom const * const my_a
         /* reallocation check */
         if ( my_num_far > max_far_nbrs[l] )
         {
-            *realloc_far_nbrs = TRUE;
+            *realloc = TRUE;
         }
     }
 }
@@ -437,7 +437,7 @@ GPU_GLOBAL void k_estimate_neighbors_full( reax_atom const * const my_atoms,
     }
 
     far_nbrs[l] = num_far;
-    /* round up to the nearest multiple of warp size to ensure that reads along
+    /* round up to the nearest multiple of WARP_SIZE to ensure that reads along
      * rows can be coalesced */
     max_far_nbrs[l] = MAX( ((int) CEIL( num_far * SAFE_ZONE )
                 + warpSize - 1) / warpSize * warpSize, MIN_NBRS );
@@ -564,7 +564,7 @@ GPU_GLOBAL void k_estimate_neighbors_full_opt( reax_atom const * const my_atoms,
     if ( lane_id == 0 )
     {
         far_nbrs[l] = num_far;
-        /* round up to the nearest multiple of warp size to ensure that reads along
+        /* round up to the nearest multiple of WARP_SIZE to ensure that reads along
          * rows can be coalesced */
         max_far_nbrs[l] = MAX( ((int) CEIL( num_far * SAFE_ZONE )
                     + warpSize - 1) / warpSize * warpSize, MIN_NBRS );
@@ -572,9 +572,9 @@ GPU_GLOBAL void k_estimate_neighbors_full_opt( reax_atom const * const my_atoms,
 }
 
 
-extern "C" int Hip_Generate_Neighbor_Lists( reax_system *system,
-        control_params *control, simulation_data *data, storage *workspace,
-        reax_list **lists )
+extern "C" int Hip_Generate_Neighbor_Lists( reax_system * const system,
+        control_params const * const control, simulation_data * const data,
+        storage * const workspace, reax_list ** const lists )
 {
     int ret;
 #if defined(LOG_PERFORMANCE)
@@ -584,33 +584,32 @@ extern "C" int Hip_Generate_Neighbor_Lists( reax_system *system,
     /* reset reallocation flag on device */
     /* careful: this wrapper around hipMemset(...) performs a byte-wide assignment
      * to the provided literal */
-    sHipMemsetAsync( system->d_realloc_far_nbrs, FALSE, sizeof(int), 
+    sHipMemsetAsync( &workspace->d_workspace->realloc[RE_FAR_NBRS], FALSE, sizeof(int), 
             control->hip_streams[0], __FILE__, __LINE__ );
     hipStreamSynchronize( control->hip_streams[0] );
 
-//    k_generate_neighbor_lists_full <<< control->blocks_N, control->gpu_block_size, 0, control->hip_streams[0] >>>
-//        ( system->d_my_atoms, system->my_ext_box,
-//          system->d_my_grid, *(lists[FAR_NBRS]),
-//          system->n, system->N,
+//    k_generate_neighbor_lists_full <<< control->blocks_N, control->gpu_block_size,
+//                                       0, control->hip_streams[0] >>>
+//        ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
+//          *(lists[FAR_NBRS]), system->n, system->N,
 //          system->d_far_nbrs, system->d_max_far_nbrs,
-//          system->d_realloc_far_nbrs, SQR( control->bond_cut ) );
+//          &workspace->d_workspace->realloc[RE_FAR_NBRS], SQR( control->bond_cut ) );
     k_generate_neighbor_lists_full_opt <<< control->blocks_warp_N, control->gpu_block_size,
                                        sizeof(hipcub::WarpScan<int>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                        control->hip_streams[0] >>>
-        ( system->d_my_atoms, system->my_ext_box,
-          system->d_my_grid, *(lists[FAR_NBRS]),
-          system->n, system->N,
-          system->d_far_nbrs, system->d_max_far_nbrs, system->d_realloc_far_nbrs,
-          SQR( control->bond_cut ) );
+        ( system->d_my_atoms, system->my_ext_box, system->d_my_grid,
+          *(lists[FAR_NBRS]), system->n, system->N,
+          system->d_far_nbrs, system->d_max_far_nbrs,
+          &workspace->d_workspace->realloc[RE_FAR_NBRS], SQR( control->bond_cut ) );
     hipCheckError( );
 
     /* check reallocation flag on device */
-    sHipMemcpyAsync( &workspace->d_workspace->realloc->far_nbrs,
-            system->d_realloc_far_nbrs, sizeof(int), 
+    sHipMemcpyAsync( &workspace->realloc[RE_FAR_NBRS],
+            &workspace->d_workspace->realloc[RE_FAR_NBRS], sizeof(int), 
             hipMemcpyDeviceToHost, control->hip_streams[0], __FILE__, __LINE__ );
     hipStreamSynchronize( control->hip_streams[0] );
 
-    ret = (workspace->d_workspace->realloc->far_nbrs == FALSE) ? SUCCESS : FAILURE;
+    ret = (workspace->realloc[RE_FAR_NBRS] == FALSE) ? SUCCESS : FAILURE;
 
 #if defined(LOG_PERFORMANCE)
     hipEventRecord( control->hip_time_events[TE_NBRS_STOP], control->hip_streams[0] );
@@ -623,8 +622,8 @@ extern "C" int Hip_Generate_Neighbor_Lists( reax_system *system,
 /* Estimate the number of far neighbors for each atoms 
  *
  * system: atomic system info */
-void Hip_Estimate_Num_Neighbors( reax_system *system, control_params *control,
-        simulation_data *data )
+void Hip_Estimate_Num_Neighbors( reax_system * const system,
+        control_params const * const control, simulation_data * const data )
 {
     int blocks;
 #if defined(LOG_PERFORMANCE)

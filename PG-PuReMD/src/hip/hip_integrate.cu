@@ -21,8 +21,8 @@
 #include "../vector.h"
 
 
-GPU_GLOBAL void k_velocity_verlet_part1( reax_atom *my_atoms, 
-        single_body_parameters *sbp, real dt, int n )
+GPU_GLOBAL void k_velocity_verlet_part1( reax_atom * const my_atoms, 
+        single_body_parameters const * const sbp, real dt, int n )
 {
     int i;
     real inv_m;
@@ -49,8 +49,8 @@ GPU_GLOBAL void k_velocity_verlet_part1( reax_atom *my_atoms,
 }
 
 
-GPU_GLOBAL void k_velocity_verlet_part2( reax_atom *my_atoms, 
-        single_body_parameters *sbp, real dt, int n )
+GPU_GLOBAL void k_velocity_verlet_part2( reax_atom * const my_atoms, 
+        single_body_parameters const * const sbp, real dt, int n )
 {
     int i;
     reax_atom *atom;
@@ -72,8 +72,8 @@ GPU_GLOBAL void k_velocity_verlet_part2( reax_atom *my_atoms,
 }
 
 
-GPU_GLOBAL void k_velocity_verlet_nose_hoover_nvt( reax_atom *my_atoms, 
-        single_body_parameters *sbp, real dt, int n )
+GPU_GLOBAL void k_velocity_verlet_nose_hoover_nvt( reax_atom * const my_atoms, 
+        single_body_parameters const * const sbp, real dt, int n )
 {
     int i;
     real inv_m;
@@ -96,8 +96,9 @@ GPU_GLOBAL void k_velocity_verlet_nose_hoover_nvt( reax_atom *my_atoms,
     rvec_Copy( atom->f_old, atom->f );
 }
 
-GPU_GLOBAL void k_velocity_verlet_nose_hoover_nvt( reax_atom *my_atoms, rvec * v_const,
-        single_body_parameters *sbp, real dt, real v_xi, int n )
+GPU_GLOBAL void k_velocity_verlet_nose_hoover_nvt( reax_atom * const my_atoms,
+        rvec * const v_const, single_body_parameters const * const sbp,
+        real dt, real v_xi, int n )
 {
     reax_atom *atom;
     real inv_m;
@@ -121,8 +122,9 @@ GPU_GLOBAL void k_velocity_verlet_nose_hoover_nvt( reax_atom *my_atoms, rvec * v
 }
 
 
-GPU_GLOBAL void k_velocity_verlet_nose_hoover_nvt_part3( reax_atom *my_atoms, rvec *v_const,
-        single_body_parameters *sbp, real dt, real v_xi_old, real * my_ekin, int n )
+GPU_GLOBAL void k_velocity_verlet_nose_hoover_nvt_part3( reax_atom * const my_atoms,
+        rvec const * const v_const, single_body_parameters const * const sbp,
+        real dt, real v_xi_old, real * const my_ekin, int n )
 {
     int i;
     real coef_v;
@@ -143,7 +145,8 @@ GPU_GLOBAL void k_velocity_verlet_nose_hoover_nvt_part3( reax_atom *my_atoms, rv
 }
 
 
-GPU_GLOBAL void k_scale_velocites_berendsen_nvt( reax_atom *my_atoms, real lambda, int n )
+GPU_GLOBAL void k_scale_velocites_berendsen_nvt( reax_atom * const my_atoms,
+        real lambda, int n )
 {
     reax_atom *atom;
     int i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -159,7 +162,7 @@ GPU_GLOBAL void k_scale_velocites_berendsen_nvt( reax_atom *my_atoms, real lambd
 }
 
 
-GPU_GLOBAL void k_scale_velocities_npt( reax_atom *my_atoms, real lambda,
+GPU_GLOBAL void k_scale_velocities_npt( reax_atom * const my_atoms, real lambda,
         real mu0, real mu1, real mu2, int n )
 {
     int i;

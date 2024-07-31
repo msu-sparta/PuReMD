@@ -83,21 +83,28 @@ GPU_GLOBAL void k_init_end_index( int const * const intr_cnt,
 GPU_GLOBAL void k_init_hbond_indices( reax_atom * const atoms,
         single_body_parameters const * const sbp,
         int const * const hbonds, int const * const max_hbonds,
-        int * const indices, int * const end_indices, int N )
+        int * const indices, int * const end_indices, int N, int N_max )
 {
     int i, hindex, flag;
 
     i = blockIdx.x * blockDim.x  + threadIdx.x;
 
-    if ( i >= N )
+    if ( i >= N_max )
     {
         return;
     }
 
-    hindex = atoms[i].Hindex;
+    if ( i < N )
+    {
+        hindex = atoms[i].Hindex;
 
-    flag = (sbp[atoms[i].type].p_hbond == H_ATOM
-            || sbp[atoms[i].type].p_hbond == H_BONDING_ATOM ? TRUE : FALSE);
+        flag = (sbp[atoms[i].type].p_hbond == H_ATOM
+                || sbp[atoms[i].type].p_hbond == H_BONDING_ATOM ? TRUE : FALSE);
+    }
+    else
+    {
+        flag = FALSE;
+    }
 
     indices[hindex] = (flag == TRUE ? max_hbonds[i] : 0);
     end_indices[hindex] = (flag == TRUE ? indices[hindex] + hbonds[i] : 0);
@@ -105,13 +112,10 @@ GPU_GLOBAL void k_init_hbond_indices( reax_atom * const atoms,
 }
 
 
-GPU_GLOBAL void k_print_hbond_info( reax_atom *my_atoms, single_body_parameters *sbp, 
-        control_params *control, reax_list hbond_list, int N )
+GPU_GLOBAL void k_print_hbond_info( reax_atom const * const my_atoms,
+        single_body_parameters const * const sbp, reax_list hbond_list, int N )
 {
-    int i;
-    int type_i;
-    single_body_parameters *sbp_i;
-    reax_atom *atom_i;
+    int i, type_i;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -120,12 +124,10 @@ GPU_GLOBAL void k_print_hbond_info( reax_atom *my_atoms, single_body_parameters 
         return;
     }
 
-    atom_i = &my_atoms[i];
-    type_i = atom_i->type;
-    sbp_i = &sbp[type_i];
+    type_i = my_atoms[i].type;
 
-    printf( "atom %6d: ihb = %2d, ihb_top = %2d\n", i, sbp_i->p_hbond,
-            Start_Index( atom_i->Hindex, &hbond_list ) );
+    printf( "atom %6d: ihb = %2d, ihb_top = %2d\n", i, sbp[type_i].p_hbond,
+            Start_Index( my_atoms[i].Hindex, &hbond_list ) );
 }
 
 
@@ -203,49 +205,43 @@ GPU_GLOBAL void k_init_dist_opt( reax_atom const * const my_atoms,
  * the full shell communication method */
 GPU_GLOBAL void k_init_cm_qeq_half_fs( reax_atom * const my_atoms,
         single_body_parameters const * const sbp, two_body_parameters const * const tbp,
-        storage workspace, control_params const * const control, 
+        sparse_matrix H, real const * const tap_coef, real cutoff,
         reax_list far_nbr_list, int num_atom_types,
-        int * const max_cm_entries, int * const realloc_cm_entries )
+        int * const max_cm_entries, int * const realloc, int N )
 {
     int i, j, pj, start_i, end_i, type_i, orig_id_i;
     int cm_top, num_cm_entries;
-    real tap_coef[8], tap, dr3gamij_1, dr3gamij_3, r_ij;
-    sparse_matrix *H;
+    real tap_coef_[TAPER_COEF_SIZE], tap, dr3gamij_1, dr3gamij_3, r_ij;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ( i >= workspace.H.n_max )
+    if ( i >= N )
     {
         return;
     }
 
-    H = &workspace.H;
-    cm_top = H->start[i];
+    cm_top = H.start[i];
 
-    if ( i < H->n )
+    if ( i < H.n )
     {
         type_i = my_atoms[i].type;
         orig_id_i = my_atoms[i].orig_id;
         start_i = Start_Index( i, &far_nbr_list );
         end_i = End_Index( i, &far_nbr_list );
 
-        tap_coef[0] = workspace.tap_coef[0];
-        tap_coef[1] = workspace.tap_coef[1];
-        tap_coef[2] = workspace.tap_coef[2];
-        tap_coef[3] = workspace.tap_coef[3];
-        tap_coef[4] = workspace.tap_coef[4];
-        tap_coef[5] = workspace.tap_coef[5];
-        tap_coef[6] = workspace.tap_coef[6];
-        tap_coef[7] = workspace.tap_coef[7];
+        for ( pj = 0; pj < TAPER_COEF_SIZE; ++pj )
+        {
+            tap_coef_[pj] = tap_coef[pj];
+        }
 
         /* diagonal entry in the matrix */
-        H->j[cm_top] = i;
-        H->val[cm_top] = sbp[type_i].eta;
+        H.j[cm_top] = i;
+        H.val[cm_top] = sbp[type_i].eta;
         ++cm_top;
 
         for ( pj = start_i; pj < end_i; ++pj )
         {
-            if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut )
+            if ( far_nbr_list.far_nbr_list.d[pj] <= cutoff )
             {
                 j = far_nbr_list.far_nbr_list.nbr[pj];
 
@@ -254,15 +250,15 @@ GPU_GLOBAL void k_init_cm_qeq_half_fs( reax_atom * const my_atoms,
                 {
                     r_ij = far_nbr_list.far_nbr_list.d[pj];
 
-                    H->j[cm_top] = j;
+                    H.j[cm_top] = j;
 
-                    tap = tap_coef[7] * r_ij + tap_coef[6];
-                    tap = tap * r_ij + tap_coef[5];
-                    tap = tap * r_ij + tap_coef[4];
-                    tap = tap * r_ij + tap_coef[3];
-                    tap = tap * r_ij + tap_coef[2];
-                    tap = tap * r_ij + tap_coef[1];
-                    tap = tap * r_ij + tap_coef[0];    
+                    tap = tap_coef_[7] * r_ij + tap_coef_[6];
+                    tap = tap * r_ij + tap_coef_[5];
+                    tap = tap * r_ij + tap_coef_[4];
+                    tap = tap * r_ij + tap_coef_[3];
+                    tap = tap * r_ij + tap_coef_[2];
+                    tap = tap * r_ij + tap_coef_[1];
+                    tap = tap * r_ij + tap_coef_[0];    
 
                     /* shielding */
                     dr3gamij_1 = r_ij * r_ij * r_ij
@@ -271,7 +267,7 @@ GPU_GLOBAL void k_init_cm_qeq_half_fs( reax_atom * const my_atoms,
 
                     /* i == j: periodic self-interaction term
                      * i != j: general interaction term */
-                    H->val[cm_top] = ((i == j) ? 0.5 : 1.0) * tap * EV_to_KCALpMOL / dr3gamij_3;
+                    H.val[cm_top] = ((i == j) ? 0.5 : 1.0) * tap * EV_to_KCALpMOL / dr3gamij_3;
 
                     ++cm_top;
                 }
@@ -279,13 +275,13 @@ GPU_GLOBAL void k_init_cm_qeq_half_fs( reax_atom * const my_atoms,
         }
     }
 
-    H->end[i] = cm_top;
-    num_cm_entries = cm_top - H->start[i];
+    H.end[i] = cm_top;
+    num_cm_entries = cm_top - H.start[i];
 
     /* reallocation check */
     if ( num_cm_entries > max_cm_entries[i] )
     {
-        *realloc_cm_entries = TRUE;
+        *realloc = TRUE;
     }
 }
 
@@ -294,10 +290,9 @@ GPU_GLOBAL void k_init_cm_qeq_half_fs( reax_atom * const my_atoms,
  * using the far neighbors list (stored in full format) and according to
  * the full shell communication method */
 GPU_GLOBAL void k_init_cm_qeq_half_fs_tab( reax_atom * const my_atoms,
-        single_body_parameters const * const sbp,
-        storage workspace, control_params const * const control, 
+        single_body_parameters const * const sbp, sparse_matrix H, real cutoff,
         reax_list far_nbr_list, LR_lookup_table const * const t_LR, int num_atom_types,
-        int * const max_cm_entries, int * const realloc_cm_entries )
+        int * const max_cm_entries, int * const realloc, int N )
 {
     int i, j, pj;
     int start_i, end_i;
@@ -306,19 +301,17 @@ GPU_GLOBAL void k_init_cm_qeq_half_fs_tab( reax_atom * const my_atoms,
     int num_cm_entries;
     real r_ij;
     reax_atom *atom_i, *atom_j;
-    sparse_matrix *H;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ( i >= workspace.H.n_max )
+    if ( i >= N )
     {
         return;
     }
 
-    H = &workspace.H;
-    cm_top = H->start[i];
+    cm_top = H.start[i];
 
-    if ( i < H->n )
+    if ( i < H.n )
     {
         atom_i = &my_atoms[i];
         type_i = atom_i->type;
@@ -326,15 +319,15 @@ GPU_GLOBAL void k_init_cm_qeq_half_fs_tab( reax_atom * const my_atoms,
         end_i = End_Index( i, &far_nbr_list );
 
         /* diagonal entry in the matrix */
-        H->j[cm_top] = i;
-        H->val[cm_top] = sbp[type_i].eta;
+        H.j[cm_top] = i;
+        H.val[cm_top] = sbp[type_i].eta;
         ++cm_top;
 
         for ( pj = start_i; pj < end_i; ++pj )
         {
             j = far_nbr_list.far_nbr_list.nbr[pj];
 
-            if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut )
+            if ( far_nbr_list.far_nbr_list.d[pj] <= cutoff )
             {
                 atom_j = &my_atoms[j];
                 type_j = atom_j->type;
@@ -344,8 +337,8 @@ GPU_GLOBAL void k_init_cm_qeq_half_fs_tab( reax_atom * const my_atoms,
                 {
                     r_ij = far_nbr_list.far_nbr_list.d[pj];
 
-                    H->j[cm_top] = j;
-                    H->val[cm_top] = Init_Charge_Matrix_Entry_Tab( t_LR, r_ij,
+                    H.j[cm_top] = j;
+                    H.val[cm_top] = Init_Charge_Matrix_Entry_Tab( t_LR, r_ij,
                             type_i, type_j, num_atom_types );
                     ++cm_top;
                 }
@@ -353,13 +346,13 @@ GPU_GLOBAL void k_init_cm_qeq_half_fs_tab( reax_atom * const my_atoms,
         }
     }
 
-    H->end[i] = cm_top;
-    num_cm_entries = cm_top - H->start[i];
+    H.end[i] = cm_top;
+    num_cm_entries = cm_top - H.start[i];
 
     /* reallocation check */
     if ( num_cm_entries > max_cm_entries[i] )
     {
-        *realloc_cm_entries = TRUE;
+        *realloc = TRUE;
     }
 }
 
@@ -369,63 +362,57 @@ GPU_GLOBAL void k_init_cm_qeq_half_fs_tab( reax_atom * const my_atoms,
  * the full shell communication method */
 GPU_GLOBAL void k_init_cm_qeq_full_fs( reax_atom * const my_atoms,
         single_body_parameters const * const sbp, two_body_parameters const * const tbp,
-        storage workspace, control_params const * const control, 
-        reax_list far_nbr_list, int num_atom_types,
-        int * const max_cm_entries, int * const realloc_cm_entries )
+        sparse_matrix H, real const * const tap_coef, real cutoff,
+        reax_list far_nbr_list, int num_atom_types, int * const max_cm_entries,
+        int * const realloc, int N )
 {
     int i, j, pj, start_i, end_i, type_i;
     int cm_top, num_cm_entries;
-    real tap_coef[8], tap, dr3gamij_1, dr3gamij_3, r_ij;
+    real tap_coef_[TAPER_COEF_SIZE], tap, dr3gamij_1, dr3gamij_3, r_ij;
     reax_atom *atom_i;
-    sparse_matrix *H;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ( i >= workspace.H.n_max )
+    if ( i >= N )
     {
         return;
     }
 
-    H = &workspace.H;
-    cm_top = H->start[i];
+    cm_top = H.start[i];
 
-    if ( i < H->n )
+    if ( i < H.n )
     {
         atom_i = &my_atoms[i];
         type_i = atom_i->type;
         start_i = Start_Index( i, &far_nbr_list );
         end_i = End_Index( i, &far_nbr_list );
 
-        tap_coef[0] = workspace.tap_coef[0];
-        tap_coef[1] = workspace.tap_coef[1];
-        tap_coef[2] = workspace.tap_coef[2];
-        tap_coef[3] = workspace.tap_coef[3];
-        tap_coef[4] = workspace.tap_coef[4];
-        tap_coef[5] = workspace.tap_coef[5];
-        tap_coef[6] = workspace.tap_coef[6];
-        tap_coef[7] = workspace.tap_coef[7];
+        for ( pj = 0; pj < TAPER_COEF_SIZE; ++pj )
+        {
+            tap_coef_[pj] = tap_coef[pj];
+        }
 
         /* diagonal entry in the matrix */
-        H->j[cm_top] = i;
-        H->val[cm_top] = sbp[type_i].eta;
+        H.j[cm_top] = i;
+        H.val[cm_top] = sbp[type_i].eta;
         ++cm_top;
 
         for ( pj = start_i; pj < end_i; ++pj )
         {
-            if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut )
+            if ( far_nbr_list.far_nbr_list.d[pj] <= cutoff )
             {
                 j = far_nbr_list.far_nbr_list.nbr[pj];
 
-                H->j[cm_top] = j;
+                H.j[cm_top] = j;
 
                 r_ij = far_nbr_list.far_nbr_list.d[pj];
-                tap = tap_coef[7] * r_ij + tap_coef[6];
-                tap = tap * r_ij + tap_coef[5];
-                tap = tap * r_ij + tap_coef[4];
-                tap = tap * r_ij + tap_coef[3];
-                tap = tap * r_ij + tap_coef[2];
-                tap = tap * r_ij + tap_coef[1];
-                tap = tap * r_ij + tap_coef[0];    
+                tap = tap_coef_[7] * r_ij + tap_coef_[6];
+                tap = tap * r_ij + tap_coef_[5];
+                tap = tap * r_ij + tap_coef_[4];
+                tap = tap * r_ij + tap_coef_[3];
+                tap = tap * r_ij + tap_coef_[2];
+                tap = tap * r_ij + tap_coef_[1];
+                tap = tap * r_ij + tap_coef_[0];    
 
                 /* shielding */
                 dr3gamij_1 = r_ij * r_ij * r_ij
@@ -434,20 +421,20 @@ GPU_GLOBAL void k_init_cm_qeq_full_fs( reax_atom * const my_atoms,
 
                 /* i == j: periodic self-interaction term
                  * i != j: general interaction term */
-                H->val[cm_top] = ((i == j) ? 0.5 : 1.0) * tap * EV_to_KCALpMOL / dr3gamij_3;
+                H.val[cm_top] = ((i == j) ? 0.5 : 1.0) * tap * EV_to_KCALpMOL / dr3gamij_3;
 
                 ++cm_top;
             }
         }
     }
 
-    H->end[i] = cm_top;
-    num_cm_entries = cm_top - H->start[i];
+    H.end[i] = cm_top;
+    num_cm_entries = cm_top - H.start[i];
 
     /* reallocation check */
     if ( num_cm_entries > max_cm_entries[i] )
     {
-        *realloc_cm_entries = TRUE;
+        *realloc = TRUE;
     }
 }
 
@@ -457,58 +444,52 @@ GPU_GLOBAL void k_init_cm_qeq_full_fs( reax_atom * const my_atoms,
  * the full shell communication method */
 GPU_GLOBAL void k_init_cm_qeq_full_fs_opt( reax_atom * const my_atoms,
         single_body_parameters const * const sbp, two_body_parameters const * const tbp,
-        storage workspace, control_params const * const control, 
-        reax_list far_nbr_list, int num_atom_types,
-        int * const max_cm_entries, int * const realloc_cm_entries )
+        sparse_matrix H, real const * const tap_coef, real cutoff,
+        reax_list far_nbr_list, int num_atom_types, int * const max_cm_entries,
+        int * const realloc, int N )
 {
     extern __shared__ hipcub::WarpScan<int>::TempStorage temp1[];
     int i, j, pj, lane_id, itr;
     int start_i, end_i, type_i;
     int cm_top, num_cm_entries, offset, flag;
-    real tap_coef[8], tap, dr3gamij_1, dr3gamij_3, r_ij;
+    real tap_coef_[TAPER_COEF_SIZE], tap, dr3gamij_1, dr3gamij_3, r_ij;
     reax_atom *atom_i;
-    sparse_matrix *H;
 
     /* all threads within a warp are assigned the same unique row 
      * in the charge matrix */
     i = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
 
-    if ( i >= workspace.H.n_max )
+    if ( i >= N )
     {
         return;
     }
 
     lane_id = (blockIdx.x * blockDim.x + threadIdx.x) % warpSize;
-    H = &workspace.H;
-    cm_top = H->start[i];
+    cm_top = H.start[i];
 
-    if ( i < H->n )
+    if ( i < H.n )
     {
         atom_i = &my_atoms[i];
         type_i = atom_i->type;
         start_i = Start_Index( i, &far_nbr_list );
         end_i = End_Index( i, &far_nbr_list );
 
-        tap_coef[0] = workspace.tap_coef[0];
-        tap_coef[1] = workspace.tap_coef[1];
-        tap_coef[2] = workspace.tap_coef[2];
-        tap_coef[3] = workspace.tap_coef[3];
-        tap_coef[4] = workspace.tap_coef[4];
-        tap_coef[5] = workspace.tap_coef[5];
-        tap_coef[6] = workspace.tap_coef[6];
-        tap_coef[7] = workspace.tap_coef[7];
+        for ( pj = 0; pj < TAPER_COEF_SIZE; ++pj )
+        {
+            tap_coef_[pj] = tap_coef[pj];
+        }
 
         /* diagonal entry in the matrix */
         if ( lane_id == 0 )
         {
-            H->j[cm_top] = i;
-            H->val[cm_top] = sbp[type_i].eta; 
+            H.j[cm_top] = i;
+            H.val[cm_top] = sbp[type_i].eta; 
         }
         ++cm_top;
 
         for ( itr = 0, pj = start_i + lane_id; itr < (end_i - start_i + warpSize - 1) / warpSize; ++itr )
         {
-            offset = (pj < end_i && far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut) ? 1 : 0;
+            offset = (pj < end_i && far_nbr_list.far_nbr_list.d[pj] <= cutoff) ? 1 : 0;
             flag = (offset == 1) ? TRUE : FALSE;
             hipcub::WarpScan<int>(temp1[threadIdx.x / warpSize]).ExclusiveSum(offset, offset);
 
@@ -516,16 +497,16 @@ GPU_GLOBAL void k_init_cm_qeq_full_fs_opt( reax_atom * const my_atoms,
             {
                 j = far_nbr_list.far_nbr_list.nbr[pj];
 
-                H->j[cm_top + offset] = j;
+                H.j[cm_top + offset] = j;
 
                 r_ij = far_nbr_list.far_nbr_list.d[pj];
-                tap = tap_coef[7] * r_ij + tap_coef[6];
-                tap = tap * r_ij + tap_coef[5];
-                tap = tap * r_ij + tap_coef[4];
-                tap = tap * r_ij + tap_coef[3];
-                tap = tap * r_ij + tap_coef[2];
-                tap = tap * r_ij + tap_coef[1];
-                tap = tap * r_ij + tap_coef[0];    
+                tap = tap_coef_[7] * r_ij + tap_coef_[6];
+                tap = tap * r_ij + tap_coef_[5];
+                tap = tap * r_ij + tap_coef_[4];
+                tap = tap * r_ij + tap_coef_[3];
+                tap = tap * r_ij + tap_coef_[2];
+                tap = tap * r_ij + tap_coef_[1];
+                tap = tap * r_ij + tap_coef_[0];    
 
                 /* shielding */
                 dr3gamij_1 = r_ij * r_ij * r_ij
@@ -534,7 +515,7 @@ GPU_GLOBAL void k_init_cm_qeq_full_fs_opt( reax_atom * const my_atoms,
 
                 /* i == j: periodic self-interaction term
                  * i != j: general interaction term */
-                H->val[cm_top + offset] = ((i == j) ? 0.5 : 1.0) * tap * EV_to_KCALpMOL / dr3gamij_3;
+                H.val[cm_top + offset] = ((i == j) ? 0.5 : 1.0) * tap * EV_to_KCALpMOL / dr3gamij_3;
             }
 
             /* get cm_top from thread in last lane */
@@ -547,13 +528,13 @@ GPU_GLOBAL void k_init_cm_qeq_full_fs_opt( reax_atom * const my_atoms,
 
     if ( lane_id == 0 )
     {
-        H->end[i] = cm_top;
-        num_cm_entries = cm_top - H->start[i];
+        H.end[i] = cm_top;
+        num_cm_entries = cm_top - H.start[i];
 
         /* reallocation check */
         if ( num_cm_entries > max_cm_entries[i] )
         {
-            *realloc_cm_entries = TRUE;
+            *realloc = TRUE;
         }
     }
 }
@@ -563,47 +544,44 @@ GPU_GLOBAL void k_init_cm_qeq_full_fs_opt( reax_atom * const my_atoms,
  * using the far neighbors list (stored in full format) and according to
  * the full shell communication method */
 GPU_GLOBAL void k_init_cm_qeq_full_fs_tab( reax_atom * const my_atoms,
-        single_body_parameters const * const sbp, 
-        storage workspace, control_params const * const control, 
+        single_body_parameters const * const sbp, sparse_matrix H, real cutoff,
         reax_list far_nbr_list, LR_lookup_table *t_LR, int num_atom_types,
-        int * const max_cm_entries, int * const realloc_cm_entries )
+        int * const max_cm_entries, int * const realloc, int N )
 {
     int i, j, pj;
     int start_i, end_i;
     int type_i;
     int cm_top;
     int num_cm_entries;
-    sparse_matrix *H;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ( i >= workspace.H.n_max )
+    if ( i >= N )
     {
         return;
     }
 
-    H = &workspace.H;
-    cm_top = H->start[i];
+    cm_top = H.start[i];
 
-    if ( i < H->n )
+    if ( i < H.n )
     {
         type_i = my_atoms[i].type;
         start_i = Start_Index( i, &far_nbr_list );
         end_i = End_Index( i, &far_nbr_list );
 
         /* diagonal entry in the matrix */
-        H->j[cm_top] = i;
-        H->val[cm_top] = sbp[type_i].eta;
+        H.j[cm_top] = i;
+        H.val[cm_top] = sbp[type_i].eta;
         ++cm_top;
 
         for ( pj = start_i; pj < end_i; ++pj )
         {
             j = far_nbr_list.far_nbr_list.nbr[pj];
 
-            if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut )
+            if ( far_nbr_list.far_nbr_list.d[pj] <= cutoff )
             {
-                H->j[cm_top] = j;
-                H->val[cm_top] = Init_Charge_Matrix_Entry_Tab( t_LR,
+                H.j[cm_top] = j;
+                H.val[cm_top] = Init_Charge_Matrix_Entry_Tab( t_LR,
                         far_nbr_list.far_nbr_list.d[pj],
                         type_i, my_atoms[j].type, num_atom_types );
                 ++cm_top;
@@ -611,22 +589,23 @@ GPU_GLOBAL void k_init_cm_qeq_full_fs_tab( reax_atom * const my_atoms,
         }
     }
 
-    H->end[i] = cm_top;
-    num_cm_entries = cm_top - H->start[i];
+    H.end[i] = cm_top;
+    num_cm_entries = cm_top - H.start[i];
 
     /* reallocation check */
     if ( num_cm_entries > max_cm_entries[i] )
     {
-        *realloc_cm_entries = TRUE;
+        *realloc = TRUE;
     }
 }
 
 
 GPU_GLOBAL void k_init_bonds( reax_atom * const my_atoms,
         single_body_parameters const * const sbp, two_body_parameters const * const tbp,
-        storage workspace, control_params const * const control, 
+        real * const total_bond_order, rvec * const dDeltap_self,
+        real cutoff1, real cutoff2, real bo_cut,
         reax_list far_nbr_list, reax_list bond_list, int n, int N,
-        int num_atom_types, int * const max_bonds, int * const realloc_bonds )
+        int num_atom_types, int * const max_bonds, int * const realloc )
 {
     int i, j, pj, start_i, end_i;
     int type_i, type_j, tbp_ij;
@@ -653,14 +632,14 @@ GPU_GLOBAL void k_init_bonds( reax_atom * const my_atoms,
 
     if ( i < n )
     {
-        cutoff = MIN( control->nonb_cut, control->bond_cut );
-//        workspace.bond_mark[i] = 0;
+        cutoff = cutoff1;
+//        bond_mark[i] = 0;
     }
     else
     {
-        cutoff = control->bond_cut;
+        cutoff = cutoff2;
         /* put ghost atoms to an infinite distance (i.e., 1000) */
-//        workspace.bond_mark[i] = 1000;
+//        bond_mark[i] = 1000;
     }
 
     /* check if j is within cutoff */
@@ -678,7 +657,7 @@ GPU_GLOBAL void k_init_bonds( reax_atom * const my_atoms,
             if ( sbp[type_i].r_s > 0.0 && sbp[type_j].r_s > 0.0 )
             {
                 C12 = tbp[tbp_ij].p_bo1 * POW( r_ij / tbp[tbp_ij].r_s, tbp[tbp_ij].p_bo2 );
-                BO_s = (1.0 + control->bo_cut) * EXP( C12 );
+                BO_s = (1.0 + bo_cut) * EXP( C12 );
             }
             else
             {
@@ -711,10 +690,10 @@ GPU_GLOBAL void k_init_bonds( reax_atom * const my_atoms,
             /* initially BO values are the uncorrected ones, page 1 */
             BO = BO_s + BO_pi + BO_pi2;
 
-            if ( BO >= control->bo_cut )
+            if ( BO >= bo_cut )
             {
                 /* compute and append bond info to list */
-                Hip_Compute_BOp( bond_list, control->bo_cut, i, btop_i,
+                Hip_Compute_BOp( bond_list, bo_cut, i, btop_i,
                         far_nbr_list.far_nbr_list.nbr[pj],
                         C12, C34, C56, BO_s, BO_pi, BO_pi2, BO,
                         &far_nbr_list.far_nbr_list.rel_box[pj],
@@ -725,13 +704,13 @@ GPU_GLOBAL void k_init_bonds( reax_atom * const my_atoms,
                 ++btop_i;
 
                 /* TODO: future optimization if bond_mark implemented */
-//                if ( workspace->bond_mark[j] > workspace->bond_mark[i] + 1 )
+//                if ( bond_mark[j] > bond_mark[i] + 1 )
 //                {
-//                    workspace->bond_mark[j] = workspace->bond_mark[i] + 1;
+//                    bond_mark[j] = bond_mark[i] + 1;
 //                }
-//                else if ( workspace->bond_mark[i] > workspace->bond_mark[j] + 1 )
+//                else if ( bond_mark[i] > bond_mark[j] + 1 )
 //                {
-//                    workspace->bond_mark[i] = workspace->bond_mark[j] + 1;
+//                    bond_mark[i] = bond_mark[j] + 1;
 //                }
             }
         }
@@ -745,22 +724,23 @@ GPU_GLOBAL void k_init_bonds( reax_atom * const my_atoms,
      * (needed for atom ownership transfer via MPI) */
     my_atoms[i].num_bonds = num_bonds;
 
-    workspace.total_bond_order[i] = total_bond_order_i;
-    rvec_Copy( workspace.dDeltap_self[i], dDeltap_self_i );
+    total_bond_order[i] = total_bond_order_i;
+    rvec_Copy( dDeltap_self[i], dDeltap_self_i );
 
     /* reallocation check */
     if ( num_bonds > max_bonds[i] )
     {
-        *realloc_bonds = TRUE;
+        *realloc = TRUE;
     }
 }
 
 
 GPU_GLOBAL void k_init_bonds_opt( reax_atom * const my_atoms,
         single_body_parameters const * const sbp, two_body_parameters const * const tbp,
-        storage workspace, control_params const * const control, 
+        real * const total_bond_order, rvec * const dDeltap_self,
+        real cutoff1, real cutoff2, real bo_cut,
         reax_list far_nbr_list, reax_list bond_list, int n, int N,
-        int num_atom_types, int * const max_bonds, int * const realloc_bonds )
+        int num_atom_types, int * const max_bonds, int * const realloc )
 {
     extern __shared__ hipcub::WarpScan<int>::TempStorage temp21[];
     hipcub::WarpReduce<double>::TempStorage *temp22;
@@ -793,14 +773,14 @@ GPU_GLOBAL void k_init_bonds_opt( reax_atom * const my_atoms,
 
     if ( i < n )
     {
-        cutoff = MIN( control->nonb_cut, control->bond_cut );
-//        workspace.bond_mark[i] = 0;
+        cutoff = cutoff1;
+//        bond_mark[i] = 0;
     }
     else
     {
-        cutoff = control->bond_cut;
+        cutoff = cutoff2;
         /* put ghost atoms to an infinite distance (i.e., 1000) */
-//        workspace.bond_mark[i] = 1000;
+//        bond_mark[i] = 1000;
     }
 
     for ( itr = 0, pj = start_i + lane_id; itr < (end_i - start_i + warpSize - 1) / warpSize; ++itr )
@@ -817,7 +797,7 @@ GPU_GLOBAL void k_init_bonds_opt( reax_atom * const my_atoms,
             if ( sbp[type_i].r_s > 0.0 && sbp[type_j].r_s > 0.0 )
             {
                 C12 = tbp[tbp_ij].p_bo1 * POW( r_ij / tbp[tbp_ij].r_s, tbp[tbp_ij].p_bo2 );
-                BO_s = (1.0 + control->bo_cut) * EXP( C12 );
+                BO_s = (1.0 + bo_cut) * EXP( C12 );
             }
             else
             {
@@ -857,14 +837,14 @@ GPU_GLOBAL void k_init_bonds_opt( reax_atom * const my_atoms,
         /* initially BO values are the uncorrected ones, page 1 */
         BO = BO_s + BO_pi + BO_pi2;
 
-        offset = (pj < end_i && far_nbr_list.far_nbr_list.d[pj] <= cutoff && BO >= control->bo_cut) ? 1 : 0;
+        offset = (pj < end_i && far_nbr_list.far_nbr_list.d[pj] <= cutoff && BO >= bo_cut) ? 1 : 0;
         flag = (offset == 1) ? TRUE : FALSE;
         hipcub::WarpScan<int>(temp21[warp_id]).ExclusiveSum(offset, offset);
 
         if ( flag == TRUE )
         {
             /* compute and append bond info to list */
-            Hip_Compute_BOp( bond_list, control->bo_cut, i, btop_i + offset,
+            Hip_Compute_BOp( bond_list, bo_cut, i, btop_i + offset,
                     far_nbr_list.far_nbr_list.nbr[pj],
                     C12, C34, C56, BO_s, BO_pi, BO_pi2, BO,
                     &far_nbr_list.far_nbr_list.rel_box[pj],
@@ -873,13 +853,13 @@ GPU_GLOBAL void k_init_bonds_opt( reax_atom * const my_atoms,
                     &tbp[tbp_ij], dDeltap_self_i, &total_bond_order_i );
 
             /* TODO: future optimization if bond_mark implemented */
-//            if ( workspace->bond_mark[j] > workspace->bond_mark[i] + 1 )
+//            if ( bond_mark[j] > bond_mark[i] + 1 )
 //            {
-//                workspace->bond_mark[j] = workspace->bond_mark[i] + 1;
+//                bond_mark[j] = bond_mark[i] + 1;
 //            }
-//            else if ( workspace->bond_mark[i] > workspace->bond_mark[j] + 1 )
+//            else if ( bond_mark[i] > bond_mark[j] + 1 )
 //            {
-//                workspace->bond_mark[i] = workspace->bond_mark[j] + 1;
+//                bond_mark[i] = bond_mark[j] + 1;
 //            }
         }
 
@@ -905,13 +885,13 @@ GPU_GLOBAL void k_init_bonds_opt( reax_atom * const my_atoms,
          * (needed for atom ownership transfer via MPI) */
         my_atoms[i].num_bonds = num_bonds;
 
-        workspace.total_bond_order[i] = total_bond_order_i;
-        rvec_Copy( workspace.dDeltap_self[i], dDeltap_self_i );
+        total_bond_order[i] = total_bond_order_i;
+        rvec_Copy( dDeltap_self[i], dDeltap_self_i );
 
         /* reallocation check */
         if ( num_bonds > max_bonds[i] )
         {
-            *realloc_bonds = TRUE;
+            *realloc = TRUE;
         }
     }
 }
@@ -919,16 +899,15 @@ GPU_GLOBAL void k_init_bonds_opt( reax_atom * const my_atoms,
 
 /* Construct the interaction list for hydrogen bonds */
 GPU_GLOBAL void k_init_hbonds( reax_atom * const my_atoms,
-        single_body_parameters const * const sbp, control_params const * const control,
+        single_body_parameters const * const sbp, real cutoff,
         reax_list far_nbr_list, reax_list hbond_list,
-        int n, int N, int num_atom_types, int * const max_hbonds, int * const realloc_hbonds )
+        int n, int N, int num_atom_types, int * const max_hbonds, int * const realloc )
 {
     int i, j, pj;
     int start_i, end_i;
     int type_i, type_j;
     int ihb, jhb, ihb_top;
     int num_hbonds;
-    real cutoff;
     reax_atom *atom_i;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
@@ -943,8 +922,6 @@ GPU_GLOBAL void k_init_hbonds( reax_atom * const my_atoms,
     start_i = Start_Index( i, &far_nbr_list );
     end_i = End_Index( i, &far_nbr_list );
     ihb = sbp[type_i].p_hbond;
-
-    cutoff = MIN( control->nonb_cut, control->hbond_cut );
 
     ihb_top = Start_Index( atom_i->Hindex, &hbond_list );
 
@@ -964,13 +941,12 @@ GPU_GLOBAL void k_init_hbonds( reax_atom * const my_atoms,
                 if ( i >= n && j < n
                         && ihb == H_BONDING_ATOM && jhb == H_ATOM )
                 {
-                    hbond_list.hbond_list[ihb_top].nbr = j;
-                    hbond_list.hbond_list[ihb_top].scl = -1;
-                    hbond_list.hbond_list[ihb_top].ptr = pj;
-
-#if !defined(GPU_ACCUM_ATOMIC)
-                    hbond_list.hbond_list[ihb_top].sym_index = -1;
-                    rvec_MakeZero( hbond_list.hbond_list[ihb_top].hb_f );
+                    hbond_list.hbond_list.nbr[ihb_top] = j;
+                    hbond_list.hbond_list.scl[ihb_top] = -1;
+                    hbond_list.hbond_list.ptr[ihb_top] = pj;
+#if !defined(GPU_KERNEL_ATOMIC)
+//                    hbond_list.hbond_list.sym_index[ihb_top] = -1;
+//                    rvec_MakeZero( hbond_list.hbond_list.f_hb[ihb_top] );
 #endif
 
                     ++ihb_top;
@@ -980,13 +956,12 @@ GPU_GLOBAL void k_init_hbonds( reax_atom * const my_atoms,
                 else if ( i < n
                         && ihb == H_ATOM && jhb == H_BONDING_ATOM )
                 {
-                    hbond_list.hbond_list[ihb_top].nbr = j;
-                    hbond_list.hbond_list[ihb_top].scl = 1;
-                    hbond_list.hbond_list[ihb_top].ptr = pj;
-
-#if !defined(GPU_ACCUM_ATOMIC)
-                    hbond_list.hbond_list[ihb_top].sym_index = -1;
-                    rvec_MakeZero( hbond_list.hbond_list[ihb_top].hb_f );
+                    hbond_list.hbond_list.nbr[ihb_top] = j;
+                    hbond_list.hbond_list.scl[ihb_top] = 1;
+                    hbond_list.hbond_list.ptr[ihb_top] = pj;
+#if !defined(GPU_KERNEL_ATOMIC)
+//                    hbond_list.hbond_list.sym_index[ihb_top] = -1;
+//                    rvec_MakeZero( hbond_list.hbond_list.f_hb[ihb_top] );
 #endif
 
                     ++ihb_top;
@@ -996,13 +971,12 @@ GPU_GLOBAL void k_init_hbonds( reax_atom * const my_atoms,
                 else if ( i < n
                         && ihb == H_BONDING_ATOM && jhb == H_ATOM && j < n )
                 {
-                    hbond_list.hbond_list[ihb_top].nbr = j;
-                    hbond_list.hbond_list[ihb_top].scl = -1;
-                    hbond_list.hbond_list[ihb_top].ptr = pj;
-
-#if !defined(GPU_ACCUM_ATOMIC)
-                    hbond_list.hbond_list[ihb_top].sym_index = -1;
-                    rvec_MakeZero( hbond_list.hbond_list[ihb_top].hb_f );
+                    hbond_list.hbond_list.nbr[ihb_top] = j;
+                    hbond_list.hbond_list.scl[ihb_top] = -1;
+                    hbond_list.hbond_list.ptr[ihb_top] = pj;
+#if !defined(GPU_KERNEL_ATOMIC)
+//                    hbond_list.hbond_list.sym_index[ihb_top] = -1;
+//                    rvec_MakeZero( hbond_list.hbond_list.f_hb[ihb_top] );
 #endif
 
                     ++ihb_top;
@@ -1022,16 +996,16 @@ GPU_GLOBAL void k_init_hbonds( reax_atom * const my_atoms,
     /* reallocation check */
     if ( num_hbonds > max_hbonds[i] )
     {
-        *realloc_hbonds = TRUE;
+        *realloc = TRUE;
     }
 }
 
 
 /* Construct the interaction list for hydrogen bonds */
 GPU_GLOBAL void k_init_hbonds_opt( reax_atom * const my_atoms,
-        single_body_parameters const * const sbp, control_params const * const control,
+        single_body_parameters const * const sbp, real cutoff,
         reax_list far_nbr_list, reax_list hbond_list,
-        int n, int N, int num_atom_types, int * const max_hbonds, int * const realloc_hbonds )
+        int n, int N, int num_atom_types, int * const max_hbonds, int * const realloc )
 {
     extern __shared__ hipcub::WarpScan<int>::TempStorage temp3[];
     int i, j, pj, lane_id, itr;
@@ -1039,7 +1013,6 @@ GPU_GLOBAL void k_init_hbonds_opt( reax_atom * const my_atoms,
     int type_i, type_j;
     int ihb, jhb, ihb_top, offset, flag;
     int num_hbonds;
-    real cutoff;
     reax_atom *atom_i;
 
     /* all threads within a warp are assigned the bonds
@@ -1057,8 +1030,6 @@ GPU_GLOBAL void k_init_hbonds_opt( reax_atom * const my_atoms,
     start_i = Start_Index( i, &far_nbr_list );
     end_i = End_Index( i, &far_nbr_list );
     ihb = sbp[type_i].p_hbond;
-
-    cutoff = MIN( control->nonb_cut, control->hbond_cut );
 
     ihb_top = Start_Index( atom_i->Hindex, &hbond_list );
 
@@ -1092,13 +1063,12 @@ GPU_GLOBAL void k_init_hbonds_opt( reax_atom * const my_atoms,
                 if ( i >= n && j < n
                         && ihb == H_BONDING_ATOM && jhb == H_ATOM )
                 {
-                    hbond_list.hbond_list[ihb_top + offset].nbr = j;
-                    hbond_list.hbond_list[ihb_top + offset].scl = -1;
-                    hbond_list.hbond_list[ihb_top + offset].ptr = pj;
-
-#if !defined(GPU_ACCUM_ATOMIC)
-                    hbond_list.hbond_list[ihb_top + offset].sym_index = -1;
-                    rvec_MakeZero( hbond_list.hbond_list[ihb_top + offset].hb_f );
+                    hbond_list.hbond_list.nbr[ihb_top + offset] = j;
+                    hbond_list.hbond_list.scl[ihb_top + offset] = -1;
+                    hbond_list.hbond_list.ptr[ihb_top + offset] = pj;
+#if !defined(GPU_KERNEL_ATOMIC)
+//                    hbond_list.hbond_list.sym_index[ihb_top + offset] = -1;
+//                    rvec_MakeZero( hbond_list.hbond_list.f_hb[ihb_top + offset] );
 #endif
                 }
                 /* atom i: H atom, native
@@ -1106,13 +1076,12 @@ GPU_GLOBAL void k_init_hbonds_opt( reax_atom * const my_atoms,
                 else if ( i < n
                         && ihb == H_ATOM && jhb == H_BONDING_ATOM )
                 {
-                    hbond_list.hbond_list[ihb_top + offset].nbr = j;
-                    hbond_list.hbond_list[ihb_top + offset].scl = 1;
-                    hbond_list.hbond_list[ihb_top + offset].ptr = pj;
-
-#if !defined(GPU_ACCUM_ATOMIC)
-                    hbond_list.hbond_list[ihb_top + offset].sym_index = -1;
-                    rvec_MakeZero( hbond_list.hbond_list[ihb_top + offset].hb_f );
+                    hbond_list.hbond_list.nbr[ihb_top + offset] = j;
+                    hbond_list.hbond_list.scl[ihb_top + offset] = 1;
+                    hbond_list.hbond_list.ptr[ihb_top + offset] = pj;
+#if !defined(GPU_KERNEL_ATOMIC)
+//                    hbond_list.hbond_list.sym_index[ihb_top + offset] = -1;
+//                    rvec_MakeZero( hbond_list.hbond_list.f_hb[ihb_top + offset] );
 #endif
                 }
                 /* atom i: H bonding atom, native
@@ -1120,13 +1089,12 @@ GPU_GLOBAL void k_init_hbonds_opt( reax_atom * const my_atoms,
                 else if ( i < n
                         && ihb == H_BONDING_ATOM && jhb == H_ATOM && j < n )
                 {
-                    hbond_list.hbond_list[ihb_top + offset].nbr = j;
-                    hbond_list.hbond_list[ihb_top + offset].scl = -1;
-                    hbond_list.hbond_list[ihb_top + offset].ptr = pj;
-
-#if !defined(GPU_ACCUM_ATOMIC)
-                    hbond_list.hbond_list[ihb_top + offset].sym_index = -1;
-                    rvec_MakeZero( hbond_list.hbond_list[ihb_top + offset].hb_f );
+                    hbond_list.hbond_list.nbr[ihb_top + offset] = j;
+                    hbond_list.hbond_list.scl[ihb_top + offset] = -1;
+                    hbond_list.hbond_list.ptr[ihb_top + offset] = pj;
+#if !defined(GPU_KERNEL_ATOMIC)
+//                    hbond_list.hbond_list.sym_index[ihb_top + offset] = -1;
+//                    rvec_MakeZero( hbond_list.hbond_list.f_hb[ihb_top + offset] );
 #endif
                 }
             }
@@ -1152,7 +1120,7 @@ GPU_GLOBAL void k_init_hbonds_opt( reax_atom * const my_atoms,
         /* reallocation check */
         if ( num_hbonds > max_hbonds[i] )
         {
-            *realloc_hbonds = TRUE;
+            *realloc = TRUE;
         }
     }
 }
@@ -1160,8 +1128,8 @@ GPU_GLOBAL void k_init_hbonds_opt( reax_atom * const my_atoms,
 
 /* Construct the interaction list for bonds */
 GPU_GLOBAL void k_estimate_storages_cm_half( reax_atom const * const my_atoms,
-        control_params const * const control, reax_list far_nbr_list,
-        int cm_n, int cm_n_max, int * const cm_entries, int * const max_cm_entries )
+        real cutoff, reax_list far_nbr_list, int cm_n, int cm_n_max,
+        int * const cm_entries, int * const max_cm_entries )
 {
     int i, j, pj; 
     int start_i, end_i;
@@ -1188,7 +1156,7 @@ GPU_GLOBAL void k_estimate_storages_cm_half( reax_atom const * const my_atoms,
         { 
             j = far_nbr_list.far_nbr_list.nbr[pj];
 
-            if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut
+            if ( far_nbr_list.far_nbr_list.d[pj] <= cutoff
                     && (j < cm_n || my_atoms[i].orig_id < my_atoms[j].orig_id) )
             {
                 ++num_cm_entries;
@@ -1204,7 +1172,7 @@ GPU_GLOBAL void k_estimate_storages_cm_half( reax_atom const * const my_atoms,
 }
 
 
-GPU_GLOBAL void k_estimate_storages_cm_full( control_params const * const control,
+GPU_GLOBAL void k_estimate_storages_cm_full( real cutoff,
         reax_list far_nbr_list, int cm_n, int cm_n_max,
         int * const cm_entries, int * const max_cm_entries )
 {
@@ -1231,7 +1199,7 @@ GPU_GLOBAL void k_estimate_storages_cm_full( control_params const * const contro
 
         for ( pj = start_i; pj < end_i; ++pj )
         { 
-            if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut )
+            if ( far_nbr_list.far_nbr_list.d[pj] <= cutoff )
             {
                 ++num_cm_entries;
             }
@@ -1246,7 +1214,7 @@ GPU_GLOBAL void k_estimate_storages_cm_full( control_params const * const contro
 }
 
 
-GPU_GLOBAL void k_estimate_storages_cm_full_opt( control_params const * const control,
+GPU_GLOBAL void k_estimate_storages_cm_full_opt( real cutoff,
         reax_list far_nbr_list, int cm_n, int cm_n_max,
         int * const cm_entries, int * const max_cm_entries )
 {
@@ -1270,7 +1238,7 @@ GPU_GLOBAL void k_estimate_storages_cm_full_opt( control_params const * const co
 
         for ( pj = start_i + lane_id; pj < end_i; pj += warpSize )
         { 
-            if ( far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut )
+            if ( far_nbr_list.far_nbr_list.d[pj] <= cutoff )
             {
                 ++num_cm_entries;
             }
@@ -1295,7 +1263,7 @@ GPU_GLOBAL void k_estimate_storages_cm_full_opt( control_params const * const co
 
 GPU_GLOBAL void k_estimate_storage_bonds( reax_atom const * const my_atoms, 
         single_body_parameters const * const sbp, two_body_parameters const * const tbp,
-        control_params *control, reax_list far_nbr_list, 
+        real cutoff1, real cutoff2, real bo_cut, reax_list far_nbr_list, 
         int num_atom_types, int n, int N, int total_cap,
         int * const bonds, int * const max_bonds )
 {
@@ -1324,11 +1292,11 @@ GPU_GLOBAL void k_estimate_storage_bonds( reax_atom const * const my_atoms,
 
         if ( i < n )
         {
-            cutoff = MIN( control->nonb_cut, control->bond_cut );
+            cutoff = cutoff1;
         }
         else
         {
-            cutoff = control->bond_cut;
+            cutoff = cutoff2;
         }
 
         for ( pj = start_i; pj < end_i; ++pj )
@@ -1344,7 +1312,7 @@ GPU_GLOBAL void k_estimate_storage_bonds( reax_atom const * const my_atoms,
                 if ( sbp[type_i].r_s > 0.0 && sbp[type_j].r_s > 0.0 )
                 {
                     C12 = tbp[tbp_ij].p_bo1 * POW( r_ij / tbp[tbp_ij].r_s, tbp[tbp_ij].p_bo2 );
-                    BO_s = (1.0 + control->bo_cut) * EXP( C12 );
+                    BO_s = (1.0 + bo_cut) * EXP( C12 );
                 }
                 else
                 {
@@ -1375,7 +1343,7 @@ GPU_GLOBAL void k_estimate_storage_bonds( reax_atom const * const my_atoms,
                 }
 
                 /* initially BO values are the uncorrected ones, page 1 */
-                if ( BO_s + BO_pi + BO_pi2 >= control->bo_cut )
+                if ( BO_s + BO_pi + BO_pi2 >= bo_cut )
                 {
                     ++num_bonds;
                 }
@@ -1393,7 +1361,7 @@ GPU_GLOBAL void k_estimate_storage_bonds( reax_atom const * const my_atoms,
 
 GPU_GLOBAL void k_estimate_storage_bonds_opt( reax_atom const * const my_atoms, 
         single_body_parameters const * const sbp, two_body_parameters const * const tbp,
-        control_params *control, reax_list far_nbr_list, 
+        real cutoff1, real cutoff2, real bo_cut, reax_list far_nbr_list, 
         int num_atom_types, int n, int N, int total_cap,
         int * const bonds, int * const max_bonds )
 {
@@ -1428,11 +1396,11 @@ GPU_GLOBAL void k_estimate_storage_bonds_opt( reax_atom const * const my_atoms,
 
         if ( i < n )
         {
-            cutoff = MIN( control->nonb_cut, control->bond_cut );
+            cutoff = cutoff1;
         }
         else
         {
-            cutoff = control->bond_cut;
+            cutoff = cutoff2;
         }
 
         for ( pj = start_i + lane_id; pj < end_i; pj += warpSize )
@@ -1448,7 +1416,7 @@ GPU_GLOBAL void k_estimate_storage_bonds_opt( reax_atom const * const my_atoms,
                 if ( r_s > 0.0 && sbp[type_j].r_s > 0.0 )
                 {
                     C12 = tbp[tbp_ij].p_bo1 * POW( r_ij / tbp[tbp_ij].r_s, tbp[tbp_ij].p_bo2 );
-                    BO_s = (1.0 + control->bo_cut) * EXP( C12 );
+                    BO_s = (1.0 + bo_cut) * EXP( C12 );
                 }
                 else
                 {
@@ -1479,7 +1447,7 @@ GPU_GLOBAL void k_estimate_storage_bonds_opt( reax_atom const * const my_atoms,
                 }
 
                 /* initially BO values are the uncorrected ones, page 1 */
-                if ( BO_s + BO_pi + BO_pi2 >= control->bo_cut )
+                if ( BO_s + BO_pi + BO_pi2 >= bo_cut )
                 {
                     ++num_bonds;
                 }
@@ -1501,7 +1469,7 @@ GPU_GLOBAL void k_estimate_storage_bonds_opt( reax_atom const * const my_atoms,
 
 
 GPU_GLOBAL void k_estimate_storage_hbonds( reax_atom const * const my_atoms, 
-        single_body_parameters const * const sbp, control_params const * const control,
+        single_body_parameters const * const sbp, real cutoff1, real cutoff2, real cutoff3,
         reax_list far_nbr_list, int num_atom_types, int n, int N,
         int total_cap, int * const hbonds, int * const max_hbonds )
 {
@@ -1530,11 +1498,11 @@ GPU_GLOBAL void k_estimate_storage_hbonds( reax_atom const * const my_atoms,
 
         if ( i < n )
         { 
-            cutoff = control->nonb_cut;
+            cutoff = cutoff1;
         }   
         else
         {
-            cutoff = control->bond_cut;
+            cutoff = cutoff2;
         } 
 
         if ( (i < n && ihb == H_ATOM) || ihb == H_BONDING_ATOM )
@@ -1548,13 +1516,13 @@ GPU_GLOBAL void k_estimate_storage_hbonds( reax_atom const * const my_atoms,
                 /* atom i: H bonding, ghost
                  * atom j: H atom, native */
                 if ( i >= n && j < n && ihb == H_BONDING_ATOM && jhb == H_ATOM
-                        && far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut
-                        && far_nbr_list.far_nbr_list.d[pj] <= control->hbond_cut )
+                        && far_nbr_list.far_nbr_list.d[pj] <= cutoff1
+                        && far_nbr_list.far_nbr_list.d[pj] <= cutoff3 )
                 {
                     ++num_hbonds;
                 }
                 else if ( i < n && far_nbr_list.far_nbr_list.d[pj] <= cutoff
-                        && far_nbr_list.far_nbr_list.d[pj] <= control->hbond_cut )
+                        && far_nbr_list.far_nbr_list.d[pj] <= cutoff3 )
                 {
                     /* atom i: H atom, native
                      * atom j: H bonding atom */
@@ -1582,7 +1550,7 @@ GPU_GLOBAL void k_estimate_storage_hbonds( reax_atom const * const my_atoms,
 
 
 GPU_GLOBAL void k_estimate_storage_hbonds_opt( reax_atom const * const my_atoms, 
-        single_body_parameters const * const sbp, control_params const * const control,
+        single_body_parameters const * const sbp, real cutoff1, real cutoff2, real cutoff3,
         reax_list far_nbr_list, int num_atom_types, int n, int N,
         int total_cap, int * const hbonds, int * const max_hbonds )
 {
@@ -1613,11 +1581,11 @@ GPU_GLOBAL void k_estimate_storage_hbonds_opt( reax_atom const * const my_atoms,
 
         if ( i < n )
         { 
-            cutoff = control->nonb_cut;
+            cutoff = cutoff1;
         }   
         else
         {
-            cutoff = control->bond_cut;
+            cutoff = cutoff2;
         } 
 
         if ( (i < n && ihb == H_ATOM) || ihb == H_BONDING_ATOM )
@@ -1631,13 +1599,13 @@ GPU_GLOBAL void k_estimate_storage_hbonds_opt( reax_atom const * const my_atoms,
                 /* atom i: H bonding, ghost
                  * atom j: H atom, native */
                 if ( i >= n && j < n && ihb == H_BONDING_ATOM && jhb == H_ATOM
-                        && far_nbr_list.far_nbr_list.d[pj] <= control->nonb_cut
-                        && far_nbr_list.far_nbr_list.d[pj] <= control->hbond_cut )
+                        && far_nbr_list.far_nbr_list.d[pj] <= cutoff1
+                        && far_nbr_list.far_nbr_list.d[pj] <= cutoff3 )
                 {
                     ++num_hbonds;
                 }
                 else if ( i < n && far_nbr_list.far_nbr_list.d[pj] <= cutoff
-                        && far_nbr_list.far_nbr_list.d[pj] <= control->hbond_cut )
+                        && far_nbr_list.far_nbr_list.d[pj] <= cutoff3 )
                 {
                     /* atom i: H atom, native
                      * atom j: H bonding atom */
@@ -1672,7 +1640,7 @@ GPU_GLOBAL void k_estimate_storage_hbonds_opt( reax_atom const * const my_atoms,
 GPU_GLOBAL void k_update_sym_dbond_indices( reax_list bond_list, int N )
 {
     int i, pj, pk, nbr_ij, nbr_jk;
-    bond_data *ibond, *jbond;
+#define BL (bond_list.bond_list_gpu)
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -1684,30 +1652,30 @@ GPU_GLOBAL void k_update_sym_dbond_indices( reax_list bond_list, int N )
     /* i-j bonds */
     for ( pj = Start_Index(i, &bond_list); pj < End_Index(i, &bond_list); ++pj )
     {
-        ibond = &bond_list.bond_list[pj];
-        nbr_ij = ibond->nbr;
+        nbr_ij = BL.nbr[pj];
 
         /* j-k bonds */
         for ( pk = Start_Index(nbr_ij, &bond_list); pk < End_Index(nbr_ij, &bond_list); ++pk )
         {
-            jbond = &bond_list.bond_list[pk];
-            nbr_jk = jbond->nbr;
+            nbr_jk = BL.nbr[pk];
 
             if ( i == nbr_jk && i > nbr_ij )
             {
-                ibond->sym_index = pk;
-                jbond->sym_index = pj;
+                BL.sym_index[pj] = pk;
+                BL.sym_index[pk] = pj;
                 break;
             }
         }
     }
+
+#undef BL
 }
 
 
 GPU_GLOBAL void k_update_sym_dbond_indices_opt( reax_list bond_list, int N )
 {
     int i, pj, pk, start_i, end_i, nbr_ij, nbr_jk, flag, lane_id;
-    bond_data *ibond, *jbond;
+#define BL (bond_list.bond_list_gpu)
 
     i = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
 
@@ -1723,15 +1691,13 @@ GPU_GLOBAL void k_update_sym_dbond_indices_opt( reax_list bond_list, int N )
     /* i-j bonds */
     for ( pj = start_i + lane_id; pj < end_i; pj += warpSize )
     {
-        ibond = &bond_list.bond_list[pj];
-        nbr_ij = ibond->nbr;
+        nbr_ij = BL.nbr[pj];
         flag = FALSE;
 
         /* j-k bonds */
         for ( pk = Start_Index(nbr_ij, &bond_list); pk < End_Index(nbr_ij, &bond_list); ++pk )
         {
-            jbond = &bond_list.bond_list[pk];
-            nbr_jk = jbond->nbr;
+            nbr_jk = BL.nbr[pk];
 
             if ( i == nbr_jk && i > nbr_ij )
             {
@@ -1742,67 +1708,63 @@ GPU_GLOBAL void k_update_sym_dbond_indices_opt( reax_list bond_list, int N )
 
         if ( flag == TRUE )
         {
-            ibond->sym_index = pk;
-            jbond->sym_index = pj;
+            BL.sym_index[pj] = pk;
+            BL.sym_index[pk] = pj;
         }
     }
+
+#undef BL
 }
 
 
-#if !defined(GPU_ACCUM_ATOMIC)
-GPU_GLOBAL void k_update_sym_hbond_indices_opt( reax_atom *my_atoms,
-        reax_list hbond_list, int N )
-{
-    int i, pj, pk;
-    int nbr, nbrstart, nbrend;
-    int start, end, flag, lane_id;
-    hbond_data *ihbond, *jhbond;
-
-    i = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
-
-    if ( i > N )
-    {
-        return;
-    }
-
-    lane_id = (blockIdx.x * blockDim.x + threadIdx.x) % warpSize; 
-    start = Start_Index( my_atoms[i].Hindex, &hbond_list );
-    end = End_Index( my_atoms[i].Hindex, &hbond_list );
-    pj = start + lane_id;
-
-    while ( pj < end )
-    {
-        ihbond = &hbond_list.hbond_list[pj];
-        nbr = ihbond->nbr;
-        flag = FALSE;
-        nbrstart = Start_Index( my_atoms[nbr].Hindex, &hbond_list );
-        nbrend = End_Index( my_atoms[nbr].Hindex, &hbond_list );
-
-        for ( pk = nbrstart; pk < nbrend; pk++ )
-        {
-            jhbond = &hbond_list.hbond_list[pk];
-
-            if ( jhbond->nbr == i )
-            {
-                flag = TRUE;
-                break;
-            }
-        }
-
-        if ( flag == TRUE )
-        {
-            ihbond->sym_index = pk;
-            jhbond->sym_index = pj;
-        }
-
-        pj += warpSize;
-    }
-}
+#if !defined(GPU_KERNEL_ATOMIC)
+//GPU_GLOBAL void k_update_sym_hbond_indices_opt( reax_atom const * const my_atoms,
+//        reax_list hbond_list, int N )
+//{
+//    int i, pj, pk, nbr_ij;
+//    int start_i, end_i, flag, lane_id;
+//
+//    i = (blockIdx.x * blockDim.x + threadIdx.x) / warpSize;
+//
+//    if ( i >= N )
+//    {
+//        return;
+//    }
+//
+//    lane_id = (blockIdx.x * blockDim.x + threadIdx.x) % warpSize; 
+//    start_i = Start_Index( my_atoms[i].Hindex, &hbond_list );
+//    end_i = End_Index( my_atoms[i].Hindex, &hbond_list );
+//
+//    /* i-j H-bonds */
+//    for ( pj = start_i + lane_id; pj < end_i; pj += warpSize )
+//    {
+//        nbr_ij = hbond_list.hbond_list.nbr[pj];
+//        flag = FALSE;
+//
+//        /* j-k H-bonds */
+//        for ( pk = Start_Index( my_atoms[nbr_ij].Hindex, &hbond_list );
+//                pk < End_Index( my_atoms[nbr_ij].Hindex, &hbond_list ); ++pk )
+//        {
+//            if ( i == hbond_list.hbond_list.nbr[pk] )
+//            {
+//                flag = TRUE;
+//                break;
+//            }
+//        }
+//
+//        if ( flag == TRUE )
+//        {
+//            hbond_list.hbond_list.sym_index[pj] = pk;
+//            hbond_list.hbond_list.sym_index[pk] = pj;
+//        }
+//    }
+//}
 #endif
 
 
 #if defined(DEBUG_FOCUS)
-GPU_GLOBAL void k_print_forces( reax_atom *my_atoms, rvec *f, int n )
+GPU_GLOBAL void k_print_forces( reax_atom const * const my_atoms,
+        rvec const * const f, int n )
 {
     int i; 
 
@@ -1818,7 +1780,8 @@ GPU_GLOBAL void k_print_forces( reax_atom *my_atoms, rvec *f, int n )
 }
 
 
-GPU_GLOBAL void k_print_hbonds( reax_atom *my_atoms, reax_list hbond_list, int n, int rank, int step )
+GPU_GLOBAL void k_print_hbonds( reax_atom const * const my_atoms,
+        reax_list hbond_list, int n, int rank, int step )
 {
     int i, k, pj, start, end; 
     hbond_data *hbond_jk;
@@ -1838,12 +1801,12 @@ GPU_GLOBAL void k_print_hbonds( reax_atom *my_atoms, reax_list hbond_list, int n
         k = hbond_list.hbond_list[pj].nbr;
         hbond_jk = &hbond_list.hbond_list[pj];
 
-#if !defined(GPU_ACCUM_ATOMIC)
+#if !defined(GPU_KERNEL_ATOMIC)
         printf( "p%03d, step %05d: %8d: %8d, %24.15f, %24.15f, %24.15f\n",
                 rank, step, my_atoms[i].Hindex, k,
-                hbond_jk->hb_f[0],
-                hbond_jk->hb_f[1],
-                hbond_jk->hb_f[2] );
+                hbond_jk->f_hb[0],
+                hbond_jk->f_hb[1],
+                hbond_jk->f_hb[2] );
 #else
         printf( "p%03d, step %05d: %8d: %8d\n",
                 rank, step, my_atoms[i].Hindex, k );
@@ -1879,9 +1842,7 @@ static void Print_HBonds( reax_system const * const system,
  *
  * system: atomic system info. */
 void Hip_Init_Neighbor_Indices( reax_system * const system,
-        control_params const * const control,
-        reax_list * const far_nbr_list )
-
+        control_params const * const control, reax_list * const far_nbr_list )
 {
     int blocks;
 
@@ -1909,19 +1870,20 @@ void Hip_Init_HBond_Indices( reax_system * const system, storage * const workspa
 {
     int blocks, *temp;
 
-    blocks = system->total_cap / block_size
-        + (system->total_cap % block_size == 0 ? 0 : 1);
+    blocks = hbond_list->n / block_size
+        + (hbond_list->n % block_size == 0 ? 0 : 1);
 
-    sHipCheckMalloc( &workspace->scratch[2], &workspace->scratch_size[2],
-            sizeof(int) * system->total_cap, __FILE__, __LINE__ );
-    temp = (int *) workspace->scratch[2];
+    sHipCheckMalloc( &workspace->d_workspace->scratch[2],
+            &workspace->d_workspace->scratch_size[2],
+            sizeof(int) * hbond_list->n, __FILE__, __LINE__ );
+    temp = (int *) workspace->d_workspace->scratch[2];
 
     /* init indices and end_indices */
-    Hip_Scan_Excl_Sum( system->d_max_hbonds, temp, system->total_cap, 2, s );
+    Hip_Scan_Excl_Sum( system->d_max_hbonds, temp, hbond_list->n, 2, s );
 
     k_init_hbond_indices <<< blocks, block_size, 0, s >>>
         ( system->d_my_atoms, system->reax_param.d_sbp, system->d_hbonds, temp, 
-          hbond_list->index, hbond_list->end_index, system->total_cap );
+          hbond_list->index, hbond_list->end_index, system->N, hbond_list->n );
     hipCheckError( );
 }
 
@@ -1934,8 +1896,8 @@ void Hip_Init_Bond_Indices( reax_system * const system, reax_list * const bond_l
 {
     int blocks;
 
-    blocks = system->total_cap / block_size + 
-        (system->total_cap % block_size == 0 ? 0 : 1);
+    blocks = system->total_cap / block_size
+        + (system->total_cap % block_size == 0 ? 0 : 1);
 
     /* init indices */
     Hip_Scan_Excl_Sum( system->d_max_bonds, bond_list->index,
@@ -1973,7 +1935,7 @@ void Hip_Init_Sparse_Matrix_Indices( reax_system * const system, sparse_matrix *
 }
 
 
-void Hip_Estimate_Storages( reax_system * const system, control_params * const control,
+void Hip_Estimate_Storages( reax_system * const system, control_params const * const control,
         simulation_data * const data, storage * const workspace, reax_list ** const lists,
         int realloc_cm, int realloc_bonds, int realloc_hbonds, int step )
 {
@@ -1997,7 +1959,7 @@ void Hip_Estimate_Storages( reax_system * const system, control_params * const c
         {
             k_estimate_storages_cm_half <<< blocks, control->gpu_block_size, 0,
                                         control->hip_streams[5] >>>
-                ( system->d_my_atoms, (control_params *) control->d_control_params,
+                ( system->d_my_atoms, control->nonb_cut,
                   *(lists[FAR_NBRS]), workspace->d_workspace->H.n,
                   workspace->d_workspace->H.n_max,
                   system->d_cm_entries, system->d_max_cm_entries );
@@ -2006,16 +1968,14 @@ void Hip_Estimate_Storages( reax_system * const system, control_params * const c
         {
 //            k_estimate_storages_cm_full <<< blocks, control->gpu_block_size, 0,
 //                                        control->hip_streams[5] >>>
-//                ( (control_params *) control->d_control_params,
-//                  *(lists[FAR_NBRS]), workspace->d_workspace->H.n,
+//                ( control->nonb_cut, *(lists[FAR_NBRS]), workspace->d_workspace->H.n,
 //                  workspace->d_workspace->H.n_max,
 //                  system->d_cm_entries, system->d_max_cm_entries );
 
             k_estimate_storages_cm_full_opt <<< blocks, control->gpu_block_size,
                                             sizeof(hipcub::WarpReduce<int>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                             control->hip_streams[5] >>>
-                ( (control_params *) control->d_control_params,
-                  *(lists[FAR_NBRS]), workspace->d_workspace->H.n,
+                ( control->nonb_cut, *(lists[FAR_NBRS]), workspace->d_workspace->H.n,
                   workspace->d_workspace->H.n_max,
                   system->d_cm_entries, system->d_max_cm_entries );
         }
@@ -2044,8 +2004,8 @@ void Hip_Estimate_Storages( reax_system * const system, control_params * const c
 
 //        k_estimate_storage_bonds <<< blocks, control->gpu_block_size, 0,
 //                                 control->hip_streams[1] >>>
-//            ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp, 
-//              (control_params *) control->d_control_params,
+//            ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
+//              MIN( control->nonb_cut, control->bond_cut ), control->bond_cut, control->bo_cut,
 //              *(lists[FAR_NBRS]), system->reax_param.num_atom_types,
 //              system->n, system->N, system->total_cap,
 //              system->d_bonds, system->d_max_bonds );
@@ -2053,7 +2013,7 @@ void Hip_Estimate_Storages( reax_system * const system, control_params * const c
                                      sizeof(hipcub::WarpReduce<int>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                      control->hip_streams[1] >>>
             ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp, 
-              (control_params *) control->d_control_params,
+              MIN( control->nonb_cut, control->bond_cut ), control->bond_cut, control->bo_cut,
               *(lists[FAR_NBRS]), system->reax_param.num_atom_types,
               system->n, system->N, system->total_cap,
               system->d_bonds, system->d_max_bonds );
@@ -2083,7 +2043,7 @@ void Hip_Estimate_Storages( reax_system * const system, control_params * const c
 //        k_estimate_storage_hbonds <<< blocks, control->gpu_block_size, 0,
 //                                  control->hip_streams[2] >>>
 //            ( system->d_my_atoms, system->reax_param.d_sbp,
-//              (control_params *) control->d_control_params,
+//              control->nonb_cut, control->bond_cut, control->hbond_cut,
 //              *(lists[FAR_NBRS]), system->reax_param.num_atom_types,
 //              system->n, system->N, system->total_cap,
 //              system->d_hbonds, system->d_max_hbonds );
@@ -2091,7 +2051,7 @@ void Hip_Estimate_Storages( reax_system * const system, control_params * const c
                                       sizeof(hipcub::WarpReduce<int>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                       control->hip_streams[2] >>>
             ( system->d_my_atoms, system->reax_param.d_sbp,
-              (control_params *) control->d_control_params,
+              control->nonb_cut, control->bond_cut, control->hbond_cut,
               *(lists[FAR_NBRS]), system->reax_param.num_atom_types,
               system->n, system->N, system->total_cap,
               system->d_hbonds, system->d_max_hbonds );
@@ -2164,17 +2124,17 @@ int Hip_Init_Forces( reax_system * const system, control_params * const control,
     /* reset reallocation flags on device */
     if ( cm_done == FALSE )
     {
-        sHipMemsetAsync( system->d_realloc_cm_entries, FALSE, sizeof(int), 
+        sHipMemsetAsync( &workspace->d_workspace->realloc[RE_CM], FALSE, sizeof(int), 
                 control->hip_streams[5], __FILE__, __LINE__ );
     }
     if ( bonds_done == FALSE )
     {
-        sHipMemsetAsync( system->d_realloc_bonds, FALSE, sizeof(int), 
+        sHipMemsetAsync( &workspace->d_workspace->realloc[RE_BONDS], FALSE, sizeof(int), 
                 control->hip_streams[1], __FILE__, __LINE__ );
     }
     if ( hbonds_done == FALSE )
     {
-        sHipMemsetAsync( system->d_realloc_hbonds, FALSE, sizeof(int), 
+        sHipMemsetAsync( &workspace->d_workspace->realloc[RE_HBONDS], FALSE, sizeof(int), 
                 control->hip_streams[2], __FILE__, __LINE__ );
     }
 
@@ -2222,57 +2182,55 @@ int Hip_Init_Forces( reax_system * const system, control_params * const control,
             hipStreamWaitEvent( control->hip_streams[5], control->hip_stream_events[SE_INIT_DIST_DONE], 0 );
         }
 
-        if ( workspace->d_workspace->H.format == SYM_HALF_MATRIX )
+        if ( workspace->d_workspace->H.format == SYM_HALF_MATRIX && control->tabulate <= 0 )
         {
-            if ( control->tabulate <= 0 )
-            {
-                k_init_cm_qeq_half_fs <<< blocks, control->gpu_block_size,
-                                      0, control->hip_streams[5] >>>
-                    ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
-                      *(workspace->d_workspace), (control_params *) control->d_control_params,
-                      *(lists[FAR_NBRS]), system->reax_param.num_atom_types,
-                      system->d_max_cm_entries, system->d_realloc_cm_entries );
-            }
-            else
-            {
-                k_init_cm_qeq_half_fs_tab <<< blocks, control->gpu_block_size,
-                                          0, control->hip_streams[5] >>>
-                    ( system->d_my_atoms, system->reax_param.d_sbp,
-                      *(workspace->d_workspace), (control_params *) control->d_control_params,
-                      *(lists[FAR_NBRS]), workspace->d_LR, system->reax_param.num_atom_types,
-                      system->d_max_cm_entries, system->d_realloc_cm_entries );
-            }
+            k_init_cm_qeq_half_fs <<< blocks, control->gpu_block_size,
+                                  0, control->hip_streams[5] >>>
+                ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
+                  workspace->d_workspace->H, workspace->d_workspace->tap_coef,
+                  control->nonb_cut, *(lists[FAR_NBRS]),
+                  system->reax_param.num_atom_types, system->d_max_cm_entries,
+                  &workspace->d_workspace->realloc[RE_CM], workspace->d_workspace->H.n_max );
         }
-        else
+        else if ( workspace->d_workspace->H.format == SYM_HALF_MATRIX && control->tabulate > 0 )
         {
-            if ( control->tabulate <= 0 )
-            {
-//                k_init_cm_qeq_full_fs <<< blocks, control->gpu_block_size, 0, control->hip_streams[5] >>>
-//                    ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
-//                      *(workspace->d_workspace), (control_params *) control->d_control_params,
-//                      *(lists[FAR_NBRS]), system->reax_param.num_atom_types,
-//                      system->d_max_cm_entries, system->d_realloc_cm_entries );
+            k_init_cm_qeq_half_fs_tab <<< blocks, control->gpu_block_size,
+                                      0, control->hip_streams[5] >>>
+                ( system->d_my_atoms, system->reax_param.d_sbp,
+                  workspace->d_workspace->H, control->nonb_cut, *(lists[FAR_NBRS]),
+                  workspace->d_workspace->LR, system->reax_param.num_atom_types,
+                  system->d_max_cm_entries, &workspace->d_workspace->realloc[RE_CM],
+                  workspace->d_workspace->H.n_max );
+        }
+        else if ( workspace->d_workspace->H.format == SYM_FULL_MATRIX && control->tabulate <= 0 )
+        {
+//            k_init_cm_qeq_full_fs <<< blocks, control->gpu_block_size, 0, control->hip_streams[5] >>>
+//                ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
+//                  workspace->d_workspace->H, workspace->d_workspace->tap_coef, control->nonb_cut,
+//                  *(lists[FAR_NBRS]), system->reax_param.num_atom_types,
+//                  system->d_max_cm_entries, &workspace->d_workspace->realloc[RE_CM],
+//                  workspace->d_workspace->H.n_max );
 
-                blocks = workspace->d_workspace->H.n_max * WARP_SIZE / control->gpu_block_size
-                    + (workspace->d_workspace->H.n_max * WARP_SIZE % control->gpu_block_size == 0 ? 0 : 1);
+            blocks = workspace->d_workspace->H.n_max * WARP_SIZE / control->gpu_block_size
+                + (workspace->d_workspace->H.n_max * WARP_SIZE % control->gpu_block_size == 0 ? 0 : 1);
 
-                k_init_cm_qeq_full_fs_opt <<< blocks, control->gpu_block_size,
+            k_init_cm_qeq_full_fs_opt <<< blocks, control->gpu_block_size,
                                       sizeof(hipcub::WarpScan<int>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                                       control->hip_streams[5] >>>
-                    ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
-                      *(workspace->d_workspace), (control_params *) control->d_control_params,
-                      *(lists[FAR_NBRS]), system->reax_param.num_atom_types,
-                      system->d_max_cm_entries, system->d_realloc_cm_entries );
-            }
-            else
-            {
-                k_init_cm_qeq_full_fs_tab <<< blocks, control->gpu_block_size, 0,
+                ( system->d_my_atoms, system->reax_param.d_sbp, system->reax_param.d_tbp,
+                  workspace->d_workspace->H, workspace->d_workspace->tap_coef, control->nonb_cut,
+                  *(lists[FAR_NBRS]), system->reax_param.num_atom_types,
+                  system->d_max_cm_entries, &workspace->d_workspace->realloc[RE_CM],
+                  workspace->d_workspace->H.n_max );
+        }
+        else if ( workspace->d_workspace->H.format == SYM_FULL_MATRIX && control->tabulate > 0 )
+        {
+            k_init_cm_qeq_full_fs_tab <<< blocks, control->gpu_block_size, 0,
                                       control->hip_streams[5] >>>
-                    ( system->d_my_atoms, system->reax_param.d_sbp,
-                      *(workspace->d_workspace), (control_params *) control->d_control_params,
-                      *(lists[FAR_NBRS]), workspace->d_LR, system->reax_param.num_atom_types,
-                      system->d_max_cm_entries, system->d_realloc_cm_entries );
-            }
+                ( system->d_my_atoms, system->reax_param.d_sbp, workspace->d_workspace->H,
+                  control->nonb_cut, *(lists[FAR_NBRS]), workspace->d_workspace->LR,
+                  system->reax_param.num_atom_types, system->d_max_cm_entries,
+                  &workspace->d_workspace->realloc[RE_CM], workspace->d_workspace->H.n_max );
         }
         hipCheckError( );
 
@@ -2290,7 +2248,7 @@ int Hip_Init_Forces( reax_system * const system, control_params * const control,
         blocks = system->total_cap / control->gpu_block_size
             + ((system->total_cap % control->gpu_block_size == 0 ) ? 0 : 1);
 
-        Hip_Init_Bond_Indices( system, lists[BONDS],  control->gpu_block_size,
+        Hip_Init_Bond_Indices( system, lists[BONDS], control->gpu_block_size,
                 control->hip_streams[1] );
 
         if ( renbr == FALSE )
@@ -2300,11 +2258,11 @@ int Hip_Init_Forces( reax_system * const system, control_params * const control,
 
 //        k_init_bonds <<< control->blocks_N, control->gpu_block_size, 0, control->hip_streams[1] >>>
 //            ( system->d_my_atoms, system->reax_param.d_sbp,
-//              system->reax_param.d_tbp, *(workspace->d_workspace),
-//              (control_params *) control->d_control_params,
-//              *(lists[FAR_NBRS]), *(lists[BONDS]),
+//              system->reax_param.d_tbp, workspace->d_workspace->total_bond_order,
+//              workspace->d_workspace->dDeltap_self, MIN( control->nonb_cut, control->bond_cut ),
+//              control->bond_cut, control->bo_cut, *(lists[FAR_NBRS]), *(lists[BONDS]),
 //              system->n, system->N, system->reax_param.num_atom_types,
-//              system->d_max_bonds, system->d_realloc_bonds );
+//              system->d_max_bonds, &workspace->d_workspace->realloc[RE_BONDS] );
 //        hipCheckError( );
 
         k_init_bonds_opt <<< control->blocks_warp_N, control->gpu_block_size,
@@ -2312,11 +2270,11 @@ int Hip_Init_Forces( reax_system * const system, control_params * const control,
                       + sizeof(hipcub::WarpReduce<double>::TempStorage)) * (control->gpu_block_size / WARP_SIZE),
                      control->hip_streams[1] >>>
             ( system->d_my_atoms, system->reax_param.d_sbp,
-              system->reax_param.d_tbp, *(workspace->d_workspace),
-              (control_params *) control->d_control_params,
-              *(lists[FAR_NBRS]), *(lists[BONDS]),
+              system->reax_param.d_tbp, workspace->d_workspace->total_bond_order,
+              workspace->d_workspace->dDeltap_self, MIN( control->nonb_cut, control->bond_cut ),
+              control->bond_cut, control->bo_cut, *(lists[FAR_NBRS]), *(lists[BONDS]),
               system->n, system->N, system->reax_param.num_atom_types,
-              system->d_max_bonds, system->d_realloc_bonds );
+              system->d_max_bonds, &workspace->d_workspace->realloc[RE_BONDS] );
         hipCheckError( );
 
 #if defined(LOG_PERFORMANCE)
@@ -2330,8 +2288,8 @@ int Hip_Init_Forces( reax_system * const system, control_params * const control,
         hipEventRecord( control->hip_time_events[TE_INIT_HBOND_START], control->hip_streams[2] );
 #endif
 
-        Hip_Init_HBond_Indices( system, workspace, lists[HBONDS], control->gpu_block_size,
-                control->hip_streams[2] );
+        Hip_Init_HBond_Indices( system, workspace, lists[HBONDS],
+                control->gpu_block_size, control->hip_streams[2] );
 
         if ( renbr == FALSE )
         {
@@ -2340,20 +2298,18 @@ int Hip_Init_Forces( reax_system * const system, control_params * const control,
 
 //        k_init_hbonds <<< control->blocks_N, control->gpu_block_size, 0, control->hip_streams[2] >>>
 //            ( system->d_my_atoms, system->reax_param.d_sbp,
-//              (control_params *) control->d_control_params,
-//              *(lists[FAR_NBRS]), *(lists[HBONDS]),
+//              MIN( control->nonb_cut, control->hbond_cut ), *(lists[FAR_NBRS]), *(lists[HBONDS]),
 //              system->n, system->N, system->reax_param.num_atom_types,
-//              system->d_max_hbonds, system->d_realloc_hbonds );
+//              system->d_max_hbonds, &workspace->d_workspace->realloc[RE_HBONDS] );
 //        hipCheckError( );
 
         k_init_hbonds_opt <<< control->blocks_warp_N, control->gpu_block_size,
                           sizeof(hipcub::WarpScan<int>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                           control->hip_streams[2] >>>
             ( system->d_my_atoms, system->reax_param.d_sbp,
-              (control_params *) control->d_control_params,
-              *(lists[FAR_NBRS]), *(lists[HBONDS]),
+              MIN( control->nonb_cut, control->hbond_cut ), *(lists[FAR_NBRS]), *(lists[HBONDS]),
               system->n, system->N, system->reax_param.num_atom_types,
-              system->d_max_hbonds, system->d_realloc_hbonds );
+              system->d_max_hbonds, &workspace->d_workspace->realloc[RE_HBONDS] );
         hipCheckError( );
 
 #if defined(LOG_PERFORMANCE)
@@ -2364,33 +2320,33 @@ int Hip_Init_Forces( reax_system * const system, control_params * const control,
     /* check reallocation flags on device */
     if ( cm_done == FALSE )
     {
-        sHipMemcpyAsync( &workspace->d_workspace->realloc->cm,
-                system->d_realloc_cm_entries, sizeof(int), 
+        sHipMemcpyAsync( &workspace->realloc[RE_CM],
+                &workspace->d_workspace->realloc[RE_CM], sizeof(int), 
                 hipMemcpyDeviceToHost, control->hip_streams[5], __FILE__, __LINE__ );
     }
     else
     {
-        workspace->d_workspace->realloc->cm = FALSE;
+        workspace->realloc[RE_CM] = FALSE;
     }
     if ( bonds_done == FALSE )
     {
-        sHipMemcpyAsync( &workspace->d_workspace->realloc->bonds,
-                system->d_realloc_bonds, sizeof(int), 
+        sHipMemcpyAsync( &workspace->realloc[RE_BONDS],
+                &workspace->d_workspace->realloc[RE_BONDS], sizeof(int), 
                 hipMemcpyDeviceToHost, control->hip_streams[1], __FILE__, __LINE__ );
     }
     else
     {
-        workspace->d_workspace->realloc->bonds = FALSE;
+        workspace->realloc[RE_BONDS] = FALSE;
     }
     if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 && hbonds_done == FALSE )
     {
-        sHipMemcpyAsync( &workspace->d_workspace->realloc->hbonds,
-                system->d_realloc_hbonds, sizeof(int), 
+        sHipMemcpyAsync( &workspace->realloc[RE_HBONDS],
+                &workspace->d_workspace->realloc[RE_HBONDS], sizeof(int), 
                 hipMemcpyDeviceToHost, control->hip_streams[2], __FILE__, __LINE__ );
     }
     else
     {
-        workspace->d_workspace->realloc->hbonds = FALSE;
+        workspace->realloc[RE_HBONDS] = FALSE;
     }
 
     hipStreamSynchronize( control->hip_streams[0] );
@@ -2398,12 +2354,11 @@ int Hip_Init_Forces( reax_system * const system, control_params * const control,
     hipStreamSynchronize( control->hip_streams[1] );
     hipStreamSynchronize( control->hip_streams[2] );
 
-    ret = (workspace->d_workspace->realloc->cm == FALSE
-            && workspace->d_workspace->realloc->bonds == FALSE
-            && workspace->d_workspace->realloc->hbonds == FALSE
-            ? SUCCESS : FAILURE);
+    ret = (workspace->realloc[RE_CM] == FALSE
+            && workspace->realloc[RE_BONDS] == FALSE
+            && workspace->realloc[RE_HBONDS] == FALSE ? SUCCESS : FAILURE);
 
-    if ( workspace->d_workspace->realloc->cm == FALSE )
+    if ( workspace->realloc[RE_CM] == FALSE )
     {
         cm_done = TRUE;
     }
@@ -2415,7 +2370,7 @@ int Hip_Init_Forces( reax_system * const system, control_params * const control,
         data->timing.init_cm += (real) (time_elapsed / 1000.0);
     }
 #endif
-    if ( workspace->d_workspace->realloc->bonds == FALSE )
+    if ( workspace->realloc[RE_BONDS] == FALSE )
     {
         bonds_done = TRUE;
     }
@@ -2427,7 +2382,7 @@ int Hip_Init_Forces( reax_system * const system, control_params * const control,
         data->timing.init_bond += (real) (time_elapsed / 1000.0);
     }
 #endif
-    if ( workspace->d_workspace->realloc->hbonds == FALSE )
+    if ( workspace->realloc[RE_HBONDS] == FALSE )
     {
         hbonds_done = TRUE;
     }
@@ -2464,27 +2419,27 @@ int Hip_Init_Forces( reax_system * const system, control_params * const control,
         hipEventRecord( control->hip_time_events[TE_INIT_BOND_STOP], control->hip_streams[1] );
 #endif
 
-#if !defined(GPU_ACCUM_ATOMIC)
-        if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 )
-        {
-#if defined(LOG_PERFORMANCE)
-            hipEventElapsedTime( &time_elapsed, control->hip_time_events[TE_INIT_HBOND_START],
-                    control->hip_time_events[TE_INIT_HBOND_STOP] ); 
-            data->timing.init_hbond += (real) (time_elapsed / 1000.0);
-
-            hipEventRecord( control->hip_time_events[TE_INIT_HBOND_START], control->hip_streams[2] );
-#endif
-
-            /* make hbond_list symmetric */
-            k_update_sym_hbond_indices_opt <<< control->blocks_warp_N, control->gpu_block_size,
-                                           0, control->hip_streams[2] >>>
-                ( system->d_my_atoms, *(lists[HBONDS]), system->N );
-            hipCheckError( );
-
-#if defined(LOG_PERFORMANCE)
-            hipEventRecord( control->hip_time_events[TE_INIT_HBOND_STOP], control->hip_streams[2] );
-#endif
-        }
+#if !defined(GPU_KERNEL_ATOMIC)
+//        if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 )
+//        {
+//#if defined(LOG_PERFORMANCE)
+//            hipEventElapsedTime( &time_elapsed, control->hip_time_events[TE_INIT_HBOND_START],
+//                    control->hip_time_events[TE_INIT_HBOND_STOP] ); 
+//            data->timing.init_hbond += (real) (time_elapsed / 1000.0);
+//
+//            hipEventRecord( control->hip_time_events[TE_INIT_HBOND_START], control->hip_streams[2] );
+//#endif
+//
+//            /* make hbond_list symmetric */
+//            k_update_sym_hbond_indices_opt <<< control->blocks_warp_N, control->gpu_block_size,
+//                                           0, control->hip_streams[2] >>>
+//                ( system->d_my_atoms, *(lists[HBONDS]), system->N );
+//            hipCheckError( );
+//
+//#if defined(LOG_PERFORMANCE)
+//            hipEventRecord( control->hip_time_events[TE_INIT_HBOND_STOP], control->hip_streams[2] );
+//#endif
+//        }
 #endif
 
         dist_done = FALSE;
@@ -2495,10 +2450,8 @@ int Hip_Init_Forces( reax_system * const system, control_params * const control,
     else
     {
         Hip_Estimate_Storages( system, control, data, workspace, lists,
-               workspace->d_workspace->realloc->cm,
-               workspace->d_workspace->realloc->bonds,
-               workspace->d_workspace->realloc->hbonds,
-               data->step - data->prev_steps );
+               workspace->realloc[RE_CM], workspace->realloc[RE_BONDS],
+               workspace->realloc[RE_HBONDS], data->step - data->prev_steps );
     }
 
     return ret;
@@ -2520,12 +2473,12 @@ int Hip_Init_Forces_No_Charges( reax_system * const system, control_params * con
     /* reset reallocation flags on device */
     if ( bonds_done == FALSE )
     {
-        sHipMemsetAsync( system->d_realloc_bonds, FALSE, sizeof(int), 
+        sHipMemsetAsync( &workspace->d_workspace->realloc[RE_BONDS], FALSE, sizeof(int), 
                 control->hip_streams[1], __FILE__, __LINE__ );
     }
     if ( hbonds_done == FALSE )
     {
-        sHipMemsetAsync( system->d_realloc_hbonds, FALSE, sizeof(int), 
+        sHipMemsetAsync( &workspace->d_workspace->realloc[RE_HBONDS], FALSE, sizeof(int), 
                 control->hip_streams[2], __FILE__, __LINE__ );
     }
 
@@ -2569,21 +2522,21 @@ int Hip_Init_Forces_No_Charges( reax_system * const system, control_params * con
 
 //        k_init_bonds <<< control->blocks_N, control->gpu_block_size, 0, control->hip_streams[1] >>>
 //            ( system->d_my_atoms, system->reax_param.d_sbp,
-//              system->reax_param.d_tbp, *(workspace->d_workspace),
-//              (control_params *) control->d_control_params,
-//              *(lists[FAR_NBRS]), *(lists[BONDS]),
+//              system->reax_param.d_tbp, workspace->d_workspace->total_bond_order,
+//              workspace->d_workspace->dDeltap_self, MIN( control->nonb_cut, control->bond_cut ),
+//              control->bond_cut, control->bo_cut, *(lists[FAR_NBRS]), *(lists[BONDS]),
 //              system->n, system->N, system->reax_param.num_atom_types,
-//              system->d_max_bonds, system->d_realloc_bonds );
+//              system->d_max_bonds, &workspace->d_workspace->realloc[RE_BONDS] );
 
         k_init_bonds_opt <<< control->blocks_warp_N, control->gpu_block_size,
                      sizeof(hipcub::WarpScan<int>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                      control->hip_streams[1] >>>
             ( system->d_my_atoms, system->reax_param.d_sbp,
-              system->reax_param.d_tbp, *(workspace->d_workspace),
-              (control_params *) control->d_control_params,
-              *(lists[FAR_NBRS]), *(lists[BONDS]),
+              system->reax_param.d_tbp, workspace->d_workspace->total_bond_order,
+              workspace->d_workspace->dDeltap_self, MIN( control->nonb_cut, control->bond_cut ),
+              control->bond_cut, control->bo_cut, *(lists[FAR_NBRS]), *(lists[BONDS]),
               system->n, system->N, system->reax_param.num_atom_types,
-              system->d_max_bonds, system->d_realloc_bonds );
+              system->d_max_bonds, &workspace->d_workspace->realloc[RE_BONDS] );
         hipCheckError( );
 
 #if defined(LOG_PERFORMANCE)
@@ -2607,20 +2560,18 @@ int Hip_Init_Forces_No_Charges( reax_system * const system, control_params * con
 
 //        k_init_hbonds <<< control->blocks_N, control->gpu_block_size, 0, control->hip_streams[2] >>>
 //            ( system->d_my_atoms, system->reax_param.d_sbp,
-//              (control_params *) control->d_control_params,
-//              *(lists[FAR_NBRS]), *(lists[HBONDS]),
+//              MIN( control->nonb_cut, control->hbond_cut ), *(lists[FAR_NBRS]), *(lists[HBONDS]),
 //              system->n, system->N, system->reax_param.num_atom_types,
-//              system->d_max_hbonds, system->d_realloc_hbonds );
+//              system->d_max_hbonds, &workspace->d_workspace->realloc[RE_HBONDS] );
 //        hipCheckError( );
 
-        k_init_hbonds_opt <<< control->blocks_N, control->gpu_block_size,
+        k_init_hbonds_opt <<< control->blocks_warp_N, control->gpu_block_size,
                           sizeof(hipcub::WarpScan<int>::TempStorage) * (control->gpu_block_size / WARP_SIZE),
                           control->hip_streams[2] >>>
             ( system->d_my_atoms, system->reax_param.d_sbp,
-              (control_params *) control->d_control_params,
-              *(lists[FAR_NBRS]), *(lists[HBONDS]),
+              MIN( control->nonb_cut, control->hbond_cut ), *(lists[FAR_NBRS]), *(lists[HBONDS]),
               system->n, system->N, system->reax_param.num_atom_types,
-              system->d_max_hbonds, system->d_realloc_hbonds );
+              system->d_max_hbonds, &workspace->d_workspace->realloc[RE_HBONDS] );
         hipCheckError( );
 
 #if defined(LOG_PERFORMANCE)
@@ -2631,34 +2582,33 @@ int Hip_Init_Forces_No_Charges( reax_system * const system, control_params * con
     /* check reallocation flags on device */
     if ( bonds_done == FALSE )
     {
-        sHipMemcpyAsync( &workspace->d_workspace->realloc->bonds,
-                system->d_realloc_bonds, sizeof(int), 
+        sHipMemcpyAsync( &workspace->realloc[RE_BONDS],
+                &workspace->d_workspace->realloc[RE_BONDS], sizeof(int), 
                 hipMemcpyDeviceToHost, control->hip_streams[1], __FILE__, __LINE__ );
     }
     else
     {
-        workspace->d_workspace->realloc->bonds = FALSE;
+        workspace->realloc[RE_BONDS] = FALSE;
     }
     if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 && hbonds_done == FALSE )
     {
-        sHipMemcpyAsync( &workspace->d_workspace->realloc->hbonds,
-                system->d_realloc_hbonds, sizeof(int), 
+        sHipMemcpyAsync( &workspace->realloc[RE_HBONDS],
+                &workspace->d_workspace->realloc[RE_HBONDS], sizeof(int), 
                 hipMemcpyDeviceToHost, control->hip_streams[2], __FILE__, __LINE__ );
     }
     else
     {
-        workspace->d_workspace->realloc->hbonds = FALSE;
+        workspace->realloc[RE_HBONDS] = FALSE;
     }
 
     hipStreamSynchronize( control->hip_streams[0] );
     hipStreamSynchronize( control->hip_streams[1] );
     hipStreamSynchronize( control->hip_streams[2] );
 
-    ret = (workspace->d_workspace->realloc->bonds == FALSE
-            && workspace->d_workspace->realloc->hbonds == FALSE
-            ? SUCCESS : FAILURE);
+    ret = (workspace->realloc[RE_BONDS] == FALSE
+            && workspace->realloc[RE_HBONDS] == FALSE ? SUCCESS : FAILURE);
 
-    if ( workspace->d_workspace->realloc->bonds == FALSE )
+    if ( workspace->realloc[RE_BONDS] == FALSE )
     {
         bonds_done = TRUE;
     }
@@ -2670,7 +2620,7 @@ int Hip_Init_Forces_No_Charges( reax_system * const system, control_params * con
         data->timing.init_bond += (real) (time_elapsed / 1000.0);
     }
 #endif
-    if ( workspace->d_workspace->realloc->hbonds == FALSE )
+    if ( workspace->realloc[RE_HBONDS] == FALSE )
     {
         hbonds_done = TRUE;
     }
@@ -2707,27 +2657,27 @@ int Hip_Init_Forces_No_Charges( reax_system * const system, control_params * con
         hipEventRecord( control->hip_time_events[TE_INIT_BOND_STOP], control->hip_streams[1] );
 #endif
 
-#if !defined(GPU_ACCUM_ATOMIC)
-        if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 )
-        {
-#if defined(LOG_PERFORMANCE)
-            hipEventElapsedTime( &time_elapsed, control->hip_time_events[TE_INIT_HBOND_START],
-                    control->hip_time_events[TE_INIT_HBOND_STOP] ); 
-            data->timing.init_hbond += (real) (time_elapsed / 1000.0);
-
-            hipEventRecord( control->hip_time_events[TE_INIT_HBOND_START], control->hip_streams[2] );
-#endif
-
-            /* make hbond_list symmetric */
-            k_update_sym_hbond_indices_opt <<< control->blocks_warp_N, control->gpu_block_size,
-                                           0, control->hip_streams[2] >>>
-                ( system->d_my_atoms, *(lists[HBONDS]), system->N );
-            hipCheckError( );
-
-#if defined(LOG_PERFORMANCE)
-            hipEventRecord( control->hip_time_events[TE_INIT_HBOND_STOP], control->hip_streams[2] );
-#endif
-        }
+#if !defined(GPU_KERNEL_ATOMIC)
+//        if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 )
+//        {
+//#if defined(LOG_PERFORMANCE)
+//            hipEventElapsedTime( &time_elapsed, control->hip_time_events[TE_INIT_HBOND_START],
+//                    control->hip_time_events[TE_INIT_HBOND_STOP] ); 
+//            data->timing.init_hbond += (real) (time_elapsed / 1000.0);
+//
+//            hipEventRecord( control->hip_time_events[TE_INIT_HBOND_START], control->hip_streams[2] );
+//#endif
+//
+//            /* make hbond_list symmetric */
+//            k_update_sym_hbond_indices_opt <<< control->blocks_warp_N, control->gpu_block_size,
+//                                           0, control->hip_streams[2] >>>
+//                ( system->d_my_atoms, *(lists[HBONDS]), system->N );
+//            hipCheckError( );
+//
+//#if defined(LOG_PERFORMANCE)
+//            hipEventRecord( control->hip_time_events[TE_INIT_HBOND_STOP], control->hip_streams[2] );
+//#endif
+//        }
 #endif
 
         dist_done = FALSE;
@@ -2737,9 +2687,8 @@ int Hip_Init_Forces_No_Charges( reax_system * const system, control_params * con
     else
     {
         Hip_Estimate_Storages( system, control, data, workspace, lists,
-               FALSE, workspace->d_workspace->realloc->bonds,
-               workspace->d_workspace->realloc->hbonds,
-               data->step - data->prev_steps );
+               FALSE, workspace->realloc[RE_BONDS],
+               workspace->realloc[RE_HBONDS], data->step - data->prev_steps );
     }
 
     return ret;
@@ -2794,10 +2743,10 @@ static void Hip_Compute_Total_Force( reax_system * const system, control_params 
         simulation_data * const data, storage * const workspace,
         reax_list ** const lists, mpi_datatypes * const mpi_data )
 {
-    sHipHostMallocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
+    sHipHostMallocCheck( &workspace->scratch[0], &workspace->scratch_size[0],
             sizeof(rvec) * system->N, hipHostMallocNumaUser | hipHostMallocPortable, TRUE, SAFE_ZONE,
             __FILE__, __LINE__ );
-    memset( workspace->host_scratch, 0, sizeof(rvec) * system->N );
+    memset( workspace->scratch[0], 0, sizeof(rvec) * system->N );
 
     Hip_Total_Forces_Part1( system, control, data, workspace, lists );
 
@@ -2805,15 +2754,15 @@ static void Hip_Compute_Total_Force( reax_system * const system, control_params 
      * based on the neighbors information each processor has had.
      * final values of force on each atom needs to be computed by adding up
      * all partially-final pieces */
-    sHipMemcpyAsync( workspace->host_scratch, workspace->d_workspace->f,
+    sHipMemcpyAsync( workspace->scratch[0], workspace->d_workspace->f,
             sizeof(rvec) * system->N, hipMemcpyDeviceToHost,
             control->hip_streams[0], __FILE__, __LINE__ );
     hipStreamSynchronize( control->hip_streams[0] );
 
-    Coll( system, mpi_data, workspace->host_scratch, RVEC_PTR_TYPE,
+    Coll( system, mpi_data, workspace->scratch[0], RVEC_PTR_TYPE,
             mpi_data->mpi_rvec );
 
-    sHipMemcpyAsync( workspace->d_workspace->f, workspace->host_scratch,
+    sHipMemcpyAsync( workspace->d_workspace->f, workspace->scratch[0],
             sizeof(rvec) * system->N, hipMemcpyHostToDevice,
             control->hip_streams[0], __FILE__, __LINE__ );
 
@@ -3036,7 +2985,7 @@ extern "C" int Hip_Compute_Forces( reax_system * const system, control_params * 
             data->timing.hbonds += (real) (time_elapsed / 1000.0);
         }
 
-#if !defined(USE_FUSED_VDW_COULOMB)
+#if !defined(FUSED_VDW_COULOMB)
         hipEventElapsedTime( &time_elapsed, control->hip_time_events[TE_VDW_START],
                 control->hip_time_events[TE_VDW_STOP] ); 
         data->timing.nonb += (real) (time_elapsed / 1000.0);

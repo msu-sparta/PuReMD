@@ -9,8 +9,8 @@
 extern "C" {
 #endif
 
-void Hip_Remove_CoM_Velocities( reax_system *, control_params *,
-        simulation_data * );
+void Hip_Remove_CoM_Velocities( reax_system * const, control_params const * const,
+        simulation_data const * const );
 
 #ifdef __cplusplus
 }

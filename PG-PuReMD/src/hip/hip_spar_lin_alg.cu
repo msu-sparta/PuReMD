@@ -40,9 +40,9 @@
 
 
 #if defined(USE_HIPBLAS)
-  #define HIP_ARG (control->hipblas_handle)
+  #define GPU_ARG (control->hipblas_handle)
 #else
-  #define HIP_ARG control->gpu_block_size, s
+  #define GPU_ARG control->gpu_block_size, s
 #endif
 
 
@@ -54,8 +54,8 @@ enum preconditioner_type
 
 
 /* Jacobi preconditioner computation */
-GPU_GLOBAL void k_jacobi_cm_half( int *row_ptr_start,
-        int *row_ptr_end, int *col_ind, real *vals,
+GPU_GLOBAL void k_jacobi_cm_half( int const * const row_ptr_start,
+        int const * const row_ptr_end, int const * const col_ind, real const * const vals,
         real * const Hdia_inv, int N )
 {
     int i;
@@ -82,8 +82,8 @@ GPU_GLOBAL void k_jacobi_cm_half( int *row_ptr_start,
 
 
 /* Jacobi preconditioner computation */
-GPU_GLOBAL void k_jacobi_cm_full( int *row_ptr_start,
-        int *row_ptr_end, int *col_ind, real *vals,
+GPU_GLOBAL void k_jacobi_cm_full( int const * const row_ptr_start,
+        int const * const row_ptr_end, int const * const col_ind, real const * const vals,
         real * const Hdia_inv, int N )
 {
     int i, pj;
@@ -158,8 +158,8 @@ GPU_GLOBAL void k_jacobi_apply( real const * const Hdia_inv, real const * const 
  * x: dense vector, size equal to num. columns in A
  * b (output): dense vector, size equal to num. columns in A
  * N: number of rows in A */
-GPU_GLOBAL void k_sparse_matvec_half_csr( int *row_ptr_start,
-        int *row_ptr_end, int *col_ind, real *vals,
+GPU_GLOBAL void k_sparse_matvec_half_csr( int const * const row_ptr_start,
+        int const * const row_ptr_end, int const * const col_ind, real const * const vals,
         const real * const x, real * const b, int N )
 {
     int i, pj, si, ei;
@@ -199,8 +199,8 @@ GPU_GLOBAL void k_sparse_matvec_half_csr( int *row_ptr_start,
  * x: dense vector, size equal to num. columns in A
  * b (output): dense vector, size equal to num. columns in A
  * N: number of rows in A */
-GPU_GLOBAL void k_sparse_matvec_half_opt_csr( int *row_ptr_start,
-        int *row_ptr_end, int *col_ind, real *vals,
+GPU_GLOBAL void k_sparse_matvec_half_opt_csr( int const * const row_ptr_start,
+        int const * const row_ptr_end, int const * const col_ind, real const * const vals,
         const real * const x, real * const b, int N )
 {
     extern __shared__ hipcub::WarpReduce<double>::TempStorage temp_storage[];
@@ -263,8 +263,8 @@ GPU_GLOBAL void k_sparse_matvec_half_opt_csr( int *row_ptr_start,
  * x: dense vector, size equal to num. columns in A
  * b (output): dense vector, size equal to num. columns in A
  * N: number of rows in A */
-GPU_GLOBAL void k_sparse_matvec_full_csr( int *row_ptr_start,
-        int *row_ptr_end, int *col_ind, real *vals,
+GPU_GLOBAL void k_sparse_matvec_full_csr( int const * const row_ptr_start,
+        int const * const row_ptr_end, int const * const col_ind, real const * const vals,
         const real * const x, real * const b, int n )
 {
     int i, pj, si, ei;
@@ -298,8 +298,8 @@ GPU_GLOBAL void k_sparse_matvec_full_csr( int *row_ptr_start,
  * x: dense vector, size equal to num. columns in A
  * b (output): dense vector, size equal to num. columns in A
  * N: number of rows in A */
-GPU_GLOBAL void k_sparse_matvec_full_opt_csr( int *row_ptr_start,
-        int *row_ptr_end, int *col_ind, real *vals,
+GPU_GLOBAL void k_sparse_matvec_full_opt_csr( int const * const row_ptr_start,
+        int const * const row_ptr_end, int const * const col_ind, real const * const vals,
         const real * const x, real * const b, int n )
 {
     extern __shared__ hipcub::WarpReduce<double>::TempStorage temp_storage[];
@@ -322,11 +322,11 @@ GPU_GLOBAL void k_sparse_matvec_full_opt_csr( int *row_ptr_start,
     pj = si + lane_id;
     for ( itr = 0; itr < (ei - si + warpSize - 1) / warpSize; ++itr )
     {
-        vals_l = vals[pj];
-        col_ind_l = col_ind[pj];
-
         if ( pj < ei )
         {
+            vals_l = vals[pj];
+            col_ind_l = col_ind[pj];
+
             sum += vals_l * x[col_ind_l];
         }
 
@@ -351,8 +351,8 @@ GPU_GLOBAL void k_sparse_matvec_full_opt_csr( int *row_ptr_start,
  * X: 2 dense vectors, size equal to num. columns in A
  * B (output): 2 dense vectors, size equal to num. columns in A
  * N: number of rows in A */
-GPU_GLOBAL void k_dual_sparse_matvec_half_csr( int *row_ptr_start,
-        int *row_ptr_end, int *col_ind, real *vals,
+GPU_GLOBAL void k_dual_sparse_matvec_half_csr( int const * const row_ptr_start,
+        int const * const row_ptr_end, int const * const col_ind, real const * const vals,
         const rvec2 * const x, rvec2 * const b, int N )
 {
     int i, pj, si, ei;
@@ -396,8 +396,8 @@ GPU_GLOBAL void k_dual_sparse_matvec_half_csr( int *row_ptr_start,
  * X: 2 dense vectors, size equal to num. columns in A
  * B (output): 2 dense vectors, size equal to num. columns in A
  * N: number of rows in A */
-GPU_GLOBAL void k_dual_sparse_matvec_half_opt_csr( int *row_ptr_start,
-        int *row_ptr_end, int *col_ind, real *vals,
+GPU_GLOBAL void k_dual_sparse_matvec_half_opt_csr( int const * const row_ptr_start,
+        int const * const row_ptr_end, int const * const col_ind, real const * const vals,
         const rvec2 * const x, rvec2 * const b, int N )
 {
     extern __shared__ hipcub::WarpReduce<double>::TempStorage temp_storage[];
@@ -450,8 +450,17 @@ GPU_GLOBAL void k_dual_sparse_matvec_half_opt_csr( int *row_ptr_start,
 }
 
 
-/* 1 thread per row implementation */
-GPU_GLOBAL void k_dual_sparse_matvec_full_csr( sparse_matrix A,
+/* sparse matrix, dense vector multiplication AX = B,
+ * 1 thread per row implementation
+ *
+ * A: symmetric matrix,
+ *    stored in CSR format
+ * X: 2 dense vectors, size equal to num. columns in A
+ * B (output): 2 dense vectors, size equal to num. columns in A
+ * n: number of rows in A */
+GPU_GLOBAL void k_dual_sparse_matvec_full_csr( int const * const row_ptr_start,
+        int const * const row_ptr_end, int const * const col_ind, real const * const vals,
+
         rvec2 const * const x, rvec2 * const b, int n )
 {
     int i, pj, si, ei;
@@ -466,13 +475,13 @@ GPU_GLOBAL void k_dual_sparse_matvec_full_csr( sparse_matrix A,
 
     sum[0] = 0.0;
     sum[1] = 0.0;
-    si = A.start[i];
-    ei = A.end[i];
+    si = row_ptr_start[i];
+    ei = row_ptr_end[i];
 
     for ( pj = si; pj < ei; ++pj )
     {
-        sum[0] += A.val[pj] * x[A.j[pj]][0];
-        sum[1] += A.val[pj] * x[A.j[pj]][1];
+        sum[0] += vals[pj] * x[col_ind[pj]][0];
+        sum[1] += vals[pj] * x[col_ind[pj]][1];
     }
 
     b[i][0] = sum[0];
@@ -489,8 +498,8 @@ GPU_GLOBAL void k_dual_sparse_matvec_full_csr( sparse_matrix A,
  * X: 2 dense vectors, size equal to num. columns in A
  * B (output): 2 dense vectors, size equal to num. columns in A
  * n: number of rows in A */
-GPU_GLOBAL void k_dual_sparse_matvec_full_opt_csr( int *row_ptr_start,
-        int *row_ptr_end, int *col_ind, real *vals,
+GPU_GLOBAL void k_dual_sparse_matvec_full_opt_csr( int const * const row_ptr_start,
+        int const * const row_ptr_end, int const * const col_ind, real const * const vals,
         rvec2 const * const x, rvec2 * const b, int n )
 {
     extern __shared__ hipcub::WarpReduce<double>::TempStorage temp_storage[];
@@ -515,11 +524,11 @@ GPU_GLOBAL void k_dual_sparse_matvec_full_opt_csr( int *row_ptr_start,
     pj = si + lane_id;
     for ( itr = 0; itr < (ei - si + warpSize - 1) / warpSize; ++itr )
     {
-        vals_l = vals[pj];
-        col_ind_l = col_ind[pj];
-
         if ( pj < ei )
         {
+            vals_l = vals[pj];
+            col_ind_l = col_ind[pj];
+
             sum[0] += vals_l * x[col_ind_l][0];
             sum[1] += vals_l * x[col_ind_l][1];
         }
@@ -544,8 +553,7 @@ void dual_jacobi_apply( real const * const Hdia_inv, rvec2 const * const y,
 {
     int blocks;
 
-    blocks = (n / block_size)
-        + ((n % block_size == 0) ? 0 : 1);
+    blocks = (n / block_size) + ((n % block_size == 0) ? 0 : 1);
 
     k_dual_jacobi_apply <<< blocks, block_size, 0, s >>>
         ( Hdia_inv, y, x, n );
@@ -558,8 +566,7 @@ void jacobi_apply( real const * const Hdia_inv, real const * const y,
 {
     int blocks;
 
-    blocks = (n / block_size)
-        + ((n % block_size == 0) ? 0 : 1);
+    blocks = (n / block_size) + ((n % block_size == 0) ? 0 : 1);
 
     k_jacobi_apply <<< blocks, block_size, 0, s >>>
         ( Hdia_inv, y, x, n );
@@ -575,8 +582,8 @@ void jacobi_apply( real const * const Hdia_inv, real const * const y,
  * n: number of entries in x
  * buf_type: data structure type for x
  * mpi_type: MPI_Datatype struct for communications
- * block_size: HIP threads per block
- * s: HIP stream
+ * block_size: GPU threads per block
+ * s: GPU stream
  *
  * returns: communication time
  */
@@ -586,19 +593,19 @@ static void Dual_Sparse_MatVec_Comm_Part1( const reax_system * const system,
         int block_size, hipStream_t s )
 {
 #if !defined(GPU_DEVICE_PACK)
-    sHipHostMallocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
+    sHipHostMallocCheck( &workspace->scratch[5], &workspace->scratch_size[5],
             sizeof(rvec2) * n, hipHostMallocNumaUser | hipHostMallocPortable, TRUE, SAFE_ZONE,
             __FILE__, __LINE__ );
 
-    sHipMemcpyAsync( workspace->host_scratch, (void *) x, sizeof(rvec2) * n,
+    sHipMemcpyAsync( workspace->scratch[5], (void *) x, sizeof(rvec2) * n,
             hipMemcpyDeviceToHost, s, __FILE__, __LINE__ );
 
     hipStreamSynchronize( s );
 
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
-    Dist( system, mpi_data, workspace->host_scratch, buf_type, mpi_type );
+    Dist( system, mpi_data, workspace->scratch[5], buf_type, mpi_type );
 
-    sHipMemcpyAsync( (void *) x, workspace->host_scratch, sizeof(rvec2) * n,
+    sHipMemcpyAsync( (void *) x, workspace->scratch[5], sizeof(rvec2) * n,
             hipMemcpyHostToDevice, s, __FILE__, __LINE__ );
 #else
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
@@ -614,7 +621,7 @@ static void Dual_Sparse_MatVec_Comm_Part1( const reax_system * const system,
  * x: dense vector
  * b (output): dense vector
  * n: number of entries in b
- * s: HIP stream
+ * s: GPU stream
  */
 static void Dual_Sparse_MatVec_local( control_params const * const control,
         sparse_matrix const * const A, rvec2 const * const x,
@@ -644,7 +651,7 @@ static void Dual_Sparse_MatVec_local( control_params const * const control,
     {
         /* 1 thread per row implementation */
 //        k_dual_sparse_matvec_full_csr <<< control->blocks_n, control->gpu_block_size, 0, s >>>
-//             ( *A, x, b, A->n );
+//             ( A->start, A->end, A->j, A->val,, x, b, A->n );
 
         blocks = ((A->n * WARP_SIZE) / control->gpu_block_size)
             + (((A->n * WARP_SIZE) % control->gpu_block_size) == 0 ? 0 : 1);
@@ -672,8 +679,8 @@ static void Dual_Sparse_MatVec_local( control_params const * const control,
  * n2: number of entries in b (at output)
  * buf_type: data structure type for b
  * mpi_type: MPI_Datatype struct for communications
- * block_size: HIP threads per block
- * s: HIP stream
+ * block_size: GPU threads per block
+ * s: GPU stream
  *
  * returns: communication time
  */
@@ -686,18 +693,18 @@ static void Dual_Sparse_MatVec_Comm_Part2( const reax_system * const system,
     if ( mat_format == SYM_HALF_MATRIX )
     {
 #if !defined(GPU_DEVICE_PACK)
-        sHipHostMallocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
-                sizeof(rvec2) * n1, hipHostMallocNumaUser | hipHostMallocPortable, TRUE, SAFE_ZONE,
+        sHipHostMallocCheck( &workspace->scratch[5], &workspace->scratch_size[5],
+                sizeof(rvec2) * n1, hipHostMallocPortable, TRUE, SAFE_ZONE,
                 __FILE__, __LINE__ );
 
-        sHipMemcpyAsync( workspace->host_scratch, b, sizeof(rvec2) * n1,
+        sHipMemcpyAsync( workspace->scratch[5], b, sizeof(rvec2) * n1,
                 hipMemcpyDeviceToHost, s, __FILE__, __LINE__ );
 
         hipStreamSynchronize( s );
 
-        Coll( system, mpi_data, workspace->host_scratch, buf_type, mpi_type );
+        Coll( system, mpi_data, workspace->scratch[5], buf_type, mpi_type );
 
-        sHipMemcpyAsync( b, workspace->host_scratch, sizeof(rvec2) * n2, hipMemcpyHostToDevice,
+        sHipMemcpyAsync( b, workspace->scratch[5], sizeof(rvec2) * n2, hipMemcpyHostToDevice,
                 s, __FILE__, __LINE__ );
 #else
         Hip_Coll( system, mpi_data, b, buf_type, mpi_type, block_size, s );
@@ -717,7 +724,7 @@ static void Dual_Sparse_MatVec_Comm_Part2( const reax_system * const system,
  * X: dense vector, size equal to num. columns in A
  * n: number of rows in X
  * B (output): dense vector
- * s: HIP stream
+ * s: GPU stream
  */
 static void Dual_Sparse_MatVec( const reax_system * const system,
         control_params const * const control, simulation_data * const data,
@@ -761,8 +768,8 @@ static void Dual_Sparse_MatVec( const reax_system * const system,
  * n: number of entries in x
  * buf_type: data structure type for x
  * mpi_type: MPI_Datatype struct for communications
- * block_size: HIP threads per block
- * s: HIP stream
+ * block_size: GPU threads per block
+ * s: GPU stream
  */
 static void Sparse_MatVec_Comm_Part1( const reax_system * const system,
         storage * const workspace, mpi_datatypes * const mpi_data,
@@ -770,19 +777,19 @@ static void Sparse_MatVec_Comm_Part1( const reax_system * const system,
         int block_size, hipStream_t s )
 {
 #if !defined(GPU_DEVICE_PACK)
-    sHipHostMallocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
-            sizeof(real) * n, hipHostMallocNumaUser | hipHostMallocPortable, TRUE, SAFE_ZONE,
+    sHipHostMallocCheck( &workspace->scratch[5], &workspace->scratch_size[5],
+            sizeof(real) * n, hipHostMallocPortable, TRUE, SAFE_ZONE,
             __FILE__, __LINE__ );
 
-    sHipMemcpyAsync( workspace->host_scratch, (void *) x, sizeof(real) * n,
+    sHipMemcpyAsync( workspace->scratch[5], (void *) x, sizeof(real) * n,
             hipMemcpyDeviceToHost, s, __FILE__, __LINE__ );
 
     hipStreamSynchronize( s );
 
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
-    Dist( system, mpi_data, workspace->host_scratch, buf_type, mpi_type );
+    Dist( system, mpi_data, workspace->scratch[5], buf_type, mpi_type );
 
-    sHipMemcpyAsync( (void *) x, workspace->host_scratch, sizeof(real) * n,
+    sHipMemcpyAsync( (void *) x, workspace->scratch[5], sizeof(real) * n,
             hipMemcpyHostToDevice, s, __FILE__, __LINE__ );
 #else
     /* exploit 3D domain decomposition of simulation space with 3-stage communication pattern */
@@ -798,7 +805,7 @@ static void Sparse_MatVec_Comm_Part1( const reax_system * const system,
  * x: dense vector
  * b (output): dense vector
  * n: number of entries in b
- * s: HIP stream
+ * s: GPU stream
  */
 static void Sparse_MatVec_local( control_params const * const control,
         sparse_matrix const * const A, real const * const x,
@@ -812,7 +819,7 @@ static void Sparse_MatVec_local( control_params const * const control,
         sHipMemsetAsync( b, 0, sizeof(real) * n, s, __FILE__, __LINE__ );
 
         /* 1 thread per row implementation */
-//        k_sparse_matvec_half_csr <<< control->blocks_n, control->block_size, 0, s >>>
+//        k_sparse_matvec_half_csr <<< control->blocks_n, control->gpu_block_size, 0, s >>>
 //            ( A->start, A->end, A->j, A->val, x, b, A->n );
 
         blocks = (A->n * WARP_SIZE / control->gpu_block_size)
@@ -827,7 +834,7 @@ static void Sparse_MatVec_local( control_params const * const control,
     else if ( A->format == SYM_FULL_MATRIX || A->format == FULL_MATRIX )
     {
         /* 1 thread per row implementation */
-//        k_sparse_matvec_full_csr <<< control->blocks_n, control->block_size, 0, s >>>
+//        k_sparse_matvec_full_csr <<< control->blocks_n, control->gpu_block_size, 0, s >>>
 //             ( A->start, A->end, A->j, A->val, x, b, A->n );
 
         blocks = ((A->n * WARP_SIZE) / control->gpu_block_size)
@@ -856,8 +863,8 @@ static void Sparse_MatVec_local( control_params const * const control,
  * n2: number of entries in b (at output)
  * buf_type: data structure type for b
  * mpi_type: MPI_Datatype struct for communications
- * block_size: HIP threads per block
- * s: HIP stream
+ * block_size: GPU threads per block
+ * s: GPU stream
  */
 static void Sparse_MatVec_Comm_Part2( const reax_system * const system,
         storage * const workspace, mpi_datatypes * const mpi_data, int mat_format,
@@ -868,18 +875,18 @@ static void Sparse_MatVec_Comm_Part2( const reax_system * const system,
     if ( mat_format == SYM_HALF_MATRIX )
     {
 #if !defined(GPU_DEVICE_PACK)
-        sHipHostMallocCheck( &workspace->host_scratch, &workspace->host_scratch_size,
-                sizeof(real) * n1, hipHostMallocNumaUser | hipHostMallocPortable, TRUE, SAFE_ZONE,
+        sHipHostMallocCheck( &workspace->scratch[5], &workspace->scratch_size[5],
+                sizeof(real) * n1, hipHostMallocPortable, TRUE, SAFE_ZONE,
                 __FILE__, __LINE__ );
 
-        sHipMemcpyAsync( workspace->host_scratch, b, sizeof(real) * n1,
+        sHipMemcpyAsync( workspace->scratch[5], b, sizeof(real) * n1,
                 hipMemcpyDeviceToHost, s, __FILE__, __LINE__ );
 
         hipStreamSynchronize( s );
 
-        Coll( system, mpi_data, workspace->host_scratch, buf_type, mpi_type );
+        Coll( system, mpi_data, workspace->scratch[5], buf_type, mpi_type );
 
-        sHipMemcpyAsync( b, workspace->host_scratch, sizeof(real) * n2,
+        sHipMemcpyAsync( b, workspace->scratch[5], sizeof(real) * n2,
                 hipMemcpyHostToDevice, s, __FILE__, __LINE__ );
 #else
         Hip_Coll( system, mpi_data, b, buf_type, mpi_type, block_size, s );
@@ -899,7 +906,7 @@ static void Sparse_MatVec_Comm_Part2( const reax_system * const system,
  * x: dense vector
  * n: number of entries in x
  * b (output): dense vector
- * s: HIP stream
+ * s: GPU stream
  */
 static void Sparse_MatVec( reax_system const * const system,
         control_params const * const control, simulation_data * const data,
@@ -947,7 +954,7 @@ static void Sparse_MatVec( reax_system const * const system,
  * fresh_pre: parameter indicating if this is a newly computed (fresh) preconditioner
  * side: used in determining how to apply preconditioner if the preconditioner is
  *  factorized as M = M_{1}M_{2} (e.g., incomplete LU, A \approx LU)
- * s: HIP stream
+ * s: GPU stream
  *
  * Assumptions:
  *   Matrices have non-zero diagonals
@@ -965,7 +972,7 @@ static void dual_apply_preconditioner( reax_system const * const system,
         case NONE_PC:
             if ( x != y )
             {
-                Vector_Copy_rvec2( x, y, system->n, HIP_ARG );
+                Vector_Copy_rvec2( x, y, system->n, GPU_ARG );
             }
             break;
 
@@ -980,7 +987,7 @@ static void dual_apply_preconditioner( reax_system const * const system,
                 case RIGHT:
                     if ( x != y )
                     {
-                        Vector_Copy_rvec2( x, y, system->n, HIP_ARG );
+                        Vector_Copy_rvec2( x, y, system->n, GPU_ARG );
                     }
                     break;
             }
@@ -1004,7 +1011,7 @@ static void dual_apply_preconditioner( reax_system const * const system,
                 case RIGHT:
                     if ( x != y )
                     {
-                        Vector_Copy_rvec2( x, y, system->n, HIP_ARG );
+                        Vector_Copy_rvec2( x, y, system->n, GPU_ARG );
                     }
                     break;
             }
@@ -1121,7 +1128,7 @@ static void dual_apply_preconditioner( reax_system const * const system,
  * fresh_pre: parameter indicating if this is a newly computed (fresh) preconditioner
  * side: used in determining how to apply preconditioner if the preconditioner is
  *  factorized as M = M_{1}M_{2} (e.g., incomplete LU, A \approx LU)
- * s: HIP stream
+ * s: GPU stream
  *
  * Assumptions:
  *   Matrices have non-zero diagonals
@@ -1139,7 +1146,7 @@ static void apply_preconditioner( reax_system const * const system,
         case NONE_PC:
             if ( x != y )
             {
-                Vector_Copy( x, y, system->n, HIP_ARG );
+                Vector_Copy( x, y, system->n, GPU_ARG );
             }
             break;
 
@@ -1154,7 +1161,7 @@ static void apply_preconditioner( reax_system const * const system,
                 case RIGHT:
                     if ( x != y )
                     {
-                        Vector_Copy( x, y, system->n, HIP_ARG );
+                        Vector_Copy( x, y, system->n, GPU_ARG );
                     }
                     break;
             }
@@ -1178,7 +1185,7 @@ static void apply_preconditioner( reax_system const * const system,
                 case RIGHT:
                     if ( x != y )
                     {
-                        Vector_Copy( x, y, system->n, HIP_ARG );
+                        Vector_Copy( x, y, system->n, GPU_ARG );
                     }
                     break;
             }
@@ -1306,7 +1313,7 @@ int Hip_dual_SDM( reax_system const * const system,
 #endif
 
     Vector_Sum_rvec2( workspace->d_workspace->r2, 1.0, 1.0, b,
-            -1.0, -1.0, workspace->d_workspace->q2, system->n, HIP_ARG );
+            -1.0, -1.0, workspace->d_workspace->q2, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1321,9 +1328,9 @@ int Hip_dual_SDM( reax_system const * const system,
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
-    Dot_local_rvec2( workspace, b, b, system->n, &redux[0], &redux[1], HIP_ARG );
+    Dot_local_rvec2( workspace, b, b, system->n, &redux[0], &redux[1], GPU_ARG );
     Dot_local_rvec2( workspace, workspace->d_workspace->r2,
-            workspace->d_workspace->d2, system->n, &redux[2], &redux[3], HIP_ARG );
+            workspace->d_workspace->d2, system->n, &redux[2], &redux[3], GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1356,9 +1363,9 @@ int Hip_dual_SDM( reax_system const * const system,
 #endif
 
         Dot_local_rvec2( workspace, workspace->d_workspace->r2,
-                workspace->d_workspace->d2, system->n, &redux[0], &redux[1], HIP_ARG );
+                workspace->d_workspace->d2, system->n, &redux[0], &redux[1], GPU_ARG );
         Dot_local_rvec2( workspace, workspace->d_workspace->d2,
-                workspace->d_workspace->q2, system->n, &redux[2], &redux[3], HIP_ARG );
+                workspace->d_workspace->q2, system->n, &redux[2], &redux[3], GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
@@ -1379,9 +1386,9 @@ int Hip_dual_SDM( reax_system const * const system,
         alpha[0] = sig[0] / tmp[0];
         alpha[1] = sig[1] / tmp[1];
         Vector_Add_rvec2( x, alpha[0], alpha[1], workspace->d_workspace->d2, system->n,
-                HIP_ARG );
+                GPU_ARG );
         Vector_Add_rvec2( workspace->d_workspace->r2, -1.0 * alpha[0], -1.0 * alpha[1],
-                workspace->d_workspace->q2, system->n, HIP_ARG );
+                workspace->d_workspace->q2, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1400,26 +1407,26 @@ int Hip_dual_SDM( reax_system const * const system,
     if ( SQRT(sig[0]) / b_norm[0] <= tol && SQRT(sig[1]) / b_norm[1] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->t,
-                workspace->d_workspace->x, 1, system->n, HIP_ARG );
+                workspace->d_workspace->x, 1, system->n, GPU_ARG );
 
         i += Hip_SDM( system, control, data, workspace, H,
                 workspace->d_workspace->b_t, tol,
                 workspace->d_workspace->t, mpi_data, FALSE, s );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->t, 1, system->n, HIP_ARG );
+                workspace->d_workspace->t, 1, system->n, GPU_ARG );
     }
     else if ( SQRT(sig[1]) / b_norm[1] <= tol && SQRT(sig[0]) / b_norm[0] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->s,
-                workspace->d_workspace->x, 0, system->n, HIP_ARG );
+                workspace->d_workspace->x, 0, system->n, GPU_ARG );
 
         i += Hip_SDM( system, control, data, workspace, H,
                 workspace->d_workspace->b_s, tol,
                 workspace->d_workspace->s, mpi_data, FALSE, s );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->s, 0, system->n, HIP_ARG );
+                workspace->d_workspace->s, 0, system->n, GPU_ARG );
     }
 
     if ( i >= control->cm_solver_max_iters )
@@ -1456,7 +1463,7 @@ int Hip_SDM( reax_system const * const system, control_params const * const cont
 #endif
 
     Vector_Sum( workspace->d_workspace->r, 1.0, b,
-            -1.0, workspace->d_workspace->q, system->n, HIP_ARG );
+            -1.0, workspace->d_workspace->q, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1471,9 +1478,9 @@ int Hip_SDM( reax_system const * const system, control_params const * const cont
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
-    redux[0] = Dot_local( workspace, b, b, system->n, HIP_ARG );
+    redux[0] = Dot_local( workspace, b, b, system->n, GPU_ARG );
     redux[1] = Dot_local( workspace, workspace->d_workspace->r,
-            workspace->d_workspace->d, system->n, HIP_ARG );
+            workspace->d_workspace->d, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1499,9 +1506,9 @@ int Hip_SDM( reax_system const * const system, control_params const * const cont
 #endif
 
         redux[0] = Dot_local( workspace, workspace->d_workspace->r,
-                workspace->d_workspace->d, system->n, HIP_ARG );
+                workspace->d_workspace->d, system->n, GPU_ARG );
         redux[1] = Dot_local( workspace, workspace->d_workspace->d,
-                workspace->d_workspace->q, system->n, HIP_ARG );
+                workspace->d_workspace->q, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
@@ -1518,9 +1525,9 @@ int Hip_SDM( reax_system const * const system, control_params const * const cont
         sig = redux[0];
         tmp = redux[1];
         alpha = sig / tmp;
-        Vector_Add( x, alpha, workspace->d_workspace->d, system->n, HIP_ARG );
+        Vector_Add( x, alpha, workspace->d_workspace->d, system->n, GPU_ARG );
         Vector_Add( workspace->d_workspace->r, -1.0 * alpha,
-                workspace->d_workspace->q, system->n, HIP_ARG );
+                workspace->d_workspace->q, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1572,7 +1579,7 @@ int Hip_dual_CG( reax_system const * const system,
 #endif
 
     Vector_Sum_rvec2( workspace->d_workspace->r2, 1.0, 1.0, b,
-            -1.0, -1.0, workspace->d_workspace->q2, system->n, HIP_ARG );
+            -1.0, -1.0, workspace->d_workspace->q2, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1588,10 +1595,10 @@ int Hip_dual_CG( reax_system const * const system,
 #endif
 
     Dot_local_rvec2( workspace, workspace->d_workspace->r2,
-            workspace->d_workspace->d2, system->n, &redux[0], &redux[1], HIP_ARG );
+            workspace->d_workspace->d2, system->n, &redux[0], &redux[1], GPU_ARG );
     Dot_local_rvec2( workspace, workspace->d_workspace->d2,
-            workspace->d_workspace->d2, system->n, &redux[2], &redux[3], HIP_ARG );
-    Dot_local_rvec2( workspace, b, b, system->n, &redux[4], &redux[5], HIP_ARG );
+            workspace->d_workspace->d2, system->n, &redux[2], &redux[3], GPU_ARG );
+    Dot_local_rvec2( workspace, b, b, system->n, &redux[4], &redux[5], GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1626,7 +1633,7 @@ int Hip_dual_CG( reax_system const * const system,
 #endif
 
         Dot_local_rvec2( workspace, workspace->d_workspace->d2,
-                workspace->d_workspace->q2, system->n, &redux[0], &redux[1], HIP_ARG );
+                workspace->d_workspace->q2, system->n, &redux[0], &redux[1], GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1645,9 +1652,9 @@ int Hip_dual_CG( reax_system const * const system,
         alpha[0] = sig_new[0] / tmp[0];
         alpha[1] = sig_new[1] / tmp[1];
         Vector_Add_rvec2( x, alpha[0], alpha[1],
-                workspace->d_workspace->d2, system->n, HIP_ARG );
+                workspace->d_workspace->d2, system->n, GPU_ARG );
         Vector_Add_rvec2( workspace->d_workspace->r2, -1.0 * alpha[0], -1.0 * alpha[1],
-                workspace->d_workspace->q2, system->n, HIP_ARG );
+                workspace->d_workspace->q2, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1663,9 +1670,9 @@ int Hip_dual_CG( reax_system const * const system,
 #endif
 
         Dot_local_rvec2( workspace, workspace->d_workspace->r2,
-                workspace->d_workspace->p2, system->n, &redux[0], &redux[1], HIP_ARG );
+                workspace->d_workspace->p2, system->n, &redux[0], &redux[1], GPU_ARG );
         Dot_local_rvec2( workspace, workspace->d_workspace->p2,
-                workspace->d_workspace->p2, system->n, &redux[2], &redux[3], HIP_ARG );
+                workspace->d_workspace->p2, system->n, &redux[2], &redux[3], GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1689,7 +1696,7 @@ int Hip_dual_CG( reax_system const * const system,
         /* d = p + beta * d */
         Vector_Sum_rvec2( workspace->d_workspace->d2,
                 1.0, 1.0, workspace->d_workspace->p2,
-                beta[0], beta[1], workspace->d_workspace->d2, system->n, HIP_ARG );
+                beta[0], beta[1], workspace->d_workspace->d2, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1699,26 +1706,26 @@ int Hip_dual_CG( reax_system const * const system,
     if ( r_norm[0] / b_norm[0] > tol && r_norm[1] / b_norm[1] <= tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->s,
-                workspace->d_workspace->x, 0, system->n, HIP_ARG );
+                workspace->d_workspace->x, 0, system->n, GPU_ARG );
 
         i += Hip_CG( system, control, data, workspace, H,
                 workspace->d_workspace->b_s, tol,
                 workspace->d_workspace->s, mpi_data, FALSE, s );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->s, 0, system->n, HIP_ARG );
+                workspace->d_workspace->s, 0, system->n, GPU_ARG );
     }
     else if ( r_norm[1] / b_norm[1] > tol && r_norm[0] / b_norm[0] <= tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->t,
-                workspace->d_workspace->x, 1, system->n, HIP_ARG );
+                workspace->d_workspace->x, 1, system->n, GPU_ARG );
 
         i += Hip_CG( system, control, data, workspace, H,
                 workspace->d_workspace->b_t, tol,
                 workspace->d_workspace->t, mpi_data, FALSE, s );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->t, 1, system->n, HIP_ARG );
+                workspace->d_workspace->t, 1, system->n, GPU_ARG );
     }
 
     if ( i >= control->cm_solver_max_iters )
@@ -1757,7 +1764,7 @@ int Hip_CG( reax_system const * const system, control_params const * const contr
 #endif
 
     Vector_Sum( workspace->d_workspace->r, 1.0, b,
-            -1.0, workspace->d_workspace->q, system->n, HIP_ARG );
+            -1.0, workspace->d_workspace->q, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1773,10 +1780,10 @@ int Hip_CG( reax_system const * const system, control_params const * const contr
 #endif
 
     redux[0] = Dot_local( workspace, workspace->d_workspace->r,
-            workspace->d_workspace->d, system->n, HIP_ARG );
+            workspace->d_workspace->d, system->n, GPU_ARG );
     redux[1] = Dot_local( workspace, workspace->d_workspace->d,
-            workspace->d_workspace->d, system->n, HIP_ARG );
-    redux[2] = Dot_local( workspace, b, b, system->n, HIP_ARG );
+            workspace->d_workspace->d, system->n, GPU_ARG );
+    redux[2] = Dot_local( workspace, b, b, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1804,16 +1811,16 @@ int Hip_CG( reax_system const * const system, control_params const * const contr
 #endif
 
         tmp = Dot( workspace, workspace->d_workspace->d, workspace->d_workspace->q,
-                system->n, MPI_COMM_WORLD, HIP_ARG );
+                system->n, MPI_COMM_WORLD, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_allreduce );
 #endif
 
         alpha = sig_new / tmp;
-        Vector_Add( x, alpha, workspace->d_workspace->d, system->n, HIP_ARG );
+        Vector_Add( x, alpha, workspace->d_workspace->d, system->n, GPU_ARG );
         Vector_Add( workspace->d_workspace->r, -1.0 * alpha,
-                workspace->d_workspace->q, system->n, HIP_ARG );
+                workspace->d_workspace->q, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1829,9 +1836,9 @@ int Hip_CG( reax_system const * const system, control_params const * const contr
 #endif
 
         redux[0] = Dot_local( workspace, workspace->d_workspace->r,
-                workspace->d_workspace->p, system->n, HIP_ARG );
+                workspace->d_workspace->p, system->n, GPU_ARG );
         redux[1] = Dot_local( workspace, workspace->d_workspace->p,
-                workspace->d_workspace->p, system->n, HIP_ARG );
+                workspace->d_workspace->p, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1850,7 +1857,7 @@ int Hip_CG( reax_system const * const system, control_params const * const contr
         r_norm = SQRT( redux[1] );
         beta = sig_new / sig_old;
         Vector_Sum( workspace->d_workspace->d, 1.0, workspace->d_workspace->p,
-                beta, workspace->d_workspace->d, system->n, HIP_ARG );
+                beta, workspace->d_workspace->d, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1907,11 +1914,11 @@ int Hip_dual_BiCGStab( reax_system const * const system, control_params const * 
 #endif
 
     Vector_Sum_rvec2( workspace->d_workspace->r2, 1.0, 1.0, b,
-            -1.0, -1.0, workspace->d_workspace->d2, system->n, HIP_ARG );
+            -1.0, -1.0, workspace->d_workspace->d2, system->n, GPU_ARG );
     Dot_local_rvec2( workspace, b,
-            b, system->n, &redux[0], &redux[1], HIP_ARG );
+            b, system->n, &redux[0], &redux[1], GPU_ARG );
     Dot_local_rvec2( workspace, workspace->d_workspace->r2,
-            workspace->d_workspace->r2, system->n, &redux[2], &redux[3], HIP_ARG );
+            workspace->d_workspace->r2, system->n, &redux[2], &redux[3], GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1938,7 +1945,7 @@ int Hip_dual_BiCGStab( reax_system const * const system, control_params const * 
         b_norm[1] = 1.0;
     }
     Vector_Copy_rvec2( workspace->d_workspace->r_hat2,
-            workspace->d_workspace->r2, system->n, HIP_ARG );
+            workspace->d_workspace->r2, system->n, GPU_ARG );
     omega[0] = 1.0;
     omega[1] = 1.0;
     rho[0] = 1.0;
@@ -1956,7 +1963,7 @@ int Hip_dual_BiCGStab( reax_system const * const system, control_params const * 
         }
 
         Dot_local_rvec2( workspace, workspace->d_workspace->r_hat2,
-                workspace->d_workspace->r2, system->n, &redux[0], &redux[1], HIP_ARG );
+                workspace->d_workspace->r2, system->n, &redux[0], &redux[1], GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -1982,15 +1989,15 @@ int Hip_dual_BiCGStab( reax_system const * const system, control_params const * 
             beta[1] = (rho[1] / rho_old[1]) * (alpha[1] / omega[1]);
             Vector_Sum_rvec2( workspace->d_workspace->q2,
                     1.0, 1.0, workspace->d_workspace->p2,
-                    -1.0 * omega[0], -1.0 * omega[1], workspace->d_workspace->z2, system->n, HIP_ARG );
+                    -1.0 * omega[0], -1.0 * omega[1], workspace->d_workspace->z2, system->n, GPU_ARG );
             Vector_Sum_rvec2( workspace->d_workspace->p2,
                     1.0, 1.0, workspace->d_workspace->r2,
-                    beta[0], beta[1], workspace->d_workspace->q2, system->n, HIP_ARG );
+                    beta[0], beta[1], workspace->d_workspace->q2, system->n, GPU_ARG );
         }
         else
         {
             Vector_Copy_rvec2( workspace->d_workspace->p2,
-                    workspace->d_workspace->r2, system->n, HIP_ARG );
+                    workspace->d_workspace->r2, system->n, GPU_ARG );
         }
 
 #if defined(LOG_PERFORMANCE)
@@ -2016,7 +2023,7 @@ int Hip_dual_BiCGStab( reax_system const * const system, control_params const * 
 #endif
 
         Dot_local_rvec2( workspace, workspace->d_workspace->r_hat2,
-                workspace->d_workspace->z2, system->n, &redux[0], &redux[1], HIP_ARG );
+                workspace->d_workspace->z2, system->n, &redux[0], &redux[1], GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2036,9 +2043,9 @@ int Hip_dual_BiCGStab( reax_system const * const system, control_params const * 
         alpha[1] = rho[1] / tmp[1];
         Vector_Sum_rvec2( workspace->d_workspace->q2,
                 1.0, 1.0, workspace->d_workspace->r2,
-                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->z2, system->n, HIP_ARG );
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->z2, system->n, GPU_ARG );
         Dot_local_rvec2( workspace, workspace->d_workspace->q2,
-                workspace->d_workspace->q2, system->n, &redux[0], &redux[1], HIP_ARG );
+                workspace->d_workspace->q2, system->n, &redux[0], &redux[1], GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2058,7 +2065,7 @@ int Hip_dual_BiCGStab( reax_system const * const system, control_params const * 
         if ( tmp[0] < tol || tmp[1] < tol )
         {
             Vector_Add_rvec2( x, alpha[0], alpha[1], workspace->d_workspace->d2,
-                    system->n, HIP_ARG );
+                    system->n, GPU_ARG );
             break;
         }
 
@@ -2083,9 +2090,9 @@ int Hip_dual_BiCGStab( reax_system const * const system, control_params const * 
 #endif
 
         Dot_local_rvec2( workspace, workspace->d_workspace->y2,
-                workspace->d_workspace->q2, system->n, &redux[0], &redux[1], HIP_ARG );
+                workspace->d_workspace->q2, system->n, &redux[0], &redux[1], GPU_ARG );
         Dot_local_rvec2( workspace, workspace->d_workspace->y2,
-                workspace->d_workspace->y2, system->n, &redux[2], &redux[3], HIP_ARG );
+                workspace->d_workspace->y2, system->n, &redux[2], &redux[3], GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2107,13 +2114,13 @@ int Hip_dual_BiCGStab( reax_system const * const system, control_params const * 
         omega[1] = sigma[1] / tmp[1];
         Vector_Sum_rvec2( workspace->d_workspace->g2,
                 alpha[0], alpha[1], workspace->d_workspace->d2,
-                omega[0], omega[1], workspace->d_workspace->q_hat2, system->n, HIP_ARG );
-        Vector_Add_rvec2( x, 1.0, 1.0, workspace->d_workspace->g2, system->n, HIP_ARG );
+                omega[0], omega[1], workspace->d_workspace->q_hat2, system->n, GPU_ARG );
+        Vector_Add_rvec2( x, 1.0, 1.0, workspace->d_workspace->g2, system->n, GPU_ARG );
         Vector_Sum_rvec2( workspace->d_workspace->r2,
                 1.0, 1.0, workspace->d_workspace->q2,
-                -1.0 * omega[0], -1.0 * omega[1], workspace->d_workspace->y2, system->n, HIP_ARG );
+                -1.0 * omega[0], -1.0 * omega[1], workspace->d_workspace->y2, system->n, GPU_ARG );
         Dot_local_rvec2( workspace, workspace->d_workspace->r2,
-                workspace->d_workspace->r2, system->n, &redux[0], &redux[1], HIP_ARG );
+                workspace->d_workspace->r2, system->n, &redux[0], &redux[1], GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2144,26 +2151,26 @@ int Hip_dual_BiCGStab( reax_system const * const system, control_params const * 
     if ( r_norm[0] / b_norm[0] <= tol && r_norm[1] / b_norm[1] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->t,
-                workspace->d_workspace->x, 1, system->n, HIP_ARG );
+                workspace->d_workspace->x, 1, system->n, GPU_ARG );
 
         i += Hip_BiCGStab( system, control, data, workspace, H,
                 workspace->d_workspace->b_t, tol,
                 workspace->d_workspace->t, mpi_data, FALSE, s );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->t, 1, system->n, HIP_ARG );
+                workspace->d_workspace->t, 1, system->n, GPU_ARG );
     }
     else if ( r_norm[1] / b_norm[1] <= tol && r_norm[0] / b_norm[0] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->s,
-                workspace->d_workspace->x, 0, system->n, HIP_ARG );
+                workspace->d_workspace->x, 0, system->n, GPU_ARG );
 
         i += Hip_BiCGStab( system, control, data, workspace, H,
                 workspace->d_workspace->b_s, tol,
                 workspace->d_workspace->s, mpi_data, FALSE, s );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->s, 0, system->n, HIP_ARG );
+                workspace->d_workspace->s, 0, system->n, GPU_ARG );
     }
 
     if ( i >= control->cm_solver_max_iters )
@@ -2216,10 +2223,10 @@ int Hip_BiCGStab( reax_system const * const system, control_params const * const
 #endif
 
     Vector_Sum( workspace->d_workspace->r, 1.0, b,
-            -1.0, workspace->d_workspace->d, system->n, HIP_ARG );
-    redux[0] = Dot_local( workspace, b, b, system->n, HIP_ARG );
+            -1.0, workspace->d_workspace->d, system->n, GPU_ARG );
+    redux[0] = Dot_local( workspace, b, b, system->n, GPU_ARG );
     redux[1] = Dot_local( workspace, workspace->d_workspace->r,
-            workspace->d_workspace->r, system->n, HIP_ARG );
+            workspace->d_workspace->r, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2240,7 +2247,7 @@ int Hip_BiCGStab( reax_system const * const system, control_params const * const
         b_norm = 1.0;
     }
     Vector_Copy( workspace->d_workspace->r_hat,
-            workspace->d_workspace->r, system->n, HIP_ARG );
+            workspace->d_workspace->r, system->n, GPU_ARG );
     omega = 1.0;
     rho = 1.0;
 
@@ -2251,7 +2258,7 @@ int Hip_BiCGStab( reax_system const * const system, control_params const * const
     for ( i = 0; i < control->cm_solver_max_iters && r_norm / b_norm > tol; ++i )
     {
         redux[0] = Dot_local( workspace, workspace->d_workspace->r_hat,
-                workspace->d_workspace->r, system->n, HIP_ARG );
+                workspace->d_workspace->r, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2275,15 +2282,15 @@ int Hip_BiCGStab( reax_system const * const system, control_params const * const
             beta = (rho / rho_old) * (alpha / omega);
             Vector_Sum( workspace->d_workspace->q,
                     1.0, workspace->d_workspace->p,
-                    -1.0 * omega, workspace->d_workspace->z, system->n, HIP_ARG );
+                    -1.0 * omega, workspace->d_workspace->z, system->n, GPU_ARG );
             Vector_Sum( workspace->d_workspace->p,
                     1.0, workspace->d_workspace->r,
-                    beta, workspace->d_workspace->q, system->n, HIP_ARG );
+                    beta, workspace->d_workspace->q, system->n, GPU_ARG );
         }
         else
         {
             Vector_Copy( workspace->d_workspace->p,
-                    workspace->d_workspace->r, system->n, HIP_ARG );
+                    workspace->d_workspace->r, system->n, GPU_ARG );
         }
 
 #if defined(LOG_PERFORMANCE)
@@ -2309,7 +2316,7 @@ int Hip_BiCGStab( reax_system const * const system, control_params const * const
 #endif
 
         redux[0] = Dot_local( workspace, workspace->d_workspace->r_hat,
-                workspace->d_workspace->z, system->n, HIP_ARG );
+                workspace->d_workspace->z, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2327,9 +2334,9 @@ int Hip_BiCGStab( reax_system const * const system, control_params const * const
         alpha = rho / tmp;
         Vector_Sum( workspace->d_workspace->q,
                 1.0, workspace->d_workspace->r,
-                -1.0 * alpha, workspace->d_workspace->z, system->n, HIP_ARG );
+                -1.0 * alpha, workspace->d_workspace->z, system->n, GPU_ARG );
         redux[0] = Dot_local( workspace, workspace->d_workspace->q,
-                workspace->d_workspace->q, system->n, HIP_ARG );
+                workspace->d_workspace->q, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2347,7 +2354,7 @@ int Hip_BiCGStab( reax_system const * const system, control_params const * const
         /* early convergence check */
         if ( tmp < tol )
         {
-            Vector_Add( x, alpha, workspace->d_workspace->d, system->n, HIP_ARG );
+            Vector_Add( x, alpha, workspace->d_workspace->d, system->n, GPU_ARG );
             break;
         }
 
@@ -2372,9 +2379,9 @@ int Hip_BiCGStab( reax_system const * const system, control_params const * const
 #endif
 
         redux[0] = Dot_local( workspace, workspace->d_workspace->y,
-                workspace->d_workspace->q, system->n, HIP_ARG );
+                workspace->d_workspace->q, system->n, GPU_ARG );
         redux[1] = Dot_local( workspace, workspace->d_workspace->y,
-                workspace->d_workspace->y, system->n, HIP_ARG );
+                workspace->d_workspace->y, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2393,13 +2400,13 @@ int Hip_BiCGStab( reax_system const * const system, control_params const * const
         omega = sigma / tmp;
         Vector_Sum( workspace->d_workspace->g,
                 alpha, workspace->d_workspace->d,
-                omega, workspace->d_workspace->q_hat, system->n, HIP_ARG );
-        Vector_Add( x, 1.0, workspace->d_workspace->g, system->n, HIP_ARG );
+                omega, workspace->d_workspace->q_hat, system->n, GPU_ARG );
+        Vector_Add( x, 1.0, workspace->d_workspace->g, system->n, GPU_ARG );
         Vector_Sum( workspace->d_workspace->r,
                 1.0, workspace->d_workspace->q,
-                -1.0 * omega, workspace->d_workspace->y, system->n, HIP_ARG );
+                -1.0 * omega, workspace->d_workspace->y, system->n, GPU_ARG );
         redux[0] = Dot_local( workspace, workspace->d_workspace->r,
-                workspace->d_workspace->r, system->n, HIP_ARG );
+                workspace->d_workspace->r, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2469,7 +2476,7 @@ int Hip_dual_PIPECG( reax_system const * const system, control_params const * co
 #endif
 
     Vector_Sum_rvec2( workspace->d_workspace->r2, 1.0, 1.0, b,
-            -1.0, -1.0, workspace->d_workspace->u2, system->n, HIP_ARG );
+            -1.0, -1.0, workspace->d_workspace->u2, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2492,12 +2499,12 @@ int Hip_dual_PIPECG( reax_system const * const system, control_params const * co
 #endif
 
     Dot_local_rvec2( workspace, workspace->d_workspace->w2,
-            workspace->d_workspace->u2, system->n, &redux[0], &redux[1], HIP_ARG );
+            workspace->d_workspace->u2, system->n, &redux[0], &redux[1], GPU_ARG );
     Dot_local_rvec2( workspace, workspace->d_workspace->r2,
-            workspace->d_workspace->u2, system->n, &redux[2], &redux[3], HIP_ARG );
+            workspace->d_workspace->u2, system->n, &redux[2], &redux[3], GPU_ARG );
     Dot_local_rvec2( workspace, workspace->d_workspace->u2,
-            workspace->d_workspace->u2, system->n, &redux[4], &redux[5], HIP_ARG );
-    Dot_local_rvec2( workspace, b, b, system->n, &redux[6], &redux[7], HIP_ARG );
+            workspace->d_workspace->u2, system->n, &redux[4], &redux[5], GPU_ARG );
+    Dot_local_rvec2( workspace, b, b, system->n, &redux[6], &redux[7], GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2561,27 +2568,27 @@ int Hip_dual_PIPECG( reax_system const * const system, control_params const * co
         }
 
         Vector_Sum_rvec2( workspace->d_workspace->z2, 1.0, 1.0, workspace->d_workspace->n2,
-                beta[0], beta[1], workspace->d_workspace->z2, system->n, HIP_ARG );
+                beta[0], beta[1], workspace->d_workspace->z2, system->n, GPU_ARG );
         Vector_Sum_rvec2( workspace->d_workspace->q2, 1.0, 1.0, workspace->d_workspace->m2,
-                beta[0], beta[1], workspace->d_workspace->q2, system->n, HIP_ARG );
+                beta[0], beta[1], workspace->d_workspace->q2, system->n, GPU_ARG );
         Vector_Sum_rvec2( workspace->d_workspace->p2, 1.0, 1.0, workspace->d_workspace->u2,
-                beta[0], beta[1], workspace->d_workspace->p2, system->n, HIP_ARG );
+                beta[0], beta[1], workspace->d_workspace->p2, system->n, GPU_ARG );
         Vector_Sum_rvec2( workspace->d_workspace->d2, 1.0, 1.0, workspace->d_workspace->w2,
-                beta[0], beta[1], workspace->d_workspace->d2, system->n, HIP_ARG );
+                beta[0], beta[1], workspace->d_workspace->d2, system->n, GPU_ARG );
         Vector_Sum_rvec2( x, 1.0, 1.0, x,
-                alpha[0], alpha[1], workspace->d_workspace->p2, system->n, HIP_ARG );
+                alpha[0], alpha[1], workspace->d_workspace->p2, system->n, GPU_ARG );
         Vector_Sum_rvec2( workspace->d_workspace->u2, 1.0, 1.0, workspace->d_workspace->u2,
-                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->q2, system->n, HIP_ARG );
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->q2, system->n, GPU_ARG );
         Vector_Sum_rvec2( workspace->d_workspace->w2, 1.0, 1.0, workspace->d_workspace->w2,
-                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->z2, system->n, HIP_ARG );
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->z2, system->n, GPU_ARG );
         Vector_Sum_rvec2( workspace->d_workspace->r2, 1.0, 1.0, workspace->d_workspace->r2,
-                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->d2, system->n, HIP_ARG );
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->d2, system->n, GPU_ARG );
         Dot_local_rvec2( workspace, workspace->d_workspace->w2,
-                workspace->d_workspace->u2, system->n, &redux[0], &redux[1], HIP_ARG );
+                workspace->d_workspace->u2, system->n, &redux[0], &redux[1], GPU_ARG );
         Dot_local_rvec2( workspace, workspace->d_workspace->r2,
-                workspace->d_workspace->u2, system->n, &redux[2], &redux[3], HIP_ARG );
+                workspace->d_workspace->u2, system->n, &redux[2], &redux[3], GPU_ARG );
         Dot_local_rvec2( workspace, workspace->d_workspace->u2,
-                workspace->d_workspace->u2, system->n, &redux[4], &redux[5], HIP_ARG );
+                workspace->d_workspace->u2, system->n, &redux[4], &redux[5], GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2627,26 +2634,26 @@ int Hip_dual_PIPECG( reax_system const * const system, control_params const * co
     if ( r_norm[0] / b_norm[0] <= tol && r_norm[1] / b_norm[1] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->t,
-                workspace->d_workspace->x, 1, system->n, HIP_ARG );
+                workspace->d_workspace->x, 1, system->n, GPU_ARG );
 
         i += Hip_PIPECG( system, control, data, workspace, H,
                 workspace->d_workspace->b_t, tol,
                 workspace->d_workspace->t, mpi_data, FALSE, s );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->t, 1, system->n, HIP_ARG );
+                workspace->d_workspace->t, 1, system->n, GPU_ARG );
     }
     else if ( r_norm[1] / b_norm[1] <= tol && r_norm[0] / b_norm[0] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->s,
-                workspace->d_workspace->x, 0, system->n, HIP_ARG );
+                workspace->d_workspace->x, 0, system->n, GPU_ARG );
 
         i += Hip_PIPECG( system, control, data, workspace, H,
                 workspace->d_workspace->b_s, tol,
                 workspace->d_workspace->s, mpi_data, FALSE, s );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->s, 0, system->n, HIP_ARG );
+                workspace->d_workspace->s, 0, system->n, GPU_ARG );
     }
 
     if ( i >= control->cm_solver_max_iters )
@@ -2693,7 +2700,7 @@ int Hip_PIPECG( reax_system const * const system, control_params const * const c
 #endif
 
     Vector_Sum( workspace->d_workspace->r, 1.0, b,
-            -1.0, workspace->d_workspace->u, system->n, HIP_ARG );
+            -1.0, workspace->d_workspace->u, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2716,12 +2723,12 @@ int Hip_PIPECG( reax_system const * const system, control_params const * const c
 #endif
 
     redux[0] = Dot_local( workspace, workspace->d_workspace->w,
-            workspace->d_workspace->u, system->n, HIP_ARG );
+            workspace->d_workspace->u, system->n, GPU_ARG );
     redux[1] = Dot_local( workspace, workspace->d_workspace->r,
-            workspace->d_workspace->u, system->n, HIP_ARG );
+            workspace->d_workspace->u, system->n, GPU_ARG );
     redux[2] = Dot_local( workspace, workspace->d_workspace->u,
-            workspace->d_workspace->u, system->n, HIP_ARG );
-    redux[3] = Dot_local( workspace, b, b, system->n, HIP_ARG );
+            workspace->d_workspace->u, system->n, GPU_ARG );
+    redux[3] = Dot_local( workspace, b, b, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2772,27 +2779,27 @@ int Hip_PIPECG( reax_system const * const system, control_params const * const c
         }
 
         Vector_Sum( workspace->d_workspace->z, 1.0, workspace->d_workspace->n,
-                beta, workspace->d_workspace->z, system->n, HIP_ARG );
+                beta, workspace->d_workspace->z, system->n, GPU_ARG );
         Vector_Sum( workspace->d_workspace->q, 1.0, workspace->d_workspace->m,
-                beta, workspace->d_workspace->q, system->n, HIP_ARG );
+                beta, workspace->d_workspace->q, system->n, GPU_ARG );
         Vector_Sum( workspace->d_workspace->p, 1.0, workspace->d_workspace->u,
-                beta, workspace->d_workspace->p, system->n, HIP_ARG );
+                beta, workspace->d_workspace->p, system->n, GPU_ARG );
         Vector_Sum( workspace->d_workspace->d, 1.0, workspace->d_workspace->w,
-                beta, workspace->d_workspace->d, system->n, HIP_ARG );
+                beta, workspace->d_workspace->d, system->n, GPU_ARG );
         Vector_Sum( x, 1.0, x,
-                alpha, workspace->d_workspace->p, system->n, HIP_ARG );
+                alpha, workspace->d_workspace->p, system->n, GPU_ARG );
         Vector_Sum( workspace->d_workspace->u, 1.0, workspace->d_workspace->u,
-                -1.0 * alpha, workspace->d_workspace->q, system->n, HIP_ARG );
+                -1.0 * alpha, workspace->d_workspace->q, system->n, GPU_ARG );
         Vector_Sum( workspace->d_workspace->w, 1.0, workspace->d_workspace->w,
-                -1.0 * alpha, workspace->d_workspace->z, system->n, HIP_ARG );
+                -1.0 * alpha, workspace->d_workspace->z, system->n, GPU_ARG );
         Vector_Sum( workspace->d_workspace->r, 1.0, workspace->d_workspace->r,
-                -1.0 * alpha, workspace->d_workspace->d, system->n, HIP_ARG );
+                -1.0 * alpha, workspace->d_workspace->d, system->n, GPU_ARG );
         redux[0] = Dot_local( workspace, workspace->d_workspace->w,
-                workspace->d_workspace->u, system->n, HIP_ARG );
+                workspace->d_workspace->u, system->n, GPU_ARG );
         redux[1] = Dot_local( workspace, workspace->d_workspace->r,
-                workspace->d_workspace->u, system->n, HIP_ARG );
+                workspace->d_workspace->u, system->n, GPU_ARG );
         redux[2] = Dot_local( workspace, workspace->d_workspace->u,
-                workspace->d_workspace->u, system->n, HIP_ARG );
+                workspace->d_workspace->u, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2872,7 +2879,7 @@ int Hip_dual_PIPECR( reax_system const * const system, control_params const * co
 #endif
 
     Vector_Sum_rvec2( workspace->d_workspace->r2, 1.0, 1.0, b,
-            -1.0, -1.0, workspace->d_workspace->u2, system->n, HIP_ARG );
+            -1.0, -1.0, workspace->d_workspace->u2, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2887,9 +2894,9 @@ int Hip_dual_PIPECR( reax_system const * const system, control_params const * co
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
-    Dot_local_rvec2( workspace, b, b, system->n, &redux[0], &redux[1], HIP_ARG );
+    Dot_local_rvec2( workspace, b, b, system->n, &redux[0], &redux[1], GPU_ARG );
     Dot_local_rvec2( workspace, workspace->d_workspace->u2,
-            workspace->d_workspace->u2, system->n, &redux[2], &redux[3], HIP_ARG );
+            workspace->d_workspace->u2, system->n, &redux[2], &redux[3], GPU_ARG );
 
     ret = MPI_Iallreduce( MPI_IN_PLACE, redux, 4, MPI_DOUBLE, MPI_SUM,
             MPI_COMM_WORLD, &req );
@@ -2934,11 +2941,11 @@ int Hip_dual_PIPECR( reax_system const * const system, control_params const * co
 #endif
 
         Dot_local_rvec2( workspace, workspace->d_workspace->w2,
-                workspace->d_workspace->u2, system->n, &redux[0], &redux[1], HIP_ARG );
+                workspace->d_workspace->u2, system->n, &redux[0], &redux[1], GPU_ARG );
         Dot_local_rvec2( workspace, workspace->d_workspace->m2,
-                workspace->d_workspace->w2, system->n, &redux[2], &redux[3], HIP_ARG );
+                workspace->d_workspace->w2, system->n, &redux[2], &redux[3], GPU_ARG );
         Dot_local_rvec2( workspace, workspace->d_workspace->u2,
-                workspace->d_workspace->u2, system->n, &redux[4], &redux[5], HIP_ARG );
+                workspace->d_workspace->u2, system->n, &redux[4], &redux[5], GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -2984,21 +2991,21 @@ int Hip_dual_PIPECR( reax_system const * const system, control_params const * co
         }
 
         Vector_Sum_rvec2( workspace->d_workspace->z2, 1.0, 1.0, workspace->d_workspace->n2,
-                beta[0], beta[1], workspace->d_workspace->z2, system->n, HIP_ARG );
+                beta[0], beta[1], workspace->d_workspace->z2, system->n, GPU_ARG );
         Vector_Sum_rvec2( workspace->d_workspace->q2, 1.0, 1.0, workspace->d_workspace->m2,
-                beta[0], beta[1], workspace->d_workspace->q2, system->n, HIP_ARG );
+                beta[0], beta[1], workspace->d_workspace->q2, system->n, GPU_ARG );
         Vector_Sum_rvec2( workspace->d_workspace->p2, 1.0, 1.0, workspace->d_workspace->u2,
-                beta[0], beta[1], workspace->d_workspace->p2, system->n, HIP_ARG );
+                beta[0], beta[1], workspace->d_workspace->p2, system->n, GPU_ARG );
         Vector_Sum_rvec2( workspace->d_workspace->d2, 1.0, 1.0, workspace->d_workspace->w2,
-                beta[0], beta[1], workspace->d_workspace->d2, system->n, HIP_ARG );
+                beta[0], beta[1], workspace->d_workspace->d2, system->n, GPU_ARG );
         Vector_Sum_rvec2( x, 1.0, 1.0, x,
-                alpha[0], alpha[1], workspace->d_workspace->p2, system->n, HIP_ARG );
+                alpha[0], alpha[1], workspace->d_workspace->p2, system->n, GPU_ARG );
         Vector_Sum_rvec2( workspace->d_workspace->u2, 1.0, 1.0, workspace->d_workspace->u2,
-                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->q2, system->n, HIP_ARG );
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->q2, system->n, GPU_ARG );
         Vector_Sum_rvec2( workspace->d_workspace->w2, 1.0, 1.0, workspace->d_workspace->w2,
-                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->z2, system->n, HIP_ARG );
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->z2, system->n, GPU_ARG );
         Vector_Sum_rvec2( workspace->d_workspace->r2, 1.0, 1.0, workspace->d_workspace->r2,
-                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->d2, system->n, HIP_ARG );
+                -1.0 * alpha[0], -1.0 * alpha[1], workspace->d_workspace->d2, system->n, GPU_ARG );
 
         gamma_old[0] = gamma_new[0];
         gamma_old[1] = gamma_new[1];
@@ -3011,26 +3018,26 @@ int Hip_dual_PIPECR( reax_system const * const system, control_params const * co
     if ( r_norm[0] / b_norm[0] <= tol && r_norm[1] / b_norm[1] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->t,
-                workspace->d_workspace->x, 1, system->n, HIP_ARG );
+                workspace->d_workspace->x, 1, system->n, GPU_ARG );
 
         i += Hip_PIPECR( system, control, data, workspace, H,
                 workspace->d_workspace->b_t, tol,
                 workspace->d_workspace->t, mpi_data, FALSE, s );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->t, 1, system->n, HIP_ARG );
+                workspace->d_workspace->t, 1, system->n, GPU_ARG );
     }
     else if ( r_norm[1] / b_norm[1] <= tol && r_norm[0] / b_norm[0] > tol )
     {
         Vector_Copy_From_rvec2( workspace->d_workspace->s,
-                workspace->d_workspace->x, 0, system->n, HIP_ARG );
+                workspace->d_workspace->x, 0, system->n, GPU_ARG );
 
         i += Hip_PIPECR( system, control, data, workspace, H,
                 workspace->d_workspace->b_s, tol,
                 workspace->d_workspace->s, mpi_data, FALSE, s );
 
         Vector_Copy_To_rvec2( workspace->d_workspace->x,
-                workspace->d_workspace->s, 0, system->n, HIP_ARG );
+                workspace->d_workspace->s, 0, system->n, GPU_ARG );
     }
 
     if ( i >= control->cm_solver_max_iters )
@@ -3074,7 +3081,7 @@ int Hip_PIPECR( reax_system const * const system, control_params const * const c
 #endif
 
     Vector_Sum( workspace->d_workspace->r, 1.0, b,
-            -1.0, workspace->d_workspace->u, system->n, HIP_ARG );
+            -1.0, workspace->d_workspace->u, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
     Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -3089,9 +3096,9 @@ int Hip_PIPECR( reax_system const * const system, control_params const * const c
     Update_Timing_Info( &time, &data->timing.cm_solver_pre_app );
 #endif
 
-    redux[0] = Dot_local( workspace, b, b, system->n, HIP_ARG );
+    redux[0] = Dot_local( workspace, b, b, system->n, GPU_ARG );
     redux[1] = Dot_local( workspace, workspace->d_workspace->u,
-            workspace->d_workspace->u, system->n, HIP_ARG );
+            workspace->d_workspace->u, system->n, GPU_ARG );
 
     ret = MPI_Iallreduce( MPI_IN_PLACE, redux, 2, MPI_DOUBLE, MPI_SUM,
             MPI_COMM_WORLD, &req );
@@ -3129,11 +3136,11 @@ int Hip_PIPECR( reax_system const * const system, control_params const * const c
 #endif
 
         redux[0] = Dot_local( workspace, workspace->d_workspace->w,
-                workspace->d_workspace->u, system->n, HIP_ARG );
+                workspace->d_workspace->u, system->n, GPU_ARG );
         redux[1] = Dot_local( workspace, workspace->d_workspace->m,
-                workspace->d_workspace->w, system->n, HIP_ARG );
+                workspace->d_workspace->w, system->n, GPU_ARG );
         redux[2] = Dot_local( workspace, workspace->d_workspace->u,
-                workspace->d_workspace->u, system->n, HIP_ARG );
+                workspace->d_workspace->u, system->n, GPU_ARG );
 
 #if defined(LOG_PERFORMANCE)
         Update_Timing_Info( &time, &data->timing.cm_solver_vector_ops );
@@ -3172,21 +3179,21 @@ int Hip_PIPECR( reax_system const * const system, control_params const * const c
         }
 
         Vector_Sum( workspace->d_workspace->z, 1.0, workspace->d_workspace->n,
-                beta, workspace->d_workspace->z, system->n, HIP_ARG );
+                beta, workspace->d_workspace->z, system->n, GPU_ARG );
         Vector_Sum( workspace->d_workspace->q, 1.0, workspace->d_workspace->m,
-                beta, workspace->d_workspace->q, system->n, HIP_ARG );
+                beta, workspace->d_workspace->q, system->n, GPU_ARG );
         Vector_Sum( workspace->d_workspace->p, 1.0, workspace->d_workspace->u,
-                beta, workspace->d_workspace->p, system->n, HIP_ARG );
+                beta, workspace->d_workspace->p, system->n, GPU_ARG );
         Vector_Sum( workspace->d_workspace->d, 1.0, workspace->d_workspace->w,
-                beta, workspace->d_workspace->d, system->n, HIP_ARG );
+                beta, workspace->d_workspace->d, system->n, GPU_ARG );
         Vector_Sum( x, 1.0, x,
-                alpha, workspace->d_workspace->p, system->n, HIP_ARG );
+                alpha, workspace->d_workspace->p, system->n, GPU_ARG );
         Vector_Sum( workspace->d_workspace->u, 1.0, workspace->d_workspace->u,
-                -1.0 * alpha, workspace->d_workspace->q, system->n, HIP_ARG );
+                -1.0 * alpha, workspace->d_workspace->q, system->n, GPU_ARG );
         Vector_Sum( workspace->d_workspace->w, 1.0, workspace->d_workspace->w,
-                -1.0 * alpha, workspace->d_workspace->z, system->n, HIP_ARG );
+                -1.0 * alpha, workspace->d_workspace->z, system->n, GPU_ARG );
         Vector_Sum( workspace->d_workspace->r, 1.0, workspace->d_workspace->r,
-                -1.0 * alpha, workspace->d_workspace->d, system->n, HIP_ARG );
+                -1.0 * alpha, workspace->d_workspace->d, system->n, GPU_ARG );
 
         gamma_old = gamma_new;
 

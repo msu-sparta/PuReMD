@@ -4,8 +4,7 @@
 #include "../reax_types.h"
 
 
-void Vector_Copy( real * const, real const * const,
-        unsigned int, 
+void Vector_Copy( real * const, real const * const, unsigned int, 
 #if defined(USE_HIPBLAS)
         hipblasHandle_t
 #else
@@ -13,8 +12,7 @@ void Vector_Copy( real * const, real const * const,
 #endif
         );
 
-void Vector_Copy_rvec2( rvec2 * const, rvec2 const * const,
-        unsigned int, 
+void Vector_Copy_rvec2( rvec2 * const, rvec2 const * const, unsigned int, 
 #if defined(USE_HIPBLAS)
         hipblasHandle_t
 #else
@@ -22,8 +20,7 @@ void Vector_Copy_rvec2( rvec2 * const, rvec2 const * const,
 #endif
         );
 
-void Vector_Copy_From_rvec2( real * const, rvec2 const * const,
-        int, int, 
+void Vector_Copy_From_rvec2( real * const, rvec2 const * const, int, int, 
 #if defined(USE_HIPBLAS)
         hipblasHandle_t
 #else
@@ -31,8 +28,7 @@ void Vector_Copy_From_rvec2( real * const, rvec2 const * const,
 #endif
         );
 
-void Vector_Copy_To_rvec2( rvec2 * const, real const * const,
-        int, int, 
+void Vector_Copy_To_rvec2( rvec2 * const, real const * const, int, int, 
 #if defined(USE_HIPBLAS)
         hipblasHandle_t
 #else
@@ -58,8 +54,7 @@ void Vector_Sum_rvec2( rvec2 * const, real, real, rvec2 const * const,
 #endif
         );
 
-void Vector_Add( real * const, real, real const * const,
-        unsigned int, 
+void Vector_Add( real * const, real, real const * const, unsigned int, 
 #if defined(USE_HIPBLAS)
         hipblasHandle_t
 #else
@@ -67,8 +62,7 @@ void Vector_Add( real * const, real, real const * const,
 #endif
         );
 
-void Vector_Add_rvec2( rvec2 * const, real, real, rvec2 const * const,
-        unsigned int, 
+void Vector_Add_rvec2( rvec2 * const, real, real, rvec2 const * const, unsigned int, 
 #if defined(USE_HIPBLAS)
         hipblasHandle_t
 #else

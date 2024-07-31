@@ -239,12 +239,13 @@ GPU_GLOBAL void k_vector_mult_rvec2( rvec2 * const dest, rvec2 const * const v1,
  * inputs:
  *  v: dense vector to copy
  *  k: number of entries in v
- *  s: HIP stream
+ *  block_size: GPU threads per block
+ *  s: GPU stream
  * output:
  *  dest: vector copied into
  */
 void Vector_Copy( real * const dest, real const * const v,
-        unsigned int k, 
+        unsigned int k,
 #if defined(USE_HIPBLAS)
         hipblasHandle_t handle
 #else
@@ -265,8 +266,7 @@ void Vector_Copy( real * const dest, real const * const v,
 #else
     int blocks;
 
-    blocks = (k / block_size)
-        + ((k % block_size == 0) ? 0 : 1);
+    blocks = (k / block_size) + ((k % block_size == 0) ? 0 : 1);
 
     k_vector_copy <<< blocks, block_size, 0, s >>>
         ( dest, v, k );
@@ -280,13 +280,13 @@ void Vector_Copy( real * const dest, real const * const v,
  * inputs:
  *  v: dense vector to copy
  *  k: number of entries in v
- *  block_size: HIP threads per block
- *  s: HIP stream
+ *  block_size: GPU threads per block
+ *  s: GPU stream
  * output:
  *  dest: vector copied into
  */
 void Vector_Copy_rvec2( rvec2 * const dest, rvec2 const * const v,
-        unsigned int k, 
+        unsigned int k,
 #if defined(USE_HIPBLAS)
         hipblasHandle_t handle
 #else
@@ -318,7 +318,7 @@ void Vector_Copy_rvec2( rvec2 * const dest, rvec2 const * const v,
 
 
 void Vector_Copy_From_rvec2( real * const dst, rvec2 const * const src,
-        int index, int k, 
+        int index, int k,
 #if defined(USE_HIPBLAS)
         hipblasHandle_t handle
 #else
@@ -350,7 +350,7 @@ void Vector_Copy_From_rvec2( real * const dst, rvec2 const * const src,
 
 
 void Vector_Copy_To_rvec2( rvec2 * const dst, real const * const src,
-        int index, int k, 
+        int index, int k,
 #if defined(USE_HIPBLAS)
         hipblasHandle_t handle
 #else
@@ -388,13 +388,13 @@ void Vector_Copy_To_rvec2( rvec2 * const dst, real const * const src,
  *  c, d: scaling constants
  *  v, y: dense vector whose entries to scale
  *  k: number of entries in the vectors
- *  block_size: HIP threads per block
- *  s: HIP stream
+ *  block_size: GPU threads per block
+ *  s: GPU stream
  * output:
  *  dest: vector containing the scaled sum
  */
 void Vector_Sum( real * const dest, real c, real const * const v,
-        real d, real const * const y, unsigned int k, 
+        real d, real const * const y, unsigned int k,
 #if defined(USE_HIPBLAS)
         hipblasHandle_t handle
 #else
@@ -493,7 +493,7 @@ void Vector_Sum( real * const dest, real c, real const * const v,
 
 
 void Vector_Sum_rvec2( rvec2 * const dest, real c0, real c1, rvec2 const * const v,
-        real d0, real d1, rvec2 const * const y, unsigned int k, 
+        real d0, real d1, rvec2 const * const y, unsigned int k,
 #if defined(USE_HIPBLAS)
         hipblasHandle_t handle
 #else
@@ -655,13 +655,13 @@ void Vector_Sum_rvec2( rvec2 * const dest, real c0, real c1, rvec2 const * const
  *  c: scaling constant
  *  v: dense vector whose entries to scale
  *  k: number of entries in the vectors
- *  block_size: HIP threads per block
- *  s: HIP stream
+ *  block_size: GPU threads per block
+ *  s: GPU stream
  * output:
  *  dest: vector to accumulate with the scaled sum
  */
 void Vector_Add( real * const dest, real c, real const * const v,
-        unsigned int k, 
+        unsigned int k,
 #if defined(USE_HIPBLAS)
         hipblasHandle_t handle
 #else
@@ -699,13 +699,13 @@ void Vector_Add( real * const dest, real c, real const * const v,
  *  c: scaling constant
  *  v: dense vector whose entries to scale
  *  k: number of entries in the vectors
- *  block_size: HIP threads per block
- *  s: HIP stream
+ *  block_size: GPU threads per block
+ *  s: GPU stream
  * output:
  *  dest: vector to accumulate with the scaled sum
  */
 void Vector_Add_rvec2( rvec2 * const dest, real c0, real c1, rvec2 const * const v,
-        unsigned int k, 
+        unsigned int k,
 #if defined(USE_HIPBLAS)
         hipblasHandle_t handle
 #else
@@ -750,8 +750,8 @@ void Vector_Add_rvec2( rvec2 * const dest, real c0, real c1, rvec2 const * const
  * inputs:
  *  v1, v2: dense vectors whose entries to multiply
  *  k: number of entries in the vectors
- *  block_size: HIP threads per block
- *  s: HIP stream
+ *  block_size: GPU threads per block
+ *  s: GPU stream
  * output:
  *  dest: vector with the result of the multiplication
  */
@@ -774,8 +774,8 @@ static void Vector_Mult( real * const dest, real const * const v1,
  * inputs:
  *  v1, v2: dense vectors whose entries to multiply
  *  k: number of entries in the vectors
- *  block_size: HIP threads per block
- *  s: HIP stream
+ *  block_size: GPU threads per block
+ *  s: GPU stream
  * output:
  *  dest: vector with the result of the multiplication
  */
@@ -826,9 +826,10 @@ real Dot( storage * const workspace,
 
     /* global reduction (sum) of local device sums and store on host */
 #if defined(OMPI_HAVE_MPI_EXT_ROCM) && OMPI_HAVE_MPI_EXT_ROCM
-    sHipCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
+    sHipCheckMalloc( &workspace->d_workspace->scratch[5],
+            &workspace->d_workspace->scratch_size[5],
             sizeof(real), __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch[5];
+    spad = (real *) workspace->d_workspace->scratch[5];
 
     ret_hipblas = hipblasDdot( handle, k, v1, 1, v2, 1, &spad );
 
@@ -860,9 +861,10 @@ real Dot( storage * const workspace,
     real temp;
 #endif
 
-    sHipCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
+    sHipCheckMalloc( &workspace->d_workspace->scratch[5],
+            &workspace->d_workspace->scratch_size[5],
             sizeof(real) * (k + 1), __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch[5];
+    spad = (real *) workspace->d_workspace->scratch[5];
 
     Vector_Mult( spad, v1, v2, k, block_size, s );
 
@@ -895,7 +897,7 @@ real Dot( storage * const workspace,
  *  workspace: storage container for workspace structures
  *  v1, v2: dense vectors
  *  k: number of entries in the vectors
- *  s: HIP stream
+ *  s: GPU stream
  * output:
  *  dot: inner product of the two vector
  */
@@ -923,16 +925,17 @@ real Dot_local( storage * const workspace,
 #else
     real sum, *spad;
 
-    sHipCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
+    sHipCheckMalloc( &workspace->d_workspace->scratch[5],
+            &workspace->d_workspace->scratch_size[5],
             sizeof(real) * (k + 1), __FILE__, __LINE__ );
-    spad = (real *) workspace->scratch[5];
+    spad = (real *) workspace->d_workspace->scratch[5];
 
     Vector_Mult( spad, v1, v2, k, block_size, s );
 
     /* local reduction (sum) on device */
     Hip_Reduction_Sum( spad, &spad[k], k, 5, s );
 
-    //TODO: keep result of reduction on devie and pass directly to ROCm-aware MPI
+    //TODO: keep result of reduction on devie and pass directly to GPU-aware MPI
     sHipMemcpyAsync( &sum, &spad[k], sizeof(real),
             hipMemcpyDeviceToHost, s, __FILE__, __LINE__ );
 
@@ -949,7 +952,7 @@ real Dot_local( storage * const workspace,
  *  workspace: storage container for workspace structures
  *  v1, v2: dense vectors
  *  k: number of entries in the vectors
- *  s: HIP stream
+ *  s: GPU stream
  * output:
  *  dot: inner product of the two vector
  */
@@ -984,16 +987,17 @@ void Dot_local_rvec2( storage * const workspace,
 #else
     rvec2 sum, *spad;
 
-    sHipCheckMalloc( &workspace->scratch[5], &workspace->scratch_size[5],
+    sHipCheckMalloc( &workspace->d_workspace->scratch[5],
+            &workspace->d_workspace->scratch_size[5],
             sizeof(rvec2) * (k + 1), __FILE__, __LINE__ );
-    spad = (rvec2 *) workspace->scratch[5];
+    spad = (rvec2 *) workspace->d_workspace->scratch[5];
 
     Vector_Mult_rvec2( spad, v1, v2, k, block_size, s );
 
     /* local reduction (sum) on device */
     Hip_Reduction_Sum( spad, &spad[k], k, 5, s );
 
-    //TODO: keep result of reduction on devie and pass directly to ROCm-aware MPI
+    //TODO: keep result of reduction on devie and pass directly to GPU-aware MPI
     sHipMemcpyAsync( &sum, &spad[k], sizeof(rvec2), hipMemcpyDeviceToHost,
             s, __FILE__, __LINE__ );
 
