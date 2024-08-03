@@ -809,25 +809,6 @@ GPU_HOST_DEVICE static inline void ivec_ScaledAdd( ivec dest,
     dest[1] += k * v[1];
     dest[2] += k * v[2];
 }
-
-
-
-GPU_HOST_DEVICE static inline void ivec_Max( ivec res,
-        const ivec v1, const ivec v2 )
-{
-    res[0] = MAX( v1[0], v2[0] );
-    res[1] = MAX( v1[1], v2[1] );
-    res[2] = MAX( v1[2], v2[2] );
-}
-
-
-GPU_HOST_DEVICE static inline void ivec_Max3( ivec res,
-        const ivec v1, const ivec v2, const ivec v3 )
-{
-    res[0] = MAX3( v1[0], v2[0], v3[0] );
-    res[1] = MAX3( v1[1], v2[1], v3[1] );
-    res[2] = MAX3( v1[2], v2[2], v3[2] );
-}
 #endif
 
 

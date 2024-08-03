@@ -540,7 +540,7 @@ struct single_body_parameters
     real r_vdw;
     /**/
     real epsilon;
-    /**/
+    /* electrostatic shielding parameter */
     real gamma;
     /**/
     real r_pi;
@@ -661,9 +661,9 @@ struct two_body_parameters
     real ecore;
     /**/
     real acore;
-
-    /* electrostatic parameters */
-    /* note: this parameter is gamma^-3 and not gamma */
+    /* electrostatic shielding parameter,
+     * note: this parameter is stored as gamma_{ij}^-3
+     * where gamma_{ij} = \sqrt{gamma_i * gamma_j} */
     real gamma;
 
     /**/

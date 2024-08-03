@@ -327,7 +327,7 @@ GPU_GLOBAL void k_torsion_angles_part1( reax_atom const * const my_atoms,
 
                                             rvec_ScaledSum( dvec_li, 1.0, my_atoms[i].x, 
                                                     -1.0, my_atoms[l].x );
-                                            r_li = rvec_Norm( dvec_li );                 
+                                            r_li = norm3d( dvec_li[0], dvec_li[1], dvec_li[2] );                 
 
                                             /* omega and its derivative */
 //                                            cos_omega = Calculate_Omega( BL.dvec[pij], r_ij, BL.dvec[pk],
@@ -695,7 +695,7 @@ GPU_GLOBAL void k_torsion_angles_part1_opt( reax_atom const * const my_atoms,
 
                                                 rvec_ScaledSum( dvec_li, 1.0, my_atoms[i].x, 
                                                         -1.0, my_atoms[l].x );
-                                                r_li = rvec_Norm( dvec_li );                 
+                                                r_li = norm3d( dvec_li[0], dvec_li[1], dvec_li[2] );                 
 
                                                 /* omega and its derivative */
 //                                                cos_omega = Calculate_Omega( BL.dvec[pij], r_ij, BL.dvec[pk],
@@ -1075,7 +1075,7 @@ GPU_GLOBAL void k_torsion_angles_virial_part1( reax_atom const * const my_atoms,
 
                                 rvec_ScaledSum( dvec_li, 1.0, my_atoms[i].x, 
                                         -1.0, my_atoms[l].x );
-                                r_li = rvec_Norm( dvec_li );                 
+                                r_li = norm3d( dvec_li[0], dvec_li[1], dvec_li[2] );                 
 
                                 /* omega and its derivative */
 //                                cos_omega = Calculate_Omega( BL.dvec[pij], r_ij, BL.dvec[pk],

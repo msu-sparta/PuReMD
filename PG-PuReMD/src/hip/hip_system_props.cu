@@ -453,7 +453,7 @@ GPU_GLOBAL void k_atom_velocities_random( single_body_parameters const * const s
 
     hip_rvec_Random( my_atoms[i].v );
 
-    norm = rvec_Norm_Sqr( my_atoms[i].v );
+    norm = SQR( norm3d( my_atoms[i].v[0], my_atoms[i].v[1], my_atoms[i].v[2] ) );
     m = sbp[ my_atoms[i].type ].mass;
     scale = SQRT( m * norm / (3.0 * K_B * T) );
 

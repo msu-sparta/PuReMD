@@ -133,6 +133,9 @@
 #define LOG2 log2
 #define SQRT sqrt
 #define CBRT cbrt
+#if defined(__CUDACC__) || defined(__HIPCC__)
+  #define RCBRT rcbrt
+#endif
 #define POW pow
 #define COS cos
 #define ACOS acos

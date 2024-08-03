@@ -177,8 +177,8 @@ GPU_GLOBAL void k_vdW_coulomb_energy_full( reax_atom const * const my_atoms,
 
             /* Coulomb Calculations */
             dr3gamij_1 = r_ij * r_ij * r_ij + tbp[tbp_ij].gamma;
-            dr3gamij_3 = CBRT( dr3gamij_1 );
-            e_clb = C_ELE * (my_atoms[i].q * my_atoms[j].q) / dr3gamij_3;
+            dr3gamij_3 = RCBRT( dr3gamij_1 );
+            e_clb = C_ELE * (my_atoms[i].q * my_atoms[j].q) * dr3gamij_3;
             e_ele_ += self_coef * (e_clb * tap);
 
             de_clb = -C_ELE * (my_atoms[i].q * my_atoms[j].q)
@@ -322,8 +322,8 @@ GPU_GLOBAL void k_vdW_coulomb_energy_virial_full( reax_atom const * const my_ato
 
             /* Coulomb Calculations */
             dr3gamij_1 = r_ij * r_ij * r_ij + tbp[tbp_ij].gamma;
-            dr3gamij_3 = CBRT( dr3gamij_1 );
-            e_clb = C_ELE * (my_atoms[i].q * my_atoms[j].q) / dr3gamij_3;
+            dr3gamij_3 = RCBRT( dr3gamij_1 );
+            e_clb = C_ELE * (my_atoms[i].q * my_atoms[j].q) * dr3gamij_3;
             e_ele_ += self_coef * (e_clb * tap);
 
             de_clb = -C_ELE * (my_atoms[i].q * my_atoms[j].q)
@@ -481,8 +481,8 @@ GPU_GLOBAL void k_vdW_coulomb_energy_full_opt( reax_atom const * const my_atoms,
 
             /* Coulomb Calculations */
             dr3gamij_1 = r_ij * r_ij * r_ij + tbp[tbp_ij].gamma;
-            dr3gamij_3 = CBRT( dr3gamij_1 );
-            e_clb = C_ELE * (my_atoms[i].q * my_atoms[j].q) / dr3gamij_3;
+            dr3gamij_3 = RCBRT( dr3gamij_1 );
+            e_clb = C_ELE * (my_atoms[i].q * my_atoms[j].q) * dr3gamij_3;
             e_ele_ += self_coef * (e_clb * tap);
 
             de_clb = -C_ELE * (my_atoms[i].q * my_atoms[j].q)
@@ -990,8 +990,8 @@ GPU_GLOBAL void k_coulomb_energy_full_opt( reax_atom const * const my_atoms,
 
             /* Coulomb Calculations */
             dr3gamij_1 = r_ij * r_ij * r_ij + tbp[tbp_ij].gamma;
-            dr3gamij_3 = CBRT( dr3gamij_1 );
-            e_clb = C_ELE * (my_atoms[i].q * my_atoms[j].q) / dr3gamij_3;
+            dr3gamij_3 = RCBRT( dr3gamij_1 );
+            e_clb = C_ELE * (my_atoms[i].q * my_atoms[j].q) * dr3gamij_3;
             e_ele_ += self_coef * (e_clb * tap);
 
             de_clb = -C_ELE * (my_atoms[i].q * my_atoms[j].q)
@@ -1150,8 +1150,8 @@ GPU_GLOBAL void k_vdW_coulomb_energy_virial_full_opt( reax_atom const * const my
 
             /* Coulomb Calculations */
             dr3gamij_1 = r_ij * r_ij * r_ij + tbp[tbp_ij].gamma;
-            dr3gamij_3 = CBRT( dr3gamij_1 );
-            e_clb = C_ELE * (my_atoms[i].q * my_atoms[j].q) / dr3gamij_3;
+            dr3gamij_3 = RCBRT( dr3gamij_1 );
+            e_clb = C_ELE * (my_atoms[i].q * my_atoms[j].q) * dr3gamij_3;
             e_ele_ += self_coef * (e_clb * tap);
 
             de_clb = -C_ELE * (my_atoms[i].q * my_atoms[j].q)
@@ -1204,7 +1204,7 @@ GPU_GLOBAL void k_vdW_coulomb_energy_tab_full( reax_atom const * const my_atoms,
         real * const e_vdW_g, real * const e_ele_g, rvec * const ext_press_g )
 {
     int i, j, pj, r;
-    int type_i, type_j, tmin, tmax;
+    int type_i, type_j;
     int start_i, end_i, orig_i, orig_j;
     real r_ij, self_coef, base, dif;
     real e_vdW_, e_ele_;
@@ -1239,17 +1239,15 @@ GPU_GLOBAL void k_vdW_coulomb_energy_tab_full( reax_atom const * const my_atoms,
             type_j = my_atoms[j].type;
             r_ij = far_nbr_list.far_nbr_list.d[pj];
             self_coef = (i == j) ? 0.5 : 1.0;
-            tmin = MIN( type_i, type_j );
-            tmax = MAX( type_i, type_j );
-            t = &t_LR[ index_lr(tmin, tmax, num_atom_types) ];
+            t = &t_LR[ index_lr(min(type_i, type_j), max(type_i, type_j), num_atom_types) ];
 
             /* Cubic Spline Interpolation */
-            r = (int)(r_ij * t->inv_dx);
+            r = (int) (r_ij * t->inv_dx);
             if ( r == 0 )
             {
                 ++r;
             }
-            base = (real)(r + 1) * t->dx;
+            base = (real) (r + 1) * t->dx;
             dif = r_ij - base;
 
             e_vdW_ += self_coef * (((t->vdW[r].d * dif + t->vdW[r].c) * dif + t->vdW[r].b)

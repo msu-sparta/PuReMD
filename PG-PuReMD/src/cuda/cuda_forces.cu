@@ -43,8 +43,8 @@ GPU_DEVICE real Init_Charge_Matrix_Entry_Tab( LR_lookup_table const * const t_LR
     int r, tmin, tmax;
     real val, dif, base;
 
-    tmin = MIN( ti, tj );
-    tmax = MAX( ti, tj );
+    tmin = min( ti, tj );
+    tmax = max( ti, tj );
     LR_lookup_table const * const t = &t_LR[ index_lr(tmin,tmax, num_atom_types) ];
 
     /* cubic spline interpolation */
@@ -137,7 +137,7 @@ GPU_GLOBAL void k_init_dist( reax_atom const * const my_atoms,
         reax_list far_nbr_list, int N )
 {
     int i, j, pj, start_i, end_i;
-    rvec x_i;
+    rvec x_i, d;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -155,10 +155,12 @@ GPU_GLOBAL void k_init_dist( reax_atom const * const my_atoms,
     {
         j = far_nbr_list.far_nbr_list.nbr[pj];
 
-        far_nbr_list.far_nbr_list.dvec[pj][0] = my_atoms[j].x[0] - x_i[0];
-        far_nbr_list.far_nbr_list.dvec[pj][1] = my_atoms[j].x[1] - x_i[1];
-        far_nbr_list.far_nbr_list.dvec[pj][2] = my_atoms[j].x[2] - x_i[2];
-        far_nbr_list.far_nbr_list.d[pj] = rvec_Norm( far_nbr_list.far_nbr_list.dvec[pj] );
+        d[0] = my_atoms[j].x[0] - x_i[0];
+        d[1] = my_atoms[j].x[1] - x_i[1];
+        d[2] = my_atoms[j].x[2] - x_i[2];
+
+        far_nbr_list.far_nbr_list.d[pj] = norm3d( d[0], d[1], d[2] );
+        rvec_Copy( far_nbr_list.far_nbr_list.dvec[pj], d );
     }
 }
 
@@ -193,7 +195,7 @@ GPU_GLOBAL void k_init_dist_opt( reax_atom const * const my_atoms,
         d[1] = my_atoms[j].x[1] - x_i[1];
         d[2] = my_atoms[j].x[2] - x_i[2];
 
-        far_nbr_list.far_nbr_list.d[pj] = rvec_Norm( d );
+        far_nbr_list.far_nbr_list.d[pj] = norm3d( d[0], d[1], d[2] );
         rvec_Copy( far_nbr_list.far_nbr_list.dvec[pj], d );
     }
 }
@@ -262,11 +264,11 @@ GPU_GLOBAL void k_init_cm_qeq_half_fs( reax_atom * const my_atoms,
                     /* shielding */
                     dr3gamij_1 = r_ij * r_ij * r_ij
                         + tbp[index_tbp(type_i, my_atoms[j].type, num_atom_types)].gamma;
-                    dr3gamij_3 = CBRT( dr3gamij_1 );
+                    dr3gamij_3 = RCBRT( dr3gamij_1 );
 
                     /* i == j: periodic self-interaction term
                      * i != j: general interaction term */
-                    H.val[cm_top] = ((i == j) ? 0.5 : 1.0) * tap * EV_to_KCALpMOL / dr3gamij_3;
+                    H.val[cm_top] = ((i == j) ? 0.5 : 1.0) * tap * EV_to_KCALpMOL * dr3gamij_3;
 
                     ++cm_top;
                 }
@@ -416,11 +418,11 @@ GPU_GLOBAL void k_init_cm_qeq_full_fs( reax_atom * const my_atoms,
                 /* shielding */
                 dr3gamij_1 = r_ij * r_ij * r_ij
                     + tbp[index_tbp(type_i, my_atoms[j].type, num_atom_types)].gamma;
-                dr3gamij_3 = CBRT( dr3gamij_1 );
+                dr3gamij_3 = RCBRT( dr3gamij_1 );
 
                 /* i == j: periodic self-interaction term
                  * i != j: general interaction term */
-                H.val[cm_top] = ((i == j) ? 0.5 : 1.0) * tap * EV_to_KCALpMOL / dr3gamij_3;
+                H.val[cm_top] = ((i == j) ? 0.5 : 1.0) * tap * EV_to_KCALpMOL * dr3gamij_3;
 
                 ++cm_top;
             }
@@ -510,11 +512,11 @@ GPU_GLOBAL void k_init_cm_qeq_full_fs_opt( reax_atom * const my_atoms,
                 /* shielding */
                 dr3gamij_1 = r_ij * r_ij * r_ij
                     + tbp[index_tbp(type_i, my_atoms[j].type, num_atom_types)].gamma;
-                dr3gamij_3 = CBRT( dr3gamij_1 );
+                dr3gamij_3 = RCBRT( dr3gamij_1 );
 
                 /* i == j: periodic self-interaction term
                  * i != j: general interaction term */
-                H.val[cm_top + offset] = ((i == j) ? 0.5 : 1.0) * tap * EV_to_KCALpMOL / dr3gamij_3;
+                H.val[cm_top + offset] = ((i == j) ? 0.5 : 1.0) * tap * EV_to_KCALpMOL * dr3gamij_3;
             }
 
             /* get cm_top from thread in last lane */
@@ -1166,7 +1168,7 @@ GPU_GLOBAL void k_estimate_storages_cm_half( reax_atom const * const my_atoms,
     cm_entries[i] = num_cm_entries;
     /* round up to the nearest multiple of warp size to ensure that reads along
      * rows can be coalesced */
-    max_cm_entries[i] = MAX( ((int) CEIL( num_cm_entries * SAFE_ZONE )
+    max_cm_entries[i] = max( ((int) CEIL( num_cm_entries * SAFE_ZONE )
                 + warpSize - 1) / warpSize * warpSize, MIN_CM_ENTRIES );
 }
 
@@ -1208,7 +1210,7 @@ GPU_GLOBAL void k_estimate_storages_cm_full( real cutoff,
     cm_entries[i] = num_cm_entries;
     /* round up to the nearest multiple of warp size to ensure that reads along
      * rows can be coalesced */
-    max_cm_entries[i] = MAX( ((int) CEIL( num_cm_entries * SAFE_ZONE )
+    max_cm_entries[i] = max( ((int) CEIL( num_cm_entries * SAFE_ZONE )
                 + warpSize - 1) / warpSize * warpSize, MIN_CM_ENTRIES );
 }
 
@@ -1254,7 +1256,7 @@ GPU_GLOBAL void k_estimate_storages_cm_full_opt( real cutoff,
         cm_entries[i] = num_cm_entries;
         /* round up to the nearest multiple of warp size to ensure that reads along
          * rows can be coalesced */
-        max_cm_entries[i] = MAX( ((int) CEIL( num_cm_entries * SAFE_ZONE )
+        max_cm_entries[i] = max( ((int) CEIL( num_cm_entries * SAFE_ZONE )
                     + warpSize - 1) / warpSize * warpSize, MIN_CM_ENTRIES );
     }
 }
@@ -1353,7 +1355,7 @@ GPU_GLOBAL void k_estimate_storage_bonds( reax_atom const * const my_atoms,
     bonds[i] = num_bonds;
     /* round up to the nearest multiple of warp size to ensure that reads along
      * rows can be coalesced */
-    max_bonds[i] = MAX( ((int) CEIL(2 * num_bonds * SAFE_ZONE)
+    max_bonds[i] = max( ((int) CEIL(2 * num_bonds * SAFE_ZONE)
                 + warpSize - 1) / warpSize * warpSize, MIN_BONDS );
 }
 
@@ -1461,7 +1463,7 @@ GPU_GLOBAL void k_estimate_storage_bonds_opt( reax_atom const * const my_atoms,
         bonds[i] = num_bonds;
         /* round up to the nearest multiple of warp size to ensure that reads along
          * rows can be coalesced */
-        max_bonds[i] = MAX( ((int) CEIL(2 * num_bonds * SAFE_ZONE)
+        max_bonds[i] = max( ((int) CEIL(2 * num_bonds * SAFE_ZONE)
                     + warpSize - 1) / warpSize * warpSize, MIN_BONDS );
     }
 }
@@ -1543,7 +1545,7 @@ GPU_GLOBAL void k_estimate_storage_hbonds( reax_atom const * const my_atoms,
     hbonds[i] = num_hbonds;
     /* round up to the nearest multiple of warp size to ensure that reads along
      * rows can be coalesced */
-    max_hbonds[i] = MAX( ((int) CEIL(num_hbonds * SAFE_ZONE)
+    max_hbonds[i] = max( ((int) CEIL(num_hbonds * SAFE_ZONE)
                 + warpSize - 1) / warpSize * warpSize, MIN_HBONDS );
 }
 
@@ -1630,7 +1632,7 @@ GPU_GLOBAL void k_estimate_storage_hbonds_opt( reax_atom const * const my_atoms,
         hbonds[i] = num_hbonds;
         /* round up to the nearest multiple of warp size to ensure that reads along
          * rows can be coalesced */
-        max_hbonds[i] = MAX( ((int) CEIL(num_hbonds * SAFE_ZONE)
+        max_hbonds[i] = max( ((int) CEIL(num_hbonds * SAFE_ZONE)
                     + warpSize - 1) / warpSize * warpSize, MIN_HBONDS );
     }
 }

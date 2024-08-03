@@ -138,7 +138,7 @@ GPU_GLOBAL void k_generate_neighbor_lists_full( reax_atom const * const my_atoms
                     dvec[0] = my_atoms[m].x[0] - x[0];
                     dvec[1] = my_atoms[m].x[1] - x[1];
                     dvec[2] = my_atoms[m].x[2] - x[2];
-                    d = rvec_Norm_Sqr( dvec );
+                    d = SQR( norm3d( dvec[0], dvec[1], dvec[2] ) );
 
                     /* further restrict ghost-ghost atom interactions
                      * to bond cut-off distance */
@@ -270,7 +270,7 @@ GPU_GLOBAL void k_generate_neighbor_lists_full_opt( reax_atom const * const my_a
                     dvec[0] = my_atoms[m].x[0] - x[0];
                     dvec[1] = my_atoms[m].x[1] - x[1];
                     dvec[2] = my_atoms[m].x[2] - x[2];
-                    d = rvec_Norm_Sqr( dvec );
+                    d = SQR( norm3d( dvec[0], dvec[1], dvec[2] ) );
                 }
 
                 /* further restrict ghost-ghost atom interactions
@@ -406,7 +406,7 @@ GPU_GLOBAL void k_estimate_neighbors_full( reax_atom const * const my_atoms,
                         dvec[0] = my_atoms[m].x[0] - x[0];
                         dvec[1] = my_atoms[m].x[1] - x[1];
                         dvec[2] = my_atoms[m].x[2] - x[2];
-                        d = rvec_Norm_Sqr( dvec );
+                        d = SQR( norm3d( dvec[0], dvec[1], dvec[2] ) );
 
                         /* further restrict ghost-ghost atom interactions
                          * to bond cut-off distance */
@@ -439,7 +439,7 @@ GPU_GLOBAL void k_estimate_neighbors_full( reax_atom const * const my_atoms,
     far_nbrs[l] = num_far;
     /* round up to the nearest multiple of WARP_SIZE to ensure that reads along
      * rows can be coalesced */
-    max_far_nbrs[l] = MAX( ((int) CEIL( num_far * SAFE_ZONE )
+    max_far_nbrs[l] = max( ((int) CEIL( num_far * SAFE_ZONE )
                 + warpSize - 1) / warpSize * warpSize, MIN_NBRS );
 }
 
@@ -529,7 +529,7 @@ GPU_GLOBAL void k_estimate_neighbors_full_opt( reax_atom const * const my_atoms,
                         dvec[0] = my_atoms[m].x[0] - x[0];
                         dvec[1] = my_atoms[m].x[1] - x[1];
                         dvec[2] = my_atoms[m].x[2] - x[2];
-                        d = rvec_Norm_Sqr( dvec );
+                        d = SQR( norm3d( dvec[0], dvec[1], dvec[2] ) );
 
                         /* further restrict ghost-ghost atom interactions
                          * to bond cut-off distance */
@@ -566,7 +566,7 @@ GPU_GLOBAL void k_estimate_neighbors_full_opt( reax_atom const * const my_atoms,
         far_nbrs[l] = num_far;
         /* round up to the nearest multiple of WARP_SIZE to ensure that reads along
          * rows can be coalesced */
-        max_far_nbrs[l] = MAX( ((int) CEIL( num_far * SAFE_ZONE )
+        max_far_nbrs[l] = max( ((int) CEIL( num_far * SAFE_ZONE )
                     + warpSize - 1) / warpSize * warpSize, MIN_NBRS );
     }
 }
