@@ -433,8 +433,8 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     if ( far_nbrs->far_nbr_list[pj].d < xcut )
                     {
                         d = far_nbrs->far_nbr_list[pj].d / xcut;
-                        bond_softness = system->reax_param.gp.l[34] * POW( d, 3.0 )
-                            * POW( 1.0 - d, 6.0 );
+                        bond_softness = system->reax_param.gp.l[34] * CUBE( d )
+                            * SIXTH( 1.0 - d );
 
                         if ( bond_softness > 0.0 )
                         {
@@ -447,8 +447,8 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
 
                             /* forces contribution */
                             d_bond_softness = system->reax_param.gp.l[34]
-                                * 3.0 / xcut * POW( d, 2.0 )
-                                * POW( 1.0 - d, 5.0 ) * (1.0 - 3.0 * d);
+                                * 3.0 / xcut * SQR( d )
+                                * FIFTH( 1.0 - d ) * (1.0 - 3.0 * d);
                             d_bond_softness = -0.5 * d_bond_softness
                                 * SQR( effpot_diff );
                             d_bond_softness = KCALpMOL_to_EV * d_bond_softness
@@ -710,8 +710,8 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     if ( far_nbrs->far_nbr_list[pj].d < xcut )
                     {
                         d = far_nbrs->far_nbr_list[pj].d / xcut;
-                        bond_softness = system->reax_param.gp.l[34] * POW( d, 3.0 )
-                            * POW( 1.0 - d, 6.0 );
+                        bond_softness = system->reax_param.gp.l[34] * CUBE( d )
+                            * SIXTH( 1.0 - d );
 
                         if ( bond_softness > 0.0 )
                         {
@@ -724,8 +724,8 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
 
                             /* forces contribution */
                             d_bond_softness = system->reax_param.gp.l[34]
-                                * 3.0 / xcut * POW( d, 2.0 )
-                                * POW( 1.0 - d, 5.0 ) * (1.0 - 3.0 * d);
+                                * 3.0 / xcut * SQR( d )
+                                * FIFTH( 1.0 - d ) * (1.0 - 3.0 * d);
                             d_bond_softness = -0.5 * d_bond_softness
                                 * SQR( effpot_diff );
                             d_bond_softness = KCALpMOL_to_EV * d_bond_softness

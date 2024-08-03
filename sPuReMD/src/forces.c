@@ -597,8 +597,8 @@ static int Init_Charge_Matrix_Remaining_Entries( reax_system const * const syste
                             if ( far_nbr_list->far_nbr_list[pj].d < xcut )
                             {
                                 d = far_nbr_list->far_nbr_list[pj].d / xcut;
-                                bond_softness = system->reax_param.gp.l[34] * POW( d, 3.0 )
-                                    * POW( 1.0 - d, 6.0 );
+                                bond_softness = system->reax_param.gp.l[34] * CUBE( d )
+                                    * SIXTH( 1.0 - d );
 
                                 if ( bond_softness > 0.0 )
                                 {

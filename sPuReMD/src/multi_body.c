@@ -110,7 +110,7 @@ void Atom_Energy( reax_system *system, control_params *control,
                         twbp = &system->reax_param.tbp[type_i][type_j];
                         bo_ij = &bonds->bond_list[pj].bo_data;
                         Di = workspace->Delta[i];
-                        vov3 = bo_ij->BO - Di - 0.04 * POW(Di, 4.0);
+                        vov3 = bo_ij->BO - Di - 0.04 * FOURTH( Di );
 
                         if ( vov3 > 3.0 )
                         {
@@ -120,7 +120,7 @@ void Atom_Energy( reax_system *system, control_params *control,
 
                             deahu2dbo = 2.0 * p_lp3 * (vov3 - 3.0);
                             deahu2dsbo = 2.0 * p_lp3 * (vov3 - 3.0)
-                                * (-1.0 - 0.16 * POW(Di, 3.0));
+                                * (-1.0 - 0.16 * CUBE( Di ));
 
                             bo_ij->Cdbo += deahu2dbo;
                             workspace->CdDelta[i] += deahu2dsbo;

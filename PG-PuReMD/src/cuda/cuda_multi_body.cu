@@ -87,7 +87,7 @@ GPU_GLOBAL void k_atom_energy_part1( reax_atom const * const my_atoms,
                 if ( Cuda_strncmp( sbp[type_j].name, "C", sizeof(sbp[type_j].name) ) == 0 )
                 {
                     Di = Delta[i];
-                    vov3 = BL.BO[pj] - Di - 0.040 * POW( Di, 4.0 );
+                    vov3 = BL.BO[pj] - Di - 0.04 * FOURTH( Di );
 
                     if ( vov3 > 3.0 )
                     {
@@ -95,7 +95,7 @@ GPU_GLOBAL void k_atom_energy_part1( reax_atom const * const my_atoms,
 
                         deahu2dbo = 2.0 * p_lp3 * (vov3 - 3.0);
                         deahu2dsbo = 2.0 * p_lp3 * (vov3 - 3.0)
-                            * (-1.0 - 0.16 * POW(Di, 3.0));
+                            * (-1.0 - 0.16 * CUBE( Di ));
 
                         atomicAdd( &BL.Cdbo[pj], deahu2dbo );
                         CdDelta_i += deahu2dsbo;
@@ -192,7 +192,7 @@ GPU_GLOBAL void k_atom_energy_part1_opt( reax_atom const * const my_atoms,
                 if ( Cuda_strncmp( sbp[type_j].name, "C", sizeof(sbp[type_j].name) ) == 0 )
                 {
                     Di = Delta[i];
-                    vov3 = BL.BO[pj] - Di - 0.040 * POW( Di, 4.0 );
+                    vov3 = BL.BO[pj] - Di - 0.04 * FOURTH( Di );
 
                     if ( vov3 > 3.0 )
                     {
@@ -200,7 +200,7 @@ GPU_GLOBAL void k_atom_energy_part1_opt( reax_atom const * const my_atoms,
 
                         deahu2dbo = 2.0 * p_lp3 * (vov3 - 3.0);
                         deahu2dsbo = 2.0 * p_lp3 * (vov3 - 3.0)
-                            * (-1.0 - 0.16 * POW(Di, 3.0));
+                            * (-1.0 - 0.16 * CUBE( Di ));
 
                         atomicAdd( &BL.Cdbo[pj], deahu2dbo );
                         CdDelta_i += deahu2dsbo;

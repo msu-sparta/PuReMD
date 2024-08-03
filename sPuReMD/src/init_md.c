@@ -321,7 +321,7 @@ static void Init_Taper( control_params const * const control,
     }
 
     d1 = swb - swa;
-    d7 = POW( d1, 7.0 );
+    d7 = SEVENTH( d1, 7.0 );
     swa2 = SQR( swa );
     swa3 = swa2 * swa;
     swb2 = SQR( swb );

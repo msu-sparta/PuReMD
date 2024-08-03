@@ -290,7 +290,7 @@ static void Init_Charge_Matrix_Remaining_Entries( reax_system *system,
                         {
                             d = far_nbr_list->far_nbr_list.d[pj] / xcut;
                             bond_softness = system->reax_param.gp.l[34] * CUBE( d )
-                                * POW( 1.0 - d, 6.0 );
+                                * SIXTH( 1.0 - d );
 
                             if ( bond_softness > 0.0 )
                             {

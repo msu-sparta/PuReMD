@@ -154,10 +154,10 @@ void Read_Force_Field_File( const char * const ffield_file, reax_interaction * c
     reax->hbp = scalloc( CUBE(reax->num_atom_types), sizeof(hbond_parameters),
             __FILE__, __LINE__ );
 
-    reax->fbp = scalloc( SQR(SQR(reax->num_atom_types)), sizeof(four_body_header),
+    reax->fbp = scalloc( FOURTH(reax->num_atom_types), sizeof(four_body_header),
             __FILE__, __LINE__ );
 
-    tor_flag = scalloc( SQR(SQR(reax->num_atom_types)), sizeof(char),
+    tor_flag = scalloc( FOURTH(reax->num_atom_types), sizeof(char),
            __FILE__, __LINE__ );
 
     /* vdWaals type:

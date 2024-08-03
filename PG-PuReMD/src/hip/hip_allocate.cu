@@ -441,7 +441,7 @@ void Hip_Allocate_System( reax_system * const system,
             __FILE__, __LINE__ );
 
     sHipMalloc( (void **) &system->reax_param.d_fbp,
-            SQR( SQR( system->reax_param.num_atom_types ) ) * sizeof(four_body_header),
+            FOURTH( system->reax_param.num_atom_types ) * sizeof(four_body_header),
             __FILE__, __LINE__ );
 
     sHipMalloc( (void **) &system->reax_param.gp.d_l,

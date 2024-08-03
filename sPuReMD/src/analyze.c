@@ -1011,7 +1011,7 @@ static void Calculate_Density_3DMesh( reax_system *system, simulation_data *data
     fprintf( stderr, "system volume : %8.2f\n", system->box.volume );
     fprintf( stderr, "system mass   : %8.2f\n", data->M );
 
-    density = data->M * AMU_to_GRAM / (occupied_vol * POW( ANG_to_CM, 3.0 ));
+    density = data->M * AMU_to_GRAM / (occupied_vol * CUBE( ANG_to_CM ));
     fprintf( stderr, "density       : %g\n", density );
     fprintf( stderr, "AMU_to_GRAM   : %g\n", AMU_to_GRAM );
     fprintf( stderr, "ANG_to_CM     : %g\n", ANG_to_CM );

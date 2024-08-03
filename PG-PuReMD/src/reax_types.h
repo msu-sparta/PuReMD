@@ -149,6 +149,10 @@
 
 #define SQR(x) ((x)*(x))
 #define CUBE(x) ((x)*(x)*(x))
+#define FOURTH(x) ((x)*(x)*(x)*(x))
+#define FIFTH(x) ((x)*(x)*(x)*(x)*(x))
+#define SIXTH(x) ((x)*(x)*(x)*(x)*(x)*(x))
+#define SEVENTH(x) ((x)*(x)*(x)*(x)*(x)*(x)*(x))
 #define DEG2RAD(a) ((a)*PI/180.0)
 #define RAD2DEG(a) ((a)*180.0/PI)
 #define MAX(x,y) (((x) > (y)) ? (x) : (y))

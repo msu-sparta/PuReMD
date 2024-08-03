@@ -414,7 +414,7 @@ void Init_Taper( control_params const * const control,  storage * const workspac
     }
 
     d1 = swb - swa;
-    d7 = POW( d1, 7.0 );
+    d7 = SEVENTH( d1 );
     swa2 = SQR( swa );
     swa3 = CUBE( swa );
     swb2 = SQR( swb );
