@@ -1,5 +1,5 @@
-#ifndef __GPU_HELPERS__
-#define __GPU_HELPERS__
+#ifndef __GPU_HELPERS_H_
+#define __GPU_HELPERS_H_
 
 #include "../reax_types.h"
 
@@ -34,7 +34,7 @@ GPU_DEVICE static inline int GPU_strncmp( const char * a,
 }
 
 
-#if defined(__GPU_ARCH__) && __GPU_ARCH__ < 600
+#if defined(__HIP_ARCH__) && __HIP_ARCH__ < 600
 GPU_DEVICE static inline double atomicAdd( double * address, double val )
 {
     unsigned long long int *address_as_ull, old, assumed;

@@ -1,6 +1,6 @@
 
-#ifndef __GPU_SYSTEM_PROPS_H__
-#define __GPU_SYSTEM_PROPS_H__
+#ifndef __GPU_SYSTEM_PROPS_H_
+#define __GPU_SYSTEM_PROPS_H_
 
 #include "../reax_types.h"
 

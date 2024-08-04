@@ -1,6 +1,6 @@
 
-#ifndef __GPU_LOOKUP_H__
-#define __GPU_LOOKUP_H__
+#ifndef __GPU_LOOKUP_H_
+#define __GPU_LOOKUP_H_
 
 #include "../reax_types.h"
 

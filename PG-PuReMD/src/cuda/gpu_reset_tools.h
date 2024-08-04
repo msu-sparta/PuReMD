@@ -1,6 +1,6 @@
 
-#ifndef __GPU_RESET_TOOLS_H__
-#define __GPU_RESET_TOOLS_H__
+#ifndef __GPU_RESET_TOOLS_H_
+#define __GPU_RESET_TOOLS_H_
 
 #include "../reax_types.h"
 

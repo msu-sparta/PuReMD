@@ -1,6 +1,6 @@
 
-#ifndef __GPU_BOND_ORDERS_H__
-#define __GPU_BOND_ORDERS_H__
+#ifndef __GPU_BOND_ORDERS_H_
+#define __GPU_BOND_ORDERS_H_
 
 #include "../reax_types.h"
 

@@ -19,8 +19,8 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __GPU_BOX_H__
-#define __GPU_BOX_H__
+#ifndef __GPU_BOX_H_
+#define __GPU_BOX_H_
 
 #include "../reax_types.h"
 

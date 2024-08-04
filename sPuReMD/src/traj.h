@@ -19,8 +19,8 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __TRAJ_H__
-#define __TRAJ_H__
+#ifndef __TRAJ_H_
+#define __TRAJ_H_
 
 #include "reax_types.h"
 

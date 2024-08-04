@@ -19,8 +19,8 @@
   <http://www.gnu.org/licenses/>.
   ----------------------------------------------------------------------*/
 
-#ifndef __BOX_H__
-#define __BOX_H__
+#ifndef __BOX_H_
+#define __BOX_H_
 
 #include "reax_types.h"
 

@@ -1,6 +1,6 @@
 
-#ifndef __GPU_REDUCTION_H__
-#define __GPU_REDUCTION_H__
+#ifndef __GPU_REDUCTION_H_
+#define __GPU_REDUCTION_H_
 
 #include "../reax_types.h"
 

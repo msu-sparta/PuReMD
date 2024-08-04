@@ -1,6 +1,6 @@
 
-#ifndef __GPU_FORCES_H__
-#define __GPU_FORCES_H__
+#ifndef __GPU_FORCES_H_
+#define __GPU_FORCES_H_
 
 #include "../reax_types.h"
 

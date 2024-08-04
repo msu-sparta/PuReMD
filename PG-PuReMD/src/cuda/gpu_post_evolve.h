@@ -1,6 +1,6 @@
 
-#ifndef __GPU_POST_EVOLVE_H__
-#define __GPU_POST_EVOLVE_H__
+#ifndef __GPU_POST_EVOLVE_H_
+#define __GPU_POST_EVOLVE_H_
 
 #include "../reax_types.h"
 

@@ -1,6 +1,6 @@
 
-#ifndef __GPU_INIT_MD_H__
-#define __GPU_INIT_MD_H__
+#ifndef __GPU_INIT_MD_H_
+#define __GPU_INIT_MD_H_
 
 #include "../reax_types.h"
 
