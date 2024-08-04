@@ -41,9 +41,9 @@
 #endif
 
 #if defined(HAVE_CUDA)
-  #include "cuda/cuda_lookup.h"
+  #include "cuda/gpu_lookup.h"
 #elif defined(HAVE_HIP)
-  #include "hip/hip_lookup.h"
+  #include "hip/gpu_lookup.h"
 #endif
 
 
@@ -391,10 +391,8 @@ void Make_LR_Lookup_Table( reax_system * const system, control_params * const co
     sfree( fele, __FILE__, __LINE__ );
     sfree( fCEclmb, __FILE__, __LINE__ );
 
-#if defined(HAVE_CUDA)
-    Cuda_Copy_LR_Lookup_Table_Host_to_Device( system, control, workspace, aggregated );
-#elif defined(HAVE_HIP)
-    Hip_Copy_LR_Lookup_Table_Host_to_Device( system, control, workspace, aggregated );
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
+    GPU_Copy_LR_Lookup_Table_Host_to_Device( system, control, workspace, aggregated );
 #endif
 }
 

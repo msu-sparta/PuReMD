@@ -653,7 +653,7 @@ enum gpu_stream_sync_events
     GPU_STREAM_SYNC_EVENT_N = 3,
 };
 
-#if defined(LOG_PERFORMANCE)
+  #if defined(LOG_PERFORMANCE)
 /* CUDA/HIP events used to determine kernel runtimes */
 enum gpu_timing_events
 {
@@ -687,7 +687,7 @@ enum gpu_timing_events
    TE_COULOMB_STOP = 27,
    GPU_TIMING_EVENT_N = 28,
 };
-#endif
+  #endif
 #endif
 
 
@@ -1624,7 +1624,7 @@ struct control_params
     /* number of GPUs per node, as supplied via control file */
     int gpus_per_node;
     /* number of CUDA/HIP streams per GPU, as supplied via control file */
-    int gpu_streams;
+    int num_gpu_streams;
     /* num. CUDA/HIP threads per block, as supplied via control file */
     int gpu_block_size;
     /* MPI processors per each simulation dimension (cartesian topology),
@@ -1789,12 +1789,9 @@ struct control_params
     /* function pointers for bonded interactions */
     interaction_function intr_funcs[NUM_INTRS];
 
-#if defined(HAVE_CUDA)
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
     /* function pointer for ensemble used to evolve atomic system (GPU) */
-    evolve_function Cuda_Evolve;
-#elif defined(HAVE_HIP)
-    /* function pointer for ensemble used to evolve atomic system (GPU) */
-    evolve_function Hip_Evolve;
+    evolve_function GPU_Evolve;
 #endif
 #if defined(HAVE_CUDA) || defined(HAVE_HIP)
     /* num. of CUDA/HIP blocks for kernels where total threads are a function of the num. of local atoms */
@@ -1810,33 +1807,33 @@ struct control_params
     /* num. of CUDA/HIP blocks for kernels where total threads are a function of
      * the product of the num. of local AND ghost atoms and the warp size */
     int blocks_warp_N;
+#endif
 #if defined(HAVE_CUDA)
     /* CUDA streams */
-    cudaStream_t cuda_streams[MAX_GPU_STREAMS];
+    cudaStream_t gpu_streams[MAX_GPU_STREAMS];
     /* CUDA events for synchronizing streams */
-    cudaEvent_t cuda_stream_events[GPU_STREAM_SYNC_EVENT_N];
-#if defined(LOG_PERFORMANCE)
+    cudaEvent_t gpu_stream_events[GPU_STREAM_SYNC_EVENT_N];
+  #if defined(LOG_PERFORMANCE)
     /* CUDA events for timing */
-    cudaEvent_t cuda_time_events[GPU_TIMING_EVENT_N];
-#endif
-#if defined(USE_CUBLAS)
+    cudaEvent_t gpu_time_events[GPU_TIMING_EVENT_N];
+  #endif
+  #if defined(USE_CUBLAS)
     /* handle to cuBLAS library instance */
     cublasHandle_t cublas_handle;
-#endif
+  #endif
 #elif defined(HAVE_HIP)
     /* HIP streams */
-    hipStream_t hip_streams[MAX_GPU_STREAMS];
+    hipStream_t gpu_streams[MAX_GPU_STREAMS];
     /* HIP events for synchronizing streams */
-    hipEvent_t hip_stream_events[GPU_STREAM_SYNC_EVENT_N];
-#if defined(LOG_PERFORMANCE)
+    hipEvent_t gpu_stream_events[GPU_STREAM_SYNC_EVENT_N];
+  #if defined(LOG_PERFORMANCE)
     /* HIP events for timing */
-    hipEvent_t hip_time_events[GPU_TIMING_EVENT_N];
-#endif
-#if defined(USE_HIPBLAS)
+    hipEvent_t gpu_time_events[GPU_TIMING_EVENT_N];
+  #endif
+  #if defined(USE_HIPBLAS)
     /* handle to hipBLAS library instance */
     hipblasHandle_t hipblas_handle;
-#endif
-#endif
+  #endif
 #endif
 };
 

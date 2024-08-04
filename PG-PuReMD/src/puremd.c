@@ -40,23 +40,23 @@
 #include "vector.h"
 
 #if defined(HAVE_CUDA)
-  #include "cuda/cuda_copy.h"
-  #include "cuda/cuda_environment.h"
-  #include "cuda/cuda_forces.h"
-  #include "cuda/cuda_init_md.h"
-  #include "cuda/cuda_neighbors.h"
-  #include "cuda/cuda_post_evolve.h"
-  #include "cuda/cuda_reset_tools.h"
-  #include "cuda/cuda_system_props.h"
+  #include "cuda/gpu_copy.h"
+  #include "cuda/gpu_environment.h"
+  #include "cuda/gpu_forces.h"
+  #include "cuda/gpu_init_md.h"
+  #include "cuda/gpu_neighbors.h"
+  #include "cuda/gpu_post_evolve.h"
+  #include "cuda/gpu_reset_tools.h"
+  #include "cuda/gpu_system_props.h"
 #elif defined(HAVE_HIP)
-  #include "hip/hip_copy.h"
-  #include "hip/hip_environment.h"
-  #include "hip/hip_forces.h"
-  #include "hip/hip_init_md.h"
-  #include "hip/hip_neighbors.h"
-  #include "hip/hip_post_evolve.h"
-  #include "hip/hip_reset_tools.h"
-  #include "hip/hip_system_props.h"
+  #include "hip/gpu_copy.h"
+  #include "hip/gpu_environment.h"
+  #include "hip/gpu_forces.h"
+  #include "hip/gpu_init_md.h"
+  #include "hip/gpu_neighbors.h"
+  #include "hip/gpu_post_evolve.h"
+  #include "hip/gpu_reset_tools.h"
+  #include "hip/gpu_system_props.h"
 #endif
 
 
@@ -101,8 +101,8 @@ static void Read_Config_Files( const char * const geo_file,
 }
 
 
-#if defined(HAVE_CUDA)
-static void Cuda_Post_Evolve( reax_system * const system, control_params * const control,
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
+static void GPU_Post_Evolve( reax_system * const system, control_params * const control,
         simulation_data * const data, storage * const workspace, reax_list ** const lists,
         output_controls * const out_control, mpi_datatypes * const mpi_data )
 {
@@ -111,49 +111,16 @@ static void Cuda_Post_Evolve( reax_system * const system, control_params * const
             && data->step % control->remove_CoM_vel == 0 )
     {
         /* compute velocity of the center of mass */
-        Cuda_Compute_Center_of_Mass( system, control, workspace,
+        GPU_Compute_Center_of_Mass( system, control, workspace,
                 data, mpi_data, mpi_data->comm_mesh3D );
 
-        Cuda_Remove_CoM_Velocities( system, control, data );
+        GPU_Remove_CoM_Velocities( system, control, data );
     }
 
     if ( control->ensemble == NVE )
     {
         /* compute kinetic energy of the system */
-        Cuda_Compute_Kinetic_Energy( system, control, workspace,
-                data, mpi_data->comm_mesh3D );
-    }
-
-    if ( (out_control->energy_update_freq > 0
-                && (data->step - data->prev_steps) % out_control->energy_update_freq == 0)
-            || (out_control->write_steps > 0
-                && data->step % out_control->write_steps == 0) )
-    {
-        Compute_Total_Energy( system, control, data, MPI_COMM_WORLD );
-    }
-}
-
-
-#elif defined(HAVE_HIP)
-static void Hip_Post_Evolve( reax_system * const system, control_params * const control,
-        simulation_data * const data, storage * const workspace, reax_list ** const lists,
-        output_controls * const out_control, mpi_datatypes * const mpi_data )
-{
-    /* remove translational and rotational velocity of the center of mass from system */
-    if ( control->ensemble != NVE && control->remove_CoM_vel > 0
-            && data->step % control->remove_CoM_vel == 0 )
-    {
-        /* compute velocity of the center of mass */
-        Hip_Compute_Center_of_Mass( system, control, workspace,
-                data, mpi_data, mpi_data->comm_mesh3D );
-
-        Hip_Remove_CoM_Velocities( system, control, data );
-    }
-
-    if ( control->ensemble == NVE )
-    {
-        /* compute kinetic energy of the system */
-        Hip_Compute_Kinetic_Energy( system, control, workspace,
+        GPU_Compute_Kinetic_Energy( system, control, workspace,
                 data, mpi_data->comm_mesh3D );
     }
 
@@ -259,10 +226,8 @@ void* setup( const char * const geo_file, const char * const ffield_file,
             pmd_handle->system, pmd_handle->control, pmd_handle->data,
             pmd_handle->workspace, pmd_handle->out_control, pmd_handle->mpi_data );
 
-#if defined(HAVE_CUDA)
-    Cuda_Setup_Environment( pmd_handle->system, pmd_handle->control );
-#elif defined(HAVE_HIP)
-    Hip_Setup_Environment( pmd_handle->system, pmd_handle->control );
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
+    GPU_Setup_Environment( pmd_handle->system, pmd_handle->control );
 #endif
 
     return (void*) pmd_handle;
@@ -314,30 +279,30 @@ int simulate( const void * const handle )
         out_control = pmd_handle->out_control;
         mpi_data = pmd_handle->mpi_data;
 
-#if defined(HAVE_CUDA)
-        Cuda_Initialize( system, control, data, workspace, lists, out_control, mpi_data );
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
+        GPU_Initialize( system, control, data, workspace, lists, out_control, mpi_data );
 
         /* compute f_0 */
         Comm_Atoms( system, control, data, workspace, mpi_data, TRUE );
 
 #if defined(GPU_DEVICE_PACK)
         //TODO: remove once Comm_Atoms ported
-        Cuda_Copy_MPI_Data_Host_to_Device( control, mpi_data );
+        GPU_Copy_MPI_Data_Host_to_Device( control, mpi_data );
 #endif
 
-        Cuda_Init_Block_Sizes( system, control );
+        GPU_Init_Block_Sizes( system, control );
 
-        Cuda_Copy_Atoms_Host_to_Device( system, control );
-        Cuda_Copy_Grid_Host_to_Device( control, &system->my_grid, &system->d_my_grid );
+        GPU_Copy_Atoms_Host_to_Device( system, control );
+        GPU_Copy_Grid_Host_to_Device( control, &system->my_grid, &system->d_my_grid );
 
-        Cuda_Reset( system, control, data, workspace, lists );
+        GPU_Reset( system, control, data, workspace, lists );
 
-        Cuda_Generate_Neighbor_Lists( system, control, data, workspace, lists );
+        GPU_Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
-        Cuda_Compute_Forces( system, control, data, workspace, lists,
+        GPU_Compute_Forces( system, control, data, workspace, lists,
                 out_control, mpi_data );
 
-        Cuda_Compute_Kinetic_Energy( system, control, workspace,
+        GPU_Compute_Kinetic_Energy( system, control, workspace,
                 data, mpi_data->comm_mesh3D );
 
         Compute_Total_Energy( system, control, data, MPI_COMM_WORLD );
@@ -347,7 +312,7 @@ int simulate( const void * const handle )
         Check_Energy( data );
 
 #if defined(DEBUG_FOCUS)
-        Cuda_Print_Mem_Usage( data );
+        GPU_Print_Mem_Usage( data );
 #endif
 
         ++data->step;
@@ -361,12 +326,12 @@ int simulate( const void * const handle )
                 Temperature_Control( control, data );
             }
     
-            ret = control->Cuda_Evolve( system, control, data, workspace,
+            ret = control->GPU_Evolve( system, control, data, workspace,
                     lists, out_control, mpi_data );
 
             if ( ret == SUCCESS )
             {
-                Cuda_Post_Evolve( system, control, data, workspace, lists,
+                GPU_Post_Evolve( system, control, data, workspace, lists,
                         out_control, mpi_data );
             }
 
@@ -406,110 +371,7 @@ int simulate( const void * const handle )
             }
 
 #if defined(DEBUG_FOCUS)
-            Cuda_Print_Mem_Usage( data );
-#endif
-        }
-
-        if ( retries >= MAX_RETRIES )
-        {
-            fprintf( stderr, "[ERROR] Maximum retries reached for this step (%d). Terminating...\n",
-                  retries );
-            MPI_Abort( MPI_COMM_WORLD, MAX_RETRIES_REACHED );
-        }
-
-#elif defined(HAVE_HIP)
-        Hip_Initialize( system, control, data, workspace, lists, out_control, mpi_data );
-
-        /* compute f_0 */
-        Comm_Atoms( system, control, data, workspace, mpi_data, TRUE );
-
-#if defined(GPU_DEVICE_PACK)
-        //TODO: remove once Comm_Atoms ported
-        Hip_Copy_MPI_Data_Host_to_Device( control, mpi_data );
-#endif
-
-        Hip_Init_Block_Sizes( system, control );
-
-        Hip_Copy_Atoms_Host_to_Device( system, control );
-        Hip_Copy_Grid_Host_to_Device( control, &system->my_grid, &system->d_my_grid );
-
-        Hip_Reset( system, control, data, workspace, lists );
-
-        Hip_Generate_Neighbor_Lists( system, control, data, workspace, lists );
-
-        Hip_Compute_Forces( system, control, data, workspace, lists,
-                out_control, mpi_data );
-
-        Hip_Compute_Kinetic_Energy( system, control, workspace,
-                data, mpi_data->comm_mesh3D );
-
-        Compute_Total_Energy( system, control, data, MPI_COMM_WORLD );
-
-        Output_Results( system, control, data, lists, out_control, mpi_data );
-
-        Check_Energy( data );
-
-#if defined(DEBUG_FOCUS)
-        Hip_Print_Mem_Usage( data );
-#endif
-
-        ++data->step;
-        retries = 0;
-        while ( data->step <= control->nsteps && retries < MAX_RETRIES )
-        {
-            ret = SUCCESS;
-
-            if ( control->T_mode > 0 && retries == 0 )
-            {
-                Temperature_Control( control, data );
-            }
-    
-            ret = control->Hip_Evolve( system, control, data, workspace,
-                    lists, out_control, mpi_data );
-
-            if ( ret == SUCCESS )
-            {
-                Hip_Post_Evolve( system, control, data, workspace, lists,
-                        out_control, mpi_data );
-            }
-
-            if ( ret == SUCCESS )
-            {
-                data->timing.num_retries = retries;
-
-                Output_Results( system, control, data, lists, out_control, mpi_data );
-
-//              Analysis( system, control, data, workspace, lists, out_control, mpi_data );
-
-                if ( out_control->restart_freq
-                        && (data->step - data->prev_steps) % out_control->restart_freq == 0 )
-                {
-                    if ( out_control->restart_format == WRITE_ASCII )
-                    {
-                        Write_Restart_File( system, control, data, out_control, mpi_data );
-                    }
-                    else if ( out_control->restart_format == WRITE_BINARY )
-                    {
-                        Write_Binary_Restart_File( system, control, data, out_control, mpi_data );
-                    }
-                }
-
-                Check_Energy( data );
-
-                ++data->step;
-                retries = 0;
-            }
-            else
-            {
-                ++retries;
-
-#if defined(DEBUG_FOCUS)
-                fprintf( stderr, "[INFO] p%d: retrying step %d...\n", system->my_rank, data->step );
-#endif
-            }
-
-#if defined(DEBUG_FOCUS)
-            Hip_Print_Mem_Usage( data );
+            GPU_Print_Mem_Usage( data );
 #endif
         }
 
@@ -642,14 +504,10 @@ int cleanup( const void * const handle )
     {
         pmd_handle = (puremd_handle*) handle;
 
-#if defined(HAVE_CUDA)
-        //TODO: add Cuda_Finalize( ... )
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
+        //TODO: add GPU_Finalize( ... )
 
-        Cuda_Cleanup_Environment( pmd_handle->control );
-#elif defined(HAVE_HIP)
-        //TODO: add Hip_Finalize( ... )
-
-        Hip_Cleanup_Environment( pmd_handle->control );
+        GPU_Cleanup_Environment( pmd_handle->control );
 #else
         Finalize( pmd_handle->system, pmd_handle->control, pmd_handle->data,
                 pmd_handle->workspace, pmd_handle->lists, pmd_handle->out_control,

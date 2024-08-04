@@ -42,9 +42,9 @@
 #include <time.h>
 
 #if defined(HAVE_CUDA)
-  #include "cuda/cuda_allocate.h"
+  #include "cuda/gpu_allocate.h"
 #elif defined(HAVE_HIP)
-  #include "hip/hip_allocate.h"
+  #include "hip/gpu_allocate.h"
 #endif
 
 /* base 10 for result of string-to-integer conversion */

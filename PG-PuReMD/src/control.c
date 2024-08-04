@@ -59,7 +59,7 @@ void Read_Control_File( const char * const control_file, control_params * const 
     control->procs_by_dim[2] = 1;
     control->geo_format = 1;
     control->gpus_per_node = 1;
-    control->gpu_streams = MAX_GPU_STREAMS;
+    control->num_gpu_streams = MAX_GPU_STREAMS;
     control->gpu_block_size = GPU_BLOCK_SIZE;
 
     control->random_vel = 0;
@@ -183,9 +183,9 @@ void Read_Control_File( const char * const control_file, control_params * const 
             else if ( strncmp(tmp[0], "gpu_streams", MAX_LINE) == 0 )
             {
                 ival = sstrtol( tmp[1], __FILE__, __LINE__ );
-                control->gpu_streams = ival;
+                control->num_gpu_streams = ival;
 
-                if ( control->gpu_streams <= 0 || control->gpu_streams > MAX_GPU_STREAMS )
+                if ( control->num_gpu_streams <= 0 || control->num_gpu_streams > MAX_GPU_STREAMS )
                 {
                     fprintf( stderr, "[ERROR] invalid control file value for gpu_streams (0 < gpu_streams <= %d). Terminating...\n",
                             MAX_GPU_STREAMS );

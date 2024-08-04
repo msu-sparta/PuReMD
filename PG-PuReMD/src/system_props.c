@@ -39,9 +39,9 @@
 #endif
 
 #if defined(HAVE_CUDA)
-  #include "cuda/cuda_copy.h"
+  #include "cuda/gpu_copy.h"
 #elif defined(HAVE_HIP)
-  #include "hip/hip_copy.h"
+  #include "hip/gpu_copy.h"
 #endif
 
 
@@ -118,10 +118,8 @@ void Compute_Total_Energy( reax_system const * const system,
     //TODO: remove this is an UGLY fix
     my_en[13] = data->my_en[E_KIN];
 
-#if defined(HAVE_CUDA)
-    Cuda_Copy_Simulation_Data_Device_to_Host( control, data );
-#elif defined(HAVE_HIP)
-    Hip_Copy_Simulation_Data_Device_to_Host( control, data );
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
+    GPU_Copy_Simulation_Data_Device_to_Host( control, data );
 #endif
 
     my_en[0] = data->my_en[E_BOND];

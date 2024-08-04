@@ -39,9 +39,9 @@
 #endif
 
 #if defined(HAVE_CUDA)
-  #include "cuda/cuda_copy.h"
+  #include "cuda/gpu_copy.h"
 #elif defined(HAVE_HIP)
-  #include "hip/hip_copy.h"
+  #include "hip/gpu_copy.h"
 #endif
 
 
@@ -1083,21 +1083,16 @@ void Append_Frame( reax_system *system, control_params *control,
 
     if ( out_control->write_atoms )
     {
-#if defined(HAVE_CUDA)
-        Cuda_Copy_Atoms_Device_to_Host( system, control );
-#elif defined(HAVE_HIP)
-        Hip_Copy_Atoms_Device_to_Host( system, control );
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
+        GPU_Copy_Atoms_Device_to_Host( system, control );
 #endif
         Write_Atoms( system, control, out_control, mpi_data );
     }
 
     if ( out_control->write_bonds )
     {
-#if defined(HAVE_CUDA)
-        Cuda_Copy_List_Device_to_Host( control, bond_list, lists[BONDS], TYP_BOND );
-        Write_Bonds( system, control, bond_list, out_control, mpi_data );
-#elif defined(HAVE_HIP)
-        Hip_Copy_List_Device_to_Host( control, bond_list, lists[BONDS], TYP_BOND );
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
+        GPU_Copy_List_Device_to_Host( control, bond_list, lists[BONDS], TYP_BOND );
         Write_Bonds( system, control, bond_list, out_control, mpi_data );
 #else
         Write_Bonds( system, control, lists[BONDS], out_control, mpi_data );
@@ -1106,13 +1101,8 @@ void Append_Frame( reax_system *system, control_params *control,
 
     if ( out_control->write_angles )
     {
-#if defined(HAVE_CUDA)
-        Cuda_Copy_List_Device_to_Host( control, thb_list, lists[THREE_BODIES],
-                TYP_THREE_BODY );
-        Write_Angles( system, control, bond_list, thb_list,
-                      out_control, mpi_data );
-#elif defined(HAVE_HIP)
-        Hip_Copy_List_Device_to_Host( control, thb_list, lists[THREE_BODIES],
+#if defined(HAVE_CUDA) || defined(HAVE_HIP)
+        GPU_Copy_List_Device_to_Host( control, thb_list, lists[THREE_BODIES],
                 TYP_THREE_BODY );
         Write_Angles( system, control, bond_list, thb_list,
                       out_control, mpi_data );
