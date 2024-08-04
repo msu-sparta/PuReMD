@@ -1,4 +1,4 @@
-#include "hip/gpu_runtime.h"
+#include "hip/hip_runtime.h"
 /*----------------------------------------------------------------------
   PuReMD - Purdue ReaxFF Molecular Dynamics Program
 

@@ -1,4 +1,4 @@
-#include "hip/gpu_runtime.h"
+#include "hip/hip_runtime.h"
 
 #include "gpu_bond_orders.h"
 
