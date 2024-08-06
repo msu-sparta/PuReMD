@@ -33,11 +33,11 @@ AC_DEFUN([AC_PROG_PDFLATEX],
 AC_ARG_ENABLE([serial],
 	      [AS_HELP_STRING([--enable-serial],
 			      [enable serial support @<:@default: no@:>@])],
-	      [pack_serial_enabled=${enableval}], [pack_serial_enabled=no])
+	      [pack_serial_enabled=${enableval}], [pack_serial_enabled=yes])
 AC_ARG_ENABLE([openmp],
 	      [AS_HELP_STRING([--enable-openmp],
 			      [enable OpenMP support @<:@default: yes@:>@])],
-	      [pack_openmp_enabled=${enableval}], [pack_openmp_enabled=yes])
+	      [pack_openmp_enabled=${enableval}], [pack_openmp_enabled=no])
 AC_ARG_ENABLE([mpi],
 	      [AS_HELP_STRING([--enable-mpi],
 			      [enable MPI support @<:@default: no@:>@])],
@@ -136,19 +136,13 @@ AC_LANG([C++])
 AC_PROG_CXX([icpc g++ clang++ CC c++])
 AC_PROG_CXXCPP
 
-AC_CONFIG_HEADERS([common/include/config.h])
+AC_CONFIG_HEADERS([src/common/include/config.h])
 
-# sPuReMD
-if test "x${pack_mpi_enabled}" != "xyes" && test "x${pack_mpi_cuda_enabled}" != "xyes" && { test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "xyes"; }; then
-	if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" != "xyes"; then
-		BUILD_OPENMP="no"
-	else
-		BUILD_OPENMP="yes"
-	fi
-
+# shared memory (serial, OpenMP)
+if test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "xyes"; then
 	AC_LANG_PUSH([C])
 
-	AC_CONFIG_SRCDIR([sPuReMD/src/traj.h])
+	AC_CONFIG_SRCDIR([src/shared_mem/traj.h])
 
 	# Checks for libraries.
 	AC_SEARCH_LIBS([exp], [m])
@@ -196,7 +190,7 @@ if test "x${pack_mpi_enabled}" != "xyes" && test "x${pack_mpi_cuda_enabled}" != 
 	AC_SUBST([DFT_CFLAGS], ["${DEFAULT_CFLAGS}"])
 
 	# Check for OpenMP support.
-	if test "x${BUILD_OPENMP}" = "xyes"; then
+	if test "x${pack_openmp_enabled}" = "xyes"; then
 		AX_OPENMP
 
 		if test "x${OPENMP_CFLAGS}" = "x"; then
@@ -345,10 +339,12 @@ if test "x${pack_mpi_enabled}" != "xyes" && test "x${pack_mpi_cuda_enabled}" != 
 
 	AC_LANG_POP([C])
 fi
-AM_CONDITIONAL([BUILD_S_OMP], [test "x${pack_mpi_enabled}" != "xyes" && test "x${pack_mpi_cuda_enabled}" != "xyes" && { test "x${pack_serial_enabled}" = "xyes" || test "x${pack_openmp_enabled}" = "xyes"; }])
+
+AM_CONDITIONAL([BUILD_SERIAL], [test "x${pack_serial_enabled}" = "xyes"])
+AM_CONDITIONAL([BUILD_OPENMP], [test "x${pack_openmp_enabled}" = "xyes"])
 
 
-# PG-PuReMD
+# distributed-memory (MPI)
 if test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_cuda_enabled}" = "xyes" || test "x${pack_mpi_hip_enabled}" = "xyes"; then
 	if test "x${pack_openmp_enabled}" = "xyes"; then
 		BUILD_OPENMP_MPI="yes"
@@ -358,7 +354,7 @@ if test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_cuda_enabled}" = "x
 
 	AC_LANG_PUSH([C])
 
-	AC_CONFIG_SRCDIR([PG-PuReMD/src/torsion_angles.h])
+	AC_CONFIG_SRCDIR([src/dist_mem/torsion_angles.h])
 
 	# Checks for libraries.
 	AC_SEARCH_LIBS([exp], [m])
@@ -544,9 +540,6 @@ if test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_cuda_enabled}" = "x
 		#	--with-cuda=(path|yes|no) for non-standard CUDA installation directory
 		#	--enable-emu for device emulation
 		#	--with-cuda-fast-math for fast, less percise math functions
-		#   other actions:
-		#	+ appends CUDA_CFLAGS to CPPFLAGS after defining
-		#	+ appends CUDA_LIBS to LIBS after defining
 		AX_CUDA
 
 		# set host compiler to specified C++ compiler
@@ -580,9 +573,6 @@ if test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_cuda_enabled}" = "x
 		#	HIPCCFLAGS: flags directly passed to hipcc
 		#   defines:
 		#	--with-hip=(path|yes|no) for non-standard HIP installation directory
-		#   other actions:
-		#	+ appends HIP_CFLAGS to CPPFLAGS after defining
-		#	+ appends HIP_LIBS to LIBS after defining
 		AX_HIP
 
 		# set host compiler to specified C++ compiler
@@ -612,7 +602,10 @@ if test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_cuda_enabled}" = "x
 
 	AC_LANG_POP([C++])
 fi
-AM_CONDITIONAL([BUILD_MPI_GPU], [test "x${pack_mpi_enabled}" = "xyes" || test "x${pack_mpi_cuda_enabled}" = "xyes" || test "x${pack_mpi_hip_enabled}" = "xyes"])
+
+AM_CONDITIONAL([BUILD_MPI], [test "x${pack_mpi_enabled}" = "xyes"])
+AM_CONDITIONAL([BUILD_MPI_CUDA], [test "x${pack_mpi_cuda_enabled}" = "xyes"])
+AM_CONDITIONAL([BUILD_MPI_HIP], [test "x${pack_mpi_hip_enabled}" = "xyes"])
 # Moved from m4/ax_cuda.am to avoid conditionally calling inside AX_CUDA
 AM_CONDITIONAL(USE_CUDA, [test "x${pack_mpi_cuda_enabled}" = "xyes"])
 AM_CONDITIONAL(USE_HIP, [test "x${pack_mpi_hip_enabled}" = "xyes"])
@@ -648,6 +641,7 @@ if test "x${CXX}" != "x"; then
 else
 	AC_MSG_WARN([C++ compiler not found. Unable to build tests. Continuing...])
 fi
+
 AM_CONDITIONAL([BUILD_TEST], [test "x${HAVE_GTEST_H}" = "xyes"])
 AC_LANG_POP([C++])
 

@@ -238,7 +238,7 @@ restart_freq            0                       ! 0: do not output any restart f
                 control_file,
             ]
         # add MPI execution command and arguments to subprocess argument list
-        elif run_type == 'mpi' or run_type == 'mpi-gpu':
+        elif run_type == 'mpi' or run_type == 'mpi-cuda' or run_type == 'mpi-hip':
             env['OMP_NUM_THREADS'] = param_dict['threads']
 
             if mpi_cmd[0] == 'mpirun':
@@ -320,7 +320,7 @@ restart_freq            0                       ! 0: do not output any restart f
                 + '_pa' + param_dict['cm_solver_pre_app_type'] \
                 + '_paji' + param_dict['cm_solver_pre_app_jacobi_iters'] \
 		+ '_t' + param_dict['threads']
-        elif run_type == 'mpi' or run_type == 'mpi-gpu':
+        elif run_type == 'mpi' or run_type == 'mpi-cuda' or run_type == 'mpi-hip':
             name = path.basename(self.__geo_file).split('.')[0] \
                 + '_cm' + param_dict['charge_method'] \
                 + '_s' + param_dict['nsteps'] \
@@ -584,7 +584,7 @@ restart_freq            0                       ! 0: do not output any restart f
                 print('[WARNING] nsteps not correct in file {0} (nsteps = {1:d}, step freq = {2:d}, counted steps = {3:d}).'.format(
                     log_file, int(param['nsteps']), freq_step, max(line_cnt - 3, 0)))
             fout.flush()
-        elif run_type == 'mpi-gpu':
+        elif run_type == 'mpi-cuda' or run_type == 'mpi-hip':
             from operator import mul
             from functools import reduce
             
@@ -727,7 +727,7 @@ python3 {0}/tools/run_sim.py run_md {1} \\
         for (k, v) in zip(self.__param_names, param_values):
             job_script += "\n    -p {0} {1} \\".format(k, v)
 
-        if run_type == 'mpi' or run_type == 'mpi-gpu':
+        if run_type == 'mpi' or run_type == 'mpi-cuda' or run_type == 'mpi-hip':
             job_script += "\n    -m {0} \\".format(':'.join(mpi_cmd))
             job_script += "\n    -x {0} \\".format(mpi_cmd_extra[0])
 
@@ -760,7 +760,7 @@ python3 {0}/tools/run_sim.py run_md {1} \\
         for (k, v) in zip(self.__param_names, param_values):
             job_script += "\n    -p {0} {1} \\".format(k, v)
 
-        if run_type == 'mpi' or run_type == 'mpi-gpu':
+        if run_type == 'mpi' or run_type == 'mpi-cuda' or run_type == 'mpi-hip':
             job_script += "\n    -m {0} \\".format(':'.join(mpi_cmd))
             job_script += "\n    -x {0} \\".format(mpi_cmd_extra[0])
 
@@ -809,7 +809,7 @@ if __name__ == '__main__':
                 'zno_6912', \
                 ]
         JOB_TYPES = ['pbs', 'slurm']
-        RUN_TYPES = ['serial', 'openmp', 'mpi', 'mpi-gpu']
+        RUN_TYPES = ['serial', 'openmp', 'mpi', 'mpi-cuda', 'mpi-hip']
         LOG_TYPES = ['out', 'pot', 'log']
 
         parser = argparse.ArgumentParser(description='Molecular dynamics simulation tools used with specified data sets.')
@@ -1075,12 +1075,16 @@ if __name__ == '__main__':
             base_dir = path.dirname(path.dirname(path.dirname(path.abspath(binary))))
         else:
             base_dir = getcwd()
-            if args.run_type[0] == 'serial' or args.run_type[0] == 'openmp':
-                binary = path.join(base_dir, 'sPuReMD/bin/spuremd')
+            if args.run_type[0] == 'serial':
+                binary = path.join(base_dir, 'bin/puremd')
+            elif args.run_type[0] == 'openmp':
+                binary = path.join(base_dir, 'bin/puremd-openmp')
             elif args.run_type[0] == 'mpi':
-                binary = path.join(base_dir, 'PuReMD/bin/puremd')
-            elif args.run_type[0] == 'mpi-gpu':
-                binary = path.join(base_dir, 'PG-PuReMD/bin/pg-puremd')
+                binary = path.join(base_dir, 'bin/puremd-mpi')
+            elif args.run_type[0] == 'mpi-cuda':
+                binary = path.join(base_dir, 'bin/puremd-mpi-cuda')
+            elif args.run_type[0] == 'mpi-hip':
+                binary = path.join(base_dir, 'bin/puremd-mpi-hip')
 
         data_dir, control_params_dict = setup_defaults(base_dir)
 
@@ -1105,12 +1109,16 @@ if __name__ == '__main__':
             base_dir = path.dirname(path.dirname(path.dirname(path.abspath(binary))))
         else:
             base_dir = getcwd()
-            if args.run_type[0] == 'serial' or args.run_type[0] == 'openmp':
-                binary = path.join(base_dir, 'sPuReMD/bin/spuremd')
+            if args.run_type[0] == 'serial':
+                binary = path.join(base_dir, 'bin/puremd')
+            elif args.run_type[0] == 'openmp':
+                binary = path.join(base_dir, 'bin/puremd-openmp')
             elif args.run_type[0] == 'mpi':
-                binary = path.join(base_dir, 'PuReMD/bin/puremd')
-            elif args.run_type[0] == 'mpi-gpu':
-                binary = path.join(base_dir, 'PG-PuReMD/bin/pg-puremd')
+                binary = path.join(base_dir, 'bin/puremd-mpi')
+            elif args.run_type[0] == 'mpi-cuda':
+                binary = path.join(base_dir, 'bin/puremd-mpi-cuda')
+            elif args.run_type[0] == 'mpi-hip':
+                binary = path.join(base_dir, 'bin/puremd-mpi-hip')
 
         _, control_params_dict = setup_defaults(base_dir)
 
@@ -1156,7 +1164,7 @@ if __name__ == '__main__':
                     'bonded', 'nonbonded', 'cm', 'cm_sort',
                     's_iters', 'pre_comm', 'pre_app', 's_comm', 's_allr', 's_spmv', 's_vec_ops']
             body_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f} {:10.4f}\n'
-        elif args.run_type[0] == 'mpi-gpu':
+        elif args.run_type[0] == 'mpi-cuda' or args.run_type[0] == 'mpi-hip':
             header_fmt_str = '{:15} {:5} {:5} {:5} {:5} {:5} {:5} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10} {:10}\n'
             header_str = ['Data_Set', 'Proc', 'Steps', 'PreCT', 'Q_Tol', 'Ren', 'PCSAI',
                     'total_time', 'step_time', 'comm', 'neighbors', 'init',
@@ -1225,12 +1233,16 @@ if __name__ == '__main__':
             base_dir = path.dirname(path.dirname(path.dirname(path.abspath(binary))))
         else:
             base_dir = getcwd()
-            if args.run_type[0] == 'serial' or args.run_type[0] == 'openmp':
-                binary = path.join(base_dir, 'sPuReMD/bin/spuremd')
+            if args.run_type[0] == 'serial':
+                binary = path.join(base_dir, 'bin/puremd')
+            elif args.run_type[0] == 'openmp':
+                binary = path.join(base_dir, 'bin/puremd-openmp')
             elif args.run_type[0] == 'mpi':
-                binary = path.join(base_dir, 'PuReMD/bin/puremd')
-            elif args.run_type[0] == 'mpi-gpu':
-                binary = path.join(base_dir, 'PG-PuReMD/bin/pg-puremd')
+                binary = path.join(base_dir, 'bin/puremd-mpi')
+            elif args.run_type[0] == 'mpi-cuda':
+                binary = path.join(base_dir, 'bin/puremd-mpi-cuda')
+            elif args.run_type[0] == 'mpi-hip':
+                binary = path.join(base_dir, 'bin/puremd-mpi-hip')
 
         data_dir, control_params_dict = setup_defaults(base_dir)
 
@@ -1305,7 +1317,7 @@ if __name__ == '__main__':
                 else:
                     print("[ERROR] Invalid log file type {0}. Terminating...".format(file_type))
                     exit(-1)
-            elif run_type == 'mpi' or run_type == 'mpi-gpu':
+            elif run_type == 'mpi' or run_type == 'mpi-cuda' or run_type == 'mpi-hip':
                 if file_type == 'out':
                      names=['Step', 'Total_Energy', 'Potential_Energy',
                             'Kinetic_Energy', 'Temperature',

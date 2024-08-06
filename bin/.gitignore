@@ -1,0 +1,5 @@
+puremd
+puremd-openmp
+puremd-mpi
+puremd-mpi-cuda
+puremd-mpi-hip

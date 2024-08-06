@@ -78,7 +78,7 @@ test-driver
 # General
 *.tar.gz
 *.pdf
-*/bin
-*/lib
+bin/*
+lib/*
 *.txt
 *.zip
