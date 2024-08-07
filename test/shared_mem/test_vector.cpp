@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include "mytypes.h"
+#include "reax_types.h"
 #include "vector.c"
 
 

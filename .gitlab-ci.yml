@@ -12,8 +12,8 @@ compile:
   artifacts:
     name: "${CI_JOB_STAGE}_${CI_COMMIT_REF_NAME}"
     paths: 
-      - sPuReMD/bin
-      - sPuReMD/lib
+      - bin
+      - lib
   before_script:
     - apt-get update -qq && apt-get install -y -qq autoconf automake libtool gcc
   script:
@@ -27,7 +27,7 @@ run:
     - compile
   script:
     - echo "[INFO] Testing..."
-    - sPuReMD/bin/spuremd data/benchmarks/water/water_6540.pdb data/benchmarks/water/ffield.water environ/control_water
+    - bin/puremd data/benchmarks/water/water_6540.pdb data/benchmarks/water/ffield.water environ/control_water
     - head -n 2 water_6540_notab_qeq.out && tail -n 2 water_6540_notab_qeq.out
     - echo "[INFO] Done testing"
 

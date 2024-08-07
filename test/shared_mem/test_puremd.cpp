@@ -1,20 +1,20 @@
 #include <gtest/gtest.h>
 
-#include "spuremd.h"
+#include "puremd.h"
 
 
 namespace
 {
-    class SPuReMDTest : public ::testing::Test
+    class PuReMDTest : public ::testing::Test
     {
         protected:
             void *handle;
 
-            SPuReMDTest ( )
+            PuReMDTest ( )
             {
             }
 
-            virtual ~SPuReMDTest ( )
+            virtual ~PuReMDTest ( )
             {
             }
 
@@ -32,7 +32,7 @@ namespace
     };
 
 
-    TEST_F(SPuReMDTest, water_6540)
+    TEST_F(PuReMDTest, water_6540)
     {
         handle = setup( "../data/benchmarks/water/water_6540.pdb", 
                 "../data/benchmarks/water/ffield.water",
@@ -44,7 +44,7 @@ namespace
     }
 
 
-    TEST_F(SPuReMDTest, silica_6000)
+    TEST_F(PuReMDTest, silica_6000)
     {
         handle = setup( "../data/benchmarks/silica/silica_6000.pdb", 
                 "../data/benchmarks/silica/ffield-bio",

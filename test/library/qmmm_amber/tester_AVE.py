@@ -222,7 +222,7 @@ class ReaxAtom(Structure):
             ]
 
 
-def create_db(name='spuremd.db'):
+def create_db(name='puremd.db'):
     conn = sq3.connect(name)
 
     conn.executescript("""
@@ -358,7 +358,7 @@ def create_db(name='spuremd.db'):
 
 
 if __name__ == '__main__':
-    lib = cdll.LoadLibrary("libspuremd.so.1")
+    lib = cdll.LoadLibrary("libpuremd.so.1")
 
     setup_qmmm = lib.setup_qmmm
     setup_qmmm.argtypes = [c_int, POINTER(c_int), POINTER(c_double),

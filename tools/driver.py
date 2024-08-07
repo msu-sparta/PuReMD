@@ -226,7 +226,7 @@ class ReaxAtom(Structure):
             ]
 
 
-def create_db(name='spuremd.db'):
+def create_db(name='puremd.db'):
     conn = sq3.connect(name)
 
     conn.executescript("""
@@ -362,7 +362,7 @@ def create_db(name='spuremd.db'):
 
 
 if __name__ == '__main__':
-    lib = cdll.LoadLibrary("libspuremd.so.1")
+    lib = cdll.LoadLibrary("libpuremd.so.1")
 
     setup = lib.setup
     setup.argtypes = [c_char_p, c_char_p, c_char_p]
@@ -399,7 +399,7 @@ if __name__ == '__main__':
     set_output_enabled.argtypes = [c_void_p, c_int]
     set_output_enabled.restype = c_int
 
-    db_file = "spuremd.db"
+    db_file = "puremd.db"
 
     if not path.isfile(db_file):
         create_db(db_file)
