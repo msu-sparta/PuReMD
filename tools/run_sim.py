@@ -265,7 +265,7 @@ restart_freq            0                       ! 0: do not output any restart f
                     # number of tasks
                     mpi_cmd[2],
                     # number of tasks per node
-                    '--tasks-per-node',
+                    '--ntasks-per-node',
                     mpi_cmd[3],
                     # number of cores per task
                     '--cpus-per-task',
