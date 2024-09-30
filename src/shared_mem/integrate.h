@@ -26,26 +26,26 @@
 #include "reax_types.h"
 
 
-int Velocity_Verlet_NVE( reax_system *, control_params *, simulation_data *,
+int32_t Velocity_Verlet_NVE( reax_system *, control_params *, simulation_data *,
         static_storage *, reax_list **, output_controls * );
 
-int Velocity_Verlet_Berendsen_NVT( reax_system *, control_params *,
+int32_t Velocity_Verlet_Berendsen_NVT( reax_system *, control_params *,
         simulation_data *, static_storage *, reax_list **, output_controls * );
 
-int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system *, control_params *,
+int32_t Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system *, control_params *,
         simulation_data *, static_storage *, reax_list **, output_controls * );
 
-int Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system *, control_params *,
+int32_t Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system *, control_params *,
         simulation_data *, static_storage *, reax_list **, output_controls * );
 
-int Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system *, control_params *,
+int32_t Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system *, control_params *,
         simulation_data *, static_storage *, reax_list **, output_controls * );
 
 #if defined(ANISOTROPIC)
-int Velocity_Verlet_Nose_Hoover_NVT( reax_system *, control_params *,
+int32_t Velocity_Verlet_Nose_Hoover_NVT( reax_system *, control_params *,
         simulation_data *, static_storage *, reax_list **, output_controls * );
 
-int Velocity_Verlet_Isotropic_NPT( reax_system *, control_params *,
+int32_t Velocity_Verlet_Isotropic_NPT( reax_system *, control_params *,
         simulation_data *, static_storage *, reax_list **, output_controls * );
 #endif
 

@@ -30,67 +30,67 @@
 
  {HEADER}
   size flag char (1)
-  size of header to skip (int)
+  size of header to skip (int32_t)
   Title (char[80])
   size flag char (2)
-  size of control param block (int)
+  size of control param block (int32_t)
   Entire control param structure
-  size of frame descriptor (int)
+  size of frame descriptor (int32_t)
   Frame descriptor Block
       [ Frame descriptor block
-         No. of global quantities lines (say m) (int)
+         No. of global quantities lines (say m) (int32_t)
      Format for each global quantity line [m].
      Comma separated names for each global quantity line [m].
       ]
 
   {FRAMES}
   size flag char (1)
-  size of the entire frame to skip it (int)
+  size of the entire frame to skip it (int32_t)
   size flag char (2)
-  size of global quantities block to skip it (int)
+  size of global quantities block to skip it (int32_t)
   Global quantities lines [m]
   Atom format line
   Bond format line
   Angle format line
   Torsion format line
   size flag char (2)
-  size of atom block (int)
-  No. of atom lines (int)
+  size of atom block (int32_t)
+  No. of atom lines (int32_t)
   Atom lines as per atom format
   size flag char (2)
-  size to skip to the end of frame (int)
+  size to skip to the end of frame (int32_t)
   size flag char (3)
-  size to skip bond block (int)
-  No. of bond entries (int)
+  size to skip bond block (int32_t)
+  No. of bond entries (int32_t)
   Bond info lines as per bond format.
   size flag char (3)
-  size to skip angle block (int)
-  No. of angle entries (int)
+  size to skip angle block (int32_t)
+  No. of angle entries (int32_t)
   Angle info lines as per angle format.
   size flag char (3)
-  size to skip torsion block (int)
-  No. of torsion entries (int)
+  size to skip torsion block (int32_t)
+  No. of torsion entries (int32_t)
   Torsion info lines as per torsion format.
 */
-int Write_Custom_Header( reax_system*, control_params*,
+int32_t Write_Custom_Header( reax_system*, control_params*,
         static_storage*, output_controls* );
 
-int Write_xyz_Header( reax_system*, control_params*,
+int32_t Write_xyz_Header( reax_system*, control_params*,
         static_storage*, output_controls* );
 
 /*
   Write_Traj_Header( gzfile file,
-             int No. of lines of global qunatities,
+             int32_t No. of lines of global qunatities,
              char** format for global quantities,
              char** names for global quantities,
                  control_params* control);
  */
-char Write_Traj_Header( FILE*, int, char**, char**, control_params* );
+char Write_Traj_Header( FILE*, int32_t, char**, char**, control_params* );
 
-int Append_Custom_Frame( reax_system*, control_params*, simulation_data*,
+int32_t Append_Custom_Frame( reax_system*, control_params*, simulation_data*,
         static_storage*, reax_list**, output_controls* );
 
-int Append_xyz_Frame( reax_system*, control_params*, simulation_data*,
+int32_t Append_xyz_Frame( reax_system*, control_params*, simulation_data*,
         static_storage*, reax_list**, output_controls* );
 
 #if defined(HAVE_ZLIB)

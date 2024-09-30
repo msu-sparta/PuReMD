@@ -25,9 +25,9 @@
 #include "reax_types.h"
 
 
-char *Get_Element( reax_system*, int );
+char *Get_Element( reax_system*, int32_t );
 
-char *Get_Atom_Name( reax_system*, int );
+char *Get_Atom_Name( reax_system*, int32_t );
 
 void Print_Near_Neighbors( reax_system*, control_params*, static_storage*,
         reax_list** );
@@ -45,11 +45,11 @@ void Output_Results( reax_system*, control_params*, simulation_data*,
 void Print_Bond_Orders( reax_system*, control_params*, simulation_data*,
         static_storage*, reax_list**, output_controls* );
 
-void Print_Linear_System( reax_system*, control_params*, static_storage*, int );
+void Print_Linear_System( reax_system*, control_params*, static_storage*, int32_t );
 
-void Print_Charges( reax_system*, control_params*, static_storage*, int );
+void Print_Charges( reax_system*, control_params*, static_storage*, int32_t );
 
-void Print_Soln( static_storage*, real*, real*, real*, int );
+void Print_Soln( static_storage*, real*, real*, real*, int32_t );
 
 void Print_Sparse_Matrix( sparse_matrix* );
 
@@ -57,7 +57,7 @@ void Print_Sparse_Matrix2( sparse_matrix*, char*, char* );
 
 void Read_Sparse_Matrix2( sparse_matrix *, char * );
 
-void Read_Permutation_Matrix( unsigned int *, char * );
+void Read_Permutation_Matrix( uint32_t *, char * );
 
 void Print_Sparse_Matrix_Binary( sparse_matrix*, char* );
 

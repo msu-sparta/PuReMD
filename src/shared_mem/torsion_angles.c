@@ -145,7 +145,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
         reax_list **lists, output_controls *out_control )
 {
 #if defined(DEBUG_FOCUS)
-    int num_frb_intrs;
+    int32_t num_frb_intrs;
 #endif
     real p_tor2, p_tor3, p_tor4, p_cot2;
     reax_list *bonds, *thb_intrs;
@@ -167,10 +167,10 @@ void Torsion_Angles( reax_system *system, control_params *control,
     #pragma omp parallel default(shared) reduction(+: e_tor_total, e_con_total)
 #endif
     {
-        int i, j, k, l, pi, pj, pk, pl, pij, plk;
-        int type_i, type_j, type_k, type_l;
-        int start_j, end_j;
-        int start_pj, end_pj, start_pk, end_pk;
+        int32_t i, j, k, l, pi, pj, pk, pl, pij, plk;
+        int32_t type_i, type_j, type_k, type_l;
+        int32_t start_j, end_j;
+        int32_t start_pj, end_pj, start_pk, end_pk;
         real Delta_j, Delta_k;
         real r_ij, r_jk, r_kl, r_li;
         real BOA_ij, BOA_jk, BOA_kl;
@@ -200,7 +200,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
         three_body_interaction_data *p_ijk, *p_jkl;
         rvec *f_i, *f_j, *f_k, *f_l;
 #if defined(_OPENMP)
-        int tid = omp_get_thread_num( );
+        int32_t tid = omp_get_thread_num( );
 
         #pragma omp for schedule(static)
 #endif

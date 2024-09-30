@@ -41,11 +41,11 @@
  * 
  * Define the preprocessor definition SMALL_BOX_SUPPORT to enable (in
  * reax_types.h). */
-typedef int (*count_far_neighbors_function)( rvec, rvec, int, int,
+typedef int32_t (*count_far_neighbors_function)( rvec, rvec, int32_t, int32_t,
         simulation_box const * const, real );
 
-typedef int (*find_far_neighbors_function)( rvec, rvec, int, int,
-        simulation_box const * const, real, far_neighbor_data * const, int );
+typedef int32_t (*find_far_neighbors_function)( rvec, rvec, int32_t, int32_t,
+        simulation_box const * const, real, far_neighbor_data * const, int32_t );
 
 
 static void Choose_Neighbor_Counter( reax_system const * const system,
@@ -105,7 +105,7 @@ static void Choose_Neighbor_Finder( reax_system const * const system,
 
 
 #if defined(DEBUG_FOCUS)
-static int compare_far_nbrs( const void *v1, const void *v2 )
+static int32_t compare_far_nbrs( const void *v1, const void *v2 )
 {
     return ((*(far_neighbor_data *)v1).nbr - (*(far_neighbor_data *)v2).nbr);
 }
@@ -114,7 +114,7 @@ static int compare_far_nbrs( const void *v1, const void *v2 )
 
 static inline real DistSqr_to_CP( rvec cp, rvec x )
 {
-    int i;
+    int32_t i;
     real d_sqr;
 
     d_sqr = 0.0;
@@ -136,11 +136,11 @@ void Estimate_Num_Neighbors( reax_system const * const system,
         control_params const * const control, static_storage * const workspace,
         reax_list ** const lists )
 {
-    int i, j, k, l, m, itr;
-    int x, y, z;
-    int atom1, atom2, max;
-    int num_far, count;
-    int *nbr_atoms;
+    int32_t i, j, k, l, m, itr;
+    int32_t x, y, z;
+    int32_t atom1, atom2, max;
+    int32_t num_far, count;
+    int32_t *nbr_atoms;
     ivec *nbrs;
     rvec *nbrs_cp;
     grid const * const g = &system->g;
@@ -208,20 +208,20 @@ void Estimate_Num_Neighbors( reax_system const * const system,
         }
     }
 
-    workspace->realloc.total_far_nbrs = (int) CEIL( num_far * SAFE_ZONE );
+    workspace->realloc.total_far_nbrs = (int32_t) CEIL( num_far * SAFE_ZONE );
 }
 
 
 /* Generate the far neighbor list */
-int Generate_Neighbor_Lists( reax_system * const system,
+int32_t Generate_Neighbor_Lists( reax_system * const system,
         control_params const * const control, simulation_data * const data,
         static_storage * const workspace, reax_list ** const lists )
 {
-    int i, j, k, l, m, itr;
-    int x, y, z;
-    int atom1, atom2, max;
-    int num_far, count, flag_oom, ret;
-    int *nbr_atoms;
+    int32_t i, j, k, l, m, itr;
+    int32_t x, y, z;
+    int32_t atom1, atom2, max;
+    int32_t num_far, count, flag_oom, ret;
+    int32_t *nbr_atoms;
     ivec *nbrs;
     rvec *nbrs_cp;
     grid const * const g = &system->g;

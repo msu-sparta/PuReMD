@@ -180,7 +180,7 @@ void Setup_Box( real a, real b, real c, real alpha, real beta, real gamma,
 
 void Update_Box( rtensor box_tensor, simulation_box* box )
 {
-    int i, j;
+    int32_t i, j;
 
     for ( i = 0; i < 3; i++ )
     {
@@ -245,7 +245,7 @@ void Update_Box_Semi_Isotropic( simulation_box *box, rvec mu )
  *  */
 void Update_Atom_Position_Periodic( rvec x, rvec dx, ivec rel_map, simulation_box  const * const box )
 {
-    int i, remapped;
+    int32_t i, remapped;
     real tmp;
 
     for ( i = 0; i < 3; i++ )
@@ -262,7 +262,7 @@ void Update_Atom_Position_Periodic( rvec x, rvec dx, ivec rel_map, simulation_bo
             /* re-map the position to be in the range (-d_i, d_i) */
             if ( tmp <= -1.0 * box->box_norms[i] || tmp >= box->box_norms[i] )
             {
-                rel_map[i] += (int) (tmp / box->box_norms[i]);
+                rel_map[i] += (int32_t) (tmp / box->box_norms[i]);
                 tmp = FMOD( tmp, box->box_norms[i] );
                 remapped = TRUE;
             }
@@ -304,7 +304,7 @@ void Update_Atom_Position_Periodic( rvec x, rvec dx, ivec rel_map, simulation_bo
  *  */
 void Update_Atom_Position_Non_Periodic( rvec x, rvec dx, ivec rel_map, simulation_box  const * const box )
 {
-    int i;
+    int32_t i;
     real tmp;
 
     for ( i = 0; i < 3; i++ )
@@ -348,7 +348,7 @@ real Compute_Atom_Distance_Periodic( simulation_box const * const box,
         rvec x1, rvec x2, ivec x1_rel_map, ivec x2_rel_map, ivec x2_rel_box,
         rvec r )
 {
-    int i;
+    int32_t i;
     real norm;
 
     norm = 0.0;
@@ -389,7 +389,7 @@ real Compute_Atom_Distance_Periodic( simulation_box const * const box,
 real Compute_Atom_Distance_Non_Periodic( simulation_box const * const box, rvec x1, rvec x2,
         ivec x1_rel_map, ivec x2_rel_map, ivec x2_rel_box, rvec r )
 {
-    int i;
+    int32_t i;
     real norm;
 
     norm = 0.0;
@@ -444,7 +444,7 @@ void Update_Atom_Position_Triclinic( control_params *control, simulation_box * c
 
 real Metric_Product( rvec x1, rvec x2, simulation_box* box )
 {
-    int i, j;
+    int32_t i, j;
     real dist, tmp;
 
     dist = 0.0;
@@ -468,11 +468,11 @@ real Metric_Product( rvec x1, rvec x2, simulation_box* box )
 /* Determines if the distance between atoms x1 and x2 is strictly less than
  * vlist_cut.  If so, this neighborhood is added to the list of far neighbors.
  * Note: Periodic boundary conditions do not apply. */
-int Find_Non_Periodic_Far_Neighbors( rvec x1, rvec x2, int atom, int nbr_atom,
+int32_t Find_Non_Periodic_Far_Neighbors( rvec x1, rvec x2, int32_t atom, int32_t nbr_atom,
         simulation_box const * const box, real vlist_cut,
-        far_neighbor_data * const data, int max )
+        far_neighbor_data * const data, int32_t max )
 {
-    int count;
+    int32_t count;
     real norm_sqr;
     rvec dvec;
 
@@ -502,10 +502,10 @@ int Find_Non_Periodic_Far_Neighbors( rvec x1, rvec x2, int atom, int nbr_atom,
 
 /* Similar to Find_Non_Periodic_Far_Neighbors but does not
  * update the far neighbors list */
-int Count_Non_Periodic_Far_Neighbors( rvec x1, rvec x2, int atom, int nbr_atom,
+int32_t Count_Non_Periodic_Far_Neighbors( rvec x1, rvec x2, int32_t atom, int32_t nbr_atom,
         simulation_box const * const box, real vlist_cut )
 {
-    int count;
+    int32_t count;
     real norm_sqr;
     rvec d;
 
@@ -529,11 +529,11 @@ int Count_Non_Periodic_Far_Neighbors( rvec x1, rvec x2, int atom, int nbr_atom,
  * simulation box has all dimensions strictly greater than twice of vlist_cut.
  * If the periodic distance between x1 and x2 is less than vlist_cut, this
  * neighborhood is added to the list of far neighbors. */
-int Find_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, int atom, int nbr_atom,
+int32_t Find_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, int32_t atom, int32_t nbr_atom,
         simulation_box const * const box, real vlist_cut,
-        far_neighbor_data * const data, int max )
+        far_neighbor_data * const data, int32_t max )
 {
-    int i, count;
+    int32_t i, count;
     real norm_sqr, tmp, sqr_vlist_cut;
     ivec rel_box;
 //    rvec ext_factor;
@@ -595,10 +595,10 @@ int Find_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, int atom, int nbr_ato
 
 /* Similar to Find_Periodic_Far_Neighbors_Big_Box but does not
  * update the far neighbors list */
-int Count_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, int atom, int nbr_atom,
+int32_t Count_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, int32_t atom, int32_t nbr_atom,
         simulation_box const * const box, real vlist_cut )
 {
-    int i, count;
+    int32_t i, count;
     real norm_sqr, d, tmp;
 
     norm_sqr = 0.0;
@@ -648,12 +648,12 @@ int Count_Periodic_Far_Neighbors_Big_Box( rvec x1, rvec x2, int atom, int nbr_at
  * NOTE: This part might need some improvement. In NPT, the simulation box
  * might get too small (such as <5 A!). In this case we have to consider the
  * periodic images of x2 that are two boxs away!!! */
-int Find_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int atom, int nbr_atom,
+int32_t Find_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int32_t atom, int32_t nbr_atom,
         simulation_box const * const box, real vlist_cut,
-        far_neighbor_data * const data, int max )
+        far_neighbor_data * const data, int32_t max )
 {
-    int i, j, k, count;
-    int imax, jmax, kmax;
+    int32_t i, j, k, count;
+    int32_t imax, jmax, kmax;
     real sqr_norm, d_i, d_j, d_k, sqr_vlist_cut;
     real sqr_d_i, sqr_d_j, sqr_d_k;
 
@@ -662,9 +662,9 @@ int Find_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int atom, int nbr_a
 
     /* determine the max. num. of imaginary boxs in each direction
      * to handle periodic boundary conditions correctly */
-    imax = (int) CEIL( vlist_cut / box->box_norms[0] );
-    jmax = (int) CEIL( vlist_cut / box->box_norms[1] );
-    kmax = (int) CEIL( vlist_cut / box->box_norms[2] );
+    imax = (int32_t) CEIL( vlist_cut / box->box_norms[0] );
+    jmax = (int32_t) CEIL( vlist_cut / box->box_norms[1] );
+    kmax = (int32_t) CEIL( vlist_cut / box->box_norms[2] );
 
     /* assumption: orthogonal coordinates */
     for ( i = -1 * imax; i <= imax; ++i )
@@ -750,11 +750,11 @@ int Find_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int atom, int nbr_a
 
 /* Similar to Find_Periodic_Far_Neighbors_Small_Box but does not
  * update the far neighbors list */
-int Count_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int atom, int nbr_atom,
+int32_t Count_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int32_t atom, int32_t nbr_atom,
         simulation_box const * const box, real vlist_cut )
 {
-    int i, j, k, count;
-    int imax, jmax, kmax;
+    int32_t i, j, k, count;
+    int32_t imax, jmax, kmax;
     real sqr_norm, d_i, d_j, d_k, sqr_vlist_cut;
     real sqr_d_i, sqr_d_j, sqr_d_k;
 
@@ -763,9 +763,9 @@ int Count_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int atom, int nbr_
 
     /* determine the max. num. of imaginary boxs in each direction
      * to handle periodic boundary conditions correctly */
-    imax = (int) CEIL( vlist_cut / box->box_norms[0] );
-    jmax = (int) CEIL( vlist_cut / box->box_norms[1] );
-    kmax = (int) CEIL( vlist_cut / box->box_norms[2] );
+    imax = (int32_t) CEIL( vlist_cut / box->box_norms[0] );
+    jmax = (int32_t) CEIL( vlist_cut / box->box_norms[1] );
+    kmax = (int32_t) CEIL( vlist_cut / box->box_norms[2] );
 
     for ( i = -imax; i <= imax; ++i )
     {
@@ -798,7 +798,7 @@ int Count_Periodic_Far_Neighbors_Small_Box( rvec x1, rvec x2, int atom, int nbr_
 
 void Print_Box( simulation_box* box, FILE *out )
 {
-    int i, j;
+    int32_t i, j;
 
     fprintf( out, "box: {" );
     for ( i = 0; i < 3; ++i )

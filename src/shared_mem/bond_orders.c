@@ -35,9 +35,9 @@ static inline real Cf45( real p1, real p2 )
 
 #if defined(TEST_FORCES)
 void Add_dBO( reax_system *system, reax_list **lists,
-        int i, int pj, real C, rvec *v )
+        int32_t i, int32_t pj, real C, rvec *v )
 {
-    int start_pj, end_pj, k;
+    int32_t start_pj, end_pj, k;
     reax_list *bond_list, *dBOs;
 
     bond_list = lists[BONDS];
@@ -59,9 +59,9 @@ void Add_dBO( reax_system *system, reax_list **lists,
 
 
 void Add_dBOpinpi2( reax_system *system, reax_list **lists,
-        int i, int pj, real Cpi, real Cpi2, rvec *vpi, rvec *vpi2 )
+        int32_t i, int32_t pj, real Cpi, real Cpi2, rvec *vpi, rvec *vpi2 )
 {
-    int start_pj, end_pj, k;
+    int32_t start_pj, end_pj, k;
     reax_list *bond_list, *dBOs;
     dbond_data *dbo_k;
 
@@ -85,11 +85,11 @@ void Add_dBOpinpi2( reax_system *system, reax_list **lists,
 
 
 void Add_dBO_to_Forces( reax_system *system, reax_list **lists,
-                        int i, int pj, real C )
+                        int32_t i, int32_t pj, real C )
 {
     reax_list *bond_list;
     reax_list *dBOs;
-    int start_pj, end_pj, k;
+    int32_t start_pj, end_pj, k;
 
     bond_list = lists[BONDS];
     dBOs = lists[DBO];
@@ -106,12 +106,12 @@ void Add_dBO_to_Forces( reax_system *system, reax_list **lists,
 
 
 void Add_dBOpinpi2_to_Forces( reax_system *system, reax_list **lists,
-        int i, int pj, real Cpi, real Cpi2 )
+        int32_t i, int32_t pj, real Cpi, real Cpi2 )
 {
     reax_list *bond_list;
     reax_list *dBOs;
     dbond_data *dbo_k;
-    int start_pj, end_pj, k;
+    int32_t start_pj, end_pj, k;
 
     bond_list = lists[BONDS];
     dBOs = lists[DBO];
@@ -128,9 +128,9 @@ void Add_dBOpinpi2_to_Forces( reax_system *system, reax_list **lists,
 }
 
 
-void Add_dDelta( reax_system *system, reax_list **lists, int i, real C, rvec *v )
+void Add_dDelta( reax_system *system, reax_list **lists, int32_t i, real C, rvec *v )
 {
-    int start, end, k;
+    int32_t start, end, k;
     reax_list *dDeltas;
 
     dDeltas = lists[DDELTA];
@@ -149,10 +149,10 @@ void Add_dDelta( reax_system *system, reax_list **lists, int i, real C, rvec *v 
 }
 
 
-void Add_dDelta_to_Forces( reax_system *system, reax_list **lists, int i, real C )
+void Add_dDelta_to_Forces( reax_system *system, reax_list **lists, int32_t i, real C )
 {
     reax_list *dDeltas;
-    int start, end, k;
+    int32_t start, end, k;
 
     dDeltas = lists[DDELTA];
     start = Start_Index( i, dDeltas );
@@ -166,10 +166,10 @@ void Add_dDelta_to_Forces( reax_system *system, reax_list **lists, int i, real C
 }
 
 
-void Calculate_dBO( int i, int pj, static_storage *workspace, reax_list **lists,
-        int *top )
+void Calculate_dBO( int32_t i, int32_t pj, static_storage *workspace, reax_list **lists,
+        int32_t *top )
 {
-    int j, k, l, start_i, end_i, end_j;
+    int32_t j, k, l, start_i, end_i, end_j;
     reax_list *bond_list, *dBOs;
     bond_data *nbr_l, *nbr_k;
     bond_order_data *bo_ij;
@@ -303,7 +303,7 @@ void Calculate_dBO( int i, int pj, static_storage *workspace, reax_list **lists,
 #endif
 
 
-void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
+void Add_dBond_to_Forces_NPT( int32_t i, int32_t pj, reax_system *system,
         simulation_data *data, static_storage *workspace, reax_list **lists )
 {
     reax_list *bond_list;
@@ -312,10 +312,10 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
     dbond_coefficients coef;
     rvec force, dvec_jk;
     rtensor press;
-    int pk, k, j;
+    int32_t pk, k, j;
     rvec *f_i, *f_j, *f_k;
 #if defined(_OPENMP)
-    int tid = omp_get_thread_num( );
+    int32_t tid = omp_get_thread_num( );
 #endif
 
     bond_list = lists[BONDS];
@@ -518,17 +518,17 @@ void Add_dBond_to_Forces_NPT( int i, int pj, reax_system *system,
 }
 
 
-void Add_dBond_to_Forces( int i, int pj, reax_system *system,
+void Add_dBond_to_Forces( int32_t i, int32_t pj, reax_system *system,
         simulation_data *data, static_storage *workspace, reax_list **lists )
 {
     reax_list *bond_list;
     bond_data *nbr_j, *nbr_k;
     bond_order_data *bo_ij, *bo_ji;
     dbond_coefficients coef;
-    int pk, k, j;
+    int32_t pk, k, j;
     rvec *f_i, *f_j, *f_k;
 #if defined(_OPENMP)
-    int tid = omp_get_thread_num( );
+    int32_t tid = omp_get_thread_num( );
 #endif
 
     bond_list = lists[BONDS];
@@ -704,9 +704,9 @@ void BO( reax_system *system, control_params *control,
     #pragma omp parallel default(shared)
 #endif
     {
-        int i, j, pj, type_i, type_j;
-        int start_i, end_i;
-        int sym_index;
+        int32_t i, j, pj, type_i, type_j;
+        int32_t start_i, end_i;
+        int32_t sym_index;
         real val_i, Deltap_i, Deltap_boc_i;
         real val_j, Deltap_j, Deltap_boc_j;
         real temp, f1, f2, f3, f4, f5, f4f5, exp_f4, exp_f5;
@@ -719,8 +719,8 @@ void BO( reax_system *system, control_params *control,
         bond_order_data *bo_ij, *bo_ji;
         single_body_parameters *sbp_i, *sbp_j;
 #if defined(TEST_FORCES)
-        int k, pk, start_j, end_j;
-        int top_dbo, top_dDelta;
+        int32_t k, pk, start_j, end_j;
+        int32_t top_dbo, top_dDelta;
         dbond_data *pdbo;
         dDelta_data *ptop_dDelta;
 
@@ -1071,16 +1071,16 @@ void BO( reax_system *system, control_params *control,
                 - sbp_j->valency_boc;
 
             workspace->vlpex[j] = workspace->Delta_e[j]
-                - 2.0 * (int)(workspace->Delta_e[j] / 2.0);
+                - 2.0 * (int32_t) (workspace->Delta_e[j] / 2.0);
             explp1 = EXP( -1.0 * p_lp1 * SQR(2.0 + workspace->vlpex[j]) );
-            workspace->nlp[j] = explp1 - (int)(workspace->Delta_e[j] / 2.0);
+            workspace->nlp[j] = explp1 - (int32_t) (workspace->Delta_e[j] / 2.0);
             workspace->Delta_lp[j] = sbp_j->nlp_opt - workspace->nlp[j];
             workspace->Clp[j] = 2.0 * p_lp1 * (2.0 + workspace->vlpex[j]) * explp1;
             /* Adri uses different dDelta_lp values than the ones in notes... */
             workspace->dDelta_lp[j] = workspace->Clp[j];
 //            workspace->dDelta_lp[j] = workspace->Clp[j] + (0.5 - workspace->Clp[j])
 //                * ((FABS(workspace->Delta_e[j] / 2.0
-//                                - (int)(workspace->Delta_e[j] / 2.0)) < 0.1) ? 1 : 0 );
+//                                - (int32_t )(workspace->Delta_e[j] / 2.0)) < 0.1) ? 1 : 0 );
 
             if ( sbp_j->mass > 21.0 )
             {

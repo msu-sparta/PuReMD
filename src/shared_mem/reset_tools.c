@@ -28,7 +28,7 @@
 void Reset_Pressures( control_params *control, simulation_data *data )
 {
 #if defined(_OPENMP)
-    int i;
+    int32_t i;
 #endif
 
     rtensor_MakeZero( data->flex_bar.P );
@@ -50,7 +50,7 @@ void Reset_Pressures( control_params *control, simulation_data *data )
 #if defined(TEST_FORCES)
 static void Reset_Test_Forces( reax_system *system, static_storage *workspace )
 {
-    int i;
+    int32_t i;
 
     for ( i = 0; i < system->N; i++ )
     {
@@ -110,7 +110,7 @@ static void Reset_Test_Forces( reax_system *system, static_storage *workspace )
 
 void Reset_Atomic_Forces( reax_system* system )
 {
-    int i;
+    int32_t i;
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -142,9 +142,9 @@ void Reset_Energies( simulation_data* data )
 
 void Reset_Workspace( reax_system *system, static_storage *workspace )
 {
-    int i;
+    int32_t i;
 #if defined(_OPENMP)
-    int tid;
+    int32_t tid;
 #endif
 
     for ( i = 0; i < system->N; i++ )
@@ -197,7 +197,7 @@ void Reset( reax_system *system, control_params *control,
 
 void Reset_Grid( grid *g )
 {
-    int i, j, k;
+    int32_t i, j, k;
 
     for ( i = 0; i < g->ncell[0]; i++ )
     {
@@ -212,9 +212,9 @@ void Reset_Grid( grid *g )
 }
 
 
-void Reset_Marks( grid *g, ivec *grid_stack, int grid_top )
+void Reset_Marks( grid *g, ivec *grid_stack, int32_t grid_top )
 {
-    int i;
+    int32_t i;
 
     for ( i = 0; i < grid_top; ++i )
     {

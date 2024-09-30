@@ -34,7 +34,7 @@ void Temperature_Control( control_params *control, simulation_data *data,
     if ( control->T_mode == 1 )
     {
         if ( (data->step - data->prev_steps) %
-                ((int)(control->T_freq / control->dt)) == 0 )
+                ((int32_t) (control->T_freq / control->dt)) == 0 )
         {
             if ( FABS( control->T - control->T_final ) >= FABS( control->T_rate ) )
             {
@@ -62,7 +62,7 @@ void Temperature_Control( control_params *control, simulation_data *data,
 void Compute_Total_Mass( reax_system const * const system,
         simulation_data * const data )
 {
-    int i;
+    int32_t i;
 
     data->M = 0.0;
 
@@ -78,7 +78,7 @@ void Compute_Total_Mass( reax_system const * const system,
 void Compute_Center_of_Mass( reax_system const * const system,
         simulation_data * const data )
 {
-    int i;
+    int32_t i;
     real m, xx, xy, xz, yy, yz, zz, det;
     rvec tvec, diff;
     rtensor mat, inv;
@@ -186,7 +186,7 @@ void Compute_Center_of_Mass( reax_system const * const system,
 void Compute_Kinetic_Energy( reax_system const * const  system,
         simulation_data * const data )
 {
-    int i;
+    int32_t i;
     real m;
     rvec p;
 
@@ -257,7 +257,7 @@ void Check_Energy( simulation_data* data )
 void Compute_Pressure_Isotropic( reax_system* system, control_params *control,
         simulation_data* data, output_controls *out_control )
 {
-    int i;
+    int32_t i;
     simulation_box *box;
     rtensor temp;
 
@@ -320,7 +320,7 @@ void Compute_Pressure_Isotropic( reax_system* system, control_params *control,
  */
 void Compute_Pressure_Isotropic_Klein( reax_system* system, simulation_data* data )
 {
-    int i;
+    int32_t i;
     reax_atom *p_atom;
     rvec dx;
 
@@ -340,7 +340,7 @@ void Compute_Pressure_Isotropic_Klein( reax_system* system, simulation_data* dat
 void Compute_Pressure( reax_system* system, simulation_data* data,
         static_storage *workspace )
 {
-    int i;
+    int32_t i;
     reax_atom *p_atom;
     rtensor temp;
 

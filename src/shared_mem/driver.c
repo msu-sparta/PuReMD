@@ -40,7 +40,7 @@ static void usage( char * argv[] )
 
 int main( int argc, char* argv[] )
 {
-    int i, ret;
+    int32_t i, ret;
     void *handle;
 
     if ( argc < 4 || argc % 3 != 1 )

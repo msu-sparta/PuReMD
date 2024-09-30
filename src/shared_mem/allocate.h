@@ -26,16 +26,16 @@
 
 
 void PreAllocate_Space( reax_system * const, control_params  const * const,
-        static_storage * const, int );
+        static_storage * const, int32_t );
 
-void Allocate_Matrix( sparse_matrix * const , int, int, int );
+void Allocate_Matrix( sparse_matrix * const , int, int, int32_t );
 
 void Deallocate_Matrix( sparse_matrix * const  );
 
-void Initialize_HBond_List( int, int const * const, int * const,
+void Initialize_HBond_List( int, int32_t const * const, int32_t * const,
         reax_list * const );
 
-void Initialize_Bond_List( int * const, reax_list * const );
+void Initialize_Bond_List( int32_t * const, reax_list * const );
 
 void Reallocate_Part1( reax_system * const, control_params const * const,
         static_storage * const, reax_list ** const );

@@ -41,7 +41,7 @@
 static void Generate_Initial_Velocities( reax_system * const system,
         control_params const * const control, real T )
 {
-    int i;
+    int32_t i;
     real scale, norm;
 
     if ( T <= 0.1 || control->random_vel == FALSE )
@@ -99,9 +99,9 @@ static void Generate_Initial_Velocities( reax_system * const system,
 
 
 static void Init_System( reax_system * const system, control_params * const control,
-        simulation_data * const data, static_storage * const workspace, int realloc )
+        simulation_data * const data, static_storage * const workspace, int32_t realloc )
 {
-    int i;
+    int32_t i;
     rvec dx;
 
     system->allocated = TRUE;
@@ -167,16 +167,16 @@ static void Init_System( reax_system * const system, control_params * const cont
     if ( realloc == TRUE )
     {
         /* list management */
-        system->bonds = smalloc( sizeof(int) * system->N_max, __FILE__, __LINE__ );
+        system->bonds = smalloc( sizeof(int32_t) * system->N_max, __FILE__, __LINE__ );
 
-        system->hbonds = smalloc( sizeof(int) * system->N_max, __FILE__, __LINE__ );
+        system->hbonds = smalloc( sizeof(int32_t) * system->N_max, __FILE__, __LINE__ );
     }
 }
 
 
 static void Init_Simulation_Data( reax_system * const system,
         control_params * const control, simulation_data * const data,
-        evolve_function * const Evolve, int realloc )
+        evolve_function * const Evolve, int32_t realloc )
 {
 #if defined(_OPENMP)
     if ( realloc == TRUE && (control->ensemble == sNPT || control->ensemble == iNPT
@@ -349,9 +349,9 @@ static void Init_Taper( control_params const * const control,
 
 static void Init_Workspace( reax_system * const system,
         control_params const * const control, static_storage * const workspace,
-        int realloc )
+        int32_t realloc )
 {
-    int i;
+    int32_t i;
 
     workspace->allocated = TRUE;
 
@@ -635,19 +635,19 @@ static void Init_Workspace( reax_system * const system,
         if ( control->cm_solver_pre_app_type == TRI_SOLVE_LEVEL_SCHED_PA ||
                 control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
         {
-            workspace->row_levels_L = smalloc( system->N_cm_max * sizeof(unsigned int),
+            workspace->row_levels_L = smalloc( system->N_cm_max * sizeof(uint32_t),
                     __FILE__, __LINE__ );
-            workspace->level_rows_L = smalloc( system->N_cm_max * sizeof(unsigned int),
+            workspace->level_rows_L = smalloc( system->N_cm_max * sizeof(uint32_t),
                     __FILE__, __LINE__ );
-            workspace->level_rows_cnt_L = smalloc( (system->N_cm_max + 1) * sizeof(unsigned int),
+            workspace->level_rows_cnt_L = smalloc( (system->N_cm_max + 1) * sizeof(uint32_t),
                     __FILE__, __LINE__ );
-            workspace->row_levels_U = smalloc( system->N_cm_max * sizeof(unsigned int),
+            workspace->row_levels_U = smalloc( system->N_cm_max * sizeof(uint32_t),
                     __FILE__, __LINE__ );
-            workspace->level_rows_U = smalloc( system->N_cm_max * sizeof(unsigned int),
+            workspace->level_rows_U = smalloc( system->N_cm_max * sizeof(uint32_t),
                     __FILE__, __LINE__ );
-            workspace->level_rows_cnt_U = smalloc( (system->N_cm_max + 1) * sizeof(unsigned int),
+            workspace->level_rows_cnt_U = smalloc( (system->N_cm_max + 1) * sizeof(uint32_t),
                     __FILE__, __LINE__ );
-            workspace->top = smalloc( (system->N_cm_max + 1) * sizeof(unsigned int),
+            workspace->top = smalloc( (system->N_cm_max + 1) * sizeof(uint32_t),
                     __FILE__, __LINE__ );
         }
         else
@@ -668,21 +668,21 @@ static void Init_Workspace( reax_system * const system,
     {
         if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
         {
-            workspace->color = smalloc( sizeof(unsigned int) * system->N_cm_max,
+            workspace->color = smalloc( sizeof(uint32_t) * system->N_cm_max,
                     __FILE__, __LINE__ );
-            workspace->to_color = smalloc( sizeof(unsigned int) * system->N_cm_max,
+            workspace->to_color = smalloc( sizeof(uint32_t) * system->N_cm_max,
                     __FILE__, __LINE__ );
-            workspace->conflict = smalloc( sizeof(unsigned int) * system->N_cm_max,
+            workspace->conflict = smalloc( sizeof(uint32_t) * system->N_cm_max,
                     __FILE__, __LINE__ );
-            workspace->conflict_cnt = smalloc( sizeof(unsigned int) * (control->num_threads + 1),
+            workspace->conflict_cnt = smalloc( sizeof(uint32_t) * (control->num_threads + 1),
                     __FILE__, __LINE__ );
-            workspace->recolor = smalloc( sizeof(unsigned int) * system->N_cm_max,
+            workspace->recolor = smalloc( sizeof(uint32_t) * system->N_cm_max,
                     __FILE__, __LINE__ );
-            workspace->color_top = smalloc( sizeof(unsigned int) * (system->N_cm_max + 1),
+            workspace->color_top = smalloc( sizeof(uint32_t) * (system->N_cm_max + 1),
                     __FILE__, __LINE__ );
-            workspace->permuted_row_col = smalloc( sizeof(unsigned int) * system->N_cm_max,
+            workspace->permuted_row_col = smalloc( sizeof(uint32_t) * system->N_cm_max,
                     __FILE__, __LINE__ );
-            workspace->permuted_row_col_inv = smalloc( sizeof(unsigned int) * system->N_cm_max,
+            workspace->permuted_row_col_inv = smalloc( sizeof(uint32_t) * system->N_cm_max,
                     __FILE__, __LINE__ );
         }
         else
@@ -736,7 +736,7 @@ static void Init_Workspace( reax_system * const system,
         /* ILUTP preconditioner related */
         if ( control->cm_solver_pre_comp_type == ILUTP_PC )
         {
-            workspace->perm_ilutp = smalloc( sizeof( int ) * system->N_cm_max,
+            workspace->perm_ilutp = smalloc( sizeof( int32_t ) * system->N_cm_max,
                    __FILE__, __LINE__ );
         }
         else
@@ -760,9 +760,9 @@ static void Init_Workspace( reax_system * const system,
         /* storage for analysis */
         if ( control->molec_anal || control->diffusion_coef )
         {
-            workspace->mark = scalloc( system->N_max, sizeof(int),
+            workspace->mark = scalloc( system->N_max, sizeof(int32_t),
                     __FILE__, __LINE__ );
-            workspace->old_mark = scalloc( system->N_max, sizeof(int),
+            workspace->old_mark = scalloc( system->N_max, sizeof(int32_t),
                     __FILE__, __LINE__ );
         }
         else
@@ -825,9 +825,9 @@ static void Init_Workspace( reax_system * const system,
 
 static void Init_Lists( reax_system * const system,
         control_params * const control, simulation_data * const data,
-        static_storage * const workspace, reax_list ** const lists, int realloc )
+        static_storage * const workspace, reax_list ** const lists, int32_t realloc )
 {
-    int i, ret;
+    int32_t i, ret;
 
     if ( realloc == TRUE )
     {
@@ -943,7 +943,7 @@ static void Init_Lists( reax_system * const system,
         if ( lists[HBONDS]->allocated == FALSE )
         {
             Make_List( system->N, system->N_max,
-                    (int) CEIL( SAFE_ZONE * workspace->realloc.total_hbonds ),
+                    (int32_t) CEIL( SAFE_ZONE * workspace->realloc.total_hbonds ),
                     TYP_HBOND, lists[HBONDS] );
         }
         else if ( system->N_max < system->N
@@ -966,7 +966,7 @@ static void Init_Lists( reax_system * const system,
     /* bonds list */
     if ( lists[BONDS]->allocated == FALSE )
     {
-        Make_List( system->N, system->N_max, (int) CEIL( workspace->realloc.total_bonds * SAFE_ZONE ),
+        Make_List( system->N, system->N_max, (int32_t) CEIL( workspace->realloc.total_bonds * SAFE_ZONE ),
                 TYP_BOND, lists[BONDS] );
     }
     else if ( realloc == TRUE || lists[BONDS]->total_intrs < workspace->realloc.total_bonds )
@@ -987,7 +987,7 @@ static void Init_Lists( reax_system * const system,
     /* 3bodies list */
     if ( lists[THREE_BODIES]->allocated == FALSE )
     {
-        Make_List( workspace->realloc.total_bonds, (int) CEIL( workspace->realloc.total_bonds * SAFE_ZONE ),
+        Make_List( workspace->realloc.total_bonds, (int32_t) CEIL( workspace->realloc.total_bonds * SAFE_ZONE ),
                 workspace->realloc.total_thbodies, TYP_THREE_BODY, lists[THREE_BODIES] );
     }
     else if ( lists[THREE_BODIES]->n_max < workspace->realloc.total_bonds
@@ -1030,7 +1030,7 @@ static void Init_Lists( reax_system * const system,
 
 
 static void Init_Out_Controls( reax_system *system, control_params *control,
-        static_storage *workspace, output_controls *out_control, int output_enabled )
+        static_storage *workspace, output_controls *out_control, int32_t output_enabled )
 {
 #define TEMP_SIZE (1000)
     char temp[TEMP_SIZE];
@@ -1295,7 +1295,7 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
 void Initialize( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
         reax_list ** const lists, output_controls * const out_control,
-        evolve_function * const Evolve, int output_enabled, int realloc )
+        evolve_function * const Evolve, int32_t output_enabled, int32_t realloc )
 {
 #if defined(_OPENMP)
     #pragma omp parallel default(none) shared(control)
@@ -1343,9 +1343,9 @@ void Initialize( reax_system * const system, control_params * const control,
 
 
 static void Finalize_System( reax_system *system, control_params *control,
-        simulation_data *data, int reset )
+        simulation_data *data, int32_t reset )
 {
-    int i, j, k;
+    int32_t i, j, k;
     reax_interaction *reax;
 
     system->prealloc_allocated = FALSE;
@@ -1438,9 +1438,9 @@ static void Finalize_Simulation_Data( reax_system *system, control_params *contr
 
 
 static void Finalize_Workspace( reax_system *system, control_params *control,
-        static_storage *workspace, int reset )
+        static_storage *workspace, int32_t reset )
 {
-    int i;
+    int32_t i;
 
     if ( workspace->allocated == TRUE )
     {
@@ -1819,7 +1819,7 @@ void Finalize_Out_Controls( reax_system *system, control_params *control,
  */
 void Finalize( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace, reax_list **lists,
-        output_controls *out_control, int output_enabled, int reset )
+        output_controls *out_control, int32_t output_enabled, int32_t reset )
 {
     if ( control->tabulate )
     {

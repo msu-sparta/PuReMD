@@ -33,12 +33,12 @@
 
 
 /* Velocity Verlet integrator for microcanonical ensemble. */
-int Velocity_Verlet_NVE( reax_system * const system, control_params * const control,
+int32_t Velocity_Verlet_NVE( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
         reax_list ** const lists, output_controls * const out_control )
 {
-    int i, renbr, ret;
-    static int verlet_part1_done = FALSE, gen_nbr_list = FALSE;
+    int32_t i, renbr, ret;
+    static int32_t verlet_part1_done = FALSE, gen_nbr_list = FALSE;
     real inv_m, scalar1, scalar2;
     rvec dx;
 
@@ -127,13 +127,13 @@ int Velocity_Verlet_NVE( reax_system * const system, control_params * const cont
  *
  * NOTE: All box dimensions are scaled by the same amount, and
  * there is no change in the angles between axes. */
-int Velocity_Verlet_Berendsen_NVT( reax_system * const system,
+int32_t Velocity_Verlet_Berendsen_NVT( reax_system * const system,
         control_params * const control, simulation_data * const data,
         static_storage * const workspace, reax_list ** const lists,
         output_controls * const out_control )
 {
-    int i, renbr, ret;
-    static int verlet_part1_done = FALSE, gen_nbr_list = FALSE;
+    int32_t i, renbr, ret;
+    static int32_t verlet_part1_done = FALSE, gen_nbr_list = FALSE;
     real inv_m, scalar1, scalar2, lambda;
     rvec dx;
 
@@ -247,13 +247,13 @@ int Velocity_Verlet_Berendsen_NVT( reax_system * const system,
  *
  * Reference: Understanding Molecular Simulation, Frenkel and Smit
  *  Academic Press Inc. San Diego, 1996 p. 388-391 */
-int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
+int32_t Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
         control_params * const control, simulation_data * const data,
         static_storage * const workspace, reax_list ** const lists,
         output_controls * const out_control )
 {
-    int i, itr, renbr, ret;
-    static int verlet_part1_done = FALSE, gen_nbr_list = FALSE;
+    int32_t i, itr, renbr, ret;
+    static int32_t verlet_part1_done = FALSE, gen_nbr_list = FALSE;
     real inv_m, scalar1, scalar2, scalar3, scalar4, coef_v;
     real E_kin_new, G_xi_new, v_xi_new, v_xi_old;
     rvec dx;
@@ -383,13 +383,13 @@ int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
  *
  * NOTE: All box dimensions are scaled by the same amount, and
  * there is no change in the angles between axes. */
-int Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system * const system,
+int32_t Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system * const system,
         control_params * const control, simulation_data * const data,
         static_storage * const workspace, reax_list ** const lists,
         output_controls * const out_control )
 {
-    int i, renbr, ret;
-    static int verlet_part1_done = FALSE, gen_nbr_list = FALSE;
+    int32_t i, renbr, ret;
+    static int32_t verlet_part1_done = FALSE, gen_nbr_list = FALSE;
     real inv_m, dt, lambda, mu;
     rvec dx, mu_3;
 
@@ -532,13 +532,13 @@ int Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system * const system,
 
 /* Perform simulation using constant pressure and temperature (NPT ensemble)
  * with a Berendsen thermostat and the Velocity Verlet integrator. */
-int Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system * const system,
+int32_t Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system * const system,
         control_params * const control, simulation_data * const data,
         static_storage * const workspace, reax_list ** const lists,
         output_controls * const out_control )
 {
-    int i, renbr, ret;
-    static int verlet_part1_done = FALSE, gen_nbr_list = FALSE;
+    int32_t i, renbr, ret;
+    static int32_t verlet_part1_done = FALSE, gen_nbr_list = FALSE;
     real dt, inv_m, lambda;
     rvec dx, mu;
 
@@ -681,12 +681,12 @@ int Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system * const system,
 /* BELOW FUNCTIONS ARE NOT BEING USED ANYMORE!  */
 /************************************************/
 #if defined(ANISOTROPIC)
-int Velocity_Verlet_Nose_Hoover_NVT( reax_system * const system,
+int32_t Velocity_Verlet_Nose_Hoover_NVT( reax_system * const system,
         control_params * const control, simulation_data * const data,
         static_storage * const workspace, reax_list ** const lists,
         output_controls * const out_control )
 {
-    int i, ret;
+    int32_t i, ret;
     real inv_m;
     real dt = control->dt;
     real dt_sqr = SQR(dt);
@@ -768,12 +768,12 @@ int Velocity_Verlet_Nose_Hoover_NVT( reax_system * const system,
 }
 
 
-int Velocity_Verlet_Isotropic_NPT( reax_system * const system,
+int32_t Velocity_Verlet_Isotropic_NPT( reax_system * const system,
         control_params * const control, simulation_data * const data,
         static_storage * const workspace, reax_list ** const lists,
         output_controls * const out_control )
 {
-    int i, itr, ret;
+    int32_t i, itr, ret;
     real deps, v_eps_new = 0, v_eps_old = 0, G_xi_new;
     real dxi, v_xi_new = 0, v_xi_old = 0, a_eps_new;
     real inv_m, exp_deps, inv_3V;

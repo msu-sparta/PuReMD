@@ -36,70 +36,70 @@ extern "C"  {
 void * setup( const char * const, const char * const,
         const char * const );
 
-void * setup2( int, const int * const,
+void * setup2( int32_t, const int32_t * const,
         const double * const, const double * const,
         const char * const, const char * const );
 
-int setup_callback( const void * const, const callback_function );
+int32_t setup_callback( const void * const, const callback_function );
 
-int simulate( const void * const );
+int32_t simulate( const void * const );
 
-int cleanup( const void * const );
+int32_t cleanup( const void * const );
 
-int reset( const void * const, const char * const,
+int32_t reset( const void * const, const char * const,
         const char * const, const char * const );
 
-int reset2( const void * const, int, const int * const,
+int32_t reset2( const void * const, int32_t, const int32_t * const,
         const double * const, const double * const,
         const char * const, const char * const );
 
-int get_atom_positions( const void * const, double * const );
+int32_t get_atom_positions( const void * const, double * const );
 
-int get_atom_velocities( const void * const, double * const );
+int32_t get_atom_velocities( const void * const, double * const );
 
-int get_atom_forces( const void * const, double * const );
+int32_t get_atom_forces( const void * const, double * const );
 
-int get_atom_charges( const void * const, double * const );
+int32_t get_atom_charges( const void * const, double * const );
 
-int get_system_info( const void * const, double * const,
+int32_t get_system_info( const void * const, double * const,
         double * const, double * const, double * const,
         double * const, double * const );
 
-int get_total_energy( const void * const, double * const );
+int32_t get_total_energy( const void * const, double * const );
 
-int set_output_enabled( const void * const, const int );
+int32_t set_output_enabled( const void * const, const int32_t );
 
-int set_control_parameter( const void * const, const char * const,
+int32_t set_control_parameter( const void * const, const char * const,
        const char ** const );
 
-int set_contiguous_charge_constraints( const void * const, int,
-        const int * const, const int * const, const double * const );
+int32_t set_contiguous_charge_constraints( const void * const, int32_t,
+        const int32_t * const, const int32_t * const, const double * const );
 
-int set_custom_charge_constraints( const void * const,
-        int, const int * const, const int * const,
+int32_t set_custom_charge_constraints( const void * const,
+        int32_t, const int32_t * const, const int32_t * const,
         const double * const, const double * const );
 
 #if defined(QMMM)
-void * setup_qmmm( int, const char * const,
-        const double * const, int, const char * const,
+void * setup_qmmm( int32_t, const char * const,
+        const double * const, int32_t, const char * const,
         const double * const, const double * const,
         const char * const, const char * const );
 
-int reset_qmmm( const void * const, int, const char * const,
-        const double * const, int, const char * const,
+int32_t reset_qmmm( const void * const, int32_t, const char * const,
+        const double * const, int32_t, const char * const,
         const double * const, const double * const,
         const char * const, const char * const);
 
-int get_atom_positions_qmmm( const void * const, double * const,
+int32_t get_atom_positions_qmmm( const void * const, double * const,
         double * const );
 
-int get_atom_velocities_qmmm( const void * const, double * const,
+int32_t get_atom_velocities_qmmm( const void * const, double * const,
         double * const );
 
-int get_atom_forces_qmmm( const void * const, double * const,
+int32_t get_atom_forces_qmmm( const void * const, double * const,
         double * const );
 
-int get_atom_charges_qmmm( const void * const, double * const, double * const );
+int32_t get_atom_charges_qmmm( const void * const, double * const, double * const );
 #endif
 
 #if defined(__cplusplus)

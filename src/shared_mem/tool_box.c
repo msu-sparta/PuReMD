@@ -43,9 +43,9 @@
  * Outputs:
  *  x2: transformed position
  * */
-void Transform( rvec x1, simulation_box *box, int flag, rvec x2 )
+void Transform( rvec x1, simulation_box *box, int32_t flag, rvec x2 )
 {
-    int i, j;
+    int32_t i, j;
     real tmp;
 
     if ( flag == 1 )
@@ -91,7 +91,7 @@ void Transform( rvec x1, simulation_box *box, int flag, rvec x2 )
  * Outputs:
  *  x2: transformed position
  * */
-void Transform_to_UnitBox( rvec x1, simulation_box *box, int flag, rvec x2 )
+void Transform_to_UnitBox( rvec x1, simulation_box *box, int32_t flag, rvec x2 )
 {
     Transform( x1, box, flag, x2 );
 
@@ -107,7 +107,7 @@ void Transform_to_UnitBox( rvec x1, simulation_box *box, int flag, rvec x2 )
  * of the simulation box in a particular dimension */
 void Fit_to_Periodic_Box( simulation_box *box, rvec p )
 {
-    int i;
+    int32_t i;
 
     for ( i = 0; i < 3; ++i )
     {
@@ -133,9 +133,9 @@ void Fit_to_Periodic_Box( simulation_box *box, rvec p )
 
 /* determine whether point p is inside the box */
 /* assumes orthogonal box */
-int is_Inside_Box( simulation_box *box, rvec p )
+int32_t is_Inside_Box( simulation_box *box, rvec p )
 {
-    int ret = TRUE;
+    int32_t ret = TRUE;
 
     if ( p[0] < box->min[0] || p[0] >= box->max[0]
             || p[1] < box->min[1] || p[1] >= box->max[1]
@@ -157,7 +157,7 @@ void Make_Point( real x, real y, real z, rvec* p )
 }
 
 
-int is_Valid_Serial( int serial )
+int32_t is_Valid_Serial( int32_t serial )
 {
     if ( serial < 0 )
     {
@@ -178,14 +178,14 @@ int is_Valid_Serial( int serial )
  * filename: source filename of caller
  * line: source line of caller
  */
-int Check_Input_Range( int val, int lo, int hi, const char * const filename,
-        int line )
+int32_t Check_Input_Range( int32_t val, int32_t lo, int32_t hi, const char * const filename,
+        int32_t line )
 {
     if ( val < lo || val > hi )
     {
         fprintf( stderr, "[ERROR] Invalid BGF serial\n" );
         fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
-                line, (int) strlen(filename), filename );
+                line, (int32_t) strlen(filename), filename );
         fprintf( stderr, "    [INFO] Input %d - Out of range %d-%d. Terminating...\n",
                  val, lo, hi );
         exit( INVALID_INPUT );
@@ -197,7 +197,7 @@ int Check_Input_Range( int val, int lo, int hi, const char * const filename,
 
 void Trim_Spaces( char * const element, const size_t size )
 {
-    int i, j, n;
+    int32_t i, j, n;
 
     n = strnlen( element, size );
 
@@ -226,7 +226,7 @@ void Trim_Spaces( char * const element, const size_t size )
 /************ from system_props.c *************/
 real Get_Time( )
 {
-    int ret;
+    int32_t ret;
     struct timespec t;
 
     ret = clock_gettime( CLOCK_MONOTONIC, &t );
@@ -242,7 +242,7 @@ real Get_Time( )
 
 real Get_Timing_Info( real t_start )
 {
-    int ret;
+    int32_t ret;
     struct timespec t_end;
 
     ret = clock_gettime( CLOCK_MONOTONIC, &t_end );
@@ -257,9 +257,9 @@ real Get_Timing_Info( real t_start )
 
 
 /*********** from io_tools.c **************/
-int Get_Atom_Type( reax_interaction *reax_param, char *s, size_t n )
+int32_t Get_Atom_Type( reax_interaction *reax_param, char *s, size_t n )
 {
-    int i, ret, flag;
+    int32_t i, ret, flag;
     
     flag = FAILURE;
 
@@ -284,13 +284,13 @@ int Get_Atom_Type( reax_interaction *reax_param, char *s, size_t n )
 }
 
 
-char *Get_Element( reax_system *system, int i )
+char *Get_Element( reax_system *system, int32_t i )
 {
     return system->reax_param.sbp[system->atoms[i].type].name;
 }
 
 
-char *Get_Atom_Name( reax_system *system, int i )
+char *Get_Atom_Name( reax_system *system, int32_t i )
 {
     return system->atoms[i].name;
 }
@@ -300,7 +300,7 @@ void Allocate_Tokenizer_Space( char **line, size_t line_size,
         char **backup, size_t backup_size,
         char ***tokens, size_t num_tokens, size_t token_size )
 {
-    int i;
+    int32_t i;
 
     *line = smalloc( sizeof(char) * line_size, __FILE__, __LINE__ );
     *backup = smalloc( sizeof(char) * backup_size, __FILE__, __LINE__ );
@@ -317,7 +317,7 @@ void Allocate_Tokenizer_Space( char **line, size_t line_size,
 void Deallocate_Tokenizer_Space( char **line, char **backup,
         char ***tokens, size_t num_tokens )
 {
-    int i;
+    int32_t i;
 
     for ( i = 0; i < num_tokens; i++ )
     {
@@ -330,9 +330,9 @@ void Deallocate_Tokenizer_Space( char **line, char **backup,
 }
 
 
-int Tokenize( char* s, char*** tok, size_t token_len )
+int32_t Tokenize( char* s, char*** tok, size_t token_len )
 {
-    int count, word_len;
+    int32_t count, word_len;
     char test[MAX_LINE];
     char *sep = "\t \n!=";
     char *word, *saveptr;
@@ -363,7 +363,7 @@ int Tokenize( char* s, char*** tok, size_t token_len )
  *
  * returns: ptr to allocated memory
  * */
-void * smalloc( size_t n, const char * const filename, int line )
+void * smalloc( size_t n, const char * const filename, int32_t line )
 {
     void *ptr;
 
@@ -372,13 +372,13 @@ void * smalloc( size_t n, const char * const filename, int line )
         fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array\n",
                 n );
         fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
-                line, (int) strlen(filename), filename );
+                line, (int32_t) strlen(filename), filename );
         exit( INSUFFICIENT_MEMORY );
     }
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "[INFO] requesting allocation of %zu bytes of memory at line %d in file %.*s\n",
-            n, line, (int) strlen(filename), filename );
+            n, line, (int32_t) strlen(filename), filename );
     fflush( stderr );
 #endif
 
@@ -389,7 +389,7 @@ void * smalloc( size_t n, const char * const filename, int line )
         fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array\n",
                 n );
         fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
-                line, (int) strlen(filename), filename );
+                line, (int32_t) strlen(filename), filename );
         exit( INSUFFICIENT_MEMORY );
     }
 
@@ -410,7 +410,7 @@ void * smalloc( size_t n, const char * const filename, int line )
  *
  * returns: ptr to reallocated memory
  * */
-void * srealloc( void *ptr, size_t n, const char * const filename, int line )
+void * srealloc( void *ptr, size_t n, const char * const filename, int32_t line )
 {
     void *new_ptr;
 
@@ -419,13 +419,13 @@ void * srealloc( void *ptr, size_t n, const char * const filename, int line )
         fprintf( stderr, "[ERROR] failed to reallocate %zu bytes for array\n",
                 n );
         fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
-                line, (int) strlen(filename), filename );
+                line, (int32_t) strlen(filename), filename );
         exit( INSUFFICIENT_MEMORY );
     }
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "[INFO] requesting reallocation of %zu bytes of memory at line %d in file %.*s\n",
-            n, line, (int) strlen(filename), filename );
+            n, line, (int32_t) strlen(filename), filename );
     fflush( stderr );
 #endif
 
@@ -438,7 +438,7 @@ void * srealloc( void *ptr, size_t n, const char * const filename, int line )
         fprintf( stderr, "[ERROR] failed to reallocate %zu bytes for array\n",
                 n );
         fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
-                line, (int) strlen(filename), filename );
+                line, (int32_t) strlen(filename), filename );
         exit( INSUFFICIENT_MEMORY );
     }
 
@@ -460,7 +460,7 @@ void * srealloc( void *ptr, size_t n, const char * const filename, int line )
  *
  * returns: ptr to allocated memory, all bits initialized to zeros
  * */
-void * scalloc( size_t n, size_t size, const char * const filename, int line )
+void * scalloc( size_t n, size_t size, const char * const filename, int32_t line )
 {
     void *ptr;
 
@@ -469,13 +469,13 @@ void * scalloc( size_t n, size_t size, const char * const filename, int line )
         fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array\n",
                 n * size );
         fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
-                line, (int) strlen(filename), filename );
+                line, (int32_t) strlen(filename), filename );
         exit( INSUFFICIENT_MEMORY );
     }
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "[INFO] requesting allocation of %zu bytes of zeroed memory at line %d in file %.*s\n",
-            n * size, line, (int) strlen(filename), filename );
+            n * size, line, (int32_t) strlen(filename), filename );
     fflush( stderr );
 #endif
 
@@ -486,7 +486,7 @@ void * scalloc( size_t n, size_t size, const char * const filename, int line )
         fprintf( stderr, "[ERROR] failed to allocate %zu bytes for array\n",
                 n * size );
         fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
-                line, (int) strlen(filename), filename );
+                line, (int32_t) strlen(filename), filename );
         exit( INSUFFICIENT_MEMORY );
     }
 
@@ -505,19 +505,19 @@ void * scalloc( size_t n, size_t size, const char * const filename, int line )
  * filename: source filename of caller
  * line: source line of caller
  * */
-void sfree( void *ptr, const char * const filename, int line )
+void sfree( void *ptr, const char * const filename, int32_t line )
 {
     if ( ptr == NULL )
     {
         fprintf( stderr, "[WARNING] trying to free the already NULL pointer\n" );
         fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
-                line, (int) strlen(filename), filename );
+                line, (int32_t) strlen(filename), filename );
         return;
     }
 
 #if defined(DEBUG_FOCUS)
     fprintf( stderr, "[INFO] trying to free pointer at line %d in file %.*s\n",
-            line, (int) strlen(filename), filename );
+            line, (int32_t) strlen(filename), filename );
     fflush( stderr );
     fprintf( stderr, "[INFO] address: %p [SFREE]\n", (void *) ptr );
     fflush( stderr );
@@ -535,7 +535,7 @@ void sfree( void *ptr, const char * const filename, int line )
  * line: source line of caller
  * */
 FILE * sfopen( const char * fname, const char * mode,
-        const char * const filename, int line )
+        const char * const filename, int32_t line )
 {
     FILE * ptr;
 
@@ -543,7 +543,7 @@ FILE * sfopen( const char * fname, const char * mode,
     {
         fprintf( stderr, "[ERROR] trying to open file\n" );
         fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
-                line, (int) strlen(filename), filename );
+                line, (int32_t) strlen(filename), filename );
         fprintf( stderr, "  [INFO] NULL file name\n" );
         exit( INVALID_INPUT );
     }
@@ -551,7 +551,7 @@ FILE * sfopen( const char * fname, const char * mode,
     {
         fprintf( stderr, "[ERROR] trying to open file\n" );
         fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
-                line, (int) strlen(filename), filename );
+                line, (int32_t) strlen(filename), filename );
         fprintf( stderr, "  [INFO] NULL mode\n" );
         exit( INVALID_INPUT );
     }
@@ -563,7 +563,7 @@ FILE * sfopen( const char * fname, const char * mode,
         fprintf( stderr, "[ERROR] failed to open file %s with mode %s\n",
               fname, mode );
         fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
-                line, (int) strlen(filename), filename );
+                line, (int32_t) strlen(filename), filename );
         exit( INVALID_INPUT );
     }
 
@@ -577,15 +577,15 @@ FILE * sfopen( const char * fname, const char * mode,
  * filename: source filename of caller
  * line: source line of caller
  * */
-void sfclose( FILE * fp, const char * const filename, int line )
+void sfclose( FILE * fp, const char * const filename, int32_t line )
 {
-    int ret;
+    int32_t ret;
 
     if ( fp == NULL )
     {
         fprintf( stderr, "[WARNING] trying to close NULL file pointer. Returning...\n" );
         fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
-                line, (int) strlen(filename), filename );
+                line, (int32_t) strlen(filename), filename );
         return;
     }
 
@@ -595,7 +595,7 @@ void sfclose( FILE * fp, const char * const filename, int line )
     {
         fprintf( stderr, "[ERROR] error detected when closing file\n" );
         fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
-                line, (int) strlen(filename), filename );
+                line, (int32_t) strlen(filename), filename );
         exit( INVALID_INPUT );
     }
 }
@@ -609,8 +609,8 @@ void sfclose( FILE * fp, const char * const filename, int line )
  *
  * returns: result of conversion (integer)
  * */
-int sstrtol( const char * const str,
-        const char * const filename, int line )
+int32_t sstrtol( const char * const str,
+        const char * const filename, int32_t line )
 {
     long ret;
     char *endptr;
@@ -621,7 +621,7 @@ int sstrtol( const char * const str,
         /* strlen safe here only if filename is NULL-terminated
          * before calling sconvert_string_to_int */
         fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
-                line, (int) strlen(filename), filename );
+                line, (int32_t) strlen(filename), filename );
         exit( INVALID_INPUT );
     }
 
@@ -635,9 +635,9 @@ int sstrtol( const char * const str,
         /* strlen safe here only if filename is NULL-terminated
          * before calling sconvert_string_to_int */
         fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
-                line, (int) strlen(filename), filename );
+                line, (int32_t) strlen(filename), filename );
         fprintf( stderr, "    [INFO] str: %.*s\n",
-                (int) strlen(str), str );
+                (int32_t) strlen(str), str );
         exit( INVALID_INPUT );
     }
     else if ( endptr == str )
@@ -646,9 +646,9 @@ int sstrtol( const char * const str,
         /* strlen safe here only if filename is NULL-terminated
          * before calling sconvert_string_to_int */
         fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
-                line, (int) strlen(filename), filename );
+                line, (int32_t) strlen(filename), filename );
         fprintf( stderr, "    [INFO] str: %.*s\n",
-                (int) strlen(str), str );
+                (int32_t) strlen(str), str );
         exit( INVALID_INPUT );
     }
     else if ( *endptr != '\0' )
@@ -657,13 +657,13 @@ int sstrtol( const char * const str,
         /* strlen safe here only if filename is NULL-terminated
          * before calling sconvert_string_to_int */
         fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
-                line, (int) strlen(filename), filename );
+                line, (int32_t) strlen(filename), filename );
         fprintf( stderr, "    [INFO] str: %.*s\n",
-                (int) strlen(str), str );
+                (int32_t) strlen(str), str );
         exit( INVALID_INPUT );
     }
 
-    return (int) ret;
+    return (int32_t) ret;
 }
 
 
@@ -676,7 +676,7 @@ int sstrtol( const char * const str,
  * returns: result of conversion (double)
  * */
 double sstrtod( const char * const str,
-        const char * const filename, int line )
+        const char * const filename, int32_t line )
 {
     double ret;
     char *endptr;
@@ -687,7 +687,7 @@ double sstrtod( const char * const str,
         /* strlen safe here only if filename is NULL-terminated
          * before calling sconvert_string_to_int */
         fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
-                line, (int) strlen(filename), filename );
+                line, (int32_t) strlen(filename), filename );
         exit( INVALID_INPUT );
     }
 
@@ -701,9 +701,9 @@ double sstrtod( const char * const str,
         /* strlen safe here only if filename is NULL-terminated
          * before calling sconvert_string_to_int */
         fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
-                line, (int) strlen(filename), filename );
+                line, (int32_t) strlen(filename), filename );
         fprintf( stderr, "    [INFO] str: %.*s\n",
-                (int) strlen(str), str );
+                (int32_t) strlen(str), str );
         exit( INVALID_INPUT );
     }
     else if ( endptr == str )
@@ -712,9 +712,9 @@ double sstrtod( const char * const str,
         /* strlen safe here only if filename is NULL-terminated
          * before calling sconvert_string_to_int */
         fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
-                line, (int) strlen(filename), filename );
+                line, (int32_t) strlen(filename), filename );
         fprintf( stderr, "    [INFO] str: %.*s\n",
-                (int) strlen(str), str );
+                (int32_t) strlen(str), str );
         exit( INVALID_INPUT );
     }
     else if ( *endptr != '\0' )
@@ -723,9 +723,9 @@ double sstrtod( const char * const str,
         /* strlen safe here only if filename is NULL-terminated
          * before calling sconvert_string_to_int */
         fprintf( stderr, "    [INFO] At line %d in file %.*s\n",
-                line, (int) strlen(filename), filename );
+                line, (int32_t) strlen(filename), filename );
         fprintf( stderr, "    [INFO] str: %.*s\n",
-                (int) strlen(str), str );
+                (int32_t) strlen(str), str );
         exit( INVALID_INPUT );
     }
 

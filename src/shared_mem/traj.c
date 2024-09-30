@@ -37,7 +37,7 @@
 #define FRAME_GLOBALS_FORMAT ("%10d  %8.3f  %15.3f  %15.3f  %15.3f  %15.3f\\n%15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %8.2f  %8.2f  %8.2f\\n%15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f\\n")
 #define FRAME_GLOBALS ("%10d  %8.3f  %15.3f  %15.3f  %15.3f  %15.3f\n%15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %8.2f  %8.2f  %8.2f\n%15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f\n")
 #define FRAME_GLOBAL_NAMES ("timestep, time, e_total, e_pot, e_kin, temperature, pressure, volume, x_norm, y_norm, z_norm, x_angle, y_angle, z_angle, e_be, e_ov, e_un, e_lp, e_ang, e_pen, e_coa, e_hb, e_tor, e_con, e_vdw, e_ele, e_pol")
-#define FRAME_GLOBALS_LEN (11 + 20 * 9 + 70) // 1x10d int + 20x8.3f + CRYST line (6s + 3x9.3f + 3x7.2f + 11s + 4d + 1)
+#define FRAME_GLOBALS_LEN (11 + 20 * 9 + 70) // 1x10d int32_t + 20x8.3f + CRYST line (6s + 3x9.3f + 3x7.2f + 11s + 4d + 1)
 
 //AtomID AtomType (X Y Z) Charge
 #define ATOM_BASIC ("%9d %10.3f %10.3f %10.3f %10.3f\n")
@@ -101,12 +101,12 @@ enum ANGLE_LINE_OPTS
 /*      CUSTOM FORMAT ROUTINES                  */
 /************************************************/
 
-int Write_Custom_Header( reax_system *system, control_params *control,
+int32_t Write_Custom_Header( reax_system *system, control_params *control,
         static_storage *workspace, output_controls *out_control )
 {
 #define SIZE1 (2048)
 #define SIZE2 (100)
-    int i, header_len, control_block_len, frame_format_len;
+    int32_t i, header_len, control_block_len, frame_format_len;
     // char buffer[2048];
     char control_block[SIZE1];
     char frame_format[SIZE1];
@@ -240,15 +240,15 @@ int Write_Custom_Header( reax_system *system, control_params *control,
 }
 
 
-int Append_Custom_Frame( reax_system *system, control_params *control,
+int32_t Append_Custom_Frame( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
 #define SIZE (2048)
-    int i, j, pi, pk, pk_j;
-    int write_atoms, write_bonds, write_angles;
-    int frame_len, atom_line_len, bond_line_len, angle_line_len, rest_of_frame_len;
-    int frame_globals_len, num_bonds, num_thb_intrs;
+    int32_t i, j, pi, pk, pk_j;
+    int32_t write_atoms, write_bonds, write_angles;
+    int32_t frame_len, atom_line_len, bond_line_len, angle_line_len, rest_of_frame_len;
+    int32_t frame_globals_len, num_bonds, num_thb_intrs;
     real P;
     char buffer[SIZE];
     reax_list *bonds, *thb_intrs;
@@ -562,7 +562,7 @@ int Append_Custom_Frame( reax_system *system, control_params *control,
 #if defined(HAVE_ZLIB)
 void Read_Traj_Compressed( output_controls *out_control, char *traj_name )
 {
-    int skip_all, skip_part, n;
+    int32_t skip_all, skip_part, n;
     char size_buffer[50];
     gzFile trj;
 
@@ -611,7 +611,7 @@ void Read_Traj_Compressed( output_controls *out_control, char *traj_name )
 /********************************************************/
 /************      XYZ FORMAT ROUTINES    ***************/
 /********************************************************/
-int Write_xyz_Header( reax_system *system, control_params *control,
+int32_t Write_xyz_Header( reax_system *system, control_params *control,
         static_storage* workspace, output_controls *out_control )
 {
     fflush( out_control->trj );
@@ -620,11 +620,11 @@ int Write_xyz_Header( reax_system *system, control_params *control,
 }
 
 
-int Append_xyz_Frame( reax_system *system, control_params *control,
+int32_t Append_xyz_Frame( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    int i;
+    int32_t i;
 
     out_control->write( out_control->trj, "%d\n", system->N );
 

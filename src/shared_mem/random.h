@@ -36,7 +36,7 @@ void Randomize( );
 /* generate a random number in range [0.0, limit] */
 static inline double Random( double limit )
 {
-    int divisor, ret;
+    int32_t divisor, ret;
 
     divisor = RAND_MAX / (limit + 1);
 

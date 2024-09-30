@@ -48,9 +48,9 @@ enum molecule_type
 
 typedef struct
 {
-    int atom_count;
-    int atom_list[MAX_MOLECULE_SIZE];
-    int mtypes[MAX_ATOM_TYPES];
+    int32_t atom_count;
+    int32_t atom_list[MAX_MOLECULE_SIZE];
+    int32_t mtypes[MAX_ATOM_TYPES];
 } molecule;
 
 
@@ -58,7 +58,7 @@ typedef struct
 static void Copy_Bond_List( reax_system *system, control_params *control,
         reax_list **lists )
 {
-    int i, j, top_old;
+    int32_t i, j, top_old;
     reax_list *new_bonds = lists[BONDS];
     reax_list *old_bonds = lists[OLD_BONDS];
 
@@ -86,9 +86,9 @@ static void Copy_Bond_List( reax_system *system, control_params *control,
 
 
 // ASSUMPTION: Bond lists are sorted
-static int Compare_Bond_Lists( int atom, control_params *control, reax_list **lists )
+static int32_t Compare_Bond_Lists( int32_t atom, control_params *control, reax_list **lists )
 {
-    int oldp, newp;
+    int32_t oldp, newp;
     reax_list *new_bonds = lists[BONDS];
     reax_list *old_bonds = lists[OLD_BONDS];
 
@@ -168,10 +168,10 @@ static int Compare_Bond_Lists( int atom, control_params *control, reax_list **li
 }
 
 
-static void Get_Molecule( int atom, molecule *m, int *mark, reax_system *system,
-        control_params *control, reax_list *bonds, int print, FILE *fout )
+static void Get_Molecule( int32_t atom, molecule *m, int32_t *mark, reax_system *system,
+        control_params *control, reax_list *bonds, int32_t print, FILE *fout )
 {
-    int i, start, end;
+    int32_t i, start, end;
 
     start = Start_Index( atom, bonds );
     end = End_Index( atom, bonds );
@@ -197,10 +197,10 @@ static void Get_Molecule( int atom, molecule *m, int *mark, reax_system *system,
 }
 
 
-static void Print_Molecule( reax_system *system, molecule *m, int mode,
+static void Print_Molecule( reax_system *system, molecule *m, int32_t mode,
         char *s, size_t s_size, char *s_out, size_t s_out_size )
 {
-    int j, atom;
+    int32_t j, atom;
 
     s[0] = '\0';
 
@@ -211,7 +211,7 @@ static void Print_Molecule( reax_system *system, molecule *m, int mode,
         {
             if ( m->mtypes[j] )
             {
-                snprintf( s_out, s_out_size, "%.*s%14s%3d", (int) MAX(s_out_size - 18, 0),
+                snprintf( s_out, s_out_size, "%.*s%14s%3d", (int32_t) MAX(s_out_size - 18, 0),
                         s, system->reax_param.sbp[j].name, m->mtypes[j] );
                 s_out[s_out_size - 1] = '\0';
             }
@@ -223,8 +223,8 @@ static void Print_Molecule( reax_system *system, molecule *m, int mode,
         for ( j = 0; j < m->atom_count; ++j )
         {
             atom = m->atom_list[j];
-            snprintf( s_out, s_out_size, "%.*s%.*s(%d)", (int) MAX((s_out_size - 5) / 2, 0), s,
-                    (int) MAX((s_out_size - 5) / 2, 0),
+            snprintf( s_out, s_out_size, "%.*s%.*s(%d)", (int32_t) MAX((s_out_size - 5) / 2, 0), s,
+                    (int32_t) MAX((s_out_size - 5) / 2, 0),
                     system->reax_param.sbp[ system->atoms[atom].type ].name, atom );
             s_out[s_out_size - 1] = '\0';
         }
@@ -236,10 +236,10 @@ static void Analyze_Molecules( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, FILE *fout )
 {
-    int atom, i, j, k, l, flag;
-    int *mark = workspace->mark;
-    int *old_mark = workspace->old_mark;
-    int num_old, num_new;
+    int32_t atom, i, j, k, l, flag;
+    int32_t *mark = workspace->mark;
+    int32_t *old_mark = workspace->old_mark;
+    int32_t num_old, num_new;
     char s[MAX_MOLECULE_SIZE * 10];
     char s_out[MAX_MOLECULE_SIZE * 10];
     reax_list *new_bonds = lists[BONDS];
@@ -340,11 +340,11 @@ static void Analyze_Molecules( reax_system *system, control_params *control,
 #if defined(DEBUG_FOCUS)
 static void Report_Bond_Change( reax_system *system, control_params *control,
         static_storage *workspace,  reax_list *old_bonds,
-        reax_list *new_bonds, int a1, int a2, int flag, FILE *fout )
+        reax_list *new_bonds, int32_t a1, int32_t a2, int32_t flag, FILE *fout )
 {
-    int i;
-    int rev1, rev2;
-    int mol1 = -1, mol2 = -1;
+    int32_t i;
+    int32_t rev1, rev2;
+    int32_t mol1 = -1, mol2 = -1;
     // which molecule the atom belongs to, 0: Silica, 1: Water
 
     rev1 = workspace->orig_id[a1];
@@ -442,11 +442,11 @@ static void Report_Bond_Change( reax_system *system, control_params *control,
 
 /* ASSUMPTION: Bond lists are sorted */
 #if defined(DEBUG_FOCUS)
-static void Compare_Bonding( int atom, reax_system *system, control_params *control,
+static void Compare_Bonding( int32_t atom, reax_system *system, control_params *control,
         static_storage *workspace, reax_list *old_bonds,
         reax_list *new_bonds, FILE *fout )
 {
-    int oldp, newp;
+    int32_t oldp, newp;
 
     /* fprintf( fout, "\n%d\nold_bonds:", atom );
        for( oldp = Start_Index( atom, old_bonds );
@@ -569,10 +569,10 @@ static void Compare_Bonding( int atom, reax_system *system, control_params *cont
 #endif
 
 
-static void Visit_Bonds( int atom, int *mark, int *type, reax_system *system,
-                  control_params *control, reax_list *bonds, int ignore )
+static void Visit_Bonds( int32_t atom, int32_t *mark, int32_t *type, reax_system *system,
+                  control_params *control, reax_list *bonds, int32_t ignore )
 {
-    int i, t, start, end, nbr;
+    int32_t i, t, start, end, nbr;
     real bo;
 
     mark[atom] = 1;
@@ -597,15 +597,15 @@ static void Visit_Bonds( int atom, int *mark, int *type, reax_system *system,
 
 static void Analyze_Fragments( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        reax_list **lists, FILE *fout, int ignore )
+        reax_list **lists, FILE *fout, int32_t ignore )
 {
-    int atom, i, flag;
-    int *mark = workspace->mark;
-    int num_fragments, num_fragment_types;
+    int32_t atom, i, flag;
+    int32_t *mark = workspace->mark;
+    int32_t num_fragments, num_fragment_types;
     char fragment[MAX_ATOM_TYPES];
     char fragment_out[MAX_ATOM_TYPES];
     char fragments[MAX_FRAGMENT_TYPES][MAX_ATOM_TYPES];
-    int fragment_count[MAX_FRAGMENT_TYPES];
+    int32_t fragment_count[MAX_FRAGMENT_TYPES];
     molecule m;
     reax_list *new_bonds = lists[BONDS];
 //    reax_list *old_bonds = lists[OLD_BONDS];
@@ -624,7 +624,7 @@ static void Analyze_Fragments( reax_system *system, control_params *control,
         if ( !mark[atom] )
         {
             /* discover a new fragment */
-            memset( m.mtypes, 0, MAX_ATOM_TYPES * sizeof(int) );
+            memset( m.mtypes, 0, MAX_ATOM_TYPES * sizeof(int32_t) );
             Visit_Bonds( atom, mark, m.mtypes, system, control, new_bonds, ignore );
             ++num_fragments;
             Print_Molecule( system, &m, 1, fragment, sizeof(fragment),
@@ -680,9 +680,9 @@ static void Analyze_Silica( reax_system *system, control_params *control,
                      simulation_data *data, static_storage *workspace,
                      reax_list **lists, FILE *fout )
 {
-    int atom, i, j, k, pi, pk, pk_j, newp, coord;
-    int O_SI_O_count, SI_O_SI_count;
-    int si_coord[10], ox_coord[10];
+    int32_t atom, i, j, k, pi, pk, pk_j, newp, coord;
+    int32_t O_SI_O_count, SI_O_SI_count;
+    int32_t si_coord[10], ox_coord[10];
     real O_SI_O, SI_O_SI;
     reax_list *new_bonds = lists[BONDS];
     reax_list *thb_intrs = lists[THREE_BODIES];
@@ -806,7 +806,7 @@ static void Analyze_Silica( reax_system *system, control_params *control,
 #endif
 
 
-static int Get_Type_of_Molecule( molecule *m )
+static int32_t Get_Type_of_Molecule( molecule *m )
 {
     if ( m->atom_count == 3 && m->mtypes[1] == 2 && m->mtypes[2] == 1 )
     {
@@ -821,11 +821,11 @@ static void Calculate_Dipole_Moment( reax_system *system, control_params *contro
         simulation_data *data, static_storage *workspace,
         reax_list *bonds, FILE *fout )
 {
-    int i, atom, count;
+    int32_t i, atom, count;
     molecule m;
     real mu_sum;
     rvec tmpvec, mu;
-    int *mark = workspace->mark;
+    int32_t *mark = workspace->mark;
 
     mu_sum = 0;
     count = 0;
@@ -870,7 +870,7 @@ static void Calculate_Dipole_Moment( reax_system *system, control_params *contro
 
 static void Copy_Positions( reax_system *system, static_storage *workspace )
 {
-    int i;
+    int32_t i;
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -882,8 +882,8 @@ static void Copy_Positions( reax_system *system, static_storage *workspace )
 static void Calculate_Drift( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace, FILE *fout )
 {
-    int i, type;
-    int count[MAX_ATOM_TYPES];
+    int32_t i, type;
+    int32_t count[MAX_ATOM_TYPES];
     real drift;
     rvec driftvec;
     real sum_sqr_drift[MAX_ATOM_TYPES], sum_drift[MAX_ATOM_TYPES];
@@ -942,9 +942,9 @@ static void Calculate_Drift( reax_system *system, control_params *control,
 static void Calculate_Density_3DMesh( reax_system *system, simulation_data *data,
         FILE *fout )
 {
-    int i, j, k;
-    int occupied_cells;
-    int ***cell_counter;
+    int32_t i, j, k;
+    int32_t occupied_cells;
+    int32_t ***cell_counter;
     ivec my_cell;
     rvec mesh_cell_lens = { 1, 1, 1 };
     ivec mesh_dims;
@@ -960,17 +960,17 @@ static void Calculate_Density_3DMesh( reax_system *system, simulation_data *data
              mesh_dims[0], mesh_dims[1], mesh_dims[2] );
 
     /* allocate counter for each mesh cell */
-    cell_counter = (int ***) scalloc( mesh_dims[0], sizeof(int),
+    cell_counter = (int32_t ***) scalloc( mesh_dims[0], sizeof(int32_t),
            "Calculate_Density_3DMesh::cell_counter" );
 
     for ( i = 0; i < mesh_dims[0]; ++i )
     {
-        cell_counter[i] = (int **) scalloc( mesh_dims[1], sizeof(int),
+        cell_counter[i] = (int32_t **) scalloc( mesh_dims[1], sizeof(int32_t),
                "Calculate_Density_3DMesh::cell_counter[i]" );
 
         for ( j = 0; j < mesh_dims[1]; ++j )
         {
-            cell_counter[i][j] = (int *) scalloc( mesh_dims[2], sizeof(int),
+            cell_counter[i][j] = (int32_t *) scalloc( mesh_dims[2], sizeof(int32_t),
                    "Calculate_Density_3DMesh::cell_counter[i][j]" );
         }
     }
@@ -1023,12 +1023,12 @@ static void Calculate_Density_3DMesh( reax_system *system, simulation_data *data
 static void Calculate_Density_Slice( reax_system *system, simulation_data *data, FILE *fout )
 {
     real slice_thickness = 0.5;
-    int *slice_occ;
-    int i, num_slices, my_slice, max_occ = 0;
+    int32_t *slice_occ;
+    int32_t i, num_slices, my_slice, max_occ = 0;
 
     /* allocate counter */
     num_slices = system->box.box_norms[2] / slice_thickness + 1.;
-    slice_occ = (int*) scalloc( num_slices, sizeof(int),
+    slice_occ = (int32_t*) scalloc( num_slices, sizeof(int32_t),
            "Calculate_Density_Slice::slice_occ" );
 
     /* distribute atoms to slices */
@@ -1065,7 +1065,7 @@ void Analysis( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    int steps;
+    int32_t steps;
 
     steps = data->step - data->prev_steps;
 

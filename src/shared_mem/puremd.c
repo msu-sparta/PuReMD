@@ -47,7 +47,7 @@ static void Post_Evolve( reax_system * const system, control_params * const cont
         simulation_data * const data, static_storage * const workspace,
         reax_list ** const lists, output_controls * const out_control )
 {
-    int i;
+    int32_t i;
     rvec diff, cross;
 
     /* remove rotational and translational velocity of the center of mass */
@@ -94,7 +94,7 @@ static void Read_Input_Files( const char * const geo_file,
         const char * const ffield_file, const char * const control_file,
         reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        output_controls * const out_control, int reset )
+        output_controls * const out_control, int32_t reset )
 {
     if ( ffield_file != NULL )
     {
@@ -155,7 +155,7 @@ static void Read_Input_Files( const char * const geo_file,
 
 static void Allocate_Top_Level_Structs( puremd_handle ** handle )
 {
-    int i;
+    int32_t i;
 
     /* top-level allocation */
     *handle = smalloc( sizeof(puremd_handle), __FILE__, __LINE__ );
@@ -176,7 +176,7 @@ static void Allocate_Top_Level_Structs( puremd_handle ** handle )
 
 static void Initialize_Top_Level_Structs( puremd_handle * handle )
 {
-    int i;
+    int32_t i;
 
     /* top-level initializations */
     handle->output_enabled = TRUE;
@@ -237,7 +237,7 @@ void * setup( const char * const geo_file, const char * const ffield_file,
             pmd_handle->data, pmd_handle->workspace,
             pmd_handle->out_control, FALSE );
 
-    pmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * pmd_handle->system->N );
+    pmd_handle->system->N_max = (int32_t) CEIL( SAFE_ZONE * pmd_handle->system->N );
 
     return (void *) pmd_handle;
 }
@@ -256,11 +256,11 @@ void * setup( const char * const geo_file, const char * const ffield_file,
  * ffield_file: file containing force field parameters
  * control_file: file containing simulation parameters
  */
-void * setup2( int num_atoms, const int * const atom_type,
+void * setup2( int32_t num_atoms, const int32_t * const atom_type,
         const double * const pos, const double * const sim_box_info,
         const char * const ffield_file, const char * const control_file )
 {
-    int i;
+    int32_t i;
 //    char atom_name[9];
     rvec x;
     puremd_handle *pmd_handle;
@@ -279,7 +279,7 @@ void * setup2( int num_atoms, const int * const atom_type,
     pmd_handle->system->N = num_atoms;
 
     PreAllocate_Space( pmd_handle->system, pmd_handle->control,
-            pmd_handle->workspace, (int) CEIL( SAFE_ZONE * pmd_handle->system->N ) );
+            pmd_handle->workspace, (int32_t) CEIL( SAFE_ZONE * pmd_handle->system->N ) );
 
     Setup_Box( sim_box_info[0], sim_box_info[1], sim_box_info[2],
             sim_box_info[3], sim_box_info[4], sim_box_info[5],
@@ -318,7 +318,7 @@ void * setup2( int num_atoms, const int * const atom_type,
         }		
     }
 
-    pmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * pmd_handle->system->N );
+    pmd_handle->system->N_max = (int32_t) CEIL( SAFE_ZONE * pmd_handle->system->N );
 
     return (void *) pmd_handle;
 }
@@ -331,9 +331,9 @@ void * setup2( int num_atoms, const int * const atom_type,
  *
  * returns: PUREMD_SUCCESS upon success, PUREMD_FAILURE otherwise
  */
-int setup_callback( const void * const handle, const callback_function callback  )
+int32_t setup_callback( const void * const handle, const callback_function callback  )
 {
-    int ret;
+    int32_t ret;
     puremd_handle *pmd_handle;
 
 
@@ -356,9 +356,9 @@ int setup_callback( const void * const handle, const callback_function callback 
  *
  * returns: PUREMD_SUCCESS upon success, PUREMD_FAILURE otherwise
  */
-int simulate( const void * const handle )
+int32_t simulate( const void * const handle )
 {
-    int steps, ret, ret_forces, retries;
+    int32_t steps, ret, ret_forces, retries;
     evolve_function Evolve;
     puremd_handle *pmd_handle;
 
@@ -538,9 +538,9 @@ int simulate( const void * const handle )
  *
  * returns: PUREMD_SUCCESS upon success, PUREMD_FAILURE otherwise
  */
-int cleanup( const void * const handle )
+int32_t cleanup( const void * const handle )
 {
-    int i, ret;
+    int32_t i, ret;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
@@ -583,10 +583,10 @@ int cleanup( const void * const handle )
  *
  * returns: PUREMD_SUCCESS upon success, PUREMD_FAILURE otherwise
  */
-int reset( const void * const handle, const char * const geo_file,
+int32_t reset( const void * const handle, const char * const geo_file,
         const char * const ffield_file, const char * const control_file )
 {
-    int ret;
+    int32_t ret;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
@@ -623,7 +623,7 @@ int reset( const void * const handle, const char * const geo_file,
                     pmd_handle->workspace, pmd_handle->lists, pmd_handle->out_control,
                     pmd_handle->output_enabled, TRUE );
 
-            pmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * pmd_handle->system->N );
+            pmd_handle->system->N_max = (int32_t) CEIL( SAFE_ZONE * pmd_handle->system->N );
             pmd_handle->realloc = TRUE;
         }
 
@@ -648,12 +648,12 @@ int reset( const void * const handle, const char * const geo_file,
  * ffield_file: file containing force field parameters
  * control_file: file containing simulation parameters
  */
-int reset2( const void * const handle, int num_atoms,
-        const int * const atom_type, const double * const pos,
+int32_t reset2( const void * const handle, int32_t num_atoms,
+        const int32_t * const atom_type, const double * const pos,
         const double * const sim_box_info, const char * const ffield_file,
         const char * const control_file )
 {
-    int i, ret;
+    int32_t i, ret;
     rvec x;
     puremd_handle *pmd_handle;
 
@@ -687,7 +687,7 @@ int reset2( const void * const handle, int num_atoms,
                 || pmd_handle->system->N > pmd_handle->system->N_max )
         {
             PreAllocate_Space( pmd_handle->system, pmd_handle->control,
-                    pmd_handle->workspace, (int) CEIL( SAFE_ZONE * pmd_handle->system->N ) );
+                    pmd_handle->workspace, (int32_t) CEIL( SAFE_ZONE * pmd_handle->system->N ) );
         }
 
         Setup_Box( sim_box_info[0], sim_box_info[1], sim_box_info[2],
@@ -736,7 +736,7 @@ int reset2( const void * const handle, int num_atoms,
                     pmd_handle->workspace, pmd_handle->lists, pmd_handle->out_control,
                     pmd_handle->output_enabled, TRUE );
 
-            pmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * pmd_handle->system->N );
+            pmd_handle->system->N_max = (int32_t) CEIL( SAFE_ZONE * pmd_handle->system->N );
             pmd_handle->realloc = TRUE;
         }
 
@@ -754,9 +754,9 @@ int reset2( const void * const handle, int num_atoms,
  *
  * returns: PUREMD_SUCCESS upon success, PUREMD_FAILURE otherwise
  */
-int get_atom_positions( const void * const handle, double * const pos )
+int32_t get_atom_positions( const void * const handle, double * const pos )
 {
-    int i, ret;
+    int32_t i, ret;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
@@ -786,9 +786,9 @@ int get_atom_positions( const void * const handle, double * const pos )
  *
  * returns: PUREMD_SUCCESS upon success, PUREMD_FAILURE otherwise
  */
-int get_atom_velocities( const void * const handle, double * const vel )
+int32_t get_atom_velocities( const void * const handle, double * const vel )
 {
-    int i, ret;
+    int32_t i, ret;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
@@ -818,9 +818,9 @@ int get_atom_velocities( const void * const handle, double * const vel )
  *
  * returns: PUREMD_SUCCESS upon success, PUREMD_FAILURE otherwise
  */
-int get_atom_forces( const void * const handle, double * const f )
+int32_t get_atom_forces( const void * const handle, double * const f )
 {
-    int i, ret;
+    int32_t i, ret;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
@@ -850,9 +850,9 @@ int get_atom_forces( const void * const handle, double * const f )
  *
  * returns: PUREMD_SUCCESS upon success, PUREMD_FAILURE otherwise
  */
-int get_atom_charges( const void * const handle, double * const q )
+int32_t get_atom_charges( const void * const handle, double * const q )
 {
-    int i, ret;
+    int32_t i, ret;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
@@ -885,11 +885,11 @@ int get_atom_charges( const void * const handle, double * const q )
  *
  * returns: PUREMD_SUCCESS upon success, PUREMD_FAILURE otherwise
  */
-int get_system_info( const void * const handle, double * const e_pot,
+int32_t get_system_info( const void * const handle, double * const e_pot,
         double * const e_kin, double * const e_tot, double * const temp,
         double * const vol, double * const pres )
 {
-    int ret;
+    int32_t ret;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
@@ -943,9 +943,9 @@ int get_system_info( const void * const handle, double * const e_pot,
  *
  * returns: PUREMD_SUCCESS upon success, PUREMD_FAILURE otherwise
  */
-int get_total_energy( const void * const handle, double * const e_tot )
+int32_t get_total_energy( const void * const handle, double * const e_tot )
 {
-    int ret;
+    int32_t ret;
 
     ret = get_system_info( handle, e_tot, NULL, NULL, NULL, NULL, NULL );
 
@@ -965,9 +965,9 @@ int get_total_energy( const void * const handle, double * const e_tot )
  *
  * returns: PUREMD_SUCCESS upon success, PUREMD_FAILURE otherwise
  */
-int set_output_enabled( const void * const handle, const int enabled )
+int32_t set_output_enabled( const void * const handle, const int32_t enabled )
 {
-    int ret;
+    int32_t ret;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
@@ -991,10 +991,10 @@ int set_output_enabled( const void * const handle, const int enabled )
  *
  * returns: PUREMD_SUCCESS upon success, PUREMD_FAILURE otherwise
  */
-int set_control_parameter( const void * const handle, const char * const keyword,
+int32_t set_control_parameter( const void * const handle, const char * const keyword,
        const char ** const values )
 {
-    int ret, ret_;
+    int32_t ret, ret_;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
@@ -1026,12 +1026,12 @@ int set_control_parameter( const void * const handle, const char * const keyword
  *
  * returns: PUREMD_SUCCESS upon success, PUREMD_FAILURE otherwise
  */
-int set_contiguous_charge_constraints( const void * const handle,
-        int num_charge_constraint_contig, const int * const charge_constraint_contig_start,
-        const int * const charge_constraint_contig_end,
+int32_t set_contiguous_charge_constraints( const void * const handle,
+        int32_t num_charge_constraint_contig, const int32_t * const charge_constraint_contig_start,
+        const int32_t * const charge_constraint_contig_end,
         const double * const charge_constraint_contig_value )
 {
-    int i, ret;
+    int32_t i, ret;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
@@ -1057,7 +1057,7 @@ int set_contiguous_charge_constraints( const void * const handle,
                     sizeof(real) * pmd_handle->system->num_molec_charge_constraints,
                     __FILE__, __LINE__ );
             pmd_handle->system->molec_charge_constraint_ranges = smalloc(
-                    sizeof(int) * 2 * pmd_handle->system->num_molec_charge_constraints,
+                    sizeof(int32_t) * 2 * pmd_handle->system->num_molec_charge_constraints,
                     __FILE__, __LINE__ );
 
             pmd_handle->system->max_num_molec_charge_constraints
@@ -1096,14 +1096,14 @@ int set_contiguous_charge_constraints( const void * const handle,
  *
  * returns: PUREMD_SUCCESS upon success, PUREMD_FAILURE otherwise
  */
-int set_custom_charge_constraints( const void * const handle,
-        int num_charge_constraint_custom,
-        const int * const charge_constraint_custom_count,
-        const int * const charge_constraint_custom_atom_index,
+int32_t set_custom_charge_constraints( const void * const handle,
+        int32_t num_charge_constraint_custom,
+        const int32_t * const charge_constraint_custom_count,
+        const int32_t * const charge_constraint_custom_atom_index,
         const double * const charge_constraint_custom_coeff,
         const double * const charge_constraint_custom_rhs )
 {
-    int i, ret;
+    int32_t i, ret;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
@@ -1128,10 +1128,10 @@ int set_custom_charge_constraints( const void * const handle,
             }
 
             pmd_handle->system->custom_charge_constraint_count = smalloc(
-                    sizeof(int) * pmd_handle->system->num_custom_charge_constraints,
+                    sizeof(int32_t) * pmd_handle->system->num_custom_charge_constraints,
                     __FILE__, __LINE__ );
             pmd_handle->system->custom_charge_constraint_start = smalloc(
-                    sizeof(int) * (pmd_handle->system->num_custom_charge_constraints + 1),
+                    sizeof(int32_t) * (pmd_handle->system->num_custom_charge_constraints + 1),
                     __FILE__, __LINE__ );
             pmd_handle->system->custom_charge_constraint_rhs = smalloc(
                     sizeof(real) * pmd_handle->system->num_custom_charge_constraints,
@@ -1170,7 +1170,7 @@ int set_custom_charge_constraints( const void * const handle,
             }
 
             pmd_handle->system->custom_charge_constraint_atom_index = smalloc(
-                    sizeof(int) * pmd_handle->system->num_custom_charge_constraint_entries,
+                    sizeof(int32_t) * pmd_handle->system->num_custom_charge_constraint_entries,
                     __FILE__, __LINE__ );
             pmd_handle->system->custom_charge_constraint_coeff = smalloc(
                     sizeof(real) * pmd_handle->system->num_custom_charge_constraint_entries,
@@ -1216,12 +1216,12 @@ int set_custom_charge_constraints( const void * const handle,
  * ffield_file: file containing force field parameters
  * control_file: file containing simulation parameters
  */
-void * setup_qmmm( int qm_num_atoms, const char * const qm_symbols,
-        const double * const qm_pos, int mm_num_atoms, const char * const mm_symbols,
+void * setup_qmmm( int32_t qm_num_atoms, const char * const qm_symbols,
+        const double * const qm_pos, int32_t mm_num_atoms, const char * const mm_symbols,
         const double * const mm_pos_q, const double * const sim_box_info,
         const char * const ffield_file, const char * const control_file )
 {
-    int i;
+    int32_t i;
     char element[3];
     rvec x;
     puremd_handle *pmd_handle;
@@ -1242,7 +1242,7 @@ void * setup_qmmm( int qm_num_atoms, const char * const qm_symbols,
     pmd_handle->system->N = pmd_handle->system->N_qm + pmd_handle->system->N_mm;
 
     PreAllocate_Space( pmd_handle->system, pmd_handle->control,
-            pmd_handle->workspace, (int) CEIL( SAFE_ZONE * pmd_handle->system->N ) );
+            pmd_handle->workspace, (int32_t) CEIL( SAFE_ZONE * pmd_handle->system->N ) );
 
     Setup_Box( sim_box_info[0], sim_box_info[1], sim_box_info[2],
             sim_box_info[3], sim_box_info[4], sim_box_info[5],
@@ -1320,7 +1320,7 @@ void * setup_qmmm( int qm_num_atoms, const char * const qm_symbols,
         }		
     }
 
-    pmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * pmd_handle->system->N );
+    pmd_handle->system->N_max = (int32_t) CEIL( SAFE_ZONE * pmd_handle->system->N );
 
     return (void *) pmd_handle;
 }
@@ -1344,13 +1344,13 @@ void * setup_qmmm( int qm_num_atoms, const char * const qm_symbols,
  *
  * returns: PUREMD_SUCCESS upon success, PUREMD_FAILURE otherwise
  */
-int reset_qmmm( const void * const handle, int qm_num_atoms,
+int32_t reset_qmmm( const void * const handle, int32_t qm_num_atoms,
         const char * const qm_symbols, const double * const qm_pos,
-        int mm_num_atoms, const char * const mm_symbols,
+        int32_t mm_num_atoms, const char * const mm_symbols,
         const double * const mm_pos_q, const double * const sim_box_info,
         const char * const ffield_file, const char * const control_file )
 {
-    int i, ret;
+    int32_t i, ret;
     char element[3];
     rvec x;
     puremd_handle *pmd_handle;
@@ -1387,7 +1387,7 @@ int reset_qmmm( const void * const handle, int qm_num_atoms,
                 || pmd_handle->system->N > pmd_handle->system->N_max )
         {
             PreAllocate_Space( pmd_handle->system, pmd_handle->control,
-                    pmd_handle->workspace, (int) CEIL( SAFE_ZONE * pmd_handle->system->N ) );
+                    pmd_handle->workspace, (int32_t) CEIL( SAFE_ZONE * pmd_handle->system->N ) );
         }
 
         Setup_Box( sim_box_info[0], sim_box_info[1], sim_box_info[2],
@@ -1475,7 +1475,7 @@ int reset_qmmm( const void * const handle, int qm_num_atoms,
                     pmd_handle->workspace, pmd_handle->lists, pmd_handle->out_control,
                     pmd_handle->output_enabled, TRUE );
 
-            pmd_handle->system->N_max = (int) CEIL( SAFE_ZONE * pmd_handle->system->N );
+            pmd_handle->system->N_max = (int32_t) CEIL( SAFE_ZONE * pmd_handle->system->N );
             pmd_handle->realloc = TRUE;
         }
 
@@ -1494,10 +1494,10 @@ int reset_qmmm( const void * const handle, int qm_num_atoms,
  *
  * returns: PUREMD_SUCCESS upon success, PUREMD_FAILURE otherwise
  */
-int get_atom_positions_qmmm( const void * const handle, double * const qm_pos,
+int32_t get_atom_positions_qmmm( const void * const handle, double * const qm_pos,
         double * const mm_pos )
 {
-    int i, ret;
+    int32_t i, ret;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
@@ -1541,10 +1541,10 @@ int get_atom_positions_qmmm( const void * const handle, double * const qm_pos,
  *
  * returns: PUREMD_SUCCESS upon success, PUREMD_FAILURE otherwise
  */
-int get_atom_velocities_qmmm( const void * const handle, double * const qm_vel,
+int32_t get_atom_velocities_qmmm( const void * const handle, double * const qm_vel,
         double * const mm_vel )
 {
-    int i, ret;
+    int32_t i, ret;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
@@ -1588,10 +1588,10 @@ int get_atom_velocities_qmmm( const void * const handle, double * const qm_vel,
  *
  * returns: PUREMD_SUCCESS upon success, PUREMD_FAILURE otherwise
  */
-int get_atom_forces_qmmm( const void * const handle, double * const qm_f,
+int32_t get_atom_forces_qmmm( const void * const handle, double * const qm_f,
         double * const mm_f )
 {
-    int i, ret;
+    int32_t i, ret;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
@@ -1635,10 +1635,10 @@ int get_atom_forces_qmmm( const void * const handle, double * const qm_f,
  *
  * returns: PUREMD_SUCCESS upon success, PUREMD_FAILURE otherwise
  */
-int get_atom_charges_qmmm( const void * const handle, double * const qm_q,
+int32_t get_atom_charges_qmmm( const void * const handle, double * const qm_q,
         double * const mm_q )
 {
-    int i, ret;
+    int32_t i, ret;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;

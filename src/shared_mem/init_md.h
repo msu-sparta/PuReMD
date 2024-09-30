@@ -27,13 +27,13 @@
 
 void Initialize( reax_system*, control_params*, simulation_data*,
         static_storage*, reax_list**, output_controls*, evolve_function*,
-        int, int );
+        int, int32_t );
 
 void Finalize_Out_Controls( reax_system *, control_params *,
         static_storage *, output_controls * );
 
 void Finalize( reax_system*, control_params*, simulation_data*,
-        static_storage*, reax_list**, output_controls*, int, int );
+        static_storage*, reax_list**, output_controls*, int, int32_t );
 
 
 #endif

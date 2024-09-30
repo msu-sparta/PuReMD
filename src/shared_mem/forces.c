@@ -47,7 +47,7 @@ typedef enum
 
 
 #if defined(TEST_FORCES)
-static int compare_bonds( const void *p1, const void *p2 )
+static int32_t compare_bonds( const void *p1, const void *p2 )
 {
     return ((bond_data *)p1)->nbr - ((bond_data *)p2)->nbr;
 }
@@ -80,7 +80,7 @@ static void Compute_Bonded_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control )
 {
-    int i;
+    int32_t i;
 
 #if defined(TEST_ENERGY)
     /* Mark beginning of a new timestep in each energy file */
@@ -138,7 +138,7 @@ static void Compute_Bonded_Forces( reax_system *system, control_params *control,
 
 static void Compute_NonBonded_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
-        reax_list** lists, output_controls *out_control, int realloc )
+        reax_list** lists, output_controls *out_control, int32_t realloc )
 {
 #if defined(TEST_ENERGY)
     fprintf( out_control->evdw, "step: %d\n%6s%6s%12s%12s%12s\n",
@@ -169,7 +169,7 @@ static void Compute_NonBonded_Forces( reax_system *system, control_params *contr
 static void Compute_Total_Force( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace, reax_list **lists )
 {
-    int i;
+    int32_t i;
     reax_list *bonds;
 
     bonds = lists[BONDS];
@@ -178,9 +178,9 @@ static void Compute_Total_Force( reax_system *system, control_params *control,
     #pragma omp parallel default(shared)
 #endif
     {
-        int pj;
+        int32_t pj;
 #if defined(_OPENMP)
-        int j;
+        int32_t j;
 #endif
 
         if ( control->compute_pressure == FALSE
@@ -235,10 +235,10 @@ static void Compute_Total_Force( reax_system *system, control_params *control,
 
 
 static inline real Init_Charge_Matrix_Entry_Tab( reax_system const * const system,
-        control_params const * const control, LR_lookup_table ** const LR, int i, int j,
+        control_params const * const control, LR_lookup_table ** const LR, int32_t i, int32_t j,
         real r_ij, MATRIX_ENTRY_POSITION pos )
 {
-    int r;
+    int32_t r;
     real base, dif, val, ret;
     LR_lookup_table *t;
 
@@ -257,7 +257,7 @@ static inline real Init_Charge_Matrix_Entry_Tab( reax_system const * const syste
                        [MAX( system->atoms[i].type, system->atoms[j].type )];
 
                 /* cubic spline interpolation */
-                r = (int)(r_ij * t->inv_dx);
+                r = (int32_t) (r_ij * t->inv_dx);
                 if ( r == 0 ) 
                 {
                     ++r;
@@ -294,7 +294,7 @@ static inline real Init_Charge_Matrix_Entry_Tab( reax_system const * const syste
 
 static inline real Init_Charge_Matrix_Entry( reax_system const * const system,
         control_params const * const control, static_storage const * const workspace,
-        int i, int j, real r_ij, MATRIX_ENTRY_POSITION pos )
+        int32_t i, int32_t j, real r_ij, MATRIX_ENTRY_POSITION pos )
 {
     real tap, dr3gamij_1, dr3gamij_3, ret;
 
@@ -347,12 +347,12 @@ static inline real Init_Charge_Matrix_Entry( reax_system const * const system,
 }
 
 
-static int Init_Charge_Matrix_Remaining_Entries( reax_system const * const system,
+static int32_t Init_Charge_Matrix_Remaining_Entries( reax_system const * const system,
         control_params const * const control, reax_list const * const far_nbr_list,
         sparse_matrix * const H, sparse_matrix * const H_sp,
-        int * const Htop, int * const H_sp_top )
+        int32_t * const Htop, int32_t * const H_sp_top )
 {
-    int i, j, pj, target, val_flag, flag_oom;
+    int32_t i, j, pj, target, val_flag, flag_oom;
     real d, xcut, bond_softness, * X_diag;
 
     flag_oom = FALSE;
@@ -835,8 +835,8 @@ static int Init_Charge_Matrix_Remaining_Entries( reax_system const * const syste
 static void Init_Distance( reax_system const * const system,
         control_params const * const control, reax_list ** const lists )
 {
-    int i, j, pj;
-    int start_i, end_i;
+    int32_t i, j, pj;
+    int32_t start_i, end_i;
     reax_list *far_nbrs;
 
     far_nbrs = lists[FAR_NBRS];
@@ -869,10 +869,10 @@ static void Init_CM_Half( reax_system const * const system,
         control_params const * const control,
         static_storage * const workspace, reax_list ** const lists )
 {
-    int i, j, pj, target;
-    int start_i, end_i;
-    int Htop, H_sp_top;
-    int flag, flag_sp, val_flag, flag_oom;
+    int32_t i, j, pj, target;
+    int32_t start_i, end_i;
+    int32_t Htop, H_sp_top;
+    int32_t flag, flag_sp, val_flag, flag_oom;
     real val;
     sparse_matrix *H, *H_sp;
     reax_list *far_nbrs;
@@ -1023,10 +1023,10 @@ static void Init_CM_Tab_Half( reax_system const * const system,
         control_params const * const control,
         static_storage * const workspace, reax_list ** const lists )
 {
-    int i, j, pj, target;
-    int start_i, end_i;
-    int Htop, H_sp_top;
-    int flag, flag_sp, val_flag, flag_oom;
+    int32_t i, j, pj, target;
+    int32_t start_i, end_i;
+    int32_t Htop, H_sp_top;
+    int32_t flag, flag_sp, val_flag, flag_oom;
     real val;
     sparse_matrix *H, *H_sp;
     reax_list *far_nbrs;
@@ -1176,12 +1176,12 @@ static void Init_Bond_Full( reax_system const * const system,
         control_params const * const control,
         static_storage * const workspace, reax_list ** const lists )
 {
-    int i, j, pj;
-    int start_i, end_i;
-    int type_i, type_j;
-    int btop_i, btop_j;
-    int ihb, jhb, ihb_top, jhb_top;
-    int num_bonds, num_hbonds, flag_oom_bonds, flag_oom_hbonds;
+    int32_t i, j, pj;
+    int32_t start_i, end_i;
+    int32_t type_i, type_j;
+    int32_t btop_i, btop_j;
+    int32_t ihb, jhb, ihb_top, jhb_top;
+    int32_t num_bonds, num_hbonds, flag_oom_bonds, flag_oom_hbonds;
     real r_ij, r2;
     real C12, C34, C56;
     real Cln_BOp_s, Cln_BOp_pi, Cln_BOp_pi2;
@@ -1453,13 +1453,13 @@ static void Init_Bond_Full( reax_system const * const system,
  * and charge matrix (half symmetric format)
  * from the far neighbors list (with distance updates, if necessary)
  * */
-static int Init_Forces( reax_system * const system,
+static int32_t Init_Forces( reax_system * const system,
         control_params const * const control,
         simulation_data * const data, static_storage * const workspace,
         reax_list ** const lists, output_controls * const out_control )
 {
-    int i, renbr, ret;
-    static int dist_done = FALSE, cm_done = FALSE, bonds_done = FALSE;
+    int32_t i, renbr, ret;
+    static int32_t dist_done = FALSE, cm_done = FALSE, bonds_done = FALSE;
 
     renbr = ((data->step - data->prev_steps) % control->reneighbor) == 0 ? TRUE : FALSE;
 
@@ -1565,9 +1565,9 @@ static void Estimate_Storages_CM( reax_system const * const system,
         control_params const * const control, static_storage * const workspace,
         reax_list ** const lists )
 {
-    int i, pj;
-    int start_i, end_i;
-    int Htop;
+    int32_t i, pj;
+    int32_t start_i, end_i;
+    int32_t Htop;
     reax_list *far_nbrs;
 
     Htop = 0;
@@ -1628,7 +1628,7 @@ static void Estimate_Storages_CM( reax_system const * const system,
             break;
     }
 
-    workspace->realloc.total_cm_entries = (int) CEIL( Htop * SAFE_ZONE );
+    workspace->realloc.total_cm_entries = (int32_t) CEIL( Htop * SAFE_ZONE );
 }
 
 
@@ -1636,10 +1636,10 @@ static void Estimate_Storages_Bonds( reax_system const * const system,
         control_params const * const control, static_storage * const workspace,
         reax_list ** const lists )
 {
-    int i, j, pj;
-    int start_i, end_i;
-    int type_i, type_j;
-    int ihb, jhb;
+    int32_t i, j, pj;
+    int32_t start_i, end_i;
+    int32_t type_i, type_j;
+    int32_t ihb, jhb;
     real r_ij;
     real C12, C34, C56;
     real BO, BO_s, BO_pi, BO_pi2;
@@ -1754,12 +1754,12 @@ static void Estimate_Storages_Bonds( reax_system const * const system,
     for ( i = 0; i < system->N_max; ++i )
     {
         //TODO: the factor of 2 depends on the bond list format (and also effects thbody list), revisit later
-        system->bonds[i] = MAX( (int) CEIL( system->bonds[i] * 2.0 * SAFE_ZONE ), MIN_BONDS );
+        system->bonds[i] = MAX( (int32_t) CEIL( system->bonds[i] * 2.0 * SAFE_ZONE ), MIN_BONDS );
     }
 
     for ( i = 0; i < system->N_max; ++i )
     {
-        system->hbonds[i] = MAX( (int) CEIL( system->hbonds[i] * SAFE_HBONDS ), MIN_HBONDS );
+        system->hbonds[i] = MAX( (int32_t) CEIL( system->hbonds[i] * SAFE_HBONDS ), MIN_HBONDS );
     }
 
     /* reductions to get totals */
@@ -1784,7 +1784,7 @@ static void Estimate_Storages_Bonds( reax_system const * const system,
 
 void Estimate_Storages( reax_system const * const system,
         control_params const * const control, static_storage * const workspace,
-        reax_list ** const lists, int realloc_cm, int realloc_bonds )
+        reax_list ** const lists, int32_t realloc_cm, int32_t realloc_bonds )
 {
     if ( realloc_cm == TRUE )
     {
@@ -1798,11 +1798,11 @@ void Estimate_Storages( reax_system const * const system,
 }
 
 
-int Compute_Forces( reax_system * const system, control_params * const control,
+int32_t Compute_Forces( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        reax_list ** const lists, output_controls * const out_control, int realloc )
+        reax_list ** const lists, output_controls * const out_control, int32_t realloc )
 {
-    int charge_flag, ret;
+    int32_t charge_flag, ret;
     real t_start, t_elapsed;
 
     if ( control->charge_freq > 0

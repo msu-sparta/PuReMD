@@ -26,20 +26,20 @@
 
 
 /* from box.h */
-void Transform( rvec, simulation_box *, int, rvec );
+void Transform( rvec, simulation_box *, int32_t, rvec );
 
-void Transform_to_UnitBox( rvec, simulation_box *, int, rvec );
+void Transform_to_UnitBox( rvec, simulation_box *, int32_t, rvec );
 
 void Fit_to_Periodic_Box( simulation_box *, rvec );
 
-int is_Inside_Box( simulation_box *, rvec );
+int32_t is_Inside_Box( simulation_box *, rvec );
 
 /* from geo_tools.h */
 void Make_Point( real, real, real, rvec * );
 
-int is_Valid_Serial( int );
+int32_t is_Valid_Serial( int32_t );
 
-int Check_Input_Range( int, int, int, const char * const, int );
+int32_t Check_Input_Range( int32_t, int32_t, int32_t, const char * const, int32_t );
 
 void Trim_Spaces( char * const, const size_t );
 
@@ -49,11 +49,11 @@ real Get_Time( );
 real Get_Timing_Info( real );
 
 /* from io_tools.h */
-int Get_Atom_Type( reax_interaction *, char *, size_t );
+int32_t Get_Atom_Type( reax_interaction *, char *, size_t );
 
-char * Get_Element( reax_system *, int );
+char * Get_Element( reax_system *, int32_t );
 
-char * Get_Atom_Name( reax_system *, int );
+char * Get_Atom_Name( reax_system *, int32_t );
 
 void Allocate_Tokenizer_Space( char **, size_t, char **, size_t, char ***,
         size_t, size_t );
@@ -61,22 +61,22 @@ void Allocate_Tokenizer_Space( char **, size_t, char **, size_t, char ***,
 void Deallocate_Tokenizer_Space( char **, char **, char ***,
         size_t );
 
-int Tokenize( char *, char ***, size_t );
+int32_t Tokenize( char *, char ***, size_t );
 
-void * smalloc( size_t, const char * const, int );
+void * smalloc( size_t, const char * const, int32_t );
 
-void * srealloc( void *, size_t, const char * const, int );
+void * srealloc( void *, size_t, const char * const, int32_t );
 
-void * scalloc( size_t, size_t, const char * const, int );
+void * scalloc( size_t, size_t, const char * const, int32_t );
 
-void sfree( void *, const char * const, int );
+void sfree( void *, const char * const, int32_t );
 
-FILE * sfopen( const char *, const char *, const char * const, int );
+FILE * sfopen( const char *, const char *, const char * const, int32_t );
 
-void sfclose( FILE *, const char * const, int );
+void sfclose( FILE *, const char * const, int32_t );
 
-int sstrtol( const char * const, const char * const, int );
+int32_t sstrtol( const char * const, const char * const, int32_t );
 
-double sstrtod( const char * const, const char * const, int );
+double sstrtod( const char * const, const char * const, int32_t );
 
 #endif

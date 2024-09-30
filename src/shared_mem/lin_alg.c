@@ -39,7 +39,7 @@
 
 typedef struct
 {
-    unsigned int j;
+    uint32_t j;
     real val;
 } sparse_matrix_entry;
 
@@ -54,7 +54,7 @@ enum preconditioner_type
 #if defined(TEST_MAT)
 static sparse_matrix * create_test_mat( void )
 {
-    unsigned int i, n;
+    uint32_t i, n;
     sparse_matrix *H_test;
 
     Allocate_Matrix( &H_test, 3, 3, 6 );
@@ -95,9 +95,9 @@ static sparse_matrix * create_test_mat( void )
 
 /* Routine used with qsort for sorting nonzeros within a sparse matrix row
  *
- * v1/v2: pointers to column indices of nonzeros within a row (unsigned int)
+ * v1/v2: pointers to column indices of nonzeros within a row (uint32_t)
  */
-static int compare_matrix_entry(const void *v1, const void *v2)
+static int32_t compare_matrix_entry(const void *v1, const void *v2)
 {
     /* larger element has larger column index */
     return ((sparse_matrix_entry *)v1)->j - ((sparse_matrix_entry *)v2)->j;
@@ -112,7 +112,7 @@ static int compare_matrix_entry(const void *v1, const void *v2)
  */
 void Sort_Matrix_Rows( sparse_matrix * const A )
 {
-    unsigned int i, j, si, ei;
+    uint32_t i, j, si, ei;
     size_t temp_size;
     sparse_matrix_entry *temp;
 
@@ -174,9 +174,9 @@ void Sort_Matrix_Rows( sparse_matrix * const A )
  *   A has non-zero diagonals
  *   Each row of A has at least one non-zero (i.e., no rows with all zeros) */
 static void compute_full_sparse_matrix( const sparse_matrix * const A,
-        sparse_matrix * A_full, int realloc )
+        sparse_matrix * A_full, int32_t realloc )
 {
-    int count, i, pj;
+    int32_t count, i, pj;
     sparse_matrix A_t;
 
     if ( A_full->allocated == FALSE )
@@ -240,10 +240,10 @@ static void compute_full_sparse_matrix( const sparse_matrix * const A,
 void setup_sparse_approx_inverse( const sparse_matrix * const A,
         sparse_matrix * A_full, sparse_matrix * A_spar_patt,
         sparse_matrix * A_spar_patt_full, sparse_matrix * A_app_inv,
-        const real filter, int realloc )
+        const real filter, int32_t realloc )
 {
-    int i, pj, size;
-    int left, right, k, p, turn;
+    int32_t i, pj, size;
+    int32_t left, right, k, p, turn;
     real pivot, tmp;
     real threshold;
     real *list;
@@ -269,7 +269,7 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A,
      *  left, right: search space of the quick-select */
     left = 0;
     right = A->start[A->n] - 1;
-    k = (int)( A->start[A->n] * filter );
+    k = (int32_t) (A->start[A->n] * filter);
     threshold = 0.0;
 
     for ( i = left; i <= right; ++i )
@@ -402,11 +402,11 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A,
 void Calculate_Droptol( const sparse_matrix * const A,
         real * const droptol, const real dtol )
 {
-    int i, j, k;
+    int32_t i, j, k;
     real val;
 #if defined(_OPENMP)
     static real *droptol_local;
-    unsigned int tid;
+    uint32_t tid;
 #endif
 
 #if defined(_OPENMP)
@@ -506,10 +506,10 @@ void Calculate_Droptol( const sparse_matrix * const A,
 }
 
 
-int Estimate_LU_Fill( const sparse_matrix * const A, const real * const droptol )
+int32_t Estimate_LU_Fill( const sparse_matrix * const A, const real * const droptol )
 {
-    int i, pj;
-    int fillin;
+    int32_t i, pj;
+    int32_t fillin;
     real val;
 
     fillin = 0;
@@ -543,9 +543,9 @@ int Estimate_LU_Fill( const sparse_matrix * const A, const real * const droptol 
  * N: number of atoms (i.e., charge matrix dimensions for QEq)
  */
 real jacobi( const sparse_matrix * const H, real * const Hdia_inv,
-        int cm, int N )
+        int32_t cm, int32_t N )
 {
-    unsigned int i;
+    uint32_t i;
     real start;
 
     start = Get_Time( );
@@ -601,16 +601,16 @@ real jacobi( const sparse_matrix * const H, real * const Hdia_inv,
 real ICHOLT( const sparse_matrix * const A, const real * const droptol,
              sparse_matrix * const L, sparse_matrix * const U )
 {
-    int i, j, pj, k1, k2, tmptop, Ltop;
-    int *tmp_j;
+    int32_t i, j, pj, k1, k2, tmptop, Ltop;
+    int32_t *tmp_j;
     real val, start;
     real *tmp_val;
-    unsigned int *Utop;
+    uint32_t *Utop;
 
     start = Get_Time( );
 
-    Utop = smalloc( (A->n + 1) * sizeof(unsigned int), __FILE__, __LINE__ );
-    tmp_j = smalloc( A->n * sizeof(int), __FILE__, __LINE__ );
+    Utop = smalloc( (A->n + 1) * sizeof(uint32_t), __FILE__, __LINE__ );
+    tmp_j = smalloc( A->n * sizeof(int32_t), __FILE__, __LINE__ );
     tmp_val = smalloc( A->n * sizeof(real), __FILE__, __LINE__ );
 
     Ltop = 0;
@@ -759,7 +759,7 @@ real ICHOLT( const sparse_matrix * const A, const real * const droptol,
 real ILU( const sparse_matrix * const A, sparse_matrix * const L,
         sparse_matrix * const U )
 {
-    unsigned int i, pj, pk, pl, Ltop, Utop;
+    uint32_t i, pj, pk, pl, Ltop, Utop;
     real start;
     sparse_matrix *A_full = NULL;
 
@@ -873,16 +873,16 @@ real ILU( const sparse_matrix * const A, sparse_matrix * const L,
 real ILUT( const sparse_matrix * const A, const real * const droptol,
         sparse_matrix * const L, sparse_matrix * const U )
 {
-    unsigned int i, k, pj, Ltop, Utop, *nz_mask;
+    uint32_t i, k, pj, Ltop, Utop, *nz_mask;
     real *w, start;
     sparse_matrix *A_full = NULL;
-    unsigned int nz_cnt;
+    uint32_t nz_cnt;
 
     start = Get_Time( );
 
     /* use a dense vector with masking for the intermediate row w */
     w = smalloc( sizeof(real) * A->n, __FILE__, __LINE__ );
-    nz_mask = smalloc( sizeof(unsigned int) * A->n, __FILE__, __LINE__ );
+    nz_mask = smalloc( sizeof(uint32_t) * A->n, __FILE__, __LINE__ );
 
     compute_full_sparse_matrix( A, A_full, FALSE );
 
@@ -956,8 +956,8 @@ real ILUT( const sparse_matrix * const A, const real * const droptol,
 
         if ( Ltop + nz_cnt > L->m )
         {
-            L->m = MAX( (5 * nz_cnt) + L->m, (unsigned int) (L->m * SAFE_ZONE) );
-            L->j = srealloc( L->j, sizeof(unsigned int) * L->m, __FILE__, __LINE__ );
+            L->m = MAX( (5 * nz_cnt) + L->m, (uint32_t) (L->m * SAFE_ZONE) );
+            L->j = srealloc( L->j, sizeof(uint32_t) * L->m, __FILE__, __LINE__ );
             L->val = srealloc( L->val, sizeof(real) * L->m, __FILE__, __LINE__ );
         }
 
@@ -984,8 +984,8 @@ real ILUT( const sparse_matrix * const A, const real * const droptol,
 
         if ( Utop + nz_cnt > U->m )
         {
-            U->m = MAX( (5 * nz_cnt) + U->m, (unsigned int) (U->m * SAFE_ZONE) );
-            U->j = srealloc( U->j, sizeof(unsigned int) * U->m, __FILE__, __LINE__ );
+            U->m = MAX( (5 * nz_cnt) + U->m, (uint32_t) (U->m * SAFE_ZONE) );
+            U->j = srealloc( U->j, sizeof(uint32_t) * U->m, __FILE__, __LINE__ );
             U->val = srealloc( U->val, sizeof(real) * U->m, __FILE__, __LINE__ );
         }
 
@@ -1030,7 +1030,7 @@ real ILUT( const sparse_matrix * const A, const real * const droptol,
 real ILUTP( const sparse_matrix * const A, const real * const droptol,
         sparse_matrix * const L, sparse_matrix * const U )
 {
-    unsigned int i, k, pj, Ltop, Utop, *nz_mask, *perm, *perm_inv, pivot_j;
+    uint32_t i, k, pj, Ltop, Utop, *nz_mask, *perm, *perm_inv, pivot_j;
     real *w, start, pivot_val;
     sparse_matrix *A_full = NULL;
 
@@ -1038,9 +1038,9 @@ real ILUTP( const sparse_matrix * const A, const real * const droptol,
 
     /* use a dense vector with masking for the intermediate row w */
     w = smalloc( sizeof(real) * A->n, __FILE__, __LINE__ );
-    nz_mask = smalloc( sizeof(int) * A->n, __FILE__, __LINE__ );
-    perm = smalloc( sizeof(int) * A->n, __FILE__, __LINE__ );
-    perm_inv = smalloc( sizeof(int) * A->n, __FILE__, __LINE__ );
+    nz_mask = smalloc( sizeof(int32_t) * A->n, __FILE__, __LINE__ );
+    perm = smalloc( sizeof(int32_t) * A->n, __FILE__, __LINE__ );
+    perm_inv = smalloc( sizeof(int32_t) * A->n, __FILE__, __LINE__ );
 
     compute_full_sparse_matrix( A, A_full, FALSE );
 
@@ -1190,9 +1190,9 @@ real ILUTP( const sparse_matrix * const A, const real * const droptol,
  * sweeps: number of loops over non-zeros for computation
  * U_T / U: factorized triangular matrices (A \approx U^{T}U), CSR format */
 real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
-        const unsigned int sweeps, sparse_matrix * const U_T, sparse_matrix * const U )
+        const uint32_t sweeps, sparse_matrix * const U_T, sparse_matrix * const U )
 {
-    unsigned int i, pj, x = 0, y = 0, ei_x, ei_y, Utop, s;
+    uint32_t i, pj, x = 0, y = 0, ei_x, ei_y, Utop, s;
     real *D, *D_inv, *gamma, sum, start;
     sparse_matrix DAD, U_T_temp;
 
@@ -1234,8 +1234,8 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
 
     /* to get convergence, A must have unit diagonal, so apply
      * transformation DAD, where D = D(1./SQRT(D(A))) */
-    memcpy( DAD.start, A->start, sizeof(unsigned int) * (A->n + 1) );
-    memcpy( DAD.j, A->j, sizeof(unsigned int) * A->start[A->n] );
+    memcpy( DAD.start, A->start, sizeof(uint32_t) * (A->n + 1) );
+    memcpy( DAD.j, A->j, sizeof(uint32_t) * A->start[A->n] );
 #if defined(_OPENMP)
     #pragma omp parallel for schedule(dynamic,4096) \
         default(none) shared(DAD, D, gamma) private(i, pj) firstprivate(A)
@@ -1253,8 +1253,8 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
 
     /* initial guesses for U^T,
      * assume: A and DAD symmetric and stored lower triangular */
-    memcpy( U_T_temp.start, DAD.start, sizeof(unsigned int) * (DAD.n + 1) );
-    memcpy( U_T_temp.j, DAD.j, sizeof(unsigned int) * DAD.start[DAD.n] );
+    memcpy( U_T_temp.start, DAD.start, sizeof(uint32_t) * (DAD.n + 1) );
+    memcpy( U_T_temp.j, DAD.j, sizeof(uint32_t) * DAD.start[DAD.n] );
     memcpy( U_T_temp.val, DAD.val, sizeof(real) * DAD.start[DAD.n] );
 
     for ( s = 0; s < sweeps; ++s )
@@ -1398,9 +1398,9 @@ real FG_ICHOLT( const sparse_matrix * const A, const real * droptol,
  * sweeps: number of loops over non-zeros for computation
  * L / U: factorized triangular matrices (A \approx LU), CSR format */
 real FG_ILUT( const sparse_matrix * const A, const real * droptol,
-               const unsigned int sweeps, sparse_matrix * const L, sparse_matrix * const U )
+               const uint32_t sweeps, sparse_matrix * const L, sparse_matrix * const U )
 {
-    unsigned int i, pj, x, y, ei_x, ei_y, Ltop, Utop, s;
+    uint32_t i, pj, x, y, ei_x, ei_y, Ltop, Utop, s;
     real *D, *D_inv, *gamma, sum, start;
     sparse_matrix DAD, L_temp, U_T_temp;
 
@@ -1444,8 +1444,8 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
     /* to get convergence, A must have unit diagonal, so apply
      * transformation \gamma DAD, where D = D(1./SQRT(D(A)))
      * and \gamma = {-1 if a_{ii} < 0, 1 otherwise} */
-    memcpy( DAD.start, A->start, sizeof(unsigned int) * (A->n + 1) );
-    memcpy( DAD.j, A->j, sizeof(unsigned int) * A->start[A->n] );
+    memcpy( DAD.start, A->start, sizeof(uint32_t) * (A->n + 1) );
+    memcpy( DAD.j, A->j, sizeof(uint32_t) * A->start[A->n] );
 #if defined(_OPENMP)
     #pragma omp parallel for schedule(dynamic,4096) \
         default(none) shared(DAD, D, gamma) private(i, pj) firstprivate(A)
@@ -1463,12 +1463,12 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
 
     /* initial guesses for L and U,
      * assume: A and DAD symmetric and stored lower triangular */
-    memcpy( L_temp.start, DAD.start, sizeof(unsigned int) * (DAD.n + 1) );
-    memcpy( L_temp.j, DAD.j, sizeof(unsigned int) * DAD.start[DAD.n] );
+    memcpy( L_temp.start, DAD.start, sizeof(uint32_t) * (DAD.n + 1) );
+    memcpy( L_temp.j, DAD.j, sizeof(uint32_t) * DAD.start[DAD.n] );
     memcpy( L_temp.val, DAD.val, sizeof(real) * DAD.start[DAD.n] );
     /* store U^T in CSR for row-wise access and tranpose later */
-    memcpy( U_T_temp.start, DAD.start, sizeof(unsigned int) * (DAD.n + 1) );
-    memcpy( U_T_temp.j, DAD.j, sizeof(unsigned int) * DAD.start[DAD.n] );
+    memcpy( U_T_temp.start, DAD.start, sizeof(uint32_t) * (DAD.n + 1) );
+    memcpy( U_T_temp.j, DAD.j, sizeof(uint32_t) * DAD.start[DAD.n] );
     memcpy( U_T_temp.val, DAD.val, sizeof(real) * DAD.start[DAD.n] );
 
     /* L has unit diagonal, by convention */
@@ -1712,10 +1712,10 @@ real FG_ILUT( const sparse_matrix * const A, const real * droptol,
 real sparse_approx_inverse( const sparse_matrix * const A,
         const sparse_matrix * const A_spar_patt, sparse_matrix * A_app_inv )
 {
-    int i, k, pj, j_temp, identity_pos;
-    int N, M, d_i, d_j;
+    int32_t i, k, pj, j_temp, identity_pos;
+    int32_t N, M, d_i, d_j;
     lapack_int m, n, nrhs, lda, ldb, info;
-    int *pos_x, *pos_y;
+    int32_t *pos_x, *pos_y;
     real start;
     real *e_j, *dense_matrix;
     size_t e_j_size, dense_matrix_size;
@@ -1736,8 +1736,8 @@ real sparse_approx_inverse( const sparse_matrix * const A,
     {
         X = smalloc( sizeof(char) * A->n, __FILE__, __LINE__ );
         Y = smalloc( sizeof(char) * A->n, __FILE__, __LINE__ );
-        pos_x = smalloc( sizeof(int) * A->n, __FILE__, __LINE__ );
-        pos_y = smalloc( sizeof(int) * A->n, __FILE__, __LINE__ );
+        pos_x = smalloc( sizeof(int32_t) * A->n, __FILE__, __LINE__ );
+        pos_y = smalloc( sizeof(int32_t) * A->n, __FILE__, __LINE__ );
 
         e_j = NULL;
         dense_matrix = NULL;
@@ -1911,10 +1911,10 @@ real sparse_approx_inverse( const sparse_matrix * const A,
 static void sparse_matvec( const static_storage * const workspace,
         const sparse_matrix * const A, const real * const x, real * const b )
 {
-    int i, j, k, n, si, ei;
+    int32_t i, j, k, n, si, ei;
     real H;
 #if defined(_OPENMP)
-    unsigned int tid;
+    uint32_t tid;
 #endif
 
     n = A->n;
@@ -1974,7 +1974,7 @@ static void sparse_matvec( const static_storage * const workspace,
 static void sparse_matvec_full( const sparse_matrix * const A,
         const real * const x, real * const b )
 {
-    int i, pj;
+    int32_t i, pj;
 
     Vector_MakeZero( b, A->n );
 
@@ -1998,9 +1998,9 @@ static void sparse_matvec_full( const sparse_matrix * const A,
  */
 void Transpose( const sparse_matrix * const A, sparse_matrix * const A_t )
 {
-    unsigned int i, j, pj, *A_t_top;
+    uint32_t i, j, pj, *A_t_top;
 
-    A_t_top = scalloc( A->n + 1, sizeof(unsigned int), __FILE__, __LINE__ );
+    A_t_top = scalloc( A->n + 1, sizeof(uint32_t), __FILE__, __LINE__ );
 
     for ( i = 0; i < A->n + 1; ++i )
     {
@@ -2051,8 +2051,8 @@ void Transpose_I( sparse_matrix * const A )
 
     Transpose( A, &A_t );
 
-    memcpy( A->start, A_t.start, sizeof(int) * (A_t.n + 1) );
-    memcpy( A->j, A_t.j, sizeof(int) * (A_t.start[A_t.n]) );
+    memcpy( A->start, A_t.start, sizeof(int32_t) * (A_t.n + 1) );
+    memcpy( A->j, A_t.j, sizeof(int32_t) * (A_t.start[A_t.n]) );
     memcpy( A->val, A_t.val, sizeof(real) * (A_t.start[A_t.n]) );
 
     Deallocate_Matrix( &A_t );
@@ -2067,9 +2067,9 @@ void Transpose_I( sparse_matrix * const A )
  * N: dimensions of preconditioner and vectors (# rows in H)
  */
 static void jacobi_app( const real * const Hdia_inv, const real * const y,
-                          real * const x, const int N )
+                          real * const x, const int32_t N )
 {
-    unsigned int i;
+    uint32_t i;
 
 #if defined(_OPENMP)
     #pragma omp for schedule(dynamic,256)
@@ -2095,7 +2095,7 @@ static void jacobi_app( const real * const Hdia_inv, const real * const y,
 void tri_solve( const sparse_matrix * const LU, const real * const y,
         real * const x, const TRIANGULARITY tri )
 {
-    int i, pj, j, si, ei;
+    int32_t i, pj, j, si, ei;
     real val;
 
 #if defined(_OPENMP)
@@ -2153,11 +2153,11 @@ void tri_solve( const sparse_matrix * const LU, const real * const y,
  *   Each row of LU has at least one non-zero (i.e., no rows with all zeros) */
 void tri_solve_level_sched( static_storage * workspace,
         const sparse_matrix * const LU, const real * const y, real * const x,
-        const TRIANGULARITY tri, int find_levels )
+        const TRIANGULARITY tri, int32_t find_levels )
 {
-    int i, j, pj, local_row, local_level;
-    unsigned int *row_levels, *level_rows, *level_rows_cnt;
-    int levels;
+    int32_t i, j, pj, local_row, local_level;
+    uint32_t *row_levels, *level_rows, *level_rows_cnt;
+    int32_t levels;
 
     if ( tri == LOWER )
     {
@@ -2321,10 +2321,10 @@ void graph_coloring( const control_params * const control,
     #pragma omp parallel
 #endif
     {
-        int i, pj, v;
-        unsigned int temp, recolor_cnt_local, *conflict_local;
-        int tid, *fb_color;
-        unsigned int *p_to_color, *p_conflict, *p_temp;
+        int32_t i, pj, v;
+        uint32_t temp, recolor_cnt_local, *conflict_local;
+        int32_t tid, *fb_color;
+        uint32_t *p_to_color, *p_conflict, *p_temp;
 
 #if defined(_OPENMP)
         tid = omp_get_thread_num( );
@@ -2372,8 +2372,8 @@ void graph_coloring( const control_params * const control,
             }
         }
 
-        fb_color = smalloc( sizeof(int) * A->n, __FILE__, __LINE__ );
-        conflict_local = smalloc( sizeof(unsigned int) * A->n, __FILE__, __LINE__ );
+        fb_color = smalloc( sizeof(int32_t) * A->n, __FILE__, __LINE__ );
+        conflict_local = smalloc( sizeof(uint32_t) * A->n, __FILE__, __LINE__ );
 
         while ( workspace->recolor_cnt > 0 )
         {
@@ -2483,9 +2483,9 @@ void graph_coloring( const control_params * const control,
  * tri: coloring to triangular factor to use (lower/upper)
  */
 void sort_rows_by_colors( const static_storage * const workspace,
-        const unsigned int n, const TRIANGULARITY tri )
+        const uint32_t n, const TRIANGULARITY tri )
 {
-    unsigned int i;
+    uint32_t i;
 
     for ( i = 0; i < n + 1; ++i )
         workspace->color_top[i] = 0;
@@ -2527,9 +2527,9 @@ void sort_rows_by_colors( const static_storage * const workspace,
  * n: number of entries in x
  */
 static void permute_vector( real * const x_p, const real * const x,
-        const unsigned int * const perm, const unsigned int n )
+        const uint32_t * const perm, const uint32_t n )
 {
-    unsigned int i;
+    uint32_t i;
 
 #if defined(_OPENMP)
     #pragma omp for schedule(static)
@@ -2551,7 +2551,7 @@ static void permute_vector( real * const x_p, const real * const x,
 static void permute_matrix( const static_storage * const workspace,
         sparse_matrix * const LU, const TRIANGULARITY tri )
 {
-    int i, pj, nr, nc;
+    int32_t i, pj, nr, nc;
     sparse_matrix LUtemp;
 
     Allocate_Matrix( &LUtemp, LU->n, LU->n_max, LU->m );
@@ -2610,7 +2610,7 @@ static void permute_matrix( const static_storage * const workspace,
         workspace->color_top[i] += workspace->color_top[i - 1];
     }
 
-    memcpy( LUtemp.start, workspace->color_top, sizeof(unsigned int) * (LU->n + 1) );
+    memcpy( LUtemp.start, workspace->color_top, sizeof(uint32_t) * (LU->n + 1) );
 
     /* permute factor */
     if ( tri == LOWER )
@@ -2666,8 +2666,8 @@ static void permute_matrix( const static_storage * const workspace,
         }
     }
 
-    memcpy( LU->start, LUtemp.start, sizeof(unsigned int) * (LU->n + 1) );
-    memcpy( LU->j, LUtemp.j, sizeof(unsigned int) * LU->start[LU->n] );
+    memcpy( LU->start, LUtemp.start, sizeof(uint32_t) * (LU->n + 1) );
+    memcpy( LU->j, LUtemp.j, sizeof(uint32_t) * LU->start[LU->n] );
     memcpy( LU->val, LUtemp.val, sizeof(real) * LU->start[LU->n] );
 
     Deallocate_Matrix( &LUtemp );
@@ -2686,7 +2686,7 @@ static void permute_matrix( const static_storage * const workspace,
  */
 void setup_graph_coloring( const control_params * const control,
         const static_storage * const workspace, const sparse_matrix * const H,
-        sparse_matrix * H_full, sparse_matrix * H_p, int realloc )
+        sparse_matrix * H_full, sparse_matrix * H_p, int32_t realloc )
 {
     if ( H_p->allocated == FALSE )
     {
@@ -2706,8 +2706,8 @@ void setup_graph_coloring( const control_params * const control,
     graph_coloring( control, (static_storage *) workspace, H_full, LOWER );
     sort_rows_by_colors( workspace, H_full->n, LOWER );
 
-    memcpy( H_p->start, H->start, sizeof(int) * (H->n + 1) );
-    memcpy( H_p->j, H->j, sizeof(int) * (H->start[H->n]) );
+    memcpy( H_p->start, H->start, sizeof(int32_t) * (H->n + 1) );
+    memcpy( H_p->j, H->j, sizeof(int32_t) * (H->start[H->n]) );
     memcpy( H_p->val, H->val, sizeof(real) * (H->start[H->n]) );
     permute_matrix( workspace, H_p, LOWER );
 }
@@ -2736,9 +2736,9 @@ void setup_graph_coloring( const control_params * const control,
 void jacobi_iter( const static_storage * const workspace,
         const sparse_matrix * const R, const real * const Dinv,
         const real * const b, real * const x, const TRIANGULARITY tri,
-        const unsigned int maxiter )
+        const uint32_t maxiter )
 {
-    unsigned int i, k, si, ei, iter;
+    uint32_t i, k, si, ei, iter;
     real *p1, *p2, *p3;
 
     si = 0;
@@ -2817,9 +2817,9 @@ void jacobi_iter( const static_storage * const workspace,
  *   Each row of a matrix has at least one non-zero (i.e., no rows with all zeros) */
 static void apply_preconditioner( const static_storage * const workspace,
         const control_params * const control, const real * const y, real * const x,
-        int fresh_pre, int side )
+        int32_t fresh_pre, int32_t side )
 {
-    int i, si;
+    int32_t i, si;
 
     /* no preconditioning */
     if ( control->cm_solver_pre_comp_type == NONE_PC )
@@ -3097,11 +3097,11 @@ static void apply_preconditioner( const static_storage * const workspace,
 
 /* Generalized minimual residual method with restarting and
  * left preconditioning for sparse linear systems */
-int GMRES( const static_storage * const workspace, const control_params * const control,
+int32_t GMRES( const static_storage * const workspace, const control_params * const control,
         simulation_data * const data, const sparse_matrix * const H, const real * const b,
-        const real tol, real * const x, const int fresh_pre )
+        const real tol, real * const x, const int32_t fresh_pre )
 {
-    int i, j, k, itr, N, g_j, g_itr;
+    int32_t i, j, k, itr, N, g_j, g_itr;
     real cc, tmp1, tmp2, temp, bnorm, g_bnorm;
     real t_start, t_ortho, t_pa, t_spmv, t_ts, t_vops;
 
@@ -3305,12 +3305,12 @@ int GMRES( const static_storage * const workspace, const control_params * const 
 }
 
 
-int GMRES_HouseHolder( const static_storage * const workspace,
+int32_t GMRES_HouseHolder( const static_storage * const workspace,
         const control_params * const control, simulation_data * const data,
         const sparse_matrix * const H, const real * const b, real tol,
-        real * const x, const int fresh_pre )
+        real * const x, const int32_t fresh_pre )
 {
-    int i, j, k, itr, N, g_j, g_itr;
+    int32_t i, j, k, itr, N, g_j, g_itr;
     real cc, tmp1, tmp2, temp, bnorm, g_bnorm;
     real v[10000], z[control->cm_solver_restart + 2][10000], w[control->cm_solver_restart + 2];
     real u[control->cm_solver_restart + 2][10000];
@@ -3550,11 +3550,11 @@ int GMRES_HouseHolder( const static_storage * const workspace,
 
 
 /* Conjugate Gradient */
-int CG( const static_storage * const workspace, const control_params * const control,
+int32_t CG( const static_storage * const workspace, const control_params * const control,
         simulation_data * const data, const sparse_matrix * const H, const real * const b,
-        const real tol, real * const x, const int fresh_pre )
+        const real tol, real * const x, const int32_t fresh_pre )
 {
-    int i, g_itr, N;
+    int32_t i, g_itr, N;
     real tmp, alpha, beta, bnorm, g_bnorm, rnorm, g_rnorm;
     real *d, *r, *p, *z;
     real sig_old, sig_new;
@@ -3671,11 +3671,11 @@ int CG( const static_storage * const workspace, const control_params * const con
  * Reference: Netlib (in MATLAB)
  *  http://www.netlib.org/templates/matlab/bicgstab.m
  * */
-int BiCGStab( const static_storage * const workspace, const control_params * const control,
+int32_t BiCGStab( const static_storage * const workspace, const control_params * const control,
         simulation_data * const data, const sparse_matrix * const H, const real * const b,
-        const real tol, real * const x, const int fresh_pre )
+        const real tol, real * const x, const int32_t fresh_pre )
 {
-    int i, g_itr, N;
+    int32_t i, g_itr, N;
     real tmp, alpha, beta, omega, sigma, rho, rho_old, rnorm, g_rnorm, bnorm, g_bnorm, g_omega, g_rho;
     real t_start, t_pa, t_spmv, t_vops;
 
@@ -3853,11 +3853,11 @@ int BiCGStab( const static_storage * const workspace, const control_params * con
 
 
 /* Steepest Descent */
-int SDM( const static_storage * const workspace, const control_params * const control,
+int32_t SDM( const static_storage * const workspace, const control_params * const control,
          simulation_data * const data, const sparse_matrix * const H, const real * const b,
-         const real tol, real * const x, const int fresh_pre )
+         const real tol, real * const x, const int32_t fresh_pre )
 {
-    int i, g_itr, N;
+    int32_t i, g_itr, N;
     real tmp, alpha, bnorm, g_bnorm;
     real sig, g_sig;
     real t_start, t_pa, t_spmv, t_vops;
@@ -3966,7 +3966,7 @@ int SDM( const static_storage * const workspace, const control_params * const co
  *   for Electromagnetic Scattering, SIAM J. Sci. Computing, 2007 */
 real condest( const sparse_matrix * const L, const sparse_matrix * const U )
 {
-    unsigned int i, N;
+    uint32_t i, N;
     real *e, c;
 
     N = L->n;

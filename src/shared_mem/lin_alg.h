@@ -33,14 +33,14 @@ typedef enum
 void Sort_Matrix_Rows( sparse_matrix * const );
 
 void setup_sparse_approx_inverse( const sparse_matrix * const, sparse_matrix *, 
-        sparse_matrix *, sparse_matrix *, sparse_matrix *, const real, int );
+        sparse_matrix *, sparse_matrix *, sparse_matrix *, const real, int32_t );
 
-int Estimate_LU_Fill( const sparse_matrix * const, const real * const );
+int32_t Estimate_LU_Fill( const sparse_matrix * const, const real * const );
 
 void Calculate_Droptol( const sparse_matrix * const,
         real * const, const real );
 
-real jacobi( const sparse_matrix * const, real * const, int, int );
+real jacobi( const sparse_matrix * const, real * const, int32_t, int32_t );
 
 real ICHOLT( const sparse_matrix * const, const real * const,
         sparse_matrix * const, sparse_matrix * const );
@@ -52,10 +52,10 @@ real ILUTP( const sparse_matrix * const, const real * const,
         sparse_matrix * const, sparse_matrix * const );
 
 real FG_ICHOLT( const sparse_matrix * const, const real *,
-        const unsigned int, sparse_matrix * const, sparse_matrix * const );
+        const uint32_t, sparse_matrix * const, sparse_matrix * const );
 
 real FG_ILUT( const sparse_matrix * const, const real *,
-        const unsigned int, sparse_matrix * const, sparse_matrix * const );
+        const uint32_t, sparse_matrix * const, sparse_matrix * const );
 
 real ILU( const sparse_matrix * const, sparse_matrix * const,
         sparse_matrix * const );
@@ -75,38 +75,38 @@ void tri_solve( const sparse_matrix * const, const real * const,
 void tri_solve_level_sched( static_storage *,
         const sparse_matrix * const,
         const real * const, real * const,
-        const TRIANGULARITY, int );
+        const TRIANGULARITY, int32_t );
 
 void jacobi_iter( const static_storage * const,
         const sparse_matrix * const, const real * const,
         const real * const, real * const, const TRIANGULARITY,
-        const unsigned int );
+        const uint32_t );
 
 void setup_graph_coloring( const control_params * const,
         const static_storage * const, const sparse_matrix * const,
-        sparse_matrix *, sparse_matrix *, int );
+        sparse_matrix *, sparse_matrix *, int32_t );
 
-int GMRES( const static_storage * const, const control_params * const,
+int32_t GMRES( const static_storage * const, const control_params * const,
         simulation_data * const, const sparse_matrix * const,
         const real * const, const real, real * const,
-        const int );
+        const int32_t );
 
-int GMRES_HouseHolder( const static_storage * const, const control_params * const,
+int32_t GMRES_HouseHolder( const static_storage * const, const control_params * const,
         simulation_data * const, const sparse_matrix * const,
         const real * const, const real, real * const,
-        const int );
+        const int32_t );
 
-int CG( const static_storage * const, const control_params * const,
+int32_t CG( const static_storage * const, const control_params * const,
         simulation_data * const, const sparse_matrix * const, const real * const,
-        const real, real * const, const int );
+        const real, real * const, const int32_t );
 
-int BiCGStab( const static_storage * const, const control_params * const,
+int32_t BiCGStab( const static_storage * const, const control_params * const,
         simulation_data * const, const sparse_matrix * const, const real * const,
-        const real, real * const, const int );
+        const real, real * const, const int32_t );
 
-int SDM( const static_storage * const, const control_params * const,
+int32_t SDM( const static_storage * const, const control_params * const,
         simulation_data * const, const sparse_matrix * const, const real * const, const real,
-        real * const, const int );
+        real * const, const int32_t );
 
 real condest( const sparse_matrix * const, const sparse_matrix * const );
 

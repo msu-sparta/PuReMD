@@ -35,7 +35,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
         reax_list **lists, output_controls *out_control )
 {
 #if defined(TEST_FORCES)
-    int num_hb_intrs;
+    int32_t num_hb_intrs;
 #endif
     real e_hb_total;
 
@@ -48,10 +48,10 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
     #pragma omp parallel default(shared) reduction(+: e_hb_total)
 #endif
     {
-        int i, j, k, pi, pk, itr, top;
-        int type_i, type_j, type_k;
-        int start_j, end_j, hb_start_j, hb_end_j;
-        int *hblist, hblist_size;
+        int32_t i, j, k, pi, pk, itr, top;
+        int32_t type_i, type_j, type_k;
+        int32_t start_j, end_j, hb_start_j, hb_end_j;
+        int32_t *hblist, hblist_size;
         real r_ij, r_jk, theta, cos_theta, sin_xhz4, cos_xhz1, sin_theta2;
         real e_hb, exp_hb2, exp_hb3, CEhb1, CEhb2, CEhb3;
         rvec dcos_theta_di, dcos_theta_dj, dcos_theta_dk;
@@ -67,7 +67,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
         hbond_data *hbond_list;
         rvec *f_i, *f_j, *f_k;
 #if defined(_OPENMP)
-        int tid = omp_get_thread_num( );
+        int32_t tid = omp_get_thread_num( );
 #endif
 
         hblist = NULL;
@@ -115,7 +115,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                 if ( Num_Entries( j, bonds ) > hblist_size )
                 {
                     hblist_size = Num_Entries( j, bonds );
-                    hblist = srealloc( hblist, sizeof(int) * hblist_size,
+                    hblist = srealloc( hblist, sizeof(int32_t) * hblist_size,
                             __FILE__, __LINE__ );
                 }
 

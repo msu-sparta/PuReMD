@@ -32,7 +32,7 @@ void Read_Force_Field( const char * const ffield_file,
     char *s;
     char **tmp;
     char ****tor_flag;
-    int i, j, k, l, m, n, o, p, cnt;
+    int32_t i, j, k, l, m, n, o, p, cnt;
     real val;
     FILE *fp;
 
@@ -306,7 +306,7 @@ void Read_Force_Field( const char * const ffield_file,
              * which type of atoms participate in h-bonds.
              * 1 is for H - 2 for O, N, S - 0 for all others.*/
             val = sstrtod( tmp[7], __FILE__, __LINE__ );
-            reax->sbp[i].p_hbond = (int)(val + 0.1);
+            reax->sbp[i].p_hbond = (int32_t) (val + 0.1);
             //0.1 is to avoid from truncating down!
 
             /* line 3 */

@@ -23,9 +23,9 @@
 
 
 void Vector_Print( FILE * const fout, const char * const vname, const real * const v,
-        const unsigned int k )
+        const uint32_t k )
 {
-    unsigned int i;
+    uint32_t i;
 
     if ( vname != NULL )
     {
@@ -41,7 +41,7 @@ void Vector_Print( FILE * const fout, const char * const vname, const real * con
 
 void Print_rTensor( FILE * const fp, rtensor t )
 {
-    unsigned int i, j;
+    uint32_t i, j;
 
     for (i = 0; i < 3; i++)
     {

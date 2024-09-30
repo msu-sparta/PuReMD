@@ -26,14 +26,14 @@
 
 typedef struct
 {
-    int step, N;
+    int32_t step, N;
     real T, xi, v_xi, v_xi_old, G_xi;
     rtensor box;
 } restart_header;
 
 typedef struct
 {
-    int orig_id, type;
+    int32_t orig_id, type;
     char name[9];
     rvec x, v;
 } restart_atom;

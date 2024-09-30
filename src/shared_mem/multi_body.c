@@ -31,7 +31,7 @@ void Atom_Energy( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control )
 {
-    int i, j, pj, type_i, type_j;
+    int32_t i, j, pj, type_i, type_j;
     real Delta_lpcorr, dfvl;
     real e_lp, expvd2, inv_expvd2, dElp, CElp, DlpVi;
     real e_lph, Di, vov3, deahu2dbo, deahu2dsbo;

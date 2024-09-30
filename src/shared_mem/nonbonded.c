@@ -30,7 +30,7 @@
 static void Compute_Polarization_Energy( reax_system* system,
         control_params *control, simulation_data* data, static_storage *workspace )
 {
-    int i, type_i;
+    int32_t i, type_i;
     real e_pol, q;
 
     /* Compute Polarization Energy */
@@ -94,7 +94,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    int i;
+    int32_t i;
     real p_vdW1, p_vdW1i;
     reax_list *far_nbrs;
     real e_vdW_total, e_ele_total;
@@ -109,8 +109,8 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
     #pragma omp parallel default(shared) reduction(+: e_vdW_total, e_ele_total)
 #endif
     {
-        int j, pj;
-        int start_i, end_i;
+        int32_t j, pj;
+        int32_t start_i, end_i;
         real self_coef;
         real powr_vdW1, powgi_vdW1;
         real r_ij, fn13, exp1, exp2, e_base, de_base;
@@ -124,7 +124,7 @@ void vdW_Coulomb_Energy( reax_system *system, control_params *control,
         two_body_parameters *twbp;
         far_neighbor_data *nbr_pj;
 #if defined(_OPENMP)
-        int tid;
+        int32_t tid;
 
         tid = omp_get_thread_num( );
 #endif
@@ -536,7 +536,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control )
 {
-    int steps, update_freq, update_energies;
+    int32_t steps, update_freq, update_energies;
     reax_list *far_nbrs;
     real e_vdW_total, e_ele_total;
 
@@ -551,9 +551,9 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
     #pragma omp parallel default(shared) reduction(+: e_vdW_total, e_ele_total)
 #endif
     {
-        int i, j, pj, r;
-        int type_i, type_j, tmin, tmax;
-        int start_i, end_i;
+        int32_t i, j, pj, r;
+        int32_t type_i, type_j, tmin, tmax;
+        int32_t start_i, end_i;
         real r_ij, self_coef, base, dif;
         real e_vdW, e_ele;
         real d, xcut, bond_softness, d_bond_softness, effpot_diff;
@@ -563,7 +563,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
         far_neighbor_data *nbr_pj;
         LR_lookup_table *t;
 #if defined(_OPENMP)
-        int tid;
+        int32_t tid;
 
         tid = omp_get_thread_num( );
 
@@ -589,7 +589,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     t = &workspace->LR[tmin][tmax];
 
                     /* Cubic Spline Interpolation */
-                    r = (int) (r_ij * t->inv_dx);
+                    r = (int32_t) (r_ij * t->inv_dx);
                     if ( r == 0 )
                     {
                         ++r;
@@ -775,7 +775,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
 
 
 void LR_vdW_Coulomb( reax_system *system, control_params *control,
-        static_storage *workspace, int i, int j, real r_ij, LR_data *lr )
+        static_storage *workspace, int32_t i, int32_t j, real r_ij, LR_data *lr )
 {
     real p_vdW1, p_vdW1i;
     real powr_vdW1, powgi_vdW1;

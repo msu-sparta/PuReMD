@@ -27,9 +27,9 @@
 
 /* Fills solution into x. Warning: will modify c and d! */
 static void Tridiagonal_Solve( const real *a, const real *b,
-        real *c, real *d, real *x, unsigned int n)
+        real *c, real *d, real *x, uint32_t n)
 {
-    int i;
+    int32_t i;
     real id;
 
     /* Modify the coefficients. */
@@ -52,9 +52,9 @@ static void Tridiagonal_Solve( const real *a, const real *b,
 
 
 static void Natural_Cubic_Spline( const real *h, const real *f,
-        cubic_spline_coef *coef, unsigned int n )
+        cubic_spline_coef *coef, uint32_t n )
 {
-    unsigned int i;
+    uint32_t i;
     real *a, *b, *c, *d, *v;
 
     /* allocate space for linear system */
@@ -122,9 +122,9 @@ static void Natural_Cubic_Spline( const real *h, const real *f,
 
 
 static void Complete_Cubic_Spline( const real *h, const real *f, real v0, real vlast,
-        cubic_spline_coef *coef, unsigned int n )
+        cubic_spline_coef *coef, uint32_t n )
 {
-    unsigned int i;
+    uint32_t i;
     real *a, *b, *c, *d, *v;
 
     /* allocate space for the linear system */
@@ -187,10 +187,10 @@ static void Complete_Cubic_Spline( const real *h, const real *f, real v0, real v
 #if defined(DEBUG_FOCUS)
 static void LR_Lookup( LR_lookup_table *t, real r, LR_data *y )
 {
-    int i;
+    int32_t i;
     real base, dif;
 
-    i = (int)(r * t->inv_dx);
+    i = (int32_t) (r * t->inv_dx);
     if ( i == 0 )
     {
         ++i;
@@ -219,9 +219,9 @@ static void LR_Lookup( LR_lookup_table *t, real r, LR_data *y )
 void Make_LR_Lookup_Table( reax_system *system, control_params *control,
        static_storage *workspace )
 {
-    int i, j, r;
-    int num_atom_types;
-    int existing_types[MAX_ATOM_TYPES];
+    int32_t i, j, r;
+    int32_t num_atom_types;
+    int32_t existing_types[MAX_ATOM_TYPES];
     real dr;
     real *h, *fh, *fvdw, *fele, *fCEvd, *fCEclmb;
     real v0_vdw, v0_ele, vlast_vdw, vlast_ele;
@@ -423,9 +423,9 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control,
 void Finalize_LR_Lookup_Table( reax_system *system, control_params *control,
        static_storage *workspace )
 {
-    int i, j;
-    int num_atom_types;
-    int existing_types[MAX_ATOM_TYPES];
+    int32_t i, j;
+    int32_t num_atom_types;
+    int32_t existing_types[MAX_ATOM_TYPES];
 
     num_atom_types = system->reax_param.num_atom_types;
 

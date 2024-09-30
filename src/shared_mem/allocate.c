@@ -29,26 +29,26 @@
 /* allocate space for atoms */
 void PreAllocate_Space( reax_system * const system,
         control_params const  * const control,
-        static_storage * const workspace, int n )
+        static_storage * const workspace, int32_t n )
 {
-    int i;
+    int32_t i;
 
     if ( system->prealloc_allocated == FALSE )
     {
         system->prealloc_allocated = TRUE;
 
         system->atoms = scalloc( n, sizeof(reax_atom), __FILE__, __LINE__ );
-        workspace->orig_id = scalloc( n, sizeof(int), __FILE__, __LINE__ );
+        workspace->orig_id = scalloc( n, sizeof(int32_t), __FILE__, __LINE__ );
 
         /* bond restriction info */
         if ( control->restrict_bonds )
         {
-            workspace->restricted = scalloc( n, sizeof(int), __FILE__, __LINE__ );
-            workspace->restricted_list = scalloc( n, sizeof(int*), __FILE__, __LINE__ );
+            workspace->restricted = scalloc( n, sizeof(int32_t), __FILE__, __LINE__ );
+            workspace->restricted_list = scalloc( n, sizeof(int32_t *), __FILE__, __LINE__ );
 
             for ( i = 0; i < n; ++i )
             {
-                workspace->restricted_list[i] = scalloc( MAX_RESTRICT, sizeof(int),
+                workspace->restricted_list[i] = scalloc( MAX_RESTRICT, sizeof(int32_t),
                         __FILE__, __LINE__ );
             }
         }
@@ -57,7 +57,7 @@ void PreAllocate_Space( reax_system * const system,
                 || control->geo_format == ASCII_RESTART
                 || control->geo_format == BINARY_RESTART )
         {
-            workspace->map_serials = scalloc( MAX_ATOM_ID, sizeof(int),
+            workspace->map_serials = scalloc( MAX_ATOM_ID, sizeof(int32_t),
                     __FILE__, __LINE__ );
         }
     }
@@ -80,17 +80,17 @@ void PreAllocate_Space( reax_system * const system,
         }
 
         system->atoms = scalloc( n, sizeof(reax_atom), __FILE__, __LINE__ );
-        workspace->orig_id = scalloc( n, sizeof(int), __FILE__, __LINE__ );
+        workspace->orig_id = scalloc( n, sizeof(int32_t), __FILE__, __LINE__ );
 
         /* bond restriction info */
         if ( control->restrict_bonds )
         {
-            workspace->restricted = scalloc( n, sizeof(int), __FILE__, __LINE__ );
-            workspace->restricted_list = scalloc( n, sizeof(int*), __FILE__, __LINE__ );
+            workspace->restricted = scalloc( n, sizeof(int32_t), __FILE__, __LINE__ );
+            workspace->restricted_list = scalloc( n, sizeof(int32_t*), __FILE__, __LINE__ );
 
             for ( i = 0; i < n; ++i )
             {
-                workspace->restricted_list[i] = scalloc( MAX_RESTRICT, sizeof(int),
+                workspace->restricted_list[i] = scalloc( MAX_RESTRICT, sizeof(int32_t),
                         __FILE__, __LINE__ );
             }
         }
@@ -98,8 +98,8 @@ void PreAllocate_Space( reax_system * const system,
 }
 
 
-static void Reallocate_Neighbor_List( reax_list * const far_nbr_list, int n,
-        int n_max, int num_intrs )
+static void Reallocate_Neighbor_List( reax_list * const far_nbr_list, int32_t n,
+        int32_t n_max, int32_t num_intrs )
 {
     if ( far_nbr_list->allocated == TRUE )
     {
@@ -117,7 +117,7 @@ static void Reallocate_Neighbor_List( reax_list * const far_nbr_list, int n,
  * n_max: max. num. rows of the matrix
  * m: number of nonzeros to allocate space for in matrix
  * */
-void Allocate_Matrix( sparse_matrix * const H, int n, int n_max, int m )
+void Allocate_Matrix( sparse_matrix * const H, int32_t n, int32_t n_max, int32_t m )
 {
     H->allocated = TRUE;
 
@@ -125,8 +125,8 @@ void Allocate_Matrix( sparse_matrix * const H, int n, int n_max, int m )
     H->n_max = n_max;
     H->m = m;
 
-    H->start = smalloc( sizeof(unsigned int) * (n_max + 1), __FILE__, __LINE__ );
-    H->j = smalloc( sizeof(unsigned int) * m, __FILE__, __LINE__ );
+    H->start = smalloc( sizeof(uint32_t) * (n_max + 1), __FILE__, __LINE__ );
+    H->j = smalloc( sizeof(uint32_t) * m, __FILE__, __LINE__ );
     H->val = smalloc( sizeof(real) * m, __FILE__, __LINE__ );
 }
 
@@ -145,15 +145,15 @@ void Deallocate_Matrix( sparse_matrix * const H )
 }
 
 
-static void Reallocate_Matrix( sparse_matrix *H, int n, int n_max, int m )
+static void Reallocate_Matrix( sparse_matrix *H, int32_t n, int32_t n_max, int32_t m )
 {
     Deallocate_Matrix( H );
     Allocate_Matrix( H, n, n_max, m );
 }
 
 
-static void Reallocate_List( reax_list * const list, int n, int n_max,
-        int max_intrs, int type )
+static void Reallocate_List( reax_list * const list, int32_t n, int32_t n_max,
+        int32_t max_intrs, int32_t type )
 {
     if ( list->allocated == TRUE )
     {
@@ -166,7 +166,7 @@ static void Reallocate_List( reax_list * const list, int n, int n_max,
 void Reallocate_Part1( reax_system * const system, control_params const * const control,
         static_storage * const workspace, reax_list ** const lists )
 {
-    int i, j, k;
+    int32_t i, j, k;
     reallocate_data *realloc;
     grid *g;
 
@@ -187,7 +187,7 @@ void Reallocate_Part1( reax_system * const system, control_params const * const 
                 {
                     sfree( g->atoms[i][j][k], __FILE__, __LINE__ );
                     g->atoms[i][j][k] = scalloc( workspace->realloc.gcell_atoms,
-                            sizeof(int), __FILE__, __LINE__ );
+                            sizeof(int32_t), __FILE__, __LINE__ );
                 }
             }
         }
@@ -201,7 +201,7 @@ void Reallocate_Part2( reax_system const * const system,
         control_params const * const control, simulation_data const * const data,
         static_storage * const workspace, reax_list ** const lists )
 {
-    int renbr;
+    int32_t renbr;
     reallocate_data *realloc;
 
     realloc = &workspace->realloc;
@@ -245,7 +245,7 @@ void Reallocate_Part2( reax_system const * const system,
     if ( realloc->thbody == TRUE )
     {
         Reallocate_List( lists[THREE_BODIES], realloc->total_bonds,
-                (int) CEIL( realloc->total_bonds * SAFE_ZONE ),
+                (int32_t) CEIL( realloc->total_bonds * SAFE_ZONE ),
                 realloc->total_thbodies, TYP_THREE_BODY );
 
         realloc->thbody = FALSE;

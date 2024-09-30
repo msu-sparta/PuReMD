@@ -31,10 +31,10 @@
  * NOTE: this assumes the atom positions are within the 
  * simulation box boundaries [0, d_i) where d_i is the simulation
  * box length along a particular dimension */
-static int Estimate_GCell_Population( reax_system * const system )
+static int32_t Estimate_GCell_Population( reax_system * const system )
 {
-    int i, j, k, l;
-    int max_atoms;
+    int32_t i, j, k, l;
+    int32_t max_atoms;
     grid *g;
 
     g = &system->g;
@@ -47,9 +47,9 @@ static int Estimate_GCell_Population( reax_system * const system )
         assert( system->atoms[l].x[1] >= 0.0 && system->atoms[l].x[1] < system->box.box_norms[1] );
         assert( system->atoms[l].x[2] >= 0.0 && system->atoms[l].x[2] < system->box.box_norms[2] );
 
-        i = (int) (system->atoms[l].x[0] * g->inv_len[0]);
-        j = (int) (system->atoms[l].x[1] * g->inv_len[1]);
-        k = (int) (system->atoms[l].x[2] * g->inv_len[2]);
+        i = (int32_t) (system->atoms[l].x[0] * g->inv_len[0]);
+        j = (int32_t) (system->atoms[l].x[1] * g->inv_len[1]);
+        k = (int32_t) (system->atoms[l].x[2] * g->inv_len[2]);
         g->top[i][j][k]++;
 
 //        fprintf( stderr, "\tatom%-6d (%8.3f%8.3f%8.3f) --> (%3d%3d%3d)\n",
@@ -76,9 +76,9 @@ static int Estimate_GCell_Population( reax_system * const system )
 }
 
 
-static void Allocate_Space_for_Grid( reax_system * const system, int alloc )
+static void Allocate_Space_for_Grid( reax_system * const system, int32_t alloc )
 {
-    int i, j, k, l, max_atoms;
+    int32_t i, j, k, l, max_atoms;
     grid *g;
 
     g = &system->g;
@@ -89,64 +89,64 @@ static void Allocate_Space_for_Grid( reax_system * const system, int alloc )
     if ( alloc == TRUE )
     {
         /* allocate space for the new grid */
-        g->atoms = scalloc( g->ncell_max[0], sizeof( int*** ),
+        g->atoms = scalloc( g->ncell_max[0], sizeof( int32_t*** ),
                 __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
-            g->atoms[i] = scalloc( g->ncell_max[1], sizeof( int** ),
+            g->atoms[i] = scalloc( g->ncell_max[1], sizeof( int32_t** ),
                     __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
-                g->atoms[i][j] = scalloc( g->ncell_max[2], sizeof( int* ),
+                g->atoms[i][j] = scalloc( g->ncell_max[2], sizeof( int32_t* ),
                         __FILE__, __LINE__ );
 
-        g->top = scalloc( g->ncell_max[0], sizeof( int** ),
+        g->top = scalloc( g->ncell_max[0], sizeof( int32_t** ),
                 __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
-            g->top[i] = scalloc( g->ncell_max[1], sizeof( int* ),
+            g->top[i] = scalloc( g->ncell_max[1], sizeof( int32_t* ),
                     __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
-                g->top[i][j] = scalloc( g->ncell_max[2], sizeof( int ),
+                g->top[i][j] = scalloc( g->ncell_max[2], sizeof( int32_t ),
                         __FILE__, __LINE__ );
 
-        g->mark = scalloc( g->ncell_max[0], sizeof( int** ),
+        g->mark = scalloc( g->ncell_max[0], sizeof( int32_t** ),
                 __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
-            g->mark[i] = scalloc( g->ncell_max[1], sizeof( int* ),
+            g->mark[i] = scalloc( g->ncell_max[1], sizeof( int32_t* ),
                     __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
-                g->mark[i][j] = scalloc( g->ncell_max[2], sizeof( int ),
+                g->mark[i][j] = scalloc( g->ncell_max[2], sizeof( int32_t ),
                         __FILE__, __LINE__ );
 
-        g->start = scalloc( g->ncell_max[0], sizeof( int** ),
+        g->start = scalloc( g->ncell_max[0], sizeof( int32_t** ),
                 __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
-            g->start[i] = scalloc( g->ncell_max[1], sizeof( int* ),
+            g->start[i] = scalloc( g->ncell_max[1], sizeof( int32_t* ),
                     __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
-                g->start[i][j] = scalloc( g->ncell_max[2], sizeof( int ),
+                g->start[i][j] = scalloc( g->ncell_max[2], sizeof( int32_t ),
                         __FILE__, __LINE__ );
 
-        g->end = scalloc( g->ncell_max[0], sizeof( int** ),
+        g->end = scalloc( g->ncell_max[0], sizeof( int32_t** ),
                 __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
-            g->end[i] = scalloc( g->ncell_max[1], sizeof( int* ),
+            g->end[i] = scalloc( g->ncell_max[1], sizeof( int32_t* ),
                     __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
-                g->end[i][j] = scalloc( g->ncell_max[2], sizeof( int ),
+                g->end[i][j] = scalloc( g->ncell_max[2], sizeof( int32_t ),
                         __FILE__, __LINE__ );
 
         g->nbrs = scalloc( g->ncell_max[0], sizeof( ivec*** ),
@@ -235,7 +235,7 @@ static void Allocate_Space_for_Grid( reax_system * const system, int alloc )
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
                 for ( k = 0; k < g->ncell_max[2]; k++ )
-                    g->atoms[i][j][k] = smalloc( g->max_atoms * sizeof( int ),
+                    g->atoms[i][j][k] = smalloc( g->max_atoms * sizeof( int32_t ),
                            __FILE__, __LINE__ );
     }
     /* case: grid large enough but max. atoms per grid cells insufficient */
@@ -251,7 +251,7 @@ static void Allocate_Space_for_Grid( reax_system * const system, int alloc )
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
                 for ( k = 0; k < g->ncell_max[2]; k++ )
-                    g->atoms[i][j][k] = smalloc( g->max_atoms * sizeof( int ),
+                    g->atoms[i][j][k] = smalloc( g->max_atoms * sizeof( int32_t ),
                            __FILE__, __LINE__ );
     }
 
@@ -265,7 +265,7 @@ static void Allocate_Space_for_Grid( reax_system * const system, int alloc )
 
 static void Deallocate_Grid_Space( grid * const g )
 {
-    int i, j, k;
+    int32_t i, j, k;
 
     g->allocated = FALSE;
 
@@ -312,9 +312,9 @@ static void Deallocate_Grid_Space( grid * const g )
 }
 
 
-static inline int Shift( int p, int dp, int dim, grid const * const g )
+static inline int32_t Shift( int32_t p, int32_t dp, int32_t dim, grid const * const g )
 {
-    int dim_len, newp;
+    int32_t dim_len, newp;
 
     dim_len = 0;
     newp = p + dp;
@@ -346,10 +346,10 @@ static inline int Shift( int p, int dp, int dim, grid const * const g )
 
 /* finds the closest point between two grid cells denoted by c1 and c2.
  * periodic boundary conditions are taken into consideration as well. */
-static void Find_Closest_Point( grid const * const g, int c1x, int c1y, int c1z,
-        int c2x, int c2y, int c2z, rvec closest_point )
+static void Find_Closest_Point( grid const * const g, int32_t c1x, int32_t c1y, int32_t c1z,
+        int32_t c2x, int32_t c2y, int32_t c2z, rvec closest_point )
 {
-    int i, d;
+    int32_t i, d;
     ivec c1 = { c1x, c1y, c1z };
     ivec c2 = { c2x, c2y, c2z };
 
@@ -394,10 +394,10 @@ static void Find_Closest_Point( grid const * const g, int c1x, int c1y, int c1z,
 
 static void Find_Neighbor_Grid_Cells( grid * const g )
 {
-    int i, j, k;
-    int di, dj, dk;
-    int x, y, z;
-    int stack_top;
+    int32_t i, j, k;
+    int32_t di, dj, dk;
+    int32_t x, y, z;
+    int32_t stack_top;
     ivec *nbrs_stack;
     rvec *cp_stack;
 
@@ -469,7 +469,7 @@ static void Find_Neighbor_Grid_Cells( grid * const g )
 
 void Setup_Grid( reax_system * const system )
 {
-    int d, alloc;
+    int32_t d, alloc;
     grid *g;
     simulation_box *my_box;
 
@@ -490,9 +490,9 @@ void Setup_Grid( reax_system * const system )
 
     if ( g->allocated == FALSE )
     {
-        g->ncell_max[0] = (int) CEIL( SAFE_ZONE * g->ncell[0] );
-        g->ncell_max[1] = (int) CEIL( SAFE_ZONE * g->ncell[1] );
-        g->ncell_max[2] = (int) CEIL( SAFE_ZONE * g->ncell[2] );
+        g->ncell_max[0] = (int32_t) CEIL( SAFE_ZONE * g->ncell[0] );
+        g->ncell_max[1] = (int32_t) CEIL( SAFE_ZONE * g->ncell[1] );
+        g->ncell_max[2] = (int32_t) CEIL( SAFE_ZONE * g->ncell[2] );
         g->max_atoms = 0;
 
         alloc = TRUE;
@@ -507,15 +507,15 @@ void Setup_Grid( reax_system * const system )
 
         if ( g->ncell[0] > g->ncell_max[0] )
         {
-            g->ncell_max[0] = (int) CEIL( SAFE_ZONE * MAX( g->ncell[0], g->ncell_max[0] ) );
+            g->ncell_max[0] = (int32_t) CEIL( SAFE_ZONE * MAX( g->ncell[0], g->ncell_max[0] ) );
         }
         if ( g->ncell[1] > g->ncell_max[1] )
         {
-            g->ncell_max[1] = (int) CEIL( SAFE_ZONE * MAX( g->ncell[1], g->ncell_max[1] ) );
+            g->ncell_max[1] = (int32_t) CEIL( SAFE_ZONE * MAX( g->ncell[1], g->ncell_max[1] ) );
         }
         if ( g->ncell[2] > g->ncell_max[2] )
         {
-            g->ncell_max[2] = (int) CEIL( SAFE_ZONE * MAX( g->ncell[2], g->ncell_max[2] ) );
+            g->ncell_max[2] = (int32_t) CEIL( SAFE_ZONE * MAX( g->ncell[2], g->ncell_max[2] ) );
         }
 
         alloc = TRUE;
@@ -539,7 +539,7 @@ void Setup_Grid( reax_system * const system )
 
 void Update_Grid( reax_system * const system )
 {
-    int d, i, j, k, x, y, z, itr;
+    int32_t d, i, j, k, x, y, z, itr;
     ivec ncell;
     ivec *nbrs;
     rvec *nbrs_cp;
@@ -628,8 +628,8 @@ void Update_Grid( reax_system * const system )
  * box length along a particular dimension */
 void Bin_Atoms( reax_system * const system, static_storage * const workspace )
 {
-    int i, j, k, l;
-    int max_atoms;
+    int32_t i, j, k, l;
+    int32_t max_atoms;
     grid *g;
 
     g = &system->g;
@@ -642,9 +642,9 @@ void Bin_Atoms( reax_system * const system, static_storage * const workspace )
         assert( system->atoms[l].x[1] >= 0.0 && system->atoms[l].x[1] < system->box.box_norms[1] );
         assert( system->atoms[l].x[2] >= 0.0 && system->atoms[l].x[2] < system->box.box_norms[2] );
 
-        i = (int) (system->atoms[l].x[0] * g->inv_len[0]);
-        j = (int) (system->atoms[l].x[1] * g->inv_len[1]);
-        k = (int) (system->atoms[l].x[2] * g->inv_len[2]);
+        i = (int32_t) (system->atoms[l].x[0] * g->inv_len[0]);
+        j = (int32_t) (system->atoms[l].x[1] * g->inv_len[1]);
+        k = (int32_t) (system->atoms[l].x[2] * g->inv_len[2]);
         /* atom index in grid cell => atom number */
         g->atoms[i][j][k][g->top[i][j][k]] = l;
         /* count of current atoms in this grid cell */
@@ -674,9 +674,9 @@ void Bin_Atoms( reax_system * const system, static_storage * const workspace )
     }
 
     /* reallocation check */
-    if ( max_atoms >= (int) CEIL( g->max_atoms * SAFE_ZONE ) )
+    if ( max_atoms >= (int32_t) CEIL( g->max_atoms * SAFE_ZONE ) )
     {
-        workspace->realloc.gcell_atoms = MAX( (int) CEIL( max_atoms * SAFE_ZONE ),
+        workspace->realloc.gcell_atoms = MAX( (int32_t) CEIL( max_atoms * SAFE_ZONE ),
                 MIN_GCELL_POPL );
     }
 }
@@ -708,11 +708,11 @@ static void reax_atom_Copy( reax_atom * const dest, reax_atom * const src )
 
 
 static void Copy_Storage( reax_system const * const system,static_storage * const workspace,
-        control_params const * const control, int top, int old_id, int old_type,
-        real ** const v, real ** const s, real ** const t, int * const orig_id,
+        control_params const * const control, int32_t top, int32_t old_id, int32_t old_type,
+        real ** const v, real ** const s, real ** const t, int32_t * const orig_id,
         rvec * const f_old )
 {
-    int i;
+    int32_t i;
 
     for ( i = 0; i < control->cm_solver_restart + 1; ++i )
     {
@@ -737,7 +737,7 @@ static void Copy_Storage( reax_system const * const system,static_storage * cons
 static void Free_Storage( static_storage * const workspace,
         control_params const * const control )
 {
-    int i;
+    int32_t i;
 
     for ( i = 0; i < control->cm_solver_restart + 1; ++i )
     {
@@ -758,7 +758,7 @@ static void Free_Storage( static_storage * const workspace,
 
 
 static void Assign_New_Storage( static_storage *workspace,
-        real **v, real **s, real **t, int *orig_id, rvec *f_old )
+        real **v, real **s, real **t, int32_t *orig_id, rvec *f_old )
 {
     workspace->v = v;
     workspace->s = s;
@@ -772,10 +772,10 @@ static void Assign_New_Storage( static_storage *workspace,
 void Reorder_Atoms( reax_system * const system, static_storage * const workspace,
         control_params const * const control )
 {
-    int i, j, k, l, top, old_id;
+    int32_t i, j, k, l, top, old_id;
     reax_atom *old_atom, *new_atoms;
     grid *g;
-    int *orig_id;
+    int32_t *orig_id;
     real **v;
     real **s, **t;
     rvec *f_old;
@@ -784,7 +784,7 @@ void Reorder_Atoms( reax_system * const system, static_storage * const workspace
     g = &system->g;
 
     new_atoms = scalloc( system->N, sizeof(reax_atom), __FILE__, __LINE__ );
-    orig_id = scalloc( system->N, sizeof(int), __FILE__, __LINE__ );
+    orig_id = scalloc( system->N, sizeof(int32_t), __FILE__, __LINE__ );
     f_old = scalloc( system->N, sizeof(rvec), __FILE__, __LINE__ );
 
     s = scalloc( 5, sizeof(real *), __FILE__, __LINE__ );

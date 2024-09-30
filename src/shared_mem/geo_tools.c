@@ -148,9 +148,9 @@ COLUMNS       DATA TYPE       FIELD         DEFINITION
  * fp: file pointer to open geometry file 
  * geo_format: type of geometry file
  * */
-static int Read_Box_Info( reax_system *system, FILE *fp, int geo_format )
+static int32_t Read_Box_Info( reax_system *system, FILE *fp, int32_t geo_format )
 {
-    int ret, cryst_len;
+    int32_t ret, cryst_len;
     char *cryst;
     char line[MAX_LINE];
     char descriptor[9];
@@ -236,10 +236,10 @@ static int Read_Box_Info( reax_system *system, FILE *fp, int geo_format )
  * fp: file pointer to open geometry file 
  * geo_format: type of geometry file
  * */
-static int Count_Atoms( reax_system *system, FILE *fp, int geo_format )
+static int32_t Count_Atoms( reax_system *system, FILE *fp, int32_t geo_format )
 {
     char line[MAX_LINE];
-    int n;
+    int32_t n;
 
     n = 0;
 
@@ -311,7 +311,7 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
         simulation_data *data, static_storage *workspace )
 {
     FILE *geo;
-    int i, j, n, serial, top;
+    int32_t i, j, n, serial, top;
     rvec x;
     char element[3], name[9];
     reax_atom *atom;
@@ -329,7 +329,7 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
     n = Count_Atoms( system, geo, CUSTOM );
     if ( system->prealloc_allocated == FALSE || n > system->N_max )
     {
-        PreAllocate_Space( system, control, workspace, (int) CEIL( SAFE_ZONE * n ) );
+        PreAllocate_Space( system, control, workspace, (int32_t) CEIL( SAFE_ZONE * n ) );
     }
     system->N = n;
 
@@ -396,7 +396,7 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
 void Read_PDB( const char * const pdb_file, reax_system* system, control_params *control,
         simulation_data *data, static_storage *workspace )
 {
-    int i, n, c, c1, pdb_serial, top;
+    int32_t i, n, c, c1, pdb_serial, top;
     FILE *pdb;
     char **tmp;
     char *s, *s1;
@@ -424,7 +424,7 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
     n = Count_Atoms( system, pdb, PDB );
     if ( system->prealloc_allocated == FALSE || n > system->N_max )
     {
-        PreAllocate_Space( system, control, workspace, (int) CEIL( SAFE_ZONE * n ) );
+        PreAllocate_Space( system, control, workspace, (int32_t) CEIL( SAFE_ZONE * n ) );
     }
     system->N = n;
 
@@ -521,7 +521,7 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
             {
                 /* store orig_id, type, name and coord info of the new atom */
                 atom = &system->atoms[top];
-                pdb_serial = (int) sstrtod( serial, __FILE__, __LINE__ );
+                pdb_serial = (int32_t) sstrtod( serial, __FILE__, __LINE__ );
                 workspace->orig_id[top] = pdb_serial;
 
                 strncpy( atom->name, atom_name, sizeof(atom->name) - 1 );
@@ -621,7 +621,7 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
 void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
         control_params *control, static_storage *workspace, output_controls *out_control )
 {
-    int i; 
+    int32_t i; 
     char name[6];
     real alpha, beta, gamma;
     rvec x;
@@ -645,7 +645,7 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
 
     /* write header */
     snprintf( fname, sizeof(fname) - 1, "%.*s-%.*d.pdb",
-            (int) MIN( strnlen(control->sim_name,
+            (int32_t) MIN( strnlen(control->sim_name,
                     sizeof(fname) - snprintf(NULL, 0, "%d", data->step) - 6 ),
                 sizeof(control->sim_name) ),
             control->sim_name, snprintf(NULL, 0, "%d", data->step), data->step );
@@ -706,7 +706,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
     char element[6], charge[9];
 //    char chain_id;
     char s_a[12], s_b[12], s_c[12], s_alpha[12], s_beta[12], s_gamma[12];
-    int i, n, num_mcc, atom_cnt, token_cnt, bgf_serial, ratom, crystx_found;
+    int32_t i, n, num_mcc, atom_cnt, token_cnt, bgf_serial, ratom, crystx_found;
     rvec x;
 
     ratom = 0;
@@ -747,14 +747,14 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
 
     if ( system->prealloc_allocated == FALSE || n > system->N_max )
     {
-        PreAllocate_Space( system, control, workspace, (int) CEIL( SAFE_ZONE * n ) );
+        PreAllocate_Space( system, control, workspace, (int32_t) CEIL( SAFE_ZONE * n ) );
 
         if ( system->prealloc_allocated == FALSE && num_mcc > 0 )
         {
             system->molec_charge_constraints = smalloc(
                     sizeof(real) * num_mcc, __FILE__, __LINE__ );
             system->molec_charge_constraint_ranges = smalloc(
-                    sizeof(int) * 2 * num_mcc, __FILE__, __LINE__ );
+                    sizeof(int32_t) * 2 * num_mcc, __FILE__, __LINE__ );
 
             system->max_num_molec_charge_constraints = num_mcc;
         }
@@ -769,7 +769,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             system->molec_charge_constraints = smalloc(
                     sizeof(real) * num_mcc, __FILE__, __LINE__ );
             system->molec_charge_constraint_ranges = smalloc(
-                    sizeof(int) * 2 * num_mcc, __FILE__, __LINE__ );
+                    sizeof(int32_t) * 2 * num_mcc, __FILE__, __LINE__ );
 
             system->max_num_molec_charge_constraints = num_mcc;
         }

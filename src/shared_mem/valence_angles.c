@@ -55,7 +55,7 @@ void Calculate_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
 void Calculate_dCos_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
         rvec* dcos_theta_di, rvec* dcos_theta_dj, rvec* dcos_theta_dk )
 {
-    int t;
+    int32_t t;
     real sqr_d_ji, sqr_d_jk, inv_dists, inv_dists3, dot_dvecs, Cdot_inv3;
 
     assert( d_ji > 0.0 );
@@ -94,7 +94,7 @@ void Valence_Angles( reax_system *system, control_params *control,
     real p_pen2, p_pen3, p_pen4;
     real p_coa2, p_coa3, p_coa4;
     real p_val6, p_val8, p_val9, p_val10;
-    int x, num_thb_intrs;
+    int32_t x, num_thb_intrs;
     real e_ang_total, e_pen_total, e_coa_total;
 
     bonds = lists[BONDS];
@@ -130,10 +130,10 @@ void Valence_Angles( reax_system *system, control_params *control,
 //    #pragma omp parallel default(shared) reduction(+:total_Eang, total_Epen, total_Ecoa, num_thb_intrs) 
 #endif
     {
-        int i, j, pi, k, pk, t;
-        int type_i, type_j, type_k;
-        int start_j, end_j, start_pk, end_pk;
-        int cnt;
+        int32_t i, j, pi, k, pk, t;
+        int32_t type_i, type_j, type_k;
+        int32_t start_j, end_j, start_pk, end_pk;
+        int32_t cnt;
         real temp, temp_bo_jt, pBOjt7;
         real p_val1, p_val2, p_val3, p_val4, p_val5, p_val7;
         real p_pen1;
@@ -159,7 +159,7 @@ void Valence_Angles( reax_system *system, control_params *control,
         bond_data *pbond_ij, *pbond_jk, *pbond_jt;
         bond_order_data *bo_ij, *bo_jk, *bo_jt;
 #if defined(_OPENMP)
-//        int tid = omp_get_thread_num( );
+//        int32_t tid = omp_get_thread_num( );
 #endif
 
         for ( j = 0; j < system->N; ++j )
@@ -718,7 +718,7 @@ void Valence_Angles( reax_system *system, control_params *control,
 
     if ( num_thb_intrs >= thb_intrs->total_intrs * DANGER_ZONE )
     {
-        workspace->realloc.total_thbodies = (int) CEIL( num_thb_intrs * SAFE_ZONE );
+        workspace->realloc.total_thbodies = (int32_t) CEIL( num_thb_intrs * SAFE_ZONE );
         workspace->realloc.thbody = TRUE;
 
         /* retry functionality is not implemented as valence angle list

@@ -24,7 +24,7 @@
 
 #include "reax_types.h"
 
-int Set_Control_Parameter( const char * const, const char ** const,
+int32_t Set_Control_Parameter( const char * const, const char ** const,
         control_params * const, output_controls * const );
 
 void Set_Control_Defaults( reax_system * const, control_params * const,

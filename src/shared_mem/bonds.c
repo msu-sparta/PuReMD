@@ -29,7 +29,7 @@ void Bonds( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    int i;
+    int32_t i;
     real gp3, gp4, gp7, gp10, ebond_total;
     reax_list *bonds;
 
@@ -44,9 +44,9 @@ void Bonds( reax_system *system, control_params *control,
 //    #pragma omp parallel default(shared) reduction(+: ebond_total)
 #endif
     { 
-        int j, pj;
-        int start_i, end_i;
-        int type_i, type_j;
+        int32_t j, pj;
+        int32_t start_i, end_i;
+        int32_t type_i, type_j;
         real ebond, pow_BOs_be2, exp_be12, CEbo;
         real exphu, exphua1, exphub1, exphuov, hulpov, estriph;
         real decobdbo, decobdboua, decobdboub;

@@ -36,22 +36,22 @@ void Update_Box( rtensor, simulation_box* );
 void Update_Box_Isotropic( simulation_box*, real );
 void Update_Box_Semi_Isotropic( simulation_box*, rvec );
 
-int Find_Non_Periodic_Far_Neighbors( rvec, rvec, int, int,
-        simulation_box const * const, real, far_neighbor_data * const, int );
+int32_t Find_Non_Periodic_Far_Neighbors( rvec, rvec, int32_t, int32_t,
+        simulation_box const * const, real, far_neighbor_data * const, int32_t );
 
-int Count_Non_Periodic_Far_Neighbors( rvec, rvec, int, int,
+int32_t Count_Non_Periodic_Far_Neighbors( rvec, rvec, int32_t, int32_t,
         simulation_box const * const , real );
 
-int Find_Periodic_Far_Neighbors_Big_Box( rvec, rvec, int, int,
-        simulation_box const * const, real, far_neighbor_data * const, int );
+int32_t Find_Periodic_Far_Neighbors_Big_Box( rvec, rvec, int32_t, int32_t,
+        simulation_box const * const, real, far_neighbor_data * const, int32_t );
 
-int Count_Periodic_Far_Neighbors_Big_Box( rvec, rvec, int, int,
+int32_t Count_Periodic_Far_Neighbors_Big_Box( rvec, rvec, int32_t, int32_t,
         simulation_box const * const, real );
 
-int Find_Periodic_Far_Neighbors_Small_Box( rvec, rvec, int, int,
-        simulation_box const * const, real, far_neighbor_data * const, int );
+int32_t Find_Periodic_Far_Neighbors_Small_Box( rvec, rvec, int32_t, int32_t,
+        simulation_box const * const, real, far_neighbor_data * const, int32_t );
 
-int Count_Periodic_Far_Neighbors_Small_Box( rvec, rvec, int, int,
+int32_t Count_Periodic_Far_Neighbors_Small_Box( rvec, rvec, int32_t, int32_t,
         simulation_box const * const, real );
 
 void Compute_Atom_Distance_Triclinic( control_params *,

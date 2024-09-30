@@ -30,7 +30,7 @@
 void Write_Binary_Restart( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace )
 {
-    int  i;
+    int32_t  i;
     char fname[MAX_STR];
     FILE *fres;
     reax_atom *p_atom;
@@ -75,7 +75,7 @@ void Read_Binary_Restart( const char * const fname, reax_system *system,
         control_params *control, simulation_data *data,
         static_storage *workspace )
 {
-    int i;
+    int32_t i;
     FILE *fres;
     reax_atom *p_atom;
     restart_header res_header;
@@ -116,7 +116,7 @@ void Read_Binary_Restart( const char * const fname, reax_system *system,
     if ( system->prealloc_allocated == FALSE || res_header.N > system->N_max )
     {
         PreAllocate_Space( system, control, workspace,
-                (int) CEIL( SAFE_ZONE * res_header.N ) );
+                (int32_t) CEIL( SAFE_ZONE * res_header.N ) );
     }
     system->N = res_header.N;
 
@@ -161,7 +161,7 @@ void Read_Binary_Restart( const char * const fname, reax_system *system,
 void Write_ASCII_Restart( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace )
 {
-    int  i;
+    int32_t  i;
     char fname[MAX_STR];
     FILE *fres;
     reax_atom *p_atom;
@@ -198,7 +198,7 @@ void Read_ASCII_Restart( const char * const fname, reax_system *system,
         control_params *control, simulation_data *data,
         static_storage *workspace )
 {
-    int i, n;
+    int32_t i, n;
     FILE *fres;
     reax_atom *p_atom;
 
@@ -234,7 +234,7 @@ void Read_ASCII_Restart( const char * const fname, reax_system *system,
 
     if ( system->prealloc_allocated == FALSE || n > system->N_max )
     {
-        PreAllocate_Space( system, control, workspace, (int) CEIL( SAFE_ZONE * n ) );
+        PreAllocate_Space( system, control, workspace, (int32_t) CEIL( SAFE_ZONE * n ) );
     }
     system->N = n;
 

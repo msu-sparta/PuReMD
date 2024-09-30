@@ -31,11 +31,11 @@
 #endif
 
 
-int Set_Control_Parameter( const char * const keyword,
+int32_t Set_Control_Parameter( const char * const keyword,
         const char ** const values, control_params * const control,
         output_controls * const out_control )
 {
-    int i, ret;
+    int32_t i, ret;
     real val;
 
     ret = SUCCESS;
@@ -354,7 +354,7 @@ int Set_Control_Parameter( const char * const keyword,
         if ( out_control->traj_compress == 1 )
         {
 #if defined(HAVE_ZLIB)
-            out_control->write = (int (*)(FILE *, const char *, ...)) &gzprintf;
+            out_control->write = (int32_t (*)(FILE *, const char *, ...)) &gzprintf;
 #else
             fprintf( stderr, "[ERROR] zlib support disabled (trajectory file compression). "
                     "Re-compile to enable. Terminating...\n" );
@@ -473,7 +473,7 @@ int Set_Control_Parameter( const char * const keyword,
 void Set_Control_Defaults( reax_system * const system,
         control_params * const  control, output_controls * const out_control )
 {
-    int i;
+    int32_t i;
 
     strncpy( control->sim_name, "default.sim", sizeof(control->sim_name) - 1 );
     control->sim_name[sizeof(control->sim_name) - 1] = '\0';
@@ -584,7 +584,7 @@ void Read_Control_File( const char * const control_file, reax_system * const sys
         control_params * const  control, output_controls * const out_control )
 {
     char *s, **tmp;
-    int c, i, ret;
+    int32_t c, i, ret;
     FILE *fp;
 
     fp = sfopen( control_file, "r", __FILE__, __LINE__ );
@@ -639,7 +639,7 @@ void Read_Control_File( const char * const control_file, reax_system * const sys
 void Set_Control_Derived_Values( reax_system * const system,
         control_params * const  control )
 {
-    int i;
+    int32_t i;
 
     /* determine target T */
     if ( control->T_mode == 0 )

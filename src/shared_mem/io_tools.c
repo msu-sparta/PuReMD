@@ -33,7 +33,7 @@ void Print_Bond_Orders( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    int i, pj, pk;
+    int32_t i, pj, pk;
     bond_order_data *bo_ij;
     reax_list *bonds = lists[BONDS];
     reax_list *dBOs = lists[DBO];
@@ -105,7 +105,7 @@ void Print_Bond_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    int i;
+    int32_t i;
 
     fprintf( out_control->fbond, "%d\n", data->step );
     fprintf( out_control->fbond, "%6s\t%s\n", "atom", "fbond" );
@@ -123,7 +123,7 @@ void Print_LonePair_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    int i;
+    int32_t i;
 
     fprintf( out_control->flp, "%d\n", data->step );
     fprintf( out_control->flp, "%6s\t%s\n", "atom", "f_lonepair" );
@@ -143,7 +143,7 @@ void Print_OverUnderCoor_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control )
 {
-    int i;
+    int32_t i;
 
     fprintf( out_control->fatom, "%d\n", data->step );
     fprintf( out_control->fatom, "%6s\t%-38s%-38s%-38s\n",
@@ -182,7 +182,7 @@ void Print_Three_Body_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    int j;
+    int32_t j;
 
     fprintf( out_control->f3body, "%d\n", data->step );
     fprintf( out_control->f3body, "%6s%-37s%-37s%-37s%-38s\n",
@@ -241,7 +241,7 @@ void Print_Hydrogen_Bond_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control )
 {
-    int j;
+    int32_t j;
 
     fprintf( out_control->fhb, "%d\n", data->step );
     fprintf( out_control->fhb, "%6s\t%-38s\n", "atom", "f_hb" );
@@ -261,7 +261,7 @@ void Print_Four_Body_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    int j;
+    int32_t j;
 
     fprintf( out_control->f4body, "%6s\t%-38s%-38s%-38s\n",
              "atom", "4-body total", "f_tor", "f_con" );
@@ -299,7 +299,7 @@ void Print_vdW_Coulomb_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    int  i;
+    int32_t  i;
 
     fprintf( out_control->fnonb, "%d\n", data->step );
     fprintf( out_control->fnonb, "%6s\t%-38s%-38s%-38s\n",
@@ -338,7 +338,7 @@ void Compare_Total_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    int i;
+    int32_t i;
 
     fprintf( out_control->ftot2, "%d\n", data->step );
     fprintf( out_control->ftot2, "%6s\t%-38s%-38s\n",
@@ -394,7 +394,7 @@ void Init_Force_Test_Functions( control_params *control )
 void Print_Near_Neighbors( reax_system *system, control_params *control,
         static_storage *workspace, reax_list **lists )
 {
-    int i, j, id_i, id_j;
+    int32_t i, j, id_i, id_j;
     char fname[MAX_STR];
     FILE *fout;
     reax_list *near_nbrs = lists[NEAR_NBRS];
@@ -428,7 +428,7 @@ void Print_Near_Neighbors( reax_system *system, control_params *control,
 void Print_Near_Neighbors2( reax_system *system, control_params *control,
         static_storage *workspace, reax_list **lists )
 {
-    int i, j, id_i, id_j;
+    int32_t i, j, id_i, id_j;
     char fname[MAX_STR];
     FILE *fout;
     reax_list *near_nbrs = lists[NEAR_NBRS];
@@ -465,7 +465,7 @@ void Print_Far_Neighbors( reax_system const * const system,
         simulation_data const * const data,
         static_storage const * const workspace, reax_list ** const lists )
 {
-    int i, pj, id_i, id_j;
+    int32_t i, pj, id_i, id_j;
     char fname[MAX_STR];
     FILE *fout;
     reax_list *far_nbrs;
@@ -510,24 +510,24 @@ void Print_Far_Neighbors( reax_system const * const system,
 }
 
 
-static int fn_qsort_intcmp( const void *a, const void *b )
+static int32_t fn_qsort_intcmp( const void *a, const void *b )
 {
-    return ( *(int *)a - * (int *)b);
+    return ( *(int32_t *)a - * (int32_t *)b);
 }
 
 
 void Print_Far_Neighbors2( reax_system *system, control_params *control,
         static_storage *workspace, reax_list **lists )
 {
-    int i, j, id_i, id_j;
+    int32_t i, j, id_i, id_j;
     char fname[MAX_STR];
     FILE *fout;
     reax_list *far_nbrs = lists[FAR_NBRS];
 
     snprintf( fname, MAX_STR, "%.*s.far_nbrs_lgj", MAX_STR - 14, control->sim_name );
     fout = sfopen( fname, "w", __FILE__, __LINE__ );
-    int num = 0;
-    int temp[500];
+    int32_t num = 0;
+    int32_t temp[500];
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -540,7 +540,7 @@ void Print_Far_Neighbors2( reax_system *system, control_params *control,
             id_j = workspace->orig_id[far_nbrs->far_nbr_list[j].nbr];
             temp[num++] = id_j;
         }
-        qsort(&temp, num, sizeof(int), fn_qsort_intcmp);
+        qsort(&temp, num, sizeof(int32_t), fn_qsort_intcmp);
         for (j = 0; j < num; j++)
             fprintf(fout, "%6d", temp[j]);
         fprintf( fout, "\n");
@@ -554,7 +554,7 @@ void Print_Total_Force( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    int i;
+    int32_t i;
     char fname[MAX_STR];
     FILE *fout;
 
@@ -703,9 +703,9 @@ void Output_Results( reax_system *system, control_params *control,
 
 
 void Print_Linear_System( reax_system *system, control_params *control,
-        static_storage *workspace, int step )
+        static_storage *workspace, int32_t step )
 {
-    int i, j;
+    int32_t i, j;
     char fname[100];
     sparse_matrix *H;
     FILE *out;
@@ -789,9 +789,9 @@ void Print_Linear_System( reax_system *system, control_params *control,
 
 
 void Print_Charges( reax_system *system, control_params *control,
-        static_storage *workspace, int step )
+        static_storage *workspace, int32_t step )
 {
-    int i;
+    int32_t i;
     char fname[100];
     FILE *fout;
 
@@ -810,9 +810,9 @@ void Print_Charges( reax_system *system, control_params *control,
 
 
 void Print_Soln( static_storage *workspace,
-        real *x, real *b_prm, real *b, int N )
+        real *x, real *b_prm, real *b, int32_t N )
 {
-    int i;
+    int32_t i;
 
     fprintf( stdout, "%6s%10s%10s%10s\n", "id", "x", "b_prm", "b" );
 
@@ -828,7 +828,7 @@ void Print_Soln( static_storage *workspace,
 
 void Print_Sparse_Matrix( sparse_matrix *A )
 {
-    int i, j;
+    int32_t i, j;
 
     for ( i = 0; i < A->n; ++i )
     {
@@ -844,7 +844,7 @@ void Print_Sparse_Matrix( sparse_matrix *A )
 
 void Print_Sparse_Matrix2( sparse_matrix *A, char *fname, char *mode )
 {
-    int i, j;
+    int32_t i, j;
     FILE *f;
    
     if ( mode == NULL )
@@ -882,7 +882,7 @@ void Print_Sparse_Matrix2( sparse_matrix *A, char *fname, char *mode )
  * columns than rows */
 void Read_Sparse_Matrix2( sparse_matrix *A, char *fname )
 {
-    int top, cur_row, row, col;
+    int32_t top, cur_row, row, col;
     real val;
     FILE *f;
    
@@ -917,9 +917,9 @@ void Read_Sparse_Matrix2( sparse_matrix *A, char *fname )
  *
  * Note: the file must be sorted in increasing order of
  * columns than rows */
-void Read_Permutation_Matrix( unsigned int *v, char *fname )
+void Read_Permutation_Matrix( uint32_t *v, char *fname )
 {
-    unsigned int row, col;
+    uint32_t row, col;
     double val;
     FILE *f;
    
@@ -938,21 +938,21 @@ void Read_Permutation_Matrix( unsigned int *v, char *fname )
  * due to serialization of numeric types (integer, IEEE 754) */
 void Print_Sparse_Matrix_Binary( sparse_matrix *A, char *fname )
 {
-    int i, j, temp;
+    int32_t i, j, temp;
     FILE *f;
    
     f = sfopen( fname, "wb", __FILE__, __LINE__ );
 
     /* header: # rows, # nonzeros */
-    fwrite( &A->n, sizeof(unsigned int), 1, f );
-    fwrite( &A->start[A->n], sizeof(unsigned int), 1, f );
+    fwrite( &A->n, sizeof(uint32_t), 1, f );
+    fwrite( &A->start[A->n], sizeof(uint32_t), 1, f );
 
     /* row pointers */
     for ( i = 0; i <= A->n; ++i )
     {
         //Convert 0-based to 1-based (for Matlab)
         temp = A->start[i] + 1;
-        fwrite( &temp, sizeof(unsigned int), 1, f );
+        fwrite( &temp, sizeof(uint32_t), 1, f );
     }
 
     /* column indices and non-zeros */
@@ -962,7 +962,7 @@ void Print_Sparse_Matrix_Binary( sparse_matrix *A, char *fname )
         {
             //Convert 0-based to 1-based (for Matlab)
             temp = A->j[j] + 1;
-            fwrite( &temp, sizeof(unsigned int), 1, f );
+            fwrite( &temp, sizeof(uint32_t), 1, f );
             fwrite( &(A->val[j]), sizeof(real), 1, f );
         }
     }
@@ -973,7 +973,7 @@ void Print_Sparse_Matrix_Binary( sparse_matrix *A, char *fname )
 
 void Print_Bonds( reax_system *system, reax_list *bonds, char *fname )
 {
-    int i, pj;
+    int32_t i, pj;
     bond_data *pbond;
     bond_order_data *bo_ij;
     FILE *f = sfopen( fname, "w", __FILE__, __LINE__ );
@@ -998,10 +998,10 @@ void Print_Bonds( reax_system *system, reax_list *bonds, char *fname )
 
 void Print_Bond_List2( reax_system *system, reax_list *bonds, char *fname )
 {
-    int i, j, id_i, id_j, nbr, pj;
+    int32_t i, j, id_i, id_j, nbr, pj;
     FILE *f = sfopen( fname, "w", __FILE__, __LINE__ );
-    int temp[500];
-    int num = 0;
+    int32_t temp[500];
+    int32_t num = 0;
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -1018,7 +1018,7 @@ void Print_Bond_List2( reax_system *system, reax_list *bonds, char *fname )
             }
         }
 
-        qsort( &temp, num, sizeof(int), fn_qsort_intcmp );
+        qsort( &temp, num, sizeof(int32_t), fn_qsort_intcmp );
         for ( j = 0; j < num; j++ )
         {
             fprintf( f, "%6d", temp[j] );

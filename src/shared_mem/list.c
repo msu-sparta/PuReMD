@@ -25,7 +25,7 @@
 
 
 /* Allocates a new instance of reax_list with internal lists of specified type */
-void Make_List( int n, int n_max, int total_intrs, int type, reax_list * const l )
+void Make_List( int32_t n, int32_t n_max, int32_t total_intrs, int32_t type, reax_list * const l )
 {
     assert( n > 0 );
     assert( n_max > 0 );
@@ -45,8 +45,8 @@ void Make_List( int n, int n_max, int total_intrs, int type, reax_list * const l
     l->n_max = n_max;
     l->total_intrs = total_intrs;
 
-    l->index = smalloc( n_max * sizeof(int), __FILE__, __LINE__ );
-    l->end_index = smalloc( n_max * sizeof(int), __FILE__, __LINE__ );
+    l->index = smalloc( n_max * sizeof(int32_t), __FILE__, __LINE__ );
+    l->end_index = smalloc( n_max * sizeof(int32_t), __FILE__, __LINE__ );
 
     switch ( type )
     {
@@ -143,7 +143,7 @@ void Make_List( int n, int n_max, int total_intrs, int type, reax_list * const l
 
 
 /* Deallocates any space allocated for a reax_list instance */
-void Delete_List( int type, reax_list * const l )
+void Delete_List( int32_t type, reax_list * const l )
 {
     assert( l != NULL );
 
@@ -226,9 +226,9 @@ void Delete_List( int type, reax_list * const l )
  * l: pointer to list
  * max_intrs: max. num. of interactions for each list element
  * */
-void Init_List_Indices( reax_list * const l, int * const max_intrs )
+void Init_List_Indices( reax_list * const l, int32_t * const max_intrs )
 {
-    int i;
+    int32_t i;
 
     assert( l != NULL );
     assert( l->n > 0 );

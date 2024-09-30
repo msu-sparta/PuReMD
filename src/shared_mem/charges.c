@@ -53,12 +53,12 @@ struct my_session
 struct tensor_shape
 {
     int64_t values[MY_TENSOR_SHAPE_MAX_DIM];
-    int dim;
+    int32_t dim;
 
 //    int64_t size(){
 //        assert(dim>=0);
 //        int64_t v=1;
-//        for(int i=0;i<dim;i++)
+//        for(int32_t i=0;i<dim;i++)
 //          v*=values[i];
 //        return v;
 //    }
@@ -66,10 +66,10 @@ struct tensor_shape
 #endif
 
 
-int is_refactoring_step( control_params * const control,
+int32_t is_refactoring_step( control_params * const control,
         simulation_data * const data )
 {
-    int ret;
+    int32_t ret;
 
     if ( control->cm_solver_pre_comp_refactor != -1 )
     {
@@ -105,15 +105,15 @@ int is_refactoring_step( control_params * const control,
 
 
 #if defined(HAVE_TENSORFLOW)
-static void TF_Tensor_Deallocator( void* data, size_t length, void* arg )
+static void TF_Tensor_Deallocator( void * data, size_t length, void * arg )
 {
 //    sfree( data, __FILE__, __LINE__ );
 }
 
 
-static void TF_free( void* data, size_t length )
+static void TF_free( void * data, size_t length )
 {
-        sfree( data, __FILE__, __LINE__ );
+    sfree( data, __FILE__, __LINE__ );
 }
 
 
@@ -122,25 +122,39 @@ static void TF_free( void* data, size_t length )
  * @param file: The file to be loaded.
  * @return
  */
-static TF_Buffer* read_file_to_TF_Buffer( const char* file )
+static TF_Buffer * read_file_to_TF_Buffer( const char * file )
 {
+    int64_t fsize;
     FILE *f;
     void *data;
-    long fsize;
     TF_Buffer* buf;
 
-    f = fopen( file, "rb" );
-    fseek( f, 0, SEEK_END );
-    fsize = ftell( f );
-    fseek( f, 0, SEEK_SET );  //same as rewind(f);
-
-    data = malloc( fsize );
-    if ( fread( data, fsize, 1, f ) != 1 )
+    f = sfopen( file, "rb", __FILE__, __LINE__ );
+    if ( fseek( f, 0L, SEEK_END ) != 0 )
     {
         fprintf( stderr, "[ERROR] reading Tensorflow model file failed\n" );
         exit( INVALID_INPUT );
     }
-    fclose( f );
+    fsize = (int64_t) ftell( f );
+    if ( fseek( f, 0L, SEEK_SET ) != 0 )
+    {
+        fprintf( stderr, "[ERROR] reading Tensorflow model file failed\n" );
+        exit( INVALID_INPUT );
+    }
+
+    if ( fsize <= 0 )
+    {
+        fprintf( stderr, "[ERROR] reading Tensorflow model file failed\n" );
+        exit( INVALID_INPUT );
+    }
+    data = smalloc( (size_t) fsize, __FILE__, __LINE__ );
+
+    if ( fread( data, (size_t) fsize, 1, f ) != 1 )
+    {
+        fprintf( stderr, "[ERROR] reading Tensorflow model file failed\n" );
+        exit( INVALID_INPUT );
+    }
+    sfclose( f, __FILE__, __LINE__ );
 
     buf = TF_NewBuffer();
     buf->data = data;
@@ -158,7 +172,7 @@ static TF_Buffer* read_file_to_TF_Buffer( const char* file )
  * @param output_name: The name of the output tensor
  * @return
  */
-my_session model_load( const char *filename,
+my_session Model_Load( const char *filename,
         const char *input_name, const char *output_name )
 {
     TF_Buffer *graph_def;
@@ -218,7 +232,7 @@ static void Predict_Charges_TF_LSTM( const reax_system * const system,
         const control_params * const control,
         simulation_data * const data, static_storage * const workspace )
 {
-    int i, j, win_size, batch_size;
+    int32_t i, j, win_size, batch_size;
     float *obs_flat, *obs_norm, *predictions;
     my_session s;
     tensor_shape input_shape;
@@ -238,7 +252,7 @@ static void Predict_Charges_TF_LSTM( const reax_system * const system,
      * note: the input/output tensors names must be provided */
     //TODO: either require standarding model names in GraphDef file
     //      or add control file parameters to all these to be changed
-    s = model_load( control->cm_init_guess_gd_model,
+    s = Model_Load( control->cm_init_guess_gd_model,
             "lstm_1_input", "dense_1/BiasAdd" );
     if ( !s.session )
     {
@@ -346,7 +360,7 @@ static void Spline_Extrapolate_Charges_QEq( const reax_system * const system,
         const control_params * const control,
         simulation_data * const data, static_storage * const workspace )
 {
-    int i;
+    int32_t i;
     real s_tmp, t_tmp;
 
     /* spline extrapolation for s & t */
@@ -440,7 +454,7 @@ static void Spline_Extrapolate_Charges_EE( const reax_system * const system,
         const control_params * const control,
         simulation_data * const data, static_storage * const workspace )
 {
-    int i;
+    int32_t i;
     real s_tmp;
 
     /* spline extrapolation for s */
@@ -496,7 +510,7 @@ static void Spline_Extrapolate_Charges_EE( const reax_system * const system,
  */
 static void Compute_Preconditioner_QEq( const reax_system * const system,
         const control_params * const control, simulation_data * const data,
-        static_storage * const workspace, int realloc )
+        static_storage * const workspace, int32_t realloc )
 {
     real time;
     sparse_matrix *Hptr;
@@ -622,7 +636,7 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
  */
 static void Compute_Preconditioner_EE( const reax_system * const system,
         const control_params * const control, simulation_data * const data,
-        static_storage * const workspace, int realloc )
+        static_storage * const workspace, int32_t realloc )
 {
     real time;
     sparse_matrix *Hptr;
@@ -763,7 +777,7 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
  */
 static void Compute_Preconditioner_ACKS2( const reax_system * const system,
         const control_params * const control, simulation_data * const data,
-        static_storage * const workspace, int realloc )
+        static_storage * const workspace, int32_t realloc )
 {
     real time;
     sparse_matrix *Hptr;
@@ -904,9 +918,9 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
 
 static void Setup_Preconditioner_QEq( const reax_system * const system,
         const control_params * const control, simulation_data * const data,
-        static_storage * const workspace, int realloc )
+        static_storage * const workspace, int32_t realloc )
 {
-    int fillin;
+    int32_t fillin;
     real time;
     sparse_matrix *Hptr;
 
@@ -1033,7 +1047,7 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
  */
 static void Setup_Preconditioner_EE( const reax_system * const system,
         const control_params * const control, simulation_data * const data,
-        static_storage * const workspace, int realloc )
+        static_storage * const workspace, int32_t realloc )
 {
     real time;
     sparse_matrix *Hptr;
@@ -1157,7 +1171,7 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
  */
 static void Setup_Preconditioner_ACKS2( const reax_system * const system,
         const control_params * const control, simulation_data * const data,
-        static_storage * const workspace, int realloc )
+        static_storage * const workspace, int32_t realloc )
 {
     real time;
     sparse_matrix *Hptr;
@@ -1285,7 +1299,7 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
 static void Calculate_Charges_QEq( const reax_system * const system,
         static_storage * const workspace )
 {
-    int i;
+    int32_t i;
     real u, s_sum, t_sum;
 
     s_sum = 0.0;
@@ -1315,7 +1329,7 @@ static void Calculate_Charges_QEq( const reax_system * const system,
 static void Calculate_Charges_EE( const reax_system * const system,
         static_storage * const workspace )
 {
-    int i;
+    int32_t i;
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -1335,7 +1349,7 @@ static void Calculate_Charges_EE( const reax_system * const system,
 static void Calculate_Charges_ACKS2( const reax_system * const system,
         static_storage * const workspace )
 {
-    int i;
+    int32_t i;
 
     for ( i = 0; i < system->N; ++i )
     {
@@ -1359,9 +1373,9 @@ static void Calculate_Charges_ACKS2( const reax_system * const system,
  */
 static void QEq( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        const output_controls * const out_control, int realloc )
+        const output_controls * const out_control, int32_t realloc )
 {
-    int iters, refactor;
+    int32_t iters, refactor;
 
     refactor = is_refactoring_step( control, data );
 
@@ -1476,9 +1490,9 @@ static void QEq( reax_system * const system, control_params * const control,
  */
 static void EE( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        const output_controls * const out_control, int realloc )
+        const output_controls * const out_control, int32_t realloc )
 {
-    int iters, refactor;
+    int32_t iters, refactor;
 
     refactor = is_refactoring_step( control, data );
 
@@ -1519,7 +1533,7 @@ static void EE( reax_system * const system, control_params * const control,
     }
 
 #if defined(QMMM)
-    for ( int i = system->N_qm; i < system->N; ++i )
+    for ( int32_t i = system->N_qm; i < system->N; ++i )
     {
         workspace->s[0][i] = system->atoms[i].q_init;
     }
@@ -1577,9 +1591,9 @@ static void EE( reax_system * const system, control_params * const control,
  */
 static void ACKS2( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        const output_controls * const out_control, int realloc )
+        const output_controls * const out_control, int32_t realloc )
 {
-    int iters, refactor;
+    int32_t iters, refactor;
 
     refactor = is_refactoring_step( control, data );
 
@@ -1638,7 +1652,7 @@ static void ACKS2( reax_system * const system, control_params * const control,
 
 #if defined(QMMM)
     /* TODO: further testing needed for QM/MM mode with ACKS2 */
-    for ( int i = system->N_qm; i < system->N; ++i )
+    for ( int32_t i = system->N_qm; i < system->N; ++i )
     {
         workspace->s[0][i] = system->atoms[i].q_init;
     }
@@ -1686,7 +1700,7 @@ static void ACKS2( reax_system * const system, control_params * const control,
 
 void Compute_Charges( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        const output_controls * const out_control, int realloc )
+        const output_controls * const out_control, int32_t realloc )
 {
 #if defined(DEBUG_FOCUS)
 #define SIZE (200)
