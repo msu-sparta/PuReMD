@@ -1,4 +1,10 @@
-[![pipeline status](https://github.com/MSU-SParTA/PuReMD/badges/master/pipeline.svg)](https://github.com/MSU-SParTA/PuReMD/commits/master)
+<p align="right">
+ <img src="https://github.com/msu-sparta/PuReMD/workflows/Build%20and%20Test%20PuReMD%20Serial%20Version/badge.svg">
+ <img src="https://github.com/msu-sparta/PuReMD/workflows/Build%20and%20Test%20PuReMD%20MPI%20Version/badge.svg">
+</p>
+<p align="left">
+ <img width="200" height="170" src="./tools/logo.png">
+</p>
 
 [Introduction](https://github.com/MSU-SParTA/PuReMD#introduction) |
 [Documentation](https://github.com/MSU-SParTA/PuReMD/doc) |
