@@ -1,0 +1,31 @@
+name: 'Build and Test PuReMD Serial Version'
+
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+
+jobs:
+  build-and-test-serial:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 'Install Dependencies for Serial Version'
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install autoconf automake libtool gcc
+      - name: 'Run Autoreconf to Regenerate Configure and Makefiles'
+        run: autoreconf -ivf
+      - name: 'Configure Serial Version'
+        run: ./configure --enable-serial=yes
+      - name: 'Build Serial Version Using 2 Jobs'
+        run: make -j2 all
+      - name: 'Run Tests for Serial Version'
+        run: bin/puremd data/benchmarks/water/water_6540.pdb data/benchmarks/water/ffield.water environ/control_water
+      - name: 'Display Test Artifacts'
+        run: |
+          head water_6540_notab_qeq.out
+          tail water_6540_notab_qeq.out

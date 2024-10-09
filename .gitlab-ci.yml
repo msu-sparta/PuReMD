@@ -18,7 +18,7 @@ compile:
     - apt-get update -qq && apt-get install -y -qq autoconf automake libtool gcc
   script:
     - echo "[INFO] Building..."
-    - autoreconf -ivf && ./configure && make
+    - autoreconf -ivf && ./configure --enable-serial=yes && make -j2 all
     - echo "[INFO] Done building"
 
 run:
@@ -28,7 +28,7 @@ run:
   script:
     - echo "[INFO] Testing..."
     - bin/puremd data/benchmarks/water/water_6540.pdb data/benchmarks/water/ffield.water environ/control_water
-    - head -n 2 water_6540_notab_qeq.out && tail -n 2 water_6540_notab_qeq.out
+    - head water_6540_notab_qeq.out && tail water_6540_notab_qeq.out
     - echo "[INFO] Done testing"
 
 after_script:

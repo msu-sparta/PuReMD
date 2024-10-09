@@ -1,0 +1,31 @@
+name: 'Build and Test PuReMD MPI Version'
+
+on:
+  push:
+    paths-ignore:
+      - '**.md'
+  pull_request:
+    paths-ignore:
+      - '**.md'
+
+jobs:
+  build-and-test-mpi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 'Install Dependencies for MPI Version'
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install autoconf automake libtool gcc openmpi-bin openmpi-common libopenmpi-dev
+      - name: 'Run Autoreconf to Regenerate Configure and Makefiles'
+        run: autoreconf -ivf
+      - name: 'Configure MPI Version'
+        run: ./configure --enable-serial=no --enable-mpi=yes
+      - name: 'Build MPI Version Using 2 Jobs'
+        run: make -j2 all
+      - name: 'Run Tests for MPI Version Using 2 MPI Processes'
+        run: bin/puremd-mpi data/benchmarks/water/water_6540.pdb data/benchmarks/water/ffield.water environ/control_water
+      - name: 'Display Test Artifacts'
+        run: |
+          head water_6540_notab_qeq.out
+          tail water_6540_notab_qeq.out
