@@ -10,17 +10,18 @@
 # Introduction
 
 This repository contains the development version of the **Pu**ReMD **Re**active
-**M**olecular **D**ynamics (PuReMD) project.  PuReMD is an open-source highly
-performant range-limited atomic-level molecular dynamics code which implements
+**M**olecular **D**ynamics (PuReMD) project.  PuReMD is an open-source, highly
+performant, range-limited atomic-level molecular dynamics code which implements
 the reactive force field (ReaxFF) method coupled with a global atomic charge
-model.  Supported charge models include charge equilibration, electronegativity
-equilization, and atom-condensed Kohn-Sham approximated to second order.
+model for accurate electrostatics.  Supported dynamic charge models include
+charge equilibration (QEq), electronegativity equilization (EE), and
+atom-condensed Kohn-Sham approximated to second order (ACKS2).
 
 # Build Instructions
 
 ## User
 
-To build, the following versions of software are required:
+To build, the following software dependencies are required:
 
 - GNU make
 - C compiler with support for the c11 standard or newer and optionally OpenMP v4.0+ (shared-memory code)
@@ -43,7 +44,7 @@ run ./configure --help and consult the documentation. An example of building the
 is given below.
 
 ```bash
-./configure --enable-openmp=no --enable-mpi-cuda=yes
+./configure --enable-serial=no --enable-mpi-cuda=yes
 ```
 
 ## Developer
@@ -83,16 +84,16 @@ make dist
 # Selected Publications
 
 Shared-Memory Versions:
-- Serial, DOI: [10.1137/100808599](https://doi.org/10.1137/100808599)
-- CUDA (single GPU), DOI: [10.1016/j.jcp.2014.04.035](http://dx.doi.org/10.1016/j.jcp.2014.04.035)
-- OpenMP with charge model optimizations, DOI: [10.1137/18M1224684](https://doi.org/10.1137/18M1224684)
+- Serial, [DOI: 10.1137/100808599](https://doi.org/10.1137/100808599)
+- CUDA (single GPU), [DOI: 10.1016/j.jcp.2014.04.035](http://dx.doi.org/10.1016/j.jcp.2014.04.035)
+- OpenMP with charge model optimizations, [DOI: 10.1137/18M1224684](https://doi.org/10.1137/18M1224684)
 
 Distributed-Memory Versions:
-- MPI, DOI: [10.1016/j.parco.2011.08.005](https://doi.org/10.1016/j.parco.2011.08.005)
-- Hybrid MPI+OpenMP, DOI: [10.1177/1094342017746221](https://doi.org/10.1177/1094342017746221)
-- ReaxFF and charge model optimizations with MPI, DOI: [10.1145/3330345.3330359](https://doi.org/10.1145/3330345.3330359)
-- CUDA+MPI, URL: [Purdue e-Pubs](https://docs.lib.purdue.edu/cgi/viewcontent.cgi?article=2769&context=cstech)
+- MPI, [DOI: 10.1016/j.parco.2011.08.005](https://doi.org/10.1016/j.parco.2011.08.005)
+- Hybrid MPI+OpenMP, [DOI: 10.1177/1094342017746221](https://doi.org/10.1177/1094342017746221)
+- ReaxFF and charge model optimizations (MPI), [DOI: 10.1145/3330345.3330359](https://doi.org/10.1145/3330345.3330359)
+- CUDA+MPI, [Purdue e-Pubs](https://docs.lib.purdue.edu/cgi/viewcontent.cgi?article=2769&context=cstech)
 
 Applications and Integrations:
-- ReaxFF force field optimization with gradients using JAX, DOI: [10.1021/acs.jctc.2c00363](https://doi.org/10.1021/acs.jctc.2c00363)
-- QM/MM calcuations with AMBER, DOI: [10.1021/acs.jpclett.2c01279](https://doi.org/10.1021/acs.jpclett.2c01279)
+- ReaxFF force field optimization with gradients using JAX, [DOI: 10.1021/acs.jctc.2c00363](https://doi.org/10.1021/acs.jctc.2c00363)
+- Embedded QM/MM calcuations in Amber (Amber/ReaxFF in AmberTools), [DOI: 10.1021/acs.jpclett.2c01279](https://doi.org/10.1021/acs.jpclett.2c01279)
