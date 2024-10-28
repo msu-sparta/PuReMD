@@ -19,6 +19,15 @@
 #define FULL_WARP_MASK (0xFFFFFFFF)
 
 
+#if (__CUDACC_VER_MAJOR__ >= 9)
+  #define __SHFL_DOWN(m,v,d) __shfl_down_sync(m,v,d)
+  #define __BALLOT(m,p) __ballot_sync(m,p)
+#else
+  #define __SHFL_DOWN(m,v,d) __shfl_down(v,d)
+  #define __BALLOT(m,p) __ballot(p)
+#endif
+
+
 GPU_GLOBAL void k_center_of_mass_xcm( single_body_parameters const * const sbp,
         reax_atom const * const atoms, rvec * const xcm_g, size_t n )
 {
@@ -210,7 +219,7 @@ GPU_GLOBAL void k_compute_inertial_tensor_xx_xy( single_body_parameters const * 
     rvec diff, xcm;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
-    mask = __ballot_sync( FULL_WARP_MASK, i < n );
+    mask = __BALLOT( FULL_WARP_MASK, i < n );
     xcm[0] = xcm0;
     xcm[1] = xcm1;
     xcm[2] = xcm2;
@@ -225,8 +234,8 @@ GPU_GLOBAL void k_compute_inertial_tensor_xx_xy( single_body_parameters const * 
         /* warp-level sum using registers within a warp */
         for ( offset = warpSize >> 1; offset > 0; offset /= 2 )
         {
-            xx += __shfl_down_sync( mask, xx, offset );
-            xy += __shfl_down_sync( mask, xy, offset );
+            xx += __SHFL_DOWN( mask, xx, offset );
+            xy += __SHFL_DOWN( mask, xy, offset );
         }
 
         /* first thread within a warp writes warp-level sum to shared memory */
@@ -271,7 +280,7 @@ GPU_GLOBAL void k_compute_inertial_tensor_xz_yy( single_body_parameters const * 
     rvec diff, xcm;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
-    mask = __ballot_sync( FULL_WARP_MASK, i < n );
+    mask = __BALLOT( FULL_WARP_MASK, i < n );
     xcm[0] = xcm0;
     xcm[1] = xcm1;
     xcm[2] = xcm2;
@@ -286,8 +295,8 @@ GPU_GLOBAL void k_compute_inertial_tensor_xz_yy( single_body_parameters const * 
         /* warp-level sum using registers within a warp */
         for ( offset = warpSize >> 1; offset > 0; offset /= 2 )
         {
-            xz += __shfl_down_sync( mask, xz, offset );
-            yy += __shfl_down_sync( mask, yy, offset );
+            xz += __SHFL_DOWN( mask, xz, offset );
+            yy += __SHFL_DOWN( mask, yy, offset );
         }
 
         /* first thread within a warp writes warp-level sum to shared memory */
@@ -332,7 +341,7 @@ GPU_GLOBAL void k_compute_inertial_tensor_yz_zz( single_body_parameters const * 
     rvec diff, xcm;
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
-    mask = __ballot_sync( FULL_WARP_MASK, i < n );
+    mask = __BALLOT( FULL_WARP_MASK, i < n );
     xcm[0] = xcm0;
     xcm[1] = xcm1;
     xcm[2] = xcm2;
@@ -347,8 +356,8 @@ GPU_GLOBAL void k_compute_inertial_tensor_yz_zz( single_body_parameters const * 
         /* warp-level sum using registers within a warp */
         for ( offset = warpSize >> 1; offset > 0; offset /= 2 )
         {
-            yz += __shfl_down_sync( mask, yz, offset );
-            zz += __shfl_down_sync( mask, zz, offset );
+            yz += __SHFL_DOWN( mask, yz, offset );
+            zz += __SHFL_DOWN( mask, zz, offset );
         }
 
         /* first thread within a warp writes warp-level sum to shared memory */
