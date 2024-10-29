@@ -1,6 +1,6 @@
 <p align="right">
- <img src="https://github.com/msu-sparta/PuReMD/workflows/Build%20and%20Test%20PuReMD%20Serial%20Version/badge.svg">
- <img src="https://github.com/msu-sparta/PuReMD/workflows/Build%20and%20Test%20PuReMD%20MPI%20Version/badge.svg">
+ <img src="https://github.com/msu-sparta/PuReMD/actions/workflows/build_test_serial.yml/badge.svg">
+ <img src="https://github.com/msu-sparta/PuReMD/actions/workflows/build_test_mpi.yml/badge.svg">
 </p>
 
 [Introduction](https://github.com/MSU-SParTA/PuReMD#introduction) |
