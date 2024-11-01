@@ -34,7 +34,7 @@ void sCudaHostReallocCheck( void **, size_t *, size_t, unsigned int, int, real,
 #define cudaCheckError() __cudaCheckError( __FILE__, __LINE__ )
 static inline void __cudaCheckError( const char *file, const int line )
 {
-    cudaError err;
+    cudaError_t err;
 #if defined(DEBUG_FOCUS)
     int rank;
 
