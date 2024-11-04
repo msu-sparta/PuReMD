@@ -12,5 +12,4 @@ incarnation of this code as the Purdue ReaxFF Molecular Dynamics (PuReMD) projec
 - Sagar Pandit, University of South Florida <pandit@usf.edu>
 - Ananth Y Grama, Purdue University <ayg@cs.purdue.edu>
 
-This file is required for all projects using the GNU Autotools.
-Do not remove it.
+This file is required for all projects using the GNU Autotools.  Do not remove it.
