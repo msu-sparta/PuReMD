@@ -1,5 +1,7 @@
 <p align="right">
  <img src="https://github.com/msu-sparta/PuReMD/actions/workflows/build_test_serial.yml/badge.svg">
+</p>
+<p align="right">
  <img src="https://github.com/msu-sparta/PuReMD/actions/workflows/build_test_mpi.yml/badge.svg">
 </p>
 
