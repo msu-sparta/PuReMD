@@ -27,5 +27,4 @@ jobs:
         run: bin/puremd data/benchmarks/water/water_6540.pdb data/benchmarks/water/ffield.water environ/control_water
       - name: 'Display Test Artifacts'
         run: |
-          head water_6540_notab_qeq.out
-          tail water_6540_notab_qeq.out
+          cat water_6540_notab_qeq.out
