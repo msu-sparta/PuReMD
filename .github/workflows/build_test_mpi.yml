@@ -24,7 +24,7 @@ jobs:
       - name: 'Build MPI Version Using 2 Jobs'
         run: make -j2 all
       - name: 'Run Tests for MPI Version Using 1 MPI Processes'
-        run: mpirun -np 1 bin/puremd-mpi data/benchmarks/water/water_6540.pdb data/benchmarks/water/ffield.water environ/control_water
+        run: mpirun -np 1 bin/puremd-mpi data/benchmarks/water/water_6540.pdb data/benchmarks/water/ffield.water environ/parallel_control
       - name: 'Display Test Artifacts'
         run: |
           head -n 11 water.6.notab.111.out
