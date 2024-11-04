@@ -1,12 +1,15 @@
 2015-present: Complete rewrite and rebrand as the PuReMD Reactive Molecular Dynamics (PuReMD) code.
-      Added OpenMP code.
-      Added optimized solvers for fluctuating charge models.
-      Added fluctuating charge models (electronegativity equalization (EE), atom-condensed Kohn-Sham approximated to second order [ACKS2]).
-      Removed broken single GPU CUDA code.
-      Added MPI+HIP code (ported MPI+CUDA code).
-      Added APIs and library builds for interfacing with other codebases.
-      Added QM/MM functionality (shared-memory codes).
-      Many bugfixes and other performance improvements.
+- Added OpenMP code.
+- Added optimized solvers for fluctuating charge models.
+- Added fluctuating charge models (electronegativity equalization [EE],
+  atom-condensed Kohn-Sham approximated to second order [ACKS2]).
+- Removed partial single GPU CUDA implentation (to be rewritten).
+- Added MPI+HIP code (ported MPI+CUDA code via ROCm hipify tool, fixed porting issues).
+- Added APIs and library builds for interfacing with other codebases (AmberMD).
+- Added QM/MM functionality (shared-memory codes).
+- Added transactional memory module in MPI and GPU codes to avoid hard-coding
+  memory limits of data structures.
+- Contributed many bugfixes and performance improvements.
 
 
 2010: Version puremd_rc_1003 of the Purdue ReaxFF Molecular Dynamics (PuReMD) code. This code
