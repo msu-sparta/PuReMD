@@ -155,22 +155,18 @@ then
 	[
 		AC_LANG_PROGRAM([@%:@include <cuda.h>],
 		[
-			CUmodule cuModule;
-			CUdeviceptr devPtr;
-			CUfunction cuFunction;
-			size_t pitch, width = 250, height = 500;
-
-			int main()
-			{
-				cuModuleLoad(&cuModule, "myModule.cubin");
-				cuMemAllocPitch(&devPtr, &pitch,width * sizeof(float), height, 4);
-				cuModuleGetFunction(&cuFunction, cuModule, "myKernel");
-				cuFuncSetBlockShape(cuFunction, 512, 1, 1);
-				cuParamSeti(cuFunction, 0, devPtr);
-				cuParamSetSize(cuFunction, sizeof(devPtr));
-				cuLaunchGrid(cuFunction, 100, 1);
-				return 0;
-			}
+  CUmodule cuModule;
+  CUdeviceptr devPtr;
+  CUfunction cuFunction;
+  size_t pitch, width = 250, height = 500;
+  
+  cuModuleLoad(&cuModule, "myModule.cubin");
+  cuMemAllocPitch(&devPtr, &pitch,width * sizeof(float), height, 4);
+  cuModuleGetFunction(&cuFunction, cuModule, "myKernel");
+  cuFuncSetBlockShape(cuFunction, 512, 1, 1);
+  cuParamSeti(cuFunction, 0, devPtr);
+  cuParamSetSize(cuFunction, sizeof(devPtr));
+  cuLaunchGrid(cuFunction, 100, 1);
 		])
 	],
 	[
