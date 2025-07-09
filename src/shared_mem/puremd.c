@@ -521,7 +521,8 @@ int32_t simulate( const void * const handle )
         if ( pmd_handle->output_enabled == TRUE
                 && pmd_handle->out_control->log_update_freq > 0 )
         {
-            fprintf( pmd_handle->out_control->log, "total: %.2f secs\n", pmd_handle->data->timing.elapsed );
+            fprintf( pmd_handle->out_control->out, "Total Simulation Time: %.2f secs\n",
+                    pmd_handle->data->timing.elapsed );
         }
 
         pmd_handle->realloc = FALSE;
