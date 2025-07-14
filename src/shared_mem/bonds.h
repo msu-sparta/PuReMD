@@ -25,8 +25,8 @@
 #include "reax_types.h"
 
 
-void Bonds( reax_system*, control_params*, simulation_data*,
-        static_storage*, reax_list**, output_controls* );
+void Bonds( reax_system *, control_params *, simulation_data *,
+        static_storage *, reax_list **, output_controls * );
 
 
 #endif

@@ -22,9 +22,9 @@
 #include "charges.h"
 
 #include "allocate.h"
-#if defined(DEBUG_FOCUS)
+//#if defined(DEBUG_FOCUS)
   #include "io_tools.h"
-#endif
+//#endif
 #include "list.h"
 #include "lin_alg.h"
 #include "tool_box.h"
@@ -55,47 +55,38 @@ struct tensor_shape
     int64_t values[MY_TENSOR_SHAPE_MAX_DIM];
     int32_t dim;
 
-//    int64_t size(){
-//        assert(dim>=0);
-//        int64_t v=1;
-//        for(int32_t i=0;i<dim;i++)
-//          v*=values[i];
+//    int64_t size() {
+//        assert(dim >= 0);
+//        int64_t v = 1;
+//        for (int32_t i = 0; i < dim; i++)
+//          v *= values[i];
 //        return v;
 //    }
 };
 #endif
 
 
-int32_t is_refactoring_step( control_params * const control,
+bool is_refactoring_step( control_params * const control,
         simulation_data * const data )
 {
-    int32_t ret;
+    bool ret;
 
-    if ( control->cm_solver_pre_comp_refactor != -1 )
-    {
+    if ( control->cm_solver_pre_comp_refactor != -1 ) {
         if ( control->cm_solver_pre_comp_refactor > 0
-                && ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) )
-        {
+                && ((data->step - data->prev_steps) % control->cm_solver_pre_comp_refactor == 0) ) {
             ret = TRUE;
-        }
-        else
-        {
+        } else {
             ret = FALSE;
         }
-    }
-    else
-    {
+    } else {
         /* cases:
          *  - first overall MD step for non-restarted OR restarted MD run
          *  - total losses from degradation of prec. outweight costs of recomputing prec.
          *  */
         if ( data->step - data->prev_steps == 0
-                || data->timing.cm_total_loss > data->timing.cm_last_pre_comp )
-        {
+                || data->timing.cm_total_loss > data->timing.cm_last_pre_comp ) {
             ret = TRUE;
-        }
-        else
-        {
+        } else {
             ret = FALSE;
         }
     }
@@ -130,27 +121,23 @@ static TF_Buffer * read_file_to_TF_Buffer( const char * file )
     TF_Buffer* buf;
 
     f = sfopen( file, "rb", __FILE__, __LINE__ );
-    if ( fseek( f, 0L, SEEK_END ) != 0 )
-    {
+    if ( fseek( f, 0L, SEEK_END ) != 0 ) {
         fprintf( stderr, "[ERROR] reading Tensorflow model file failed\n" );
         exit( INVALID_INPUT );
     }
     fsize = (int64_t) ftell( f );
-    if ( fseek( f, 0L, SEEK_SET ) != 0 )
-    {
+    if ( fseek( f, 0L, SEEK_SET ) != 0 ) {
         fprintf( stderr, "[ERROR] reading Tensorflow model file failed\n" );
         exit( INVALID_INPUT );
     }
 
-    if ( fsize <= 0 )
-    {
+    if ( fsize <= 0 ) {
         fprintf( stderr, "[ERROR] reading Tensorflow model file failed\n" );
         exit( INVALID_INPUT );
     }
     data = smalloc( (size_t) fsize, __FILE__, __LINE__ );
 
-    if ( fread( data, (size_t) fsize, 1, f ) != 1 )
-    {
+    if ( fread( data, (size_t) fsize, 1, f ) != 1 ) {
         fprintf( stderr, "[ERROR] reading Tensorflow model file failed\n" );
         exit( INVALID_INPUT );
     }
@@ -192,16 +179,14 @@ my_session Model_Load( const char *filename,
     opts = TF_NewImportGraphDefOptions( );
     TF_GraphImportGraphDef( graph, graph_def, opts, status );
 
-    if ( TF_GetCode(status) != TF_OK )
-    {
+    if ( TF_GetCode(status) != TF_OK ) {
         fprintf( stderr, "[ERROR] unable to import graph: %s\n", TF_Message(status) );
         exit( INVALID_INPUT );
     }
 
     input_op = TF_GraphOperationByName( graph, input_name );
     output_op = TF_GraphOperationByName( graph, output_name );
-    if ( !input_op || !output_op )
-    {
+    if ( !input_op || !output_op ) {
         fprintf( stderr, "[ERROR] !input_op || !output_op\n" );
         exit( INVALID_INPUT );
     }
@@ -209,8 +194,7 @@ my_session Model_Load( const char *filename,
     sess_opts = TF_NewSessionOptions( );
     status = TF_NewStatus( );
     session = TF_NewSession( graph, sess_opts, status );
-    if ( TF_GetCode(status) != TF_OK )
-    {
+    if ( TF_GetCode(status) != TF_OK ) {
         fprintf( stderr, "[ERROR] unable to start a sesssion: %s\n", TF_Message(status) );
         exit( INVALID_INPUT );
     }
@@ -254,8 +238,7 @@ static void Predict_Charges_TF_LSTM( const reax_system * const system,
     //      or add control file parameters to all these to be changed
     s = Model_Load( control->cm_init_guess_gd_model,
             "lstm_1_input", "dense_1/BiasAdd" );
-    if ( !s.session )
-    {
+    if ( !s.session ) {
         fprintf( stdout, "[ERROR] failed to load frozen model from GraphDef"
                 " file for initial guess prediction using Tensorflow. Terminating...\n" );
         exit( INVALID_INPUT );
@@ -270,10 +253,8 @@ static void Predict_Charges_TF_LSTM( const reax_system * const system,
 //    float ground_truth[] = {0.69221107, -0.69421167, -0.69641954};
 
     //TODO: for QEq, would also need to use workspace->t for the second linear solve
-    for ( i = 0; i < batch_size; ++i )
-    {
-        for ( j = 0; j < win_size; ++j )
-        {
+    for ( i = 0; i < batch_size; ++i ) {
+        for ( j = 0; j < win_size; ++j ) {
             obs_flat[i * win_size + j] = workspace->s[j][i];
         }
     }
@@ -281,12 +262,10 @@ static void Predict_Charges_TF_LSTM( const reax_system * const system,
     /* normalize input data in-place for prediction using the model,
      * where the normalization is the difference from the oldest
      * observation (component-wise) */
-    for ( i = 0; i < batch_size; ++i )
-    {
+    for ( i = 0; i < batch_size; ++i ) {
         obs_norm[i] = obs_flat[i * win_size];
 
-        for ( j = 0; j < win_size; ++j )
-        {
+        for ( j = 0; j < win_size; ++j ) {
             obs_flat[i * win_size + j] = obs_flat[i * win_size + j] - obs_norm[i];
         }
     }
@@ -329,8 +308,7 @@ static void Predict_Charges_TF_LSTM( const reax_system * const system,
     #pragma omp parallel for schedule(static) \
         default(none) private(i)
 #endif
-    for ( i = 0; i < system->N_cm; ++i )
-    {
+    for ( i = 0; i < system->N_cm; ++i ) {
         workspace->s[4][i] = workspace->s[3][i];
         workspace->s[3][i] = workspace->s[2][i];
         workspace->s[2][i] = workspace->s[1][i];
@@ -339,8 +317,7 @@ static void Predict_Charges_TF_LSTM( const reax_system * const system,
 
     /* undo the normalization for the predicted values and
      * extract the predictions from the underlying data buffer */
-    for ( i = 0; i < batch_size; ++i )
-    {
+    for ( i = 0; i < batch_size; ++i ) {
 //        predictions[i] = predictions[i] + obs_norm[i];
         workspace->s[0][i] = predictions[i] + obs_norm[i];
     }
@@ -360,92 +337,82 @@ static void Spline_Extrapolate_Charges_QEq( const reax_system * const system,
         const control_params * const control,
         simulation_data * const data, static_storage * const workspace )
 {
-    int32_t i;
-    real s_tmp, t_tmp;
+    uint32_t i;
+    real tmp;
 
     /* spline extrapolation for s & t */
-    //TODO: good candidate for vectorization, avoid moving data with head pointer and circular buffer
 #if defined(_OPENMP)
     #pragma omp parallel for schedule(static) \
-        default(none) private(i, s_tmp, t_tmp) firstprivate(system, control, workspace)
+        default(none) private(i, tmp) firstprivate(system, control, workspace)
 #endif
-    for ( i = 0; i < system->N_cm; ++i )
-    {
+    for ( i = 0; i < system->N_cm; ++i ) {
         /* no extrapolation, previous solution as initial guess */
-        if ( control->cm_init_guess_extrap1 == 0 )
-        {
-            s_tmp = workspace->s[0][i];
+        if ( control->cm_init_guess_extrap1 == 0 ) {
+            tmp = workspace->s[0][i];
         }
         /* linear */
-        else if ( control->cm_init_guess_extrap1 == 1 )
-        {
-            s_tmp = 2.0 * workspace->s[0][i] - workspace->s[1][i];
+        else if ( control->cm_init_guess_extrap1 == 1 ) {
+            tmp = 2.0 * workspace->s[0][i] - workspace->s[1][i];
         }
         /* quadratic */
-        else if ( control->cm_init_guess_extrap1 == 2 )
-        {
-            s_tmp = workspace->s[2][i] + 3.0 * (workspace->s[0][i] - workspace->s[1][i]);
+        else if ( control->cm_init_guess_extrap1 == 2 ) {
+            tmp = workspace->s[2][i] + 3.0 * (workspace->s[0][i] - workspace->s[1][i]);
         }
         /* cubic */
-        else if ( control->cm_init_guess_extrap1 == 3 )
-        {
-            s_tmp = 4.0 * (workspace->s[0][i] + workspace->s[2][i])
+        else if ( control->cm_init_guess_extrap1 == 3 ) {
+            tmp = 4.0 * (workspace->s[0][i] + workspace->s[2][i])
                 - (6.0 * workspace->s[1][i] + workspace->s[3][i]);
         }
         /* 4th order */
-        else if ( control->cm_init_guess_extrap1 == 4 )
-        {
-            s_tmp = 5.0 * (workspace->s[0][i] - workspace->s[3][i])
+        else if ( control->cm_init_guess_extrap1 == 4 ) {
+            tmp = 5.0 * (workspace->s[0][i] - workspace->s[3][i])
                 + 10.0 * (-1.0 * workspace->s[1][i] + workspace->s[2][i]) + workspace->s[4][i];
-        }
-        else
-        {
-            s_tmp = 0.0;
-        }
-
-        /* no extrapolation, previous solution as initial guess */
-        if ( control->cm_init_guess_extrap2 == 0 )
-        {
-            t_tmp = workspace->t[0][i];
-        }
-        /* linear */
-        else if ( control->cm_init_guess_extrap2 == 1 )
-        {
-            t_tmp = 2.0 * workspace->t[0][i] - workspace->t[1][i];
-        }
-        /* quadratic */
-        else if ( control->cm_init_guess_extrap2 == 2 )
-        {
-            t_tmp = workspace->t[2][i] + 3.0 * (workspace->t[0][i] - workspace->t[1][i]);
-        }
-        /* cubic */
-        else if ( control->cm_init_guess_extrap2 == 3 )
-        {
-            t_tmp = 4.0 * (workspace->t[0][i] + workspace->t[2][i]) -
-                (6.0 * workspace->t[1][i] + workspace->t[3][i]);
-        }
-        /* 4th order */
-        else if ( control->cm_init_guess_extrap2 == 4 )
-        {
-            t_tmp = 5.0 * (workspace->t[0][i] - workspace->t[3][i]) +
-                10.0 * (-1.0 * workspace->t[1][i] + workspace->t[2][i]) + workspace->t[4][i];
-        }
-        else
-        {
-            t_tmp = 0.0;
+        } else {
+            tmp = 0.0;
         }
 
         workspace->s[4][i] = workspace->s[3][i];
         workspace->s[3][i] = workspace->s[2][i];
         workspace->s[2][i] = workspace->s[1][i];
         workspace->s[1][i] = workspace->s[0][i];
-        workspace->s[0][i] = s_tmp;
+        workspace->s[0][i] = tmp;
+    }
+
+#if defined(_OPENMP)
+    #pragma omp parallel for schedule(static) \
+        default(none) private(i, tmp) firstprivate(system, control, workspace)
+#endif
+    for ( i = 0; i < system->N_cm; ++i ) {
+        /* no extrapolation, previous solution as initial guess */
+        if ( control->cm_init_guess_extrap2 == 0 ) {
+            tmp = workspace->t[0][i];
+        }
+        /* linear */
+        else if ( control->cm_init_guess_extrap2 == 1 ) {
+            tmp = 2.0 * workspace->t[0][i] - workspace->t[1][i];
+        }
+        /* quadratic */
+        else if ( control->cm_init_guess_extrap2 == 2 ) {
+            tmp = workspace->t[2][i] + 3.0 * (workspace->t[0][i] - workspace->t[1][i]);
+        }
+        /* cubic */
+        else if ( control->cm_init_guess_extrap2 == 3 ) {
+            tmp = 4.0 * (workspace->t[0][i] + workspace->t[2][i]) -
+                (6.0 * workspace->t[1][i] + workspace->t[3][i]);
+        }
+        /* 4th order */
+        else if ( control->cm_init_guess_extrap2 == 4 ) {
+            tmp = 5.0 * (workspace->t[0][i] - workspace->t[3][i]) +
+                10.0 * (-1.0 * workspace->t[1][i] + workspace->t[2][i]) + workspace->t[4][i];
+        } else {
+            tmp = 0.0;
+        }
 
         workspace->t[4][i] = workspace->t[3][i];
         workspace->t[3][i] = workspace->t[2][i];
         workspace->t[2][i] = workspace->t[1][i];
         workspace->t[1][i] = workspace->t[0][i];
-        workspace->t[0][i] = t_tmp;
+        workspace->t[0][i] = tmp;
     }
 }
 
@@ -454,54 +421,45 @@ static void Spline_Extrapolate_Charges_EE( const reax_system * const system,
         const control_params * const control,
         simulation_data * const data, static_storage * const workspace )
 {
-    int32_t i;
-    real s_tmp;
+    uint32_t i;
+    real tmp;
 
     /* spline extrapolation for s */
-    //TODO: good candidate for vectorization, avoid moving data with head pointer and circular buffer
 #if defined(_OPENMP)
     #pragma omp parallel for schedule(static) \
-        default(none) private(i, s_tmp) firstprivate(system, control, workspace)
+        default(none) private(i, tmp) firstprivate(system, control, workspace)
 #endif
-    for ( i = 0; i < system->N_cm; ++i )
-    {
+    for ( i = 0; i < system->N_cm; ++i ) {
         /* no extrapolation */
-        if ( control->cm_init_guess_extrap1 == 0 )
-        {
-            s_tmp = workspace->s[0][i];
+        if ( control->cm_init_guess_extrap1 == 0 ) {
+            tmp = workspace->s[0][i];
         }
         /* linear */
-        else if ( control->cm_init_guess_extrap1 == 1 )
-        {
-            s_tmp = 2.0 * workspace->s[0][i] - workspace->s[1][i];
+        else if ( control->cm_init_guess_extrap1 == 1 ) {
+            tmp = 2.0 * workspace->s[0][i] - workspace->s[1][i];
         }
         /* quadratic */
-        else if ( control->cm_init_guess_extrap1 == 2 )
-        {
-            s_tmp = workspace->s[2][i] + 3.0 * (workspace->s[0][i]-workspace->s[1][i]);
+        else if ( control->cm_init_guess_extrap1 == 2 ) {
+            tmp = workspace->s[2][i] + 3.0 * (workspace->s[0][i]-workspace->s[1][i]);
         }
         /* cubic */
-        else if ( control->cm_init_guess_extrap1 == 3 )
-        {
-            s_tmp = 4.0 * (workspace->s[0][i] + workspace->s[2][i]) -
+        else if ( control->cm_init_guess_extrap1 == 3 ) {
+            tmp = 4.0 * (workspace->s[0][i] + workspace->s[2][i]) -
                     (6.0 * workspace->s[1][i] + workspace->s[3][i] );
         }
         /* 4th order */
-        else if ( control->cm_init_guess_extrap1 == 4 )
-        {
-            s_tmp = 5.0 * (workspace->s[0][i] - workspace->s[3][i]) +
+        else if ( control->cm_init_guess_extrap1 == 4 ) {
+            tmp = 5.0 * (workspace->s[0][i] - workspace->s[3][i]) +
                 10.0 * (-workspace->s[1][i] + workspace->s[2][i] ) + workspace->s[4][i];
-        }
-        else
-        {
-            s_tmp = 0.0;
+        } else {
+            tmp = 0.0;
         }
 
         workspace->s[4][i] = workspace->s[3][i];
         workspace->s[3][i] = workspace->s[2][i];
         workspace->s[2][i] = workspace->s[1][i];
         workspace->s[1][i] = workspace->s[0][i];
-        workspace->s[0][i] = s_tmp;
+        workspace->s[0][i] = tmp;
     }
 }
 
@@ -510,17 +468,14 @@ static void Spline_Extrapolate_Charges_EE( const reax_system * const system,
  */
 static void Compute_Preconditioner_QEq( const reax_system * const system,
         const control_params * const control, simulation_data * const data,
-        static_storage * const workspace, int32_t realloc )
+        static_storage * const workspace, bool realloc )
 {
     real time;
     sparse_matrix *Hptr;
 
-    if ( control->cm_domain_sparsify_enabled == TRUE )
-    {
+    if ( control->cm_domain_sparsify_enabled == TRUE ) {
         Hptr = &workspace->H_sp;
-    }
-    else
-    {
+    } else {
         Hptr = &workspace->H;
     }
 
@@ -529,8 +484,7 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
 #endif
 
     time = Get_Time( );
-    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
-    {
+    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA ) {
         setup_graph_coloring( control, workspace, Hptr, &workspace->H_full,
                 &workspace->H_p, realloc );
         Sort_Matrix_Rows( &workspace->H_p );
@@ -538,8 +492,7 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
     }
     data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
 
-    switch ( control->cm_solver_pre_comp_type )
-    {
+    switch ( control->cm_solver_pre_comp_type ) {
         case NONE_PC:
             break;
 
@@ -554,13 +507,10 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
             break;
 
         case ILUT_PC:
-            if ( control->cm_solver_pre_comp_droptol > 0.0 )
-            {
+            if ( control->cm_solver_pre_comp_droptol > 0.0 ) {
                 data->timing.cm_solver_pre_comp +=
                     ILUT( Hptr, workspace->droptol, &workspace->L, &workspace->U );
-            }
-            else
-            {
+            } else {
                 data->timing.cm_solver_pre_comp +=
                     ILU( Hptr, &workspace->L, &workspace->U );
             }
@@ -572,14 +522,11 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
             break;
 
         case FG_ILUT_PC:
-            if ( control->charge_method == QEQ_CM )
-            {
+            if ( control->charge_method == QEQ_CM ) {
                 data->timing.cm_solver_pre_comp +=
                     FG_ICHOLT( Hptr, workspace->droptol, control->cm_solver_pre_comp_sweeps,
                             &workspace->L, &workspace->U );
-            }
-            else
-            {
+            } else {
                 data->timing.cm_solver_pre_comp +=
                     FG_ILUT( Hptr, workspace->droptol, control->cm_solver_pre_comp_sweeps,
                             &workspace->L, &workspace->U );
@@ -604,18 +551,16 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
             break;
     }
 
-    //if ( control->cm_solver_pre_comp_refactor == -1 )
-    //{
-    //    data->timing.cm_last_pre_comp = data->timing.cm_solver_pre_comp;
-    //    data->timing.cm_total_loss = 0.0;
-    //}
+//    if ( control->cm_solver_pre_comp_refactor == -1 ) {
+//        data->timing.cm_last_pre_comp = data->timing.cm_solver_pre_comp;
+//        data->timing.cm_total_loss = 0.0;
+//    }
 
 #if defined(DEBUG)
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
             || control->cm_solver_pre_comp_type == ILUTP_PC
-            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
-    {
+            || control->cm_solver_pre_comp_type == FG_ILUT_PC ) {
         fprintf( stderr, "[INFO] condest = %f\n", condest(&workspace->L, &workspace->U) );
 
 #if defined(DEBUG_FOCUS)
@@ -636,17 +581,14 @@ static void Compute_Preconditioner_QEq( const reax_system * const system,
  */
 static void Compute_Preconditioner_EE( const reax_system * const system,
         const control_params * const control, simulation_data * const data,
-        static_storage * const workspace, int32_t realloc )
+        static_storage * const workspace, bool realloc )
 {
     real time;
     sparse_matrix *Hptr;
 
-    if ( control->cm_domain_sparsify_enabled == TRUE )
-    {
+    if ( control->cm_domain_sparsify_enabled == TRUE ) {
         Hptr = &workspace->H_sp;
-    }
-    else
-    {
+    } else {
         Hptr = &workspace->H;
     }
 
@@ -655,14 +597,12 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
 #endif
 
     if ( control->cm_solver_pre_comp_type == ILUT_PC
-            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
-    {
+            || control->cm_solver_pre_comp_type == FG_ILUT_PC ) {
         Hptr->val[Hptr->start[system->N_cm] - 1] = 1.0;
     }
 
     time = Get_Time( );
-    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
-    {
+    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA ) {
         setup_graph_coloring( control, workspace, Hptr, &workspace->H_full,
                 &workspace->H_p, realloc );
         Sort_Matrix_Rows( &workspace->H_p );
@@ -670,8 +610,7 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
     }
     data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
     
-    switch ( control->cm_solver_pre_comp_type )
-    {
+    switch ( control->cm_solver_pre_comp_type ) {
         case NONE_PC:
             break;
 
@@ -686,13 +625,10 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
             break;
 
         case ILUT_PC:
-            if ( control->cm_solver_pre_comp_droptol > 0.0 )
-            {
+            if ( control->cm_solver_pre_comp_droptol > 0.0 ) {
                 data->timing.cm_solver_pre_comp +=
                     ILUT( Hptr, workspace->droptol, &workspace->L, &workspace->U );
-            }
-            else
-            {
+            } else {
                 data->timing.cm_solver_pre_comp +=
                     ILU( Hptr, &workspace->L, &workspace->U );
             }
@@ -727,27 +663,21 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
             break;
     }
 
-    //if ( control->cm_solver_pre_comp_refactor == -1 )
-    //{
-    //    data->timing.cm_last_pre_comp = data->timing.cm_solver_pre_comp;
-    //    data->timing.cm_total_loss = 0.0;
-    //}
+//    if ( control->cm_solver_pre_comp_refactor == -1 ) {
+//        data->timing.cm_last_pre_comp = data->timing.cm_solver_pre_comp;
+//        data->timing.cm_total_loss = 0.0;
+//    }
 
-    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
-    {
-        if ( control->cm_domain_sparsify_enabled == TRUE )
-        {
+    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA ) {
+        if ( control->cm_domain_sparsify_enabled == TRUE ) {
             Hptr = &workspace->H_sp;
-        }
-        else
-        {
+        } else {
             Hptr = &workspace->H;
         }
     }
 
     if ( control->cm_solver_pre_comp_type == ILUT_PC
-            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
-    {
+            || control->cm_solver_pre_comp_type == FG_ILUT_PC ) {
         Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
     }
 
@@ -755,8 +685,7 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
             || control->cm_solver_pre_comp_type == ILUTP_PC
-            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
-    {
+            || control->cm_solver_pre_comp_type == FG_ILUT_PC ) {
         fprintf( stderr, "[INFO] condest = %f\n", condest(&workspace->L, &workspace->U) );
 
 #if defined(DEBUG_FOCUS)
@@ -777,17 +706,14 @@ static void Compute_Preconditioner_EE( const reax_system * const system,
  */
 static void Compute_Preconditioner_ACKS2( const reax_system * const system,
         const control_params * const control, simulation_data * const data,
-        static_storage * const workspace, int32_t realloc )
+        static_storage * const workspace, bool realloc )
 {
     real time;
     sparse_matrix *Hptr;
 
-    if ( control->cm_domain_sparsify_enabled == TRUE )
-    {
+    if ( control->cm_domain_sparsify_enabled == TRUE ) {
         Hptr = &workspace->H_sp;
-    }
-    else
-    {
+    } else {
         Hptr = &workspace->H;
     }
 
@@ -796,15 +722,13 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
 #endif
 
     if ( control->cm_solver_pre_comp_type == ILUT_PC
-            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
-    {
+            || control->cm_solver_pre_comp_type == FG_ILUT_PC ) {
         Hptr->val[Hptr->start[system->N_cm - 1] - 1] = 1.0;
         Hptr->val[Hptr->start[system->N_cm] - 1] = 1.0;
     }
 
     time = Get_Time( );
-    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
-    {
+    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA ) {
         setup_graph_coloring( control, workspace, Hptr, &workspace->H_full,
                 &workspace->H_p, realloc );
         Sort_Matrix_Rows( &workspace->H_p );
@@ -812,8 +736,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
     }
     data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
     
-    switch ( control->cm_solver_pre_comp_type )
-    {
+    switch ( control->cm_solver_pre_comp_type ) {
         case NONE_PC:
             break;
 
@@ -828,13 +751,10 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
             break;
 
         case ILUT_PC:
-            if ( control->cm_solver_pre_comp_droptol > 0.0 )
-            {
+            if ( control->cm_solver_pre_comp_droptol > 0.0 ) {
                 data->timing.cm_solver_pre_comp +=
                     ILUT( Hptr, workspace->droptol, &workspace->L, &workspace->U );
-            }
-            else
-            {
+            } else {
                 data->timing.cm_solver_pre_comp +=
                     ILU( Hptr, &workspace->L, &workspace->U );
             }
@@ -869,27 +789,21 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
             break;
     }
 
-    //if ( control->cm_solver_pre_comp_refactor == -1 )
-    //{
-    //    data->timing.cm_last_pre_comp = data->timing.cm_solver_pre_comp;
-    //    data->timing.cm_total_loss = 0.0;
-    //}
+//    if ( control->cm_solver_pre_comp_refactor == -1 ) {
+//        data->timing.cm_last_pre_comp = data->timing.cm_solver_pre_comp;
+//        data->timing.cm_total_loss = 0.0;
+//    }
 
-    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
-    {
-        if ( control->cm_domain_sparsify_enabled == TRUE )
-        {
+    if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA ) {
+        if ( control->cm_domain_sparsify_enabled == TRUE ) {
             Hptr = &workspace->H_sp;
-        }
-        else
-        {
+        } else {
             Hptr = &workspace->H;
         }
     }
 
     if ( control->cm_solver_pre_comp_type == ILUT_PC
-            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
-    {
+            || control->cm_solver_pre_comp_type == FG_ILUT_PC ) {
         Hptr->val[Hptr->start[system->N_cm - 1] - 1] = 0.0;
         Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
     }
@@ -898,8 +812,7 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
     if ( control->cm_solver_pre_comp_type == ICHOLT_PC
             || control->cm_solver_pre_comp_type == ILUT_PC
             || control->cm_solver_pre_comp_type == ILUTP_PC
-            || control->cm_solver_pre_comp_type == FG_ILUT_PC )
-    {
+            || control->cm_solver_pre_comp_type == FG_ILUT_PC ) {
         fprintf( stderr, "[INFO] condest = %f\n", condest(&workspace->L, &workspace->U) );
 
 #if defined(DEBUG_FOCUS)
@@ -918,43 +831,35 @@ static void Compute_Preconditioner_ACKS2( const reax_system * const system,
 
 static void Setup_Preconditioner_QEq( const reax_system * const system,
         const control_params * const control, simulation_data * const data,
-        static_storage * const workspace, int32_t realloc )
+        static_storage * const workspace, bool realloc )
 {
-    int32_t fillin;
+    uint32_t fillin;
     real time;
     sparse_matrix *Hptr;
 
-    if ( control->cm_domain_sparsify_enabled == TRUE )
-    {
+    if ( control->cm_domain_sparsify_enabled == TRUE ) {
         Hptr = &workspace->H_sp;
-    }
-    else
-    {
+    } else {
         Hptr = &workspace->H;
     }
 
     /* sort H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
     time = Get_Time( );
     Sort_Matrix_Rows( &workspace->H );
-    if ( control->cm_domain_sparsify_enabled == TRUE )
-    {
+    if ( control->cm_domain_sparsify_enabled == TRUE ) {
         Sort_Matrix_Rows( &workspace->H_sp );
     }
     data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
 
-    switch ( control->cm_solver_pre_comp_type )
-    {
+    switch ( control->cm_solver_pre_comp_type ) {
         case NONE_PC:
             break;
 
         case JACOBI_PC:
-            if ( workspace->Hdia_inv == NULL )
-            {
+            if ( workspace->Hdia_inv == NULL ) {
                 workspace->Hdia_inv = scalloc( Hptr->n_max, sizeof( real ),
                         __FILE__, __LINE__ );
-            }
-            else if ( realloc == TRUE )
-            {
+            } else if ( realloc == TRUE ) {
                 workspace->Hdia_inv = srealloc( workspace->Hdia_inv,
                         sizeof( real ) * Hptr->n_max, __FILE__, __LINE__ );
             }
@@ -965,14 +870,11 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
 
             fillin = Estimate_LU_Fill( Hptr, workspace->droptol );
 
-            if ( workspace->L.allocated == FALSE )
-            {
+            if ( workspace->L.allocated == FALSE ) {
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, fillin );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, fillin );
-            }
-            else if ( workspace->L.m < fillin || workspace->L.n_max < system->N_cm_max
-                    || realloc == TRUE )
-            {
+            } else if ( workspace->L.m < fillin || workspace->L.n_max < system->N_cm_max
+                    || realloc == TRUE ) {
                 Deallocate_Matrix( &workspace->L );
                 Deallocate_Matrix( &workspace->U );
 
@@ -982,19 +884,15 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
             break;
 
         case ILUT_PC:
-            if ( control->cm_solver_pre_comp_droptol > 0.0 )
-            {
+            if ( control->cm_solver_pre_comp_droptol > 0.0 ) {
                 Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
             }
 
-            if ( workspace->L.allocated == FALSE )
-            {
+            if ( workspace->L.allocated == FALSE ) {
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
-            }
-            else if ( workspace->L.m < Hptr->m || workspace->L.n_max < system->N_cm_max
-                    || realloc == TRUE )
-            {
+            } else if ( workspace->L.m < Hptr->m || workspace->L.n_max < system->N_cm_max
+                    || realloc == TRUE ) {
                 Deallocate_Matrix( &workspace->L );
                 Deallocate_Matrix( &workspace->U );
 
@@ -1007,16 +905,13 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
         case FG_ILUT_PC:
             Calculate_Droptol( Hptr, workspace->droptol, control->cm_solver_pre_comp_droptol );
 
-            if ( workspace->L.allocated == FALSE )
-            {
+            if ( workspace->L.allocated == FALSE ) {
                 /* safest storage estimate is ILU(0) (same as
                  * lower triangular portion of H), could improve later */
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
-            }
-            else if ( workspace->L.m < Hptr->m || workspace->L.n_max < system->N_cm_max
-                    || realloc == TRUE )
-            {
+            } else if ( workspace->L.m < Hptr->m || workspace->L.n_max < system->N_cm_max
+                    || realloc == TRUE ) {
                 Deallocate_Matrix( &workspace->L );
                 Deallocate_Matrix( &workspace->U );
 
@@ -1047,42 +942,34 @@ static void Setup_Preconditioner_QEq( const reax_system * const system,
  */
 static void Setup_Preconditioner_EE( const reax_system * const system,
         const control_params * const control, simulation_data * const data,
-        static_storage * const workspace, int32_t realloc )
+        static_storage * const workspace, bool realloc )
 {
     real time;
     sparse_matrix *Hptr;
 
-    if ( control->cm_domain_sparsify_enabled == TRUE )
-    {
+    if ( control->cm_domain_sparsify_enabled == TRUE ) {
         Hptr = &workspace->H_sp;
-    }
-    else
-    {
+    } else {
         Hptr = &workspace->H;
     }
 
     /* sorted H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
     time = Get_Time( );
     Sort_Matrix_Rows( &workspace->H );
-    if ( control->cm_domain_sparsify_enabled == TRUE )
-    {
+    if ( control->cm_domain_sparsify_enabled == TRUE ) {
         Sort_Matrix_Rows( &workspace->H_sp );
     }
     data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
 
-    switch ( control->cm_solver_pre_comp_type )
-    {
+    switch ( control->cm_solver_pre_comp_type ) {
         case NONE_PC:
             break;
 
         case JACOBI_PC:
-            if ( workspace->Hdia_inv == NULL )
-            {
+            if ( workspace->Hdia_inv == NULL ) {
                 workspace->Hdia_inv = scalloc( Hptr->n_max, sizeof( real ),
                         __FILE__, __LINE__ );
-            }
-            else if ( realloc == TRUE )
-            {
+            } else if ( realloc == TRUE ) {
                 workspace->Hdia_inv = srealloc( workspace->Hdia_inv,
                         sizeof( real ) * Hptr->n_max, __FILE__, __LINE__ );
             }
@@ -1094,8 +981,7 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
             break;
 
         case ILUT_PC:
-            if ( control->cm_solver_pre_comp_droptol > 0.0 )
-            {
+            if ( control->cm_solver_pre_comp_droptol > 0.0 ) {
                 /* replace zeros on diagonal with non-zero values */
                 Hptr->val[Hptr->start[system->N_cm] - 1] = 1.0;
 
@@ -1105,14 +991,11 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
                 Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
             }
 
-            if ( workspace->L.allocated == FALSE )
-            {
+            if ( workspace->L.allocated == FALSE ) {
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
-            }
-            else if ( workspace->L.m < Hptr->m || workspace->L.n_max < system->N_cm_max
-                    || realloc == TRUE )
-            {
+            } else if ( workspace->L.m < Hptr->m || workspace->L.n_max < system->N_cm_max
+                    || realloc == TRUE ) {
                 Deallocate_Matrix( &workspace->L );
                 Deallocate_Matrix( &workspace->U );
 
@@ -1131,16 +1014,13 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
             /* put zeros back */
             Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
 
-            if ( workspace->L.allocated == FALSE )
-            {
+            if ( workspace->L.allocated == FALSE ) {
                 /* safest storage estimate is ILU(0) (same as
                  * lower triangular portion of H), could improve later */
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
-            }
-            else if ( workspace->L.m < Hptr->m || workspace->L.n_max < system->N_cm_max
-                    || realloc == TRUE )
-            {
+            } else if ( workspace->L.m < Hptr->m || workspace->L.n_max < system->N_cm_max
+                    || realloc == TRUE ) {
                 Deallocate_Matrix( &workspace->L );
                 Deallocate_Matrix( &workspace->U );
 
@@ -1171,42 +1051,34 @@ static void Setup_Preconditioner_EE( const reax_system * const system,
  */
 static void Setup_Preconditioner_ACKS2( const reax_system * const system,
         const control_params * const control, simulation_data * const data,
-        static_storage * const workspace, int32_t realloc )
+        static_storage * const workspace, bool realloc )
 {
     real time;
     sparse_matrix *Hptr;
 
-    if ( control->cm_domain_sparsify_enabled == TRUE )
-    {
+    if ( control->cm_domain_sparsify_enabled == TRUE ) {
         Hptr = &workspace->H_sp;
-    }
-    else
-    {
+    } else {
         Hptr = &workspace->H;
     }
 
     /* sort H needed for SpMV's in linear solver, H or H_sp needed for preconditioning */
     time = Get_Time( );
     Sort_Matrix_Rows( &workspace->H );
-    if ( control->cm_domain_sparsify_enabled == TRUE )
-    {
+    if ( control->cm_domain_sparsify_enabled == TRUE ) {
         Sort_Matrix_Rows( &workspace->H_sp );
     }
     data->timing.cm_sort_mat_rows += Get_Timing_Info( time );
 
-    switch ( control->cm_solver_pre_comp_type )
-    {
+    switch ( control->cm_solver_pre_comp_type ) {
         case NONE_PC:
             break;
 
         case JACOBI_PC:
-            if ( workspace->Hdia_inv == NULL )
-            {
+            if ( workspace->Hdia_inv == NULL ) {
                 workspace->Hdia_inv = scalloc( Hptr->n_max, sizeof( real ),
                         __FILE__, __LINE__ );
-            }
-            else if ( realloc == TRUE )
-            {
+            } else if ( realloc == TRUE ) {
                 workspace->Hdia_inv = srealloc( workspace->Hdia_inv,
                         sizeof( real ) * Hptr->n_max, __FILE__, __LINE__ );
             }
@@ -1218,8 +1090,7 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
             break;
 
         case ILUT_PC:
-            if ( control->cm_solver_pre_comp_droptol > 0.0 )
-            {
+            if ( control->cm_solver_pre_comp_droptol > 0.0 ) {
                 /* replace zeros on diagonal with non-zero values */
                 Hptr->val[Hptr->start[system->N_cm - 1] - 1] = 1.0;
                 Hptr->val[Hptr->start[system->N_cm] - 1] = 1.0;
@@ -1231,14 +1102,11 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
                 Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
             }
 
-            if ( workspace->L.allocated == FALSE )
-            {
+            if ( workspace->L.allocated == FALSE ) {
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
-            }
-            else if ( workspace->L.m < Hptr->m || workspace->L.n_max < system->N_cm_max
-                    || realloc == TRUE )
-            {
+            } else if ( workspace->L.m < Hptr->m || workspace->L.n_max < system->N_cm_max
+                    || realloc == TRUE ) {
                 Deallocate_Matrix( &workspace->L );
                 Deallocate_Matrix( &workspace->U );
 
@@ -1259,16 +1127,13 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
             Hptr->val[Hptr->start[system->N_cm - 1] - 1] = 0.0;
             Hptr->val[Hptr->start[system->N_cm] - 1] = 0.0;
 
-            if ( workspace->L.allocated == FALSE )
-            {
+            if ( workspace->L.allocated == FALSE ) {
                 /* safest storage estimate is ILU(0) (same as
                  * lower triangular portion of H), could improve later */
                 Allocate_Matrix( &workspace->L, Hptr->n, Hptr->n_max, Hptr->m );
                 Allocate_Matrix( &workspace->U, Hptr->n, Hptr->n_max, Hptr->m );
-            }
-            else if ( workspace->L.m < Hptr->m || workspace->L.n_max < system->N_cm_max
-                    || realloc == TRUE )
-            {
+            } else if ( workspace->L.m < Hptr->m || workspace->L.n_max < system->N_cm_max
+                    || realloc == TRUE ) {
                 Deallocate_Matrix( &workspace->L );
                 Deallocate_Matrix( &workspace->U );
 
@@ -1299,24 +1164,24 @@ static void Setup_Preconditioner_ACKS2( const reax_system * const system,
 static void Calculate_Charges_QEq( const reax_system * const system,
         static_storage * const workspace )
 {
-    int32_t i;
+    uint32_t i;
     real u, s_sum, t_sum;
 
     s_sum = 0.0;
     t_sum = 0.0;
-    for ( i = 0; i < system->N_cm; ++i )
-    {
+    for ( i = 0; i < system->N_cm; ++i ) {
         s_sum += workspace->s[0][i];
+    }
+    for ( i = 0; i < system->N_cm; ++i ) {
         t_sum += workspace->t[0][i];
     }
 
     u = s_sum / t_sum;
-    for ( i = 0; i < system->N_cm; ++i )
-    {
+    for ( i = 0; i < system->N_cm; ++i ) {
         system->atoms[i].q = workspace->s[0][i] - u * workspace->t[0][i];
 
 #if defined(DEBUG_FOCUS)
-        printf("atom %4d: %f\n", i, system->atoms[i].q);
+        printf("atom %4u: %f\n", i, system->atoms[i].q);
         printf("  x[0]: %10.5f, x[1]: %10.5f, x[2]:  %10.5f\n",
                 system->atoms[i].x[0], system->atoms[i].x[1], system->atoms[i].x[2]);
 #endif
@@ -1329,14 +1194,13 @@ static void Calculate_Charges_QEq( const reax_system * const system,
 static void Calculate_Charges_EE( const reax_system * const system,
         static_storage * const workspace )
 {
-    int32_t i;
+    uint32_t i;
 
-    for ( i = 0; i < system->N; ++i )
-    {
+    for ( i = 0; i < system->N; ++i ) {
         system->atoms[i].q = workspace->s[0][i];
 
 #if defined(DEBUG_FOCUS)
-        printf( "atom %4d: %f\n", i, system->atoms[i].q );
+        printf( "atom %4u: %f\n", i, system->atoms[i].q );
         printf( "  x[0]: %10.5f, x[1]: %10.5f, x[2]:  %10.5f\n",
                system->atoms[i].x[0], system->atoms[i].x[1], system->atoms[i].x[2] );
 #endif
@@ -1349,14 +1213,13 @@ static void Calculate_Charges_EE( const reax_system * const system,
 static void Calculate_Charges_ACKS2( const reax_system * const system,
         static_storage * const workspace )
 {
-    int32_t i;
+    uint32_t i;
 
-    for ( i = 0; i < system->N; ++i )
-    {
+    for ( i = 0; i < system->N; ++i ) {
         system->atoms[i].q = workspace->s[0][i];
 
 #if defined(DEBUG_FOCUS)
-        printf( "atom %4d: %f\n", i, system->atoms[i].q );
+        printf( "atom %4u: %f\n", i, system->atoms[i].q );
         printf( "  x[0]: %10.5f, x[1]: %10.5f, x[2]:  %10.5f\n",
                system->atoms[i].x[0], system->atoms[i].x[1], system->atoms[i].x[2] );
 #endif
@@ -1373,33 +1236,27 @@ static void Calculate_Charges_ACKS2( const reax_system * const system,
  */
 static void QEq( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        const output_controls * const out_control, int32_t realloc )
+        const output_controls * const out_control, bool realloc )
 {
-    int32_t iters, refactor;
+    uint32_t iters, refactor;
 
     refactor = is_refactoring_step( control, data );
 
-    if ( refactor == TRUE )    
-    {
+    if ( refactor == TRUE )    {
         Setup_Preconditioner_QEq( system, control, data, workspace, realloc );
-
         Compute_Preconditioner_QEq( system, control, data, workspace, realloc );
     }
 
-    switch ( control->cm_init_guess_type )
-    {
+    switch ( control->cm_init_guess_type ) {
     case SPLINE:
         Spline_Extrapolate_Charges_QEq( system, control, data, workspace );
         break;
 
     case TF_FROZEN_MODEL_LSTM:
 #if defined(HAVE_TENSORFLOW)
-        if ( data->step < control->cm_init_guess_win_size )
-        {
+        if ( data->step < control->cm_init_guess_win_size ) {
             Spline_Extrapolate_Charges_QEq( system, control, data, workspace );
-        }
-        else
-        {
+        } else {
             Predict_Charges_TF_LSTM( system, control, data, workspace );
         }
 #else
@@ -1420,8 +1277,7 @@ static void QEq( reax_system * const system, control_params * const control,
     exit( INVALID_INPUT );
 #endif
 
-    switch ( control->cm_solver_type )
-    {
+    switch ( control->cm_solver_type ) {
     case GMRES_S:
         iters = GMRES( workspace, control, data, &workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0], refactor );
@@ -1473,8 +1329,7 @@ static void QEq( reax_system * const system, control_params * const control,
        workspace->s[0][0], workspace->t[0][0],
        workspace->s[0][1], workspace->t[0][1],
        workspace->s[0][2], workspace->t[0][2] );
-    if( data->step == control->nsteps )
-    {
+    if ( data->step == control->nsteps ) {
         Print_Charges( system, control, workspace, data->step );
     }
 #endif
@@ -1490,33 +1345,27 @@ static void QEq( reax_system * const system, control_params * const control,
  */
 static void EE( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        const output_controls * const out_control, int32_t realloc )
+        const output_controls * const out_control, bool realloc )
 {
-    int32_t iters, refactor;
+    uint32_t iters, refactor;
 
     refactor = is_refactoring_step( control, data );
 
-    if ( refactor == TRUE )
-    {
+    if ( refactor == TRUE ) {
         Setup_Preconditioner_EE( system, control, data, workspace, realloc );
-
         Compute_Preconditioner_EE( system, control, data, workspace, realloc );
     }
 
-    switch ( control->cm_init_guess_type )
-    {
+    switch ( control->cm_init_guess_type ) {
     case SPLINE:
         Spline_Extrapolate_Charges_EE( system, control, data, workspace );
         break;
 
     case TF_FROZEN_MODEL_LSTM:
 #if defined(HAVE_TENSORFLOW)
-        if ( data->step < control->cm_init_guess_win_size )
-        {
+        if ( data->step < control->cm_init_guess_win_size ) {
             Spline_Extrapolate_Charges_EE( system, control, data, workspace );
-        }
-        else
-        {
+        } else {
             Predict_Charges_TF_LSTM( system, control, data, workspace );
         }
 #else
@@ -1533,14 +1382,12 @@ static void EE( reax_system * const system, control_params * const control,
     }
 
 #if defined(QMMM)
-    for ( int32_t i = system->N_qm; i < system->N; ++i )
-    {
+    for ( uint32_t i = system->N_qm; i < system->N; ++i ) {
         workspace->s[0][i] = system->atoms[i].q_init;
     }
 #endif
 
-    switch ( control->cm_solver_type )
-    {
+    switch ( control->cm_solver_type ) {
     case GMRES_S:
         iters = GMRES( workspace, control, data, &workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0], refactor );
@@ -1591,35 +1438,29 @@ static void EE( reax_system * const system, control_params * const control,
  */
 static void ACKS2( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        const output_controls * const out_control, int32_t realloc )
+        const output_controls * const out_control, bool realloc )
 {
-    int32_t iters, refactor;
+    uint32_t iters, refactor;
 
     refactor = is_refactoring_step( control, data );
 
-    if ( refactor == TRUE )
-    {
+    if ( refactor == TRUE ) {
         Setup_Preconditioner_ACKS2( system, control, data, workspace, realloc );
-
         Compute_Preconditioner_ACKS2( system, control, data, workspace, realloc );
     }
 
 //   Print_Linear_System( system, control, workspace, data->step );
 
-    switch ( control->cm_init_guess_type )
-    {
+    switch ( control->cm_init_guess_type ) {
     case SPLINE:
         Spline_Extrapolate_Charges_EE( system, control, data, workspace );
         break;
 
     case TF_FROZEN_MODEL_LSTM:
 #if defined(HAVE_TENSORFLOW)
-        if ( data->step < control->cm_init_guess_win_size )
-        {
+        if ( data->step < control->cm_init_guess_win_size ) {
             Spline_Extrapolate_Charges_EE( system, control, data, workspace );
-        }
-        else
-        {
+        } else {
             Predict_Charges_TF_LSTM( system, control, data, workspace );
         }
 #else
@@ -1640,8 +1481,7 @@ static void ACKS2( reax_system * const system, control_params * const control,
     char fname[SIZE];
     FILE * fp;
 
-    if ( data->step % 10 == 0 )
-    {
+    if ( data->step % 10 == 0 ) {
         snprintf( fname, SIZE, "s_%d_%s.out", data->step, control->sim_name );
         fp = sfopen( fname, "w", __FILE__, __LINE__ );
         Vector_Print( fp, NULL, workspace->s[0], system->N_cm );
@@ -1652,14 +1492,12 @@ static void ACKS2( reax_system * const system, control_params * const control,
 
 #if defined(QMMM)
     /* TODO: further testing needed for QM/MM mode with ACKS2 */
-    for ( int32_t i = system->N_qm; i < system->N; ++i )
-    {
+    for ( uint32_t i = system->N_qm; i < system->N; ++i ) {
         workspace->s[0][i] = system->atoms[i].q_init;
     }
 #endif
 
-    switch ( control->cm_solver_type )
-    {
+    switch ( control->cm_solver_type ) {
     case GMRES_S:
         iters = GMRES( workspace, control, data, &workspace->H,
                 workspace->b_s, control->cm_solver_q_err, workspace->s[0], refactor );
@@ -1700,15 +1538,14 @@ static void ACKS2( reax_system * const system, control_params * const control,
 
 void Compute_Charges( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        const output_controls * const out_control, int32_t realloc )
+        const output_controls * const out_control, bool realloc )
 {
 #if defined(DEBUG_FOCUS)
 #define SIZE (200)
     char fname[SIZE];
     FILE * fp;
 
-    if ( data->step % 10 == 0 )
-    {
+    if ( data->step % 10 == 0 ) {
         snprintf( fname, SIZE, "H_%d_%s.out", data->step, control->sim_name );
         Print_Sparse_Matrix2( &workspace->H, fname, NULL );
 //        Print_Sparse_Matrix_Binary( workspace->H, fname );
@@ -1726,8 +1563,7 @@ void Compute_Charges( reax_system * const system, control_params * const control
 #undef SIZE
 #endif
 
-    switch ( control->charge_method )
-    {
+    switch ( control->charge_method ) {
     case QEQ_CM:
         QEq( system, control, data, workspace, out_control, realloc );
         break;

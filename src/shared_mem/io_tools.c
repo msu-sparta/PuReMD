@@ -33,7 +33,7 @@ void Print_Bond_Orders( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    int32_t i, pj, pk;
+    uint32_t i, pj, pk;
     bond_order_data *bo_ij;
     reax_list *bonds = lists[BONDS];
     reax_list *dBOs = lists[DBO];
@@ -43,10 +43,8 @@ void Print_Bond_Orders( reax_system *system, control_params *control,
     fprintf( out_control->fbo, "%6s%6s%12s%12s%12s%12s%12s\n",
              "atom1", "atom2", "r_ij", "total_bo", "bo_s", "bo_p", "bo_pp" );
 
-    for ( i = 0; i < system->N; ++i )
-    {
-        for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
-        {
+    for ( i = 0; i < system->N; ++i ) {
+        for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj ) {
             bo_ij = &bonds->bond_list[pj].bo_data;
             fprintf( out_control->fbo, "%6d%6d%23.15e%23.15e%23.15e%23.15e%23.15e\n",
                      //workspace->orig_id[i],
@@ -62,17 +60,14 @@ void Print_Bond_Orders( reax_system *system, control_params *control,
     /* fprintf( out_control->fbo, "%6s%6s%10s%10s%10s%10s\n",
        "atom1", "atom2", "total_bo", "bo_s", "bo_p", "bo_pp"\n ); */
 
-    for ( i = 0; i < system->N; ++i )
-    {
-        for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
-        {
+    for ( i = 0; i < system->N; ++i ) {
+        for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj ) {
             /*fprintf( out_control->fdbo, "%6d %6d\tstart: %6d\tend: %6d\n",
             workspace->orig_id[i],
             workspace->orig_id[bonds->bond_list[pj].nbr],
             Start_Index( pj, dBOs ), End_Index( pj, dBOs ) );*/
 
-            for ( pk = Start_Index(pj, dBOs); pk < End_Index(pj, dBOs); ++pk )
-            {
+            for ( pk = Start_Index(pj, dBOs); pk < End_Index(pj, dBOs); ++pk ) {
                 dbo_k = &dBOs->dbo_list[pk];
 
                 //if( !rvec_isZero( dbo_k->dBO ) )
@@ -105,13 +100,12 @@ void Print_Bond_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    int32_t i;
+    uint32_t i;
 
-    fprintf( out_control->fbond, "%d\n", data->step );
+    fprintf( out_control->fbond, "%u\n", data->step );
     fprintf( out_control->fbond, "%6s\t%s\n", "atom", "fbond" );
 
-    for ( i = 0; i < system->N; ++i )
-    {
+    for ( i = 0; i < system->N; ++i ) {
         fprintf( out_control->fbond, "%6d %23.15e%23.15e%23.15e\n",
                 workspace->orig_id[i], workspace->f_be[i][0],
                 workspace->f_be[i][1], workspace->f_be[i][2]);
@@ -123,13 +117,12 @@ void Print_LonePair_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    int32_t i;
+    uint32_t i;
 
-    fprintf( out_control->flp, "%d\n", data->step );
+    fprintf( out_control->flp, "%u\n", data->step );
     fprintf( out_control->flp, "%6s\t%s\n", "atom", "f_lonepair" );
 
-    for ( i = 0; i < system->N; ++i )
-    {
+    for ( i = 0; i < system->N; ++i ) {
         fprintf(out_control->flp, "%6d %23.15e%23.15e%23.15e\n",
                 workspace->orig_id[i],
                 workspace->f_lp[i][0], workspace->f_lp[i][1], workspace->f_lp[i][2]);
@@ -143,23 +136,19 @@ void Print_OverUnderCoor_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control )
 {
-    int32_t i;
+    uint32_t i;
 
-    fprintf( out_control->fatom, "%d\n", data->step );
+    fprintf( out_control->fatom, "%u\n", data->step );
     fprintf( out_control->fatom, "%6s\t%-38s%-38s%-38s\n",
              "atom", "f_atom", "f_over", "f_under" );
 
-    for ( i = 0; i < system->N; ++i )
-    {
-        if ( rvec_isZero( workspace->f_un[i] ) )
-        {
+    for ( i = 0; i < system->N; ++i ) {
+        if ( rvec_isZero( workspace->f_un[i] ) ) {
             fprintf( out_control->fatom,
                      "%6d %23.15e%23.15e%23.15e 0 0 0\n",
                      workspace->orig_id[i], workspace->f_ov[i][0],
                      workspace->f_ov[i][1], workspace->f_ov[i][2] );
-        }
-        else
-        {
+        } else {
             fprintf( out_control->fatom,
                      "%6d %23.15e%23.15e%23.15e %23.15e%23.15e%23.15e"\
                      "%23.15e%23.15e%23.15e\n",
@@ -182,22 +171,18 @@ void Print_Three_Body_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    int32_t j;
+    uint32_t j;
 
-    fprintf( out_control->f3body, "%d\n", data->step );
+    fprintf( out_control->f3body, "%u\n", data->step );
     fprintf( out_control->f3body, "%6s%-37s%-37s%-37s%-38s\n",
              "atom", "3-body total", "f_ang", "f_pen", "f_coa" );
 
-    for ( j = 0; j < system->N; ++j )
-    {
-        if ( rvec_isZero(workspace->f_pen[j]) && rvec_isZero(workspace->f_coa[j]) )
-        {
+    for ( j = 0; j < system->N; ++j ) {
+        if ( rvec_isZero(workspace->f_pen[j]) && rvec_isZero(workspace->f_coa[j]) ) {
             fprintf( out_control->f3body, "%6d %23.15e%23.15e%23.15e  0 0 0  0 0 0\n",
                      workspace->orig_id[j], workspace->f_ang[j][0],
                      workspace->f_ang[j][1], workspace->f_ang[j][2] );
-        }
-        else if ( rvec_isZero(workspace->f_coa[j]) )
-        {
+        } else if ( rvec_isZero(workspace->f_coa[j]) ) {
             fprintf( out_control->f3body,
                      "%6d %23.15e%23.15e%23.15e %23.15e%23.15e%23.15e "\
                      "%23.15e%23.15e%23.15e\n",
@@ -209,9 +194,7 @@ void Print_Three_Body_Forces( reax_system *system, control_params *control,
                      workspace->f_ang[j][2],
                      workspace->f_pen[j][0], workspace->f_pen[j][1],
                      workspace->f_pen[j][2] );
-        }
-        else
-        {
+        } else {
             fprintf( out_control->f3body, "%6d %23.15e%23.15e%23.15e ",
                      workspace->orig_id[j],
                      workspace->f_ang[j][0] + workspace->f_pen[j][0] +
@@ -241,13 +224,12 @@ void Print_Hydrogen_Bond_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control )
 {
-    int32_t j;
+    uint32_t j;
 
-    fprintf( out_control->fhb, "%d\n", data->step );
+    fprintf( out_control->fhb, "%u\n", data->step );
     fprintf( out_control->fhb, "%6s\t%-38s\n", "atom", "f_hb" );
 
-    for ( j = 0; j < system->N; ++j )
-    {
+    for ( j = 0; j < system->N; ++j ) {
         fprintf(out_control->fhb, "%6d\t[%23.15e%23.15e%23.15e]\n",
                 workspace->orig_id[j],
                 workspace->f_hb[j][0], workspace->f_hb[j][1], workspace->f_hb[j][2]);
@@ -261,15 +243,13 @@ void Print_Four_Body_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    int32_t j;
+    uint32_t j;
 
     fprintf( out_control->f4body, "%6s\t%-38s%-38s%-38s\n",
              "atom", "4-body total", "f_tor", "f_con" );
 
-    for ( j = 0; j < system->N; ++j )
-    {
-        if ( !rvec_isZero( workspace->f_con[j] ) )
-        {
+    for ( j = 0; j < system->N; ++j ) {
+        if ( !rvec_isZero( workspace->f_con[j] ) ) {
             fprintf( out_control->f4body,
                      "%6d %23.15e%23.15e%23.15e %23.15e%23.15e%23.15e "\
                      "%23.15e%23.15e%23.15e\n",
@@ -281,9 +261,7 @@ void Print_Four_Body_Forces( reax_system *system, control_params *control,
                      workspace->f_tor[j][2],
                      workspace->f_con[j][0], workspace->f_con[j][1],
                      workspace->f_con[j][2] );
-        }
-        else
-        {
+        } else {
             fprintf( out_control->f4body,
                      "%6d %23.15e%23.15e%23.15e  0 0 0\n",
                      workspace->orig_id[j], workspace->f_tor[j][0],
@@ -299,16 +277,14 @@ void Print_vdW_Coulomb_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    int32_t  i;
+    uint32_t i;
 
-    fprintf( out_control->fnonb, "%d\n", data->step );
+    fprintf( out_control->fnonb, "%u\n", data->step );
     fprintf( out_control->fnonb, "%6s\t%-38s%-38s%-38s\n",
              "atom", "nonbonded total", "f_vdw", "f_ele" );
 
-    for ( i = 0; i < system->N; ++i )
-    {
-        if ( !rvec_isZero(workspace->f_ele[i]) )
-        {
+    for ( i = 0; i < system->N; ++i ) {
+        if ( !rvec_isZero(workspace->f_ele[i]) ) {
             fprintf(out_control->fnonb,
                     "%6d %23.15e%23.15e%23.15e %23.15e%23.15e%23.15e "\
                     "%23.15e%23.15e%23.15e\n",
@@ -320,9 +296,7 @@ void Print_vdW_Coulomb_Forces( reax_system *system, control_params *control,
                     workspace->f_vdw[i][2],
                     workspace->f_ele[i][0], workspace->f_ele[i][1],
                     workspace->f_ele[i][2] );
-        }
-        else
-        {
+        } else {
             fprintf(out_control->fnonb,
                     "%6d %23.15e%23.15e%23.15e  0 0 0\n",
                     workspace->orig_id[i], workspace->f_vdw[i][0],
@@ -338,14 +312,13 @@ void Compare_Total_Forces( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    int32_t i;
+    uint32_t i;
 
-    fprintf( out_control->ftot2, "%d\n", data->step );
+    fprintf( out_control->ftot2, "%u\n", data->step );
     fprintf( out_control->ftot2, "%6s\t%-38s%-38s\n",
              "atom", "f_total", "test_force total" );
 
-    for ( i = 0; i < system->N; ++i )
-    {
+    for ( i = 0; i < system->N; ++i ) {
         fprintf( out_control->ftot2,
                  "%6d %23.15e%23.15e%23.15e vs %23.15e%23.15e%23.15e\n",
                  workspace->orig_id[i],
@@ -394,7 +367,7 @@ void Init_Force_Test_Functions( control_params *control )
 void Print_Near_Neighbors( reax_system *system, control_params *control,
         static_storage *workspace, reax_list **lists )
 {
-    int32_t i, j, id_i, id_j;
+    uint32_t i, j, id_i, id_j;
     char fname[MAX_STR];
     FILE *fout;
     reax_list *near_nbrs = lists[NEAR_NBRS];
@@ -402,12 +375,10 @@ void Print_Near_Neighbors( reax_system *system, control_params *control,
     snprintf( fname, MAX_STR, "%.*s.near_nbrs", MAX_STR - 11, control->sim_name );
     fout = sfopen( fname, "w", __FILE__, __LINE__ );
 
-    for ( i = 0; i < system->N; ++i )
-    {
+    for ( i = 0; i < system->N; ++i ) {
         id_i = workspace->orig_id[i];
 
-        for ( j = Start_Index(i, near_nbrs); j < End_Index(i, near_nbrs); ++j )
-        {
+        for ( j = Start_Index(i, near_nbrs); j < End_Index(i, near_nbrs); ++j ) {
             id_j = workspace->orig_id[near_nbrs->near_nbr_list[j].nbr];
 
             // if( id_i < id_j )
@@ -428,7 +399,7 @@ void Print_Near_Neighbors( reax_system *system, control_params *control,
 void Print_Near_Neighbors2( reax_system *system, control_params *control,
         static_storage *workspace, reax_list **lists )
 {
-    int32_t i, j, id_i, id_j;
+    uint32_t i, j, id_i, id_j;
     char fname[MAX_STR];
     FILE *fout;
     reax_list *near_nbrs = lists[NEAR_NBRS];
@@ -436,12 +407,10 @@ void Print_Near_Neighbors2( reax_system *system, control_params *control,
     snprintf( fname, MAX_STR, "%.*s.near_nbrs_lgj", MAX_STR - 15, control->sim_name );
     fout = sfopen( fname, "w", __FILE__, __LINE__ );
 
-    for ( i = 0; i < system->N; ++i )
-    {
+    for ( i = 0; i < system->N; ++i ) {
         id_i = workspace->orig_id[i];
         fprintf( fout, "%6d:", id_i);
-        for ( j = Start_Index(i, near_nbrs); j < End_Index(i, near_nbrs); ++j )
-        {
+        for ( j = Start_Index(i, near_nbrs); j < End_Index(i, near_nbrs); ++j ) {
             id_j = workspace->orig_id[near_nbrs->near_nbr_list[j].nbr];
             fprintf( fout, "%6d", id_j);
 
@@ -465,22 +434,20 @@ void Print_Far_Neighbors( reax_system const * const system,
         simulation_data const * const data,
         static_storage const * const workspace, reax_list ** const lists )
 {
-    int32_t i, pj, id_i, id_j;
+    uint32_t i, pj, id_i, id_j;
     char fname[MAX_STR];
     FILE *fout;
     reax_list *far_nbrs;
 
     far_nbrs = lists[FAR_NBRS];
 
-    snprintf( fname, MAX_STR, "%.*s.%010d.far_nbrs", MAX_STR - 21, control->sim_name, data->step );
+    snprintf( fname, MAX_STR, "%.*s.%010u.far_nbrs", MAX_STR - 21, control->sim_name, data->step );
     fout = sfopen( fname, "w", __FILE__, __LINE__ );
 
-    for ( i = 0; i < system->N; ++i )
-    {
+    for ( i = 0; i < system->N; ++i ) {
         id_i = workspace->orig_id[i];
 
-        for ( pj = Start_Index(i, far_nbrs); pj < End_Index(i, far_nbrs); ++pj )
-        {
+        for ( pj = Start_Index(i, far_nbrs); pj < End_Index(i, far_nbrs); ++pj ) {
             id_j = workspace->orig_id[far_nbrs->far_nbr_list[pj].nbr];
 
             fprintf( fout, "%6d%6d%3d%3d%3d %12.7f\n",
@@ -510,37 +477,45 @@ void Print_Far_Neighbors( reax_system const * const system,
 }
 
 
-static int32_t fn_qsort_intcmp( const void *a, const void *b )
+static int32_t fn_qsort_uint_cmp( const void *a, const void *b )
 {
-    return ( *(int32_t *)a - * (int32_t *)b);
+    int32_t ret;
+
+    if ( *(uint32_t *)a > *(uint32_t *)b ) {
+        ret = 1;
+    } else if ( *(uint32_t *)b > *(uint32_t *)a ) {
+        ret = -1;
+    } else {
+        ret = 0;
+    }
+
+    return ret;
 }
 
 
 void Print_Far_Neighbors2( reax_system *system, control_params *control,
         static_storage *workspace, reax_list **lists )
 {
-    int32_t i, j, id_i, id_j;
+    uint32_t i, j, id_i, id_j;
     char fname[MAX_STR];
     FILE *fout;
     reax_list *far_nbrs = lists[FAR_NBRS];
 
     snprintf( fname, MAX_STR, "%.*s.far_nbrs_lgj", MAX_STR - 14, control->sim_name );
     fout = sfopen( fname, "w", __FILE__, __LINE__ );
-    int32_t num = 0;
-    int32_t temp[500];
+    uint32_t num = 0;
+    uint32_t temp[500];
 
-    for ( i = 0; i < system->N; ++i )
-    {
+    for ( i = 0; i < system->N; ++i ) {
         id_i = workspace->orig_id[i];
         num = 0;
         fprintf( fout, "%6d:", id_i);
 
-        for ( j = Start_Index(i, far_nbrs); j < End_Index(i, far_nbrs); ++j )
-        {
+        for ( j = Start_Index(i, far_nbrs); j < End_Index(i, far_nbrs); ++j ) {
             id_j = workspace->orig_id[far_nbrs->far_nbr_list[j].nbr];
             temp[num++] = id_j;
         }
-        qsort(&temp, num, sizeof(int32_t), fn_qsort_intcmp);
+        qsort(&temp, num, sizeof(uint32_t), fn_qsort_uint_cmp);
         for (j = 0; j < num; j++)
             fprintf(fout, "%6d", temp[j]);
         fprintf( fout, "\n");
@@ -554,15 +529,14 @@ void Print_Total_Force( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    int32_t i;
+    uint32_t i;
     char fname[MAX_STR];
     FILE *fout;
 
-    snprintf( fname, MAX_STR, "%.*s.%d.forces", MAX_STR - 10, control->sim_name, data->step );
+    snprintf( fname, MAX_STR, "%.*s.%u.forces", MAX_STR - 10, control->sim_name, data->step );
     fout = sfopen( fname, "w", __FILE__, __LINE__ );
 
-    for ( i = 0; i < system->N; ++i )
-    {
+    for ( i = 0; i < system->N; ++i ) {
         fprintf( fout, "%6d %23.15e %23.15e %23.15e\n",
                 workspace->orig_id[i],
                 system->atoms[i].f[0], system->atoms[i].f[1], system->atoms[i].f[2] );
@@ -592,17 +566,16 @@ void Output_Results( reax_system *system, control_params *control,
 
     /* write log files if it is the correct simulation step */
     if ( out_control->log_update_freq > 0 &&
-            data->step % out_control->log_update_freq == 0 )
-    {
+            data->step % out_control->log_update_freq == 0 ) {
 #if defined(TEST_ENERGY) || defined(DEBUG) || defined(DEBUG_FOCUS)
         fprintf( out_control->out,
-                 "%-6d%24.15f%24.15f%24.15f%13.5f%13.5f%16.5f%13.5f%13.5f\n",
+                 "%-6u%24.15f%24.15f%24.15f%13.5f%13.5f%16.5f%13.5f%13.5f\n",
                  data->step, data->E_Tot, data->E_Pot, data->E_Kin,
                  data->therm.T, control->T, system->box.volume, data->iso_bar.P,
                  (control->P[0] + control->P[1] + control->P[2]) / 3.0 );
 
         fprintf( out_control->pot,
-                 "%-6d%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f\n",
+                 "%-6u%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f%24.15f\n",
                  data->step,
                  data->E_BE,
                  data->E_Ov + data->E_Un,  data->E_Lp,
@@ -611,13 +584,13 @@ void Output_Results( reax_system *system, control_params *control,
                  data->E_vdW, data->E_Ele, data->E_Pol );
 #else
         fprintf( out_control->out,
-                 "%-6d%16.2f%16.2f%16.2f%11.2f%11.2f%13.2f%13.5f%13.5f\n",
+                 "%-6u%16.2f%16.2f%16.2f%11.2f%11.2f%13.2f%13.5f%13.5f\n",
                  data->step, data->E_Tot, data->E_Pot, data->E_Kin,
                  data->therm.T, control->T, system->box.volume, data->iso_bar.P,
                  (control->P[0] + control->P[1] + control->P[2]) / 3.0 );
 
         fprintf( out_control->pot,
-                 "%-6d%13.2f%13.2f%13.2f%13.2f%13.2f%13.2f%13.2f%13.2f%13.2f%13.2f%13.2f\n",
+                 "%-6u%13.2f%13.2f%13.2f%13.2f%13.2f%13.2f%13.2f%13.2f%13.2f%13.2f%13.2f\n",
                  data->step,
                  data->E_BE,
                  data->E_Ov + data->E_Un,  data->E_Lp,
@@ -627,16 +600,13 @@ void Output_Results( reax_system *system, control_params *control,
 #endif
 
         t_elapsed = Get_Timing_Info( data->timing.total );
-        if ( data->step == data->prev_steps )
-        {
+        if ( data->step == data->prev_steps ) {
             f_update = 1.0;
-        }
-        else
-        {
+        } else {
             f_update = 1.0 / out_control->log_update_freq;
         }
 
-        fprintf( out_control->log, "%6d %10.2f %10.2f %10.2f %10.2f %10.2f %10.4f %10.4f %10.2f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n",
+        fprintf( out_control->log, "%6u %10.2f %10.2f %10.2f %10.2f %10.2f %10.4f %10.4f %10.2f %10.4f %10.4f %10.4f %10.4f %10.4f %10.4f\n",
                  data->step, t_elapsed * f_update,
                  data->timing.nbrs * f_update,
                  data->timing.init_forces * f_update,
@@ -673,17 +643,16 @@ void Output_Results( reax_system *system, control_params *control,
 
         /* output pressure */
         if ( control->ensemble == sNPT || control->ensemble == iNPT ||
-                control->ensemble == aNPT || control->compute_pressure == TRUE )
-        {
+                control->ensemble == aNPT || control->compute_pressure == TRUE ) {
 #if defined(DEBUG) || defined(DEBUG_FOCUS)
-            fprintf( out_control->prs, "%-8d %13.6f %13.6f %13.6f %13.6f %13.6f %13.6f\n",
+            fprintf( out_control->prs, "%-8u %13.6f %13.6f %13.6f %13.6f %13.6f %13.6f\n",
                      data->step,
                      data->kin_press[0][0], data->kin_press[1][1],+ data->kin_press[2][2],
                      data->press[0][0], data->press[1][1], data->press[2][2] );
 #endif
 
             fprintf( out_control->prs,
-                     "%-8d %13.6f %13.6f %13.6f %13.6f %13.6f %13.6f %13.6f %13.6f\n",
+                     "%-8u %13.6f %13.6f %13.6f %13.6f %13.6f %13.6f %13.6f %13.6f\n",
                      data->step,
                      system->box.box_norms[0], system->box.box_norms[1],
                      system->box.box_norms[2],
@@ -694,8 +663,7 @@ void Output_Results( reax_system *system, control_params *control,
     }
 
     if ( out_control->write_steps > 0 &&
-            data->step % out_control->write_steps == 0 )
-    {
+            data->step % out_control->write_steps == 0 ) {
         out_control->append_traj_frame( system, control, data,
                 workspace, lists, out_control );
     }
@@ -703,14 +671,14 @@ void Output_Results( reax_system *system, control_params *control,
 
 
 void Print_Linear_System( reax_system *system, control_params *control,
-        static_storage *workspace, int32_t step )
+        static_storage *workspace, uint32_t step )
 {
-    int32_t i, j;
+    uint32_t i, j;
     char fname[100];
     sparse_matrix *H;
     FILE *out;
 
-    snprintf( fname, 100, "%.*s.state%10d.out", 79, control->sim_name, step );
+    snprintf( fname, 100, "%.*s.state%010u.out", 79, control->sim_name, step );
     out = sfopen( fname, "w", __FILE__, __LINE__ );
 
     for ( i = 0; i < system->N_cm; i++ )
@@ -722,20 +690,18 @@ void Print_Linear_System( reax_system *system, control_params *control,
                  workspace->t[0][i], workspace->b_t[i]  );
     sfclose( out, __FILE__, __LINE__ );
 
-    // snprintf( fname, 100, "x2_%d", step );
+    // snprintf( fname, 100, "x2_%u", step );
     // out = sfopen( fname, "w", __FILE__, __LINE__ );
     // for( i = 0; i < system->N; i++ )
     // fprintf( out, "%g\n", workspace->s_t[i+system->N] );
     // sfclose( out, __FILE__, __LINE__ );
 
-    snprintf( fname, 100, "%.*s.H%10d.out", 83, control->sim_name, step );
+    snprintf( fname, 100, "%.*s.H%010u.out", 83, control->sim_name, step );
     out = sfopen( fname, "w", __FILE__, __LINE__ );
     H = &workspace->H;
 
-    for ( i = 0; i < system->N_cm; ++i )
-    {
-        for ( j = H->start[i]; j < H->start[i + 1] - 1; ++j )
-        {
+    for ( i = 0; i < system->N_cm; ++i ) {
+        for ( j = H->start[i]; j < H->start[i + 1] - 1; ++j ) {
             fprintf( out, "%6d%6d %24.15e\n",
                      workspace->orig_id[i], workspace->orig_id[H->j[j]],
                      H->val[j] );
@@ -751,14 +717,12 @@ void Print_Linear_System( reax_system *system, control_params *control,
 
     sfclose( out, __FILE__, __LINE__ );
 
-    snprintf( fname, 100, "%.*s.H_sp%10d.out", 80, control->sim_name, step );
+    snprintf( fname, 100, "%.*s.H_sp%010u.out", 80, control->sim_name, step );
     out = sfopen( fname, "w", __FILE__, __LINE__ );
     H = &workspace->H_sp;
 
-    for ( i = 0; i < system->N_cm; ++i )
-    {
-        for ( j = H->start[i]; j < H->start[i + 1] - 1; ++j )
-        {
+    for ( i = 0; i < system->N_cm; ++i ) {
+        for ( j = H->start[i]; j < H->start[i + 1] - 1; ++j ) {
             fprintf( out, "%6d%6d %24.15e\n",
                      workspace->orig_id[i], workspace->orig_id[H->j[j]],
                      H->val[j] );
@@ -774,32 +738,31 @@ void Print_Linear_System( reax_system *system, control_params *control,
 
     sfclose( out, __FILE__, __LINE__ );
 
-    /*snprintf( fname, 100, "%.*s.b_s%10d", 84, control->sim_name, step );
-      out = sfopen( fname, "w", __FILE__, __LINE__ );
-      for( i = 0; i < system->N; i++ )
-      fprintf( out, "%12.7f\n", workspace->b_s[i] );
-      sfclose( out, __FILE__, __LINE__ );
+    snprintf( fname, 100, "%.*s.b_s%010u", 84, control->sim_name, step );
+    out = sfopen( fname, "w", __FILE__, __LINE__ );
+    for( i = 0; i < system->N; i++ )
+        fprintf( out, "%12.7f\n", workspace->b_s[i] );
+    sfclose( out, __FILE__, __LINE__ );
 
-      snprintf( fname, 100, "%.*s.b_t%10d", 84, control->sim_name, step );
-      out = sfopen( fname, "w", __FILE__, __LINE__ );
-      for( i = 0; i < system->N; i++ )
-      fprintf( out, "%12.7f\n", workspace->b_t[i] );
-      sfclose( out, __FILE__, __LINE__ );*/
+    snprintf( fname, 100, "%.*s.b_t%010u", 84, control->sim_name, step );
+    out = sfopen( fname, "w", __FILE__, __LINE__ );
+    for( i = 0; i < system->N; i++ )
+        fprintf( out, "%12.7f\n", workspace->b_t[i] );
+    sfclose( out, __FILE__, __LINE__ );
 }
 
 
 void Print_Charges( reax_system *system, control_params *control,
-        static_storage *workspace, int32_t step )
+        static_storage *workspace, uint32_t step )
 {
-    int32_t i;
+    uint32_t i;
     char fname[100];
     FILE *fout;
 
-    snprintf( fname, 100, "%.*s.q%010d", 87, control->sim_name, step );
+    snprintf( fname, 100, "%.*s.q%010u", 87, control->sim_name, step );
     fout = sfopen( fname, "w", __FILE__, __LINE__ );
 
-    for ( i = 0; i < system->N; ++i )
-    {
+    for ( i = 0; i < system->N; ++i ) {
         fprintf( fout, "%6d%12.7f%12.7f%12.7f\n",
                  workspace->orig_id[i],
                  workspace->s[0][i], workspace->t[0][i], system->atoms[i].q );
@@ -810,14 +773,13 @@ void Print_Charges( reax_system *system, control_params *control,
 
 
 void Print_Soln( static_storage *workspace,
-        real *x, real *b_prm, real *b, int32_t N )
+        real *x, real *b_prm, real *b, uint32_t N )
 {
-    int32_t i;
+    uint32_t i;
 
     fprintf( stdout, "%6s%10s%10s%10s\n", "id", "x", "b_prm", "b" );
 
-    for ( i = 0; i < N; ++i )
-    {
+    for ( i = 0; i < N; ++i ) {
         fprintf( stdout, "%6d%10.4f%10.4f%10.4f\n",
                  workspace->orig_id[i], x[i], b_prm[i], b[i] );
     }
@@ -828,14 +790,12 @@ void Print_Soln( static_storage *workspace,
 
 void Print_Sparse_Matrix( sparse_matrix *A )
 {
-    int32_t i, j;
+    uint32_t i, j;
 
-    for ( i = 0; i < A->n; ++i )
-    {
-        fprintf( stderr, "i:%d  j(val):", i );
-        for ( j = A->start[i]; j < A->start[i + 1]; ++j )
-        {
-            fprintf( stderr, "%d(%.4f) ", A->j[j], A->val[j] );
+    for ( i = 0; i < A->n; ++i ) {
+        fprintf( stderr, "i:%u  j(val):", i );
+        for ( j = A->start[i]; j < A->start[i + 1]; ++j ) {
+            fprintf( stderr, "%u(%.4f) ", A->j[j], A->val[j] );
         }
         fprintf( stderr, "\n" );
     }
@@ -844,23 +804,18 @@ void Print_Sparse_Matrix( sparse_matrix *A )
 
 void Print_Sparse_Matrix2( sparse_matrix *A, char *fname, char *mode )
 {
-    int32_t i, j;
+    uint32_t i, j;
     FILE *f;
    
-    if ( mode == NULL )
-    {
+    if ( mode == NULL ) {
         f = sfopen( fname, "w", __FILE__, __LINE__ );
-    }
-    else
-    {
+    } else {
         f = sfopen( fname, mode, __FILE__, __LINE__ );
     }
 
-    for ( i = 0; i < A->n; ++i )
-    {
+    for ( i = 0; i < A->n; ++i ) {
         /* off-diagonals */
-        for ( j = A->start[i]; j < A->start[i + 1] - 1; ++j )
-        {
+        for ( j = A->start[i]; j < A->start[i + 1] - 1; ++j ) {
             //Convert 0-based to 1-based (for Matlab)
             fprintf( f, "%6d %6d %24.15f\n", i + 1, A->j[j] + 1, A->val[j] );
             /* print symmetric entry */
@@ -882,7 +837,7 @@ void Print_Sparse_Matrix2( sparse_matrix *A, char *fname, char *mode )
  * columns than rows */
 void Read_Sparse_Matrix2( sparse_matrix *A, char *fname )
 {
-    int32_t top, cur_row, row, col;
+    uint32_t top, cur_row, row, col;
     real val;
     FILE *f;
    
@@ -892,11 +847,9 @@ void Read_Sparse_Matrix2( sparse_matrix *A, char *fname )
 
     A->start[cur_row] = top;
 
-    while ( fscanf( f, "%6d %6d %24lf", &row, &col, &val ) == 3 )
-    {
+    while ( fscanf( f, "%6u %6u %24lf", &row, &col, &val ) == 3 ) {
         /* assumption: every row has at least one nonzero (diagonal) */
-        if ( cur_row != row - 1 )
-        {
+        if ( cur_row != row - 1 ) {
             cur_row++;
             A->start[cur_row] = top;
         }
@@ -925,8 +878,7 @@ void Read_Permutation_Matrix( uint32_t *v, char *fname )
    
     f = sfopen( fname, "r", __FILE__, __LINE__ );
 
-    while ( fscanf( f, "%6u %6u %24lf", &row, &col, &val ) == 3 )
-    {
+    while ( fscanf( f, "%6u %6u %24lf", &row, &col, &val ) == 3 ) {
         v[row - 1] = col - 1;
     }
 
@@ -938,7 +890,7 @@ void Read_Permutation_Matrix( uint32_t *v, char *fname )
  * due to serialization of numeric types (integer, IEEE 754) */
 void Print_Sparse_Matrix_Binary( sparse_matrix *A, char *fname )
 {
-    int32_t i, j, temp;
+    uint32_t i, j, temp;
     FILE *f;
    
     f = sfopen( fname, "wb", __FILE__, __LINE__ );
@@ -948,18 +900,15 @@ void Print_Sparse_Matrix_Binary( sparse_matrix *A, char *fname )
     fwrite( &A->start[A->n], sizeof(uint32_t), 1, f );
 
     /* row pointers */
-    for ( i = 0; i <= A->n; ++i )
-    {
+    for ( i = 0; i <= A->n; ++i ) {
         //Convert 0-based to 1-based (for Matlab)
         temp = A->start[i] + 1;
         fwrite( &temp, sizeof(uint32_t), 1, f );
     }
 
     /* column indices and non-zeros */
-    for ( i = 0; i <= A->n; ++i )
-    {
-        for ( j = A->start[i]; j < A->start[i + 1]; ++j )
-        {
+    for ( i = 0; i <= A->n; ++i ) {
+        for ( j = A->start[i]; j < A->start[i + 1]; ++j ) {
             //Convert 0-based to 1-based (for Matlab)
             temp = A->j[j] + 1;
             fwrite( &temp, sizeof(uint32_t), 1, f );
@@ -973,15 +922,13 @@ void Print_Sparse_Matrix_Binary( sparse_matrix *A, char *fname )
 
 void Print_Bonds( reax_system *system, reax_list *bonds, char *fname )
 {
-    int32_t i, pj;
+    uint32_t i, pj;
     bond_data *pbond;
     bond_order_data *bo_ij;
     FILE *f = sfopen( fname, "w", __FILE__, __LINE__ );
 
-    for ( i = 0; i < system->N; ++i )
-    {
-        for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
-        {
+    for ( i = 0; i < system->N; ++i ) {
+        for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj ) {
             pbond = &bonds->bond_list[pj];
             bo_ij = &pbond->bo_data;
             //fprintf( f, "%6d%6d%23.15e%23.15e%23.15e%23.15e%23.15e\n",
@@ -998,29 +945,25 @@ void Print_Bonds( reax_system *system, reax_list *bonds, char *fname )
 
 void Print_Bond_List2( reax_system *system, reax_list *bonds, char *fname )
 {
-    int32_t i, j, id_i, id_j, nbr, pj;
+    uint32_t i, j, id_i, id_j, nbr, pj;
     FILE *f = sfopen( fname, "w", __FILE__, __LINE__ );
-    int32_t temp[500];
-    int32_t num = 0;
+    uint32_t temp[500];
+    uint32_t num = 0;
 
-    for ( i = 0; i < system->N; ++i )
-    {
+    for ( i = 0; i < system->N; ++i ) {
         num = 0;
         id_i = i + 1; //system->atoms[i].orig_id;
         fprintf( f, "%6d:", id_i);
-        for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
-        {
+        for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj ) {
             nbr = bonds->bond_list[pj].nbr;
             id_j = nbr + 1; //system->my_atoms[nbr].orig_id;
-            if ( id_i < id_j )
-            {
+            if ( id_i < id_j ) {
                 temp[num++] = id_j;
             }
         }
 
-        qsort( &temp, num, sizeof(int32_t), fn_qsort_intcmp );
-        for ( j = 0; j < num; j++ )
-        {
+        qsort( &temp, num, sizeof(uint32_t), fn_qsort_uint_cmp );
+        for ( j = 0; j < num; j++ ) {
             fprintf( f, "%6d", temp[j] );
         }
         fprintf( f, "\n" );

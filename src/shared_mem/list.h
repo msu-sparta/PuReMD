@@ -26,12 +26,12 @@
 
 
 /* Allocates a new instance of reax_list with internal lists of specified type */
-void Make_List( int, int, int, int, reax_list * const );
+void Make_List( uint32_t, uint32_t, uint32_t, uint8_t, reax_list * const );
 
 /* Deallocates any space allocated for a reax_list instance */
-void Delete_List( int, reax_list * const );
+void Delete_List( uint8_t, reax_list * const );
 
-void Init_List_Indices( reax_list * const, int32_t * const );
+void Init_List_Indices( reax_list * const, uint32_t * const );
 
 
 /* Return the size for the i-th internal list
@@ -47,7 +47,7 @@ void Init_List_Indices( reax_list * const, int32_t * const );
  *  l is not a NULL pointer
  *  i is a valid internal list index
  * */
-static inline int32_t Num_Entries( int32_t i, reax_list const * const l )
+static inline uint32_t Num_Entries( uint32_t i, reax_list const * const l )
 {
     assert( l != NULL );
     assert( i >= 0 && i <= l->n );
@@ -56,7 +56,7 @@ static inline int32_t Num_Entries( int32_t i, reax_list const * const l )
 }
 
 
-static inline int32_t Start_Index( int32_t i, reax_list const * const l )
+static inline uint32_t Start_Index( uint32_t i, reax_list const * const l )
 {
     assert( l != NULL );
     assert( i >= 0 && i <= l->n );
@@ -65,7 +65,7 @@ static inline int32_t Start_Index( int32_t i, reax_list const * const l )
 }
 
 
-static inline int32_t End_Index( int32_t i, reax_list const * const l )
+static inline uint32_t End_Index( uint32_t i, reax_list const * const l )
 {
     assert( l != NULL );
     assert( i >= 0 && i <= l->n );
@@ -74,7 +74,7 @@ static inline int32_t End_Index( int32_t i, reax_list const * const l )
 }
 
 
-static inline void Set_Start_Index( int32_t i, int32_t val, reax_list * const l )
+static inline void Set_Start_Index( uint32_t i, uint32_t val, reax_list * const l )
 {
     assert( l != NULL );
     assert( i >= 0 && i <= l->n );
@@ -84,7 +84,7 @@ static inline void Set_Start_Index( int32_t i, int32_t val, reax_list * const l 
 }
 
 
-static inline void Set_End_Index( int32_t i, int32_t val, reax_list * const l )
+static inline void Set_End_Index( uint32_t i, uint32_t val, reax_list * const l )
 {
     assert( l != NULL );
     assert( i >= 0 && i <= l->n );

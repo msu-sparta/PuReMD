@@ -25,14 +25,25 @@
 #include "reax_types.h"
 
 
-void vdW_Coulomb_Energy( reax_system*, control_params*, simulation_data*,
+void Compute_Polarization_Energy( reax_system *, control_params *, simulation_data *, static_storage * );
+
+void vdW_Coulomb_Energy_Type1( reax_system*, control_params*, simulation_data*,
+        static_storage*, reax_list**, output_controls* );
+
+void vdW_Coulomb_Energy_Type2( reax_system*, control_params*, simulation_data*,
+        static_storage*, reax_list**, output_controls* );
+
+void vdW_Coulomb_Energy_Type3( reax_system*, control_params*, simulation_data*,
+        static_storage*, reax_list**, output_controls* );
+
+void Coulomb_Energy_ACKS2( reax_system*, control_params*, simulation_data*,
         static_storage*, reax_list**, output_controls* );
 
 void Tabulated_vdW_Coulomb_Energy( reax_system*, control_params*, simulation_data*,
         static_storage*, reax_list**, output_controls* );
 
 void LR_vdW_Coulomb( reax_system*, control_params*, static_storage *,
-        int, int, real, LR_data* );
+        uint32_t, uint32_t, real, LR_data* );
 
 
 #endif

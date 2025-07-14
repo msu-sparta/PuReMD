@@ -37,8 +37,10 @@ int32_t Velocity_Verlet_NVE( reax_system * const system, control_params * const 
         simulation_data * const data, static_storage * const workspace,
         reax_list ** const lists, output_controls * const out_control )
 {
-    int32_t i, renbr, ret;
-    static int32_t verlet_part1_done = FALSE, gen_nbr_list = FALSE;
+    uint32_t i;
+    bool renbr;
+    int32_t ret;
+    static bool verlet_part1_done = FALSE, gen_nbr_list = FALSE;
     real inv_m, scalar1, scalar2;
     rvec dx;
 
@@ -47,10 +49,8 @@ int32_t Velocity_Verlet_NVE( reax_system * const system, control_params * const 
     scalar1 = -0.5 * control->dt * F_CONV;
     scalar2 = -0.5 * SQR( control->dt ) * F_CONV;
 
-    if ( verlet_part1_done == FALSE )
-    {
-        for ( i = 0; i < system->N; i++ )
-        {
+    if ( verlet_part1_done == FALSE ) {
+        for ( i = 0; i < system->N; i++ ) {
             inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
             /* Compute x(t + dt) */
@@ -65,9 +65,8 @@ int32_t Velocity_Verlet_NVE( reax_system * const system, control_params * const 
                     scalar1 * inv_m, system->atoms[i].f );
         }
 
-        if ( renbr == TRUE )
-        {
-            Reallocate_Part1( system, control, workspace, lists );
+        if ( renbr == TRUE ) {
+            Reallocate_Part1( system, workspace );
 
             Bin_Atoms( system, workspace );
 
@@ -83,30 +82,23 @@ int32_t Velocity_Verlet_NVE( reax_system * const system, control_params * const 
 
     Reset( system, control, data, workspace, lists );
 
-    if ( renbr == TRUE && gen_nbr_list == FALSE )
-    {
+    if ( renbr == TRUE && gen_nbr_list == FALSE ) {
         ret = Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
-        if ( ret == SUCCESS )
-        {
+        if ( ret == SUCCESS ) {
             gen_nbr_list = TRUE;
-        }
-        else
-        {
+        } else {
             Estimate_Num_Neighbors( system, control, workspace, lists );
         }
     }
 
-    if ( ret == SUCCESS )
-    {
+    if ( ret == SUCCESS ) {
         ret = Compute_Forces( system, control, data, workspace, lists,
                 out_control, FALSE );
     }
 
-    if ( ret == SUCCESS )
-    {
-        for ( i = 0; i < system->N; i++ )
-        {
+    if ( ret == SUCCESS ) {
+        for ( i = 0; i < system->N; i++ ) {
             inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
             /* Compute v(t + dt) */
@@ -132,8 +124,10 @@ int32_t Velocity_Verlet_Berendsen_NVT( reax_system * const system,
         static_storage * const workspace, reax_list ** const lists,
         output_controls * const out_control )
 {
-    int32_t i, renbr, ret;
-    static int32_t verlet_part1_done = FALSE, gen_nbr_list = FALSE;
+    uint32_t i;
+    bool renbr;
+    int32_t ret;
+    static bool verlet_part1_done = FALSE, gen_nbr_list = FALSE;
     real inv_m, scalar1, scalar2, lambda;
     rvec dx;
 
@@ -142,11 +136,9 @@ int32_t Velocity_Verlet_Berendsen_NVT( reax_system * const system,
     scalar1 = -0.5 * control->dt * F_CONV;
     scalar2 = -0.5 * SQR( control->dt ) * F_CONV;
 
-    if ( verlet_part1_done == FALSE )
-    {
+    if ( verlet_part1_done == FALSE ) {
         /* velocity verlet, 1st part */
-        for ( i = 0; i < system->N; i++ )
-        {
+        for ( i = 0; i < system->N; i++ ) {
             inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
             /* Compute x(t + dt) */
@@ -158,10 +150,9 @@ int32_t Velocity_Verlet_Berendsen_NVT( reax_system * const system,
             rvec_ScaledAdd( system->atoms[i].v, scalar1 * inv_m, system->atoms[i].f );
         }
 
-        Reallocate_Part1( system, control, workspace, lists );
+        Reallocate_Part1( system, workspace );
 
-        if ( renbr == TRUE )
-        {
+        if ( renbr == TRUE ) {
             Bin_Atoms( system, workspace );
 
 #if defined(REORDER_ATOMS)
@@ -176,31 +167,24 @@ int32_t Velocity_Verlet_Berendsen_NVT( reax_system * const system,
 
     Reset( system, control, data, workspace, lists );
 
-    if ( renbr == TRUE && gen_nbr_list == FALSE )
-    {
+    if ( renbr == TRUE && gen_nbr_list == FALSE ) {
         ret = Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
-        if ( ret == SUCCESS )
-        {
+        if ( ret == SUCCESS ) {
             gen_nbr_list = TRUE;
-        }
-        else
-        {
+        } else {
             Estimate_Num_Neighbors( system, control, workspace, lists );
         }
     }
 
-    if ( ret == SUCCESS )
-    {
+    if ( ret == SUCCESS ) {
         ret = Compute_Forces( system, control, data, workspace, lists,
                 out_control, FALSE );
     }
 
-    if ( ret == SUCCESS )
-    {
+    if ( ret == SUCCESS ) {
         /* velocity verlet, 2nd part */
-        for ( i = 0; i < system->N; i++ )
-        {
+        for ( i = 0; i < system->N; i++ ) {
             inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
             /* Compute v(t + dt) */
@@ -213,21 +197,18 @@ int32_t Velocity_Verlet_Berendsen_NVT( reax_system * const system,
         lambda = 1.0 + ((control->dt * 1.0e-12) / control->Tau_T)
             * (control->T / data->therm.T - 1.0);
 
-        if ( lambda < MIN_dT )
-        {
+        if ( lambda < MIN_dT ) {
             lambda = MIN_dT;
         }
 
         lambda = SQRT( lambda );
 
-        if ( lambda > MAX_dT )
-        {
+        if ( lambda > MAX_dT ) {
             lambda = MAX_dT;
         }
 
         /* Scale velocities and positions at t+dt */
-        for ( i = 0; i < system->N; ++i )
-        {
+        for ( i = 0; i < system->N; ++i ) {
             rvec_Scale( system->atoms[i].v, lambda, system->atoms[i].v );
         }
 
@@ -252,8 +233,10 @@ int32_t Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
         static_storage * const workspace, reax_list ** const lists,
         output_controls * const out_control )
 {
-    int32_t i, itr, renbr, ret;
-    static int32_t verlet_part1_done = FALSE, gen_nbr_list = FALSE;
+    uint32_t i, itr;
+    bool renbr;
+    int32_t ret;
+    static bool verlet_part1_done = FALSE, gen_nbr_list = FALSE;
     real inv_m, scalar1, scalar2, scalar3, scalar4, coef_v;
     real E_kin_new, G_xi_new, v_xi_new, v_xi_old;
     rvec dx;
@@ -267,11 +250,9 @@ int32_t Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
     scalar4 = -0.5 * SQR( control->dt );
     therm = &data->therm;
 
-    if ( verlet_part1_done == FALSE )
-    {
+    if ( verlet_part1_done == FALSE ) {
         /* Compute x(t + dt) and copy old forces */
-        for ( i = 0; i < system->N; i++ )
-        {
+        for ( i = 0; i < system->N; i++ ) {
             inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
             rvec_ScaledSum( dx, control->dt + scalar4 * therm->v_xi, system->atoms[i].v,
@@ -286,9 +267,8 @@ int32_t Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
         /* Compute xi(t + dt) */
         therm->xi += therm->v_xi * control->dt + 0.5 * SQR( control->dt ) * therm->G_xi;
 
-        if ( renbr == TRUE )
-        {
-            Reallocate_Part1( system, control, workspace, lists );
+        if ( renbr == TRUE ) {
+            Reallocate_Part1( system, workspace );
 
             Bin_Atoms( system, workspace );
 
@@ -304,32 +284,25 @@ int32_t Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
 
     Reset( system, control, data, workspace, lists );
 
-    if ( renbr == TRUE && gen_nbr_list == FALSE )
-    {
+    if ( renbr == TRUE && gen_nbr_list == FALSE ) {
         ret = Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
-        if ( ret == SUCCESS )
-        {
+        if ( ret == SUCCESS ) {
             gen_nbr_list = TRUE;
-        }
-        else
-        {
+        } else {
             Estimate_Num_Neighbors( system, control, workspace, lists );
         }
     }
 
-    if ( ret == SUCCESS )
-    {
+    if ( ret == SUCCESS ) {
         /* Calculate Forces at time (t + dt) */
         ret = Compute_Forces( system, control, data, workspace, lists,
                 out_control, FALSE );
     }
 
-    if ( ret == SUCCESS )
-    {
+    if ( ret == SUCCESS ) {
         /* Compute iteration constants for each atom's velocity */
-        for ( i = 0; i < system->N; ++i )
-        {
+        for ( i = 0; i < system->N; ++i ) {
             inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
             rvec_Scale( workspace->v_const[i],
@@ -345,15 +318,13 @@ int32_t Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
         G_xi_new = 0.0;
         v_xi_old = 0.0;
         itr = 0;
-        do
-        {
+        do {
             itr++;
             v_xi_old = v_xi_new;
             coef_v = 1.0 / (1.0 + 0.5 * control->dt * v_xi_old);
             E_kin_new = 0.0;
 
-            for ( i = 0; i < system->N; ++i )
-            {
+            for ( i = 0; i < system->N; ++i ) {
                 rvec_Scale( system->atoms[i].v, coef_v, workspace->v_const[i] );
 
                 E_kin_new += 0.5 * system->reax_param.sbp[system->atoms[i].type].mass
@@ -363,8 +334,7 @@ int32_t Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
             G_xi_new = control->Tau_T * (2.0 * E_kin_new
                     - data->N_f * K_B * control->T);
             v_xi_new = therm->v_xi + 0.5 * control->dt * (therm->G_xi + G_xi_new);
-        }
-        while ( FABS( v_xi_new - v_xi_old ) > 1.0e-5 );
+        } while ( FABS( v_xi_new - v_xi_old ) > 1.0e-5 );
 
         therm->v_xi_old = therm->v_xi;
         therm->v_xi = v_xi_new;
@@ -388,8 +358,10 @@ int32_t Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system * const system,
         static_storage * const workspace, reax_list ** const lists,
         output_controls * const out_control )
 {
-    int32_t i, renbr, ret;
-    static int32_t verlet_part1_done = FALSE, gen_nbr_list = FALSE;
+    uint32_t i;
+    bool renbr;
+    int32_t ret;
+    static bool verlet_part1_done = FALSE, gen_nbr_list = FALSE;
     real inv_m, dt, lambda, mu;
     rvec dx, mu_3;
 
@@ -397,11 +369,9 @@ int32_t Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system * const system,
     dt = control->dt;
     renbr = ((data->step - data->prev_steps) % control->reneighbor) == 0 ? TRUE : FALSE;
 
-    if ( verlet_part1_done == FALSE )
-    {
+    if ( verlet_part1_done == FALSE ) {
         /* velocity verlet, 1st part */
-        for ( i = 0; i < system->N; i++ )
-        {
+        for ( i = 0; i < system->N; i++ ) {
             inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
             /* Compute x(t + dt) */
@@ -415,11 +385,10 @@ int32_t Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system * const system,
                     F_CONV * inv_m * -0.5 * dt, system->atoms[i].f );
         }
 
-        if ( renbr == TRUE )
-        {
+        if ( renbr == TRUE ) {
             Update_Grid( system );
 
-            Reallocate_Part1( system, control, workspace, lists );
+            Reallocate_Part1( system, workspace );
 
             Bin_Atoms( system, workspace );
 
@@ -435,31 +404,24 @@ int32_t Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system * const system,
 
     Reset( system, control, data, workspace, lists );
 
-    if ( renbr == TRUE && gen_nbr_list == FALSE )
-    {
+    if ( renbr == TRUE && gen_nbr_list == FALSE ) {
         ret = Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
-        if ( ret == SUCCESS )
-        {
+        if ( ret == SUCCESS ) {
             gen_nbr_list = TRUE;
-        }
-        else
-        {
+        } else {
             Estimate_Num_Neighbors( system, control, workspace, lists );
         }
     }
 
-    if ( ret == SUCCESS )
-    {
+    if ( ret == SUCCESS ) {
         ret = Compute_Forces( system, control, data, workspace, lists,
                 out_control, FALSE );
     }
 
-    if ( ret == SUCCESS )
-    {
+    if ( ret == SUCCESS ) {
         /* velocity verlet, 2nd part */
-        for ( i = 0; i < system->N; i++ )
-        {
+        for ( i = 0; i < system->N; i++ ) {
             inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
             /* Compute v(t + dt) */
@@ -472,17 +434,13 @@ int32_t Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system * const system,
         Compute_Pressure_Isotropic( system, control, data, out_control );
 
         /* pressure scaler */
-        for ( i = 0; i < 3; ++i )
-        {
+        for ( i = 0; i < 3; ++i ) {
             mu_3[i] = POW( 1.0 + (dt / control->Tau_P[i])
                     * (data->tot_press[i] - control->P[i]), 1.0 / 3.0 );
 
-            if ( mu_3[i] < MIN_dV )
-            {
+            if ( mu_3[i] < MIN_dV ) {
                 mu_3[i] = MIN_dV;
-            }
-            else if ( mu_3[i] > MAX_dV )
-            {
+            } else if ( mu_3[i] > MAX_dV ) {
                 mu_3[i] = MAX_dV;
             }
         }
@@ -492,21 +450,18 @@ int32_t Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system * const system,
         lambda = 1.0 + ((dt * 1.0e-12) / control->Tau_T)
             * (control->T / data->therm.T - 1.0);
 
-        if ( lambda < MIN_dT )
-        {
+        if ( lambda < MIN_dT ) {
             lambda = MIN_dT;
         }
 
         lambda = SQRT( lambda );
 
-        if ( lambda > MAX_dT )
-        {
+        if ( lambda > MAX_dT ) {
             lambda = MAX_dT;
         }
 
         /* Scale velocities and positions at t+dt */
-        for ( i = 0; i < system->N; ++i )
-        {
+        for ( i = 0; i < system->N; ++i ) {
             rvec_Scale( system->atoms[i].v, lambda, system->atoms[i].v );
 
             /* IMPORTANT: What Adri does with scaling positions first to
@@ -537,8 +492,10 @@ int32_t Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system * const system
         static_storage * const workspace, reax_list ** const lists,
         output_controls * const out_control )
 {
-    int32_t i, renbr, ret;
-    static int32_t verlet_part1_done = FALSE, gen_nbr_list = FALSE;
+    uint32_t i;
+    bool renbr;
+    int32_t ret;
+    static bool verlet_part1_done = FALSE, gen_nbr_list = FALSE;
     real dt, inv_m, lambda;
     rvec dx, mu;
 
@@ -546,11 +503,9 @@ int32_t Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system * const system
     dt = control->dt;
     renbr = ((data->step - data->prev_steps) % control->reneighbor) == 0 ? TRUE : FALSE;
 
-    if ( verlet_part1_done == FALSE )
-    {
+    if ( verlet_part1_done == FALSE ) {
         /* velocity verlet, 1st part */
-        for ( i = 0; i < system->N; i++ )
-        {
+        for ( i = 0; i < system->N; i++ ) {
             inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
             /* Compute x(t + dt) */
@@ -564,11 +519,10 @@ int32_t Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system * const system
                     -0.5 * F_CONV * inv_m * dt, system->atoms[i].f );
         }
 
-        if ( renbr == TRUE )
-        {
+        if ( renbr == TRUE ) {
             Update_Grid( system );
 
-            Reallocate_Part1( system, control, workspace, lists );
+            Reallocate_Part1( system, workspace );
 
             Bin_Atoms( system, workspace );
 
@@ -584,31 +538,24 @@ int32_t Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system * const system
 
     Reset( system, control, data, workspace, lists );
 
-    if ( renbr == TRUE && gen_nbr_list == FALSE )
-    {
+    if ( renbr == TRUE && gen_nbr_list == FALSE ) {
         ret = Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
-        if ( ret == SUCCESS )
-        {
+        if ( ret == SUCCESS ) {
             gen_nbr_list = TRUE;
-        }
-        else
-        {
+        } else {
             Estimate_Num_Neighbors( system, control, workspace, lists );
         }
     }
 
-    if ( ret == SUCCESS )
-    {
+    if ( ret == SUCCESS ) {
         ret = Compute_Forces( system, control, data, workspace, lists,
                 out_control, FALSE );
     }
 
-    if ( ret == SUCCESS )
-    {
+    if ( ret == SUCCESS ) {
         /* velocity verlet, 2nd part */
-        for ( i = 0; i < system->N; i++ )
-        {
+        for ( i = 0; i < system->N; i++ ) {
             inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
             /* Compute v(t + dt) */
             rvec_ScaledAdd( system->atoms[i].v,
@@ -620,17 +567,13 @@ int32_t Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system * const system
         Compute_Pressure_Isotropic( system, control, data, out_control );
 
         /* pressure scaler */
-        for ( i = 0; i < 3; ++i )
-        {
+        for ( i = 0; i < 3; ++i ) {
             mu[i] = POW( 1.0 + (dt / control->Tau_P[i])
                     * (data->tot_press[i] - control->P[i]), 1.0 / 3.0 );
 
-            if ( mu[i] < MIN_dV )
-            {
+            if ( mu[i] < MIN_dV ) {
                 mu[i] = MIN_dV;
-            }
-            else if ( mu[i] > MAX_dV )
-            {
+            } else if ( mu[i] > MAX_dV ) {
                 mu[i] = MAX_dV;
             }
         }
@@ -639,21 +582,18 @@ int32_t Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system * const system
         lambda = 1.0 + ((dt * 1.0e-12) / control->Tau_T)
             * (control->T / data->therm.T - 1.0);
 
-        if ( lambda < MIN_dT )
-        {
+        if ( lambda < MIN_dT ) {
             lambda = MIN_dT;
         }
 
         lambda = SQRT( lambda );
 
-        if ( lambda > MAX_dT )
-        {
+        if ( lambda > MAX_dT ) {
             lambda = MAX_dT;
         }
 
         /* Scale velocities and positions at t+dt */
-        for ( i = 0; i < system->N; ++i )
-        {
+        for ( i = 0; i < system->N; ++i ) {
             rvec_Scale( system->atoms[i].v, lambda, system->atoms[i].v );
 
             /* IMPORTANT: What Adri does with scaling positions first to
@@ -686,16 +626,18 @@ int32_t Velocity_Verlet_Nose_Hoover_NVT( reax_system * const system,
         static_storage * const workspace, reax_list ** const lists,
         output_controls * const out_control )
 {
-    int32_t i, ret;
+    uint32_t i;
+    bool renbr;
+    int32_t ret;
     real inv_m;
     real dt = control->dt;
     real dt_sqr = SQR(dt);
     rvec dx;
 
     ret = SUCCESS;
+    renbr = ((data->step - data->prev_steps) % control->reneighbor) == 0 ? TRUE : FALSE;
 
-    for ( i = 0; i < system->N; i++ )
-    {
+    for ( i = 0; i < system->N; i++ ) {
         inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
         /* Compute x(t + dt) */
@@ -717,8 +659,7 @@ int32_t Velocity_Verlet_Nose_Hoover_NVT( reax_system * const system,
     data->therm.xi += 0.5 * dt * control->Tau_T
         * (2.0 * data->E_Kin - data->N_f * K_B / F_CONV * control->T);
 
-    if ( renbr == TRUE )
-    {
+    if ( renbr == TRUE ) {
         Bin_Atoms( system, workspace );
 
 #if defined(REORDER_ATOMS)
@@ -745,8 +686,7 @@ int32_t Velocity_Verlet_Nose_Hoover_NVT( reax_system * const system,
 
     Compute_Kinetic_Energy( system, data );
 
-    for ( i = 0; i < system->N; i++ )
-    {
+    for ( i = 0; i < system->N; i++ ) {
         inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
         /* compute v(t + dt) */
@@ -773,7 +713,9 @@ int32_t Velocity_Verlet_Isotropic_NPT( reax_system * const system,
         static_storage * const workspace, reax_list ** const lists,
         output_controls * const out_control )
 {
-    int32_t i, itr, ret;
+    uint32_t i, itr;
+    bool renbr;
+    int32_t ret;
     real deps, v_eps_new = 0, v_eps_old = 0, G_xi_new;
     real dxi, v_xi_new = 0, v_xi_old = 0, a_eps_new;
     real inv_m, exp_deps, inv_3V;
@@ -787,6 +729,7 @@ int32_t Velocity_Verlet_Isotropic_NPT( reax_system * const system,
     rvec dx, dv;
 
     ret = SUCCESS;
+    renbr = ((data->step - data->prev_steps) % control->reneighbor) == 0 ? TRUE : FALSE;
 
     // Here we just calculate how much to increment eps, xi, v_eps, v_xi.
     // Commits are done after positions and velocities of atoms are updated
@@ -812,8 +755,7 @@ int32_t Velocity_Verlet_Isotropic_NPT( reax_system * const system,
     // Update positions and velocities
     // NOTE: v_old, v_xi_old, v_eps_old are meant to be the old values
     // in the iteration not the old values at time t or before!
-    for ( i = 0; i < system->N; i++ )
-    {
+    for ( i = 0; i < system->N; i++ ) {
         inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
         /* Compute x(t + dt) */
@@ -834,8 +776,7 @@ int32_t Velocity_Verlet_Isotropic_NPT( reax_system * const system,
     iso_bar->eps += deps;
     Update_Box_Isotropic( &system->box, EXP( 3.0 * iso_bar->eps ) );
 
-    if ( renbr == TRUE )
-    {
+    if ( renbr == TRUE ) {
         Bin_Atoms( system, workspace );
 
 #if defined(REORDER_ATOMS)
@@ -864,8 +805,7 @@ int32_t Velocity_Verlet_Isotropic_NPT( reax_system * const system,
     // Compute iteration constants for each atom's velocity and for P_internal
     // Compute kinetic energy for initial velocities of the iteration
     P_int_const = E_kin = 0;
-    for ( i = 0; i < system->N; ++i )
-    {
+    for ( i = 0; i < system->N; ++i ) {
         inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
         rvec_ScaledSum( dv, 0.5 * dt, workspace->a[i],
@@ -887,15 +827,13 @@ int32_t Velocity_Verlet_Isotropic_NPT( reax_system * const system,
     v_eps_new = iso_bar->v_eps_old + 2.0 * dt * iso_bar->a_eps;
 
     itr = 0;
-    do
-    {
+    do {
         itr++;
         // new values become old in this iteration
         v_xi_old = v_xi_new;
         v_eps_old = v_eps_new;
 
-        for ( i = 0; i < system->N; ++i )
-        {
+        for ( i = 0; i < system->N; ++i ) {
             coef_v = 1.0 / (1.0 + 0.5 * dt * exp_deps *
                             ( (2.0 + 3.0 / data->N_f) * v_eps_old + v_xi_old ) );
             rvec_Scale( system->atoms[i].v, coef_v, workspace->v_const[i] );
@@ -914,8 +852,7 @@ int32_t Velocity_Verlet_Isotropic_NPT( reax_system * const system,
         v_xi_new = therm->v_xi + 0.5 * dt * ( therm->G_xi + G_xi_new );
 
         E_kin = 0;
-        for ( i = 0; i < system->N; ++i )
-        {
+        for ( i = 0; i < system->N; ++i ) {
             E_kin += (0.5 * system->reax_param.sbp[system->atoms[i].type].mass *
                       rvec_Dot( system->atoms[i].v, system->atoms[i].v ) );
         }
@@ -925,8 +862,7 @@ int32_t Velocity_Verlet_Isotropic_NPT( reax_system * const system,
         fprintf( out_control->log,
                  "itr %d E_kin: %8.3f veps_n:%8.3f veps_o:%8.3f vxi_n:%8.3f vxi_o: %8.3f\n",
                  itr, E_kin, v_eps_new, v_eps_old, v_xi_new, v_xi_old );
-    }
-    while ( FABS(v_eps_new - v_eps_old) + FABS(v_xi_new - v_xi_old) > 2e-3 );
+    } while ( FABS(v_eps_new - v_eps_old) + FABS(v_xi_new - v_xi_old) > 2e-3 );
 
     therm->v_xi_old = therm->v_xi;
     therm->v_xi = v_xi_new;

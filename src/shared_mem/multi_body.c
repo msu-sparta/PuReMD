@@ -31,7 +31,7 @@ void Atom_Energy( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace, reax_list **lists,
         output_controls *out_control )
 {
-    int32_t i, j, pj, type_i, type_j;
+    uint32_t i, j, pj, type_i, type_j;
     real Delta_lpcorr, dfvl;
     real e_lp, expvd2, inv_expvd2, dElp, CElp, DlpVi;
     real e_lph, Di, vov3, deahu2dbo, deahu2dsbo;
@@ -56,11 +56,9 @@ void Atom_Energy( reax_system *system, control_params *control,
     p_ovun7 = system->reax_param.gp.l[8];
     p_ovun8 = system->reax_param.gp.l[9];
 
-    for ( i = 0; i < system->N; ++i )
-    {
+    for ( i = 0; i < system->N; ++i ) {
 #if defined(QMMM)
-        if ( system->atoms[i].qmmm_mask == TRUE )
-        {
+        if ( system->atoms[i].qmmm_mask == TRUE ) {
 #endif
         /* set the parameter pointer */
         type_i = system->atoms[i].type;
@@ -95,25 +93,20 @@ void Atom_Energy( reax_system *system, control_params *control,
         /* correction for C2 */
         if ( system->reax_param.gp.l[5] > 0.001
                 && strncmp( system->reax_param.sbp[type_i].name, "C",
-                    sizeof(system->reax_param.sbp[type_i].name) ) == 0 )
-        {
-            for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
-            {
-                if ( i < bonds->bond_list[pj].nbr )
-                {
+                    sizeof(system->reax_param.sbp[type_i].name) ) == 0 ) {
+            for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj ) {
+                if ( i < bonds->bond_list[pj].nbr ) {
                     j = bonds->bond_list[pj].nbr;
                     type_j = system->atoms[j].type;
 
                     if ( strncmp( system->reax_param.sbp[type_j].name, "C",
-                                sizeof(system->reax_param.sbp[type_j].name) ) == 0 )
-                    {
+                                sizeof(system->reax_param.sbp[type_j].name) ) == 0 ) {
                         twbp = &system->reax_param.tbp[type_i][type_j];
                         bo_ij = &bonds->bond_list[pj].bo_data;
                         Di = workspace->Delta[i];
                         vov3 = bo_ij->BO - Di - 0.04 * FOURTH( Di );
 
-                        if ( vov3 > 3.0 )
-                        {
+                        if ( vov3 > 3.0 ) {
                             e_lph = p_lp3 * SQR(vov3 - 3.0);
                             data->E_Lp += e_lph;
                             //estrain(i) += e_lph;
@@ -145,22 +138,17 @@ void Atom_Energy( reax_system *system, control_params *control,
 #endif
     }
 
-    for ( i = 0; i < system->N; ++i )
-    {
+    for ( i = 0; i < system->N; ++i ) {
 #if defined(QMMM)
-        if ( system->atoms[i].qmmm_mask == TRUE )
-        {
+        if ( system->atoms[i].qmmm_mask == TRUE ) {
 #endif
         type_i = system->atoms[i].type;
         sbp_i = &system->reax_param.sbp[ type_i ];
 
         /* over-coordination energy */
-        if ( sbp_i->mass > 21.0 )
-        {
+        if ( sbp_i->mass > 21.0 ) {
             dfvl = 0.0;
-        }
-        else
-        {
+        } else {
             dfvl = 1.0; // only for 1st-row elements
         }
 
@@ -168,8 +156,7 @@ void Atom_Energy( reax_system *system, control_params *control,
         sum_ovun1 = 0.0;
         sum_ovun2 = 0.0;
 
-        for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
-        {
+        for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj ) {
             j = bonds->bond_list[pj].nbr;
             type_j = system->atoms[j].type;
             bo_ij = &bonds->bond_list[pj].bo_data;
@@ -234,8 +221,7 @@ void Atom_Energy( reax_system *system, control_params *control,
         Add_dDelta( system, lists, i, CEunder3, workspace->f_un ); // UnCoor - 1st
 #endif
 
-        for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj )
-        {
+        for ( pj = Start_Index(i, bonds); pj < End_Index(i, bonds); ++pj ) {
             pbond = &bonds->bond_list[pj];
             j = pbond->nbr;
             type_j = system->atoms[j].type;

@@ -28,49 +28,49 @@
 #endif
 
 
-#define HEADER_INIT ("%-10d %-10d\n%-80s\n")
+#define HEADER_INIT ("%-10u %-10u\n%-80s\n")
 #define HEADER_INIT_LEN (81)
 
-#define CONTROL_BLOCK ("num_atoms:\t\t%d\nrestart:\t\t%d\nrestart_from:\t\t%s\nrandom_vel:\t\t%d\nrestart_freq:\t\t%d\nensemble_type:\t\t%d\nnsteps:\t\t\t%d\ndt:\t\t\t%.5f\nreposition_atoms:\t%d\nrestrict_bonds:\t\t%d\ntabulate_long_range:\t%d\nnbrhood_cutoff:\t\t%.3f\nr_cut:\t\t\t%.3f\nbond_graph_cutoff:\t%.3f\nbond_order_cutoff:\t%.3f\nthb_cutoff:\t\t%.3f\nhbond_cutoff:\t\t%.3f\nq_err:\t\t\t%.10f\ntemp_init:\t\t%.3f\ntemp_final:\t\t%.3f\nt_mass:\t\t\t%.3f\nt_mode:\t\t\t%d\nt_rate:\t\t\t%.3f\nt_freq:\t\t\t%.3f\npressure:\t\t%.5f %.5f %.5f\np_mass:\t\t\t%.3f %.3f %.3f\ncompress:\t\t%.5f\npress_mode:\t\t%d\nremove_CoM_vel:\t\t%d\nwrite_freq:\t\t%d\ntraj_compress:\t\t%d\ntraj_format:\t\t%d\natom_line:\t\t%d\nbond_line:\t\t%d\nangle_line:\t\t%d\nenergy_update_freq:\t%d\nmolec_anal:\t\t%d\nfreq_molec_anal:\t%d\n")
+#define CONTROL_BLOCK ("num_atoms:\t\t%u\nrestart:\t\t%u\nrestart_from:\t\t%s\nrandom_vel:\t\t%u\nrestart_freq:\t\t%u\nensemble_type:\t\t%u\nnsteps:\t\t\t%u\ndt:\t\t\t%.5f\nreposition_atoms:\t%u\nrestrict_bonds:\t\t%u\ntabulate_long_range:\t%u\nnbrhood_cutoff:\t\t%.3f\nr_cut:\t\t\t%.3f\nbond_graph_cutoff:\t%.3f\nbond_order_cutoff:\t%.3f\nthb_cutoff:\t\t%.3f\nhbond_cutoff:\t\t%.3f\nq_err:\t\t\t%.10f\ntemp_init:\t\t%.3f\ntemp_final:\t\t%.3f\nt_mass:\t\t\t%.3f\nt_mode:\t\t\t%u\nt_rate:\t\t\t%.3f\nt_freq:\t\t\t%.3f\npressure:\t\t%.5f %.5f %.5f\np_mass:\t\t\t%.3f %.3f %.3f\ncompress:\t\t%.5f\npress_mode:\t\t%u\nremove_CoM_vel:\t\t%u\nwrite_freq:\t\t%u\ntraj_compress:\t\t%u\ntraj_format:\t\t%u\natom_line:\t\t%u\nbond_line:\t\t%u\nangle_line:\t\t%u\nenergy_update_freq:\t%u\nmolec_anal:\t\t%u\nfreq_molec_anal:\t%u\n")
 
 #define NUM_FRAME_GLOBALS (27) // 26 floats, 1 integer
-#define FRAME_GLOBALS_FORMAT ("%10d  %8.3f  %15.3f  %15.3f  %15.3f  %15.3f\\n%15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %8.2f  %8.2f  %8.2f\\n%15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f\\n")
-#define FRAME_GLOBALS ("%10d  %8.3f  %15.3f  %15.3f  %15.3f  %15.3f\n%15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %8.2f  %8.2f  %8.2f\n%15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f\n")
+#define FRAME_GLOBALS_FORMAT ("%10u  %8.3f  %15.3f  %15.3f  %15.3f  %15.3f\\n%15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %8.2f  %8.2f  %8.2f\\n%15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f\\n")
+#define FRAME_GLOBALS ("%10u  %8.3f  %15.3f  %15.3f  %15.3f  %15.3f\n%15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %8.2f  %8.2f  %8.2f\n%15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f  %15.3f\n")
 #define FRAME_GLOBAL_NAMES ("timestep, time, e_total, e_pot, e_kin, temperature, pressure, volume, x_norm, y_norm, z_norm, x_angle, y_angle, z_angle, e_be, e_ov, e_un, e_lp, e_ang, e_pen, e_coa, e_hb, e_tor, e_con, e_vdw, e_ele, e_pol")
-#define FRAME_GLOBALS_LEN (11 + 20 * 9 + 70) // 1x10d int32_t + 20x8.3f + CRYST line (6s + 3x9.3f + 3x7.2f + 11s + 4d + 1)
+#define FRAME_GLOBALS_LEN (11 + 20 * 9 + 70) // 1x10u uint32_t + 20x8.3f + CRYST line (6s + 3x9.3f + 3x7.2f + 11s + 4u + 1)
 
 //AtomID AtomType (X Y Z) Charge
-#define ATOM_BASIC ("%9d %10.3f %10.3f %10.3f %10.3f\n")
+#define ATOM_BASIC ("%9u %10.3f %10.3f %10.3f %10.3f\n")
 #define ATOM_BASIC_LEN (54)
 //AtomID (X Y Z) (Vx Vy Vz) Charge
-#define ATOM_wV ("%9d %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f\n")
+#define ATOM_wV ("%9u %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f\n")
 #define ATOM_wV_LEN (87)
 //AtomID (X Y Z) (Fx Fy Fz) Charge
-#define ATOM_wF ("%9d %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f\n")
+#define ATOM_wF ("%9u %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f\n")
 #define ATOM_wF_LEN (87)
 //AtomID (X Y Z) (Vx Vy Vz) (Fx Fy Fz) Charge
-#define ATOM_FULL ("%9d %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f\n")
+#define ATOM_FULL ("%9u %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f\n")
 #define ATOM_FULL_LEN (120)
 
 // Atom1 Atom2 Dist Total_BO
-#define BOND_BASIC ("%9d %9d %10.3f %10.3f\n")
+#define BOND_BASIC ("%9u %9u %10.3f %10.3f\n")
 #define BOND_BASIC_LEN (42)
 // Atom1 Atom2 Dist Total_BO BOs BOpi BOpi2
-#define BOND_FULL ("%9d %9d %10.3f %10.3f %10.3f %10.3f %10.3f\n")
+#define BOND_FULL ("%9u %9u %10.3f %10.3f %10.3f %10.3f %10.3f\n")
 #define BOND_FULL_LEN (75)
 
 // Atom1 Atom2 Atom3 Theta
-#define ANGLE_BASIC ("%9d %9d %9d %10.3f\n")
+#define ANGLE_BASIC ("%9u %9u %9u %10.3f\n")
 #define ANGLE_BASIC_LEN (41)
 
 //AtomID - AtomType, AtomName, AtomMass mapping
-#define ATOM_MAPPING ("%9d %2d %4s %8.3f\n")
+#define ATOM_MAPPING ("%9u %2u %4s %8.3f\n")
 #define ATOM_MAPPING_LEN (33)
 
-#define SIZE_INFO_LINE2 ("%-10d %-10d\n")
+#define SIZE_INFO_LINE2 ("%-10u %-10u\n")
 #define SIZE_INFO_LEN2 (22)
 
-#define SIZE_INFO_LINE3 ("%-10d %-10d %-10d\n")
+#define SIZE_INFO_LINE3 ("%-10u %-10u %-10u\n")
 #define SIZE_INFO_LEN3 (33)
 
 
@@ -106,7 +106,7 @@ int32_t Write_Custom_Header( reax_system *system, control_params *control,
 {
 #define SIZE1 (2048)
 #define SIZE2 (100)
-    int32_t i, header_len, control_block_len, frame_format_len;
+    uint32_t i, header_len, control_block_len, frame_format_len;
     // char buffer[2048];
     char control_block[SIZE1];
     char frame_format[SIZE1];
@@ -154,13 +154,11 @@ int32_t Write_Custom_Header( reax_system *system, control_params *control,
 
     control_block_len = strnlen( control_block, SIZE1 );
 
-
-    snprintf( frame_format, SIZE1, "Frame Format: %d\n%s\n%s\n",
+    snprintf( frame_format, SIZE1, "Frame Format: %u\n%s\n%s\n",
              NUM_FRAME_GLOBALS, FRAME_GLOBALS_FORMAT, FRAME_GLOBAL_NAMES );
 
     atom_format[0] = OPT_NOATOM;
-    switch ( out_control->atom_format )
-    {
+    switch ( out_control->atom_format ) {
     case OPT_ATOM_BASIC:
         snprintf( atom_format, SIZE2, "Atom_Basic: %s", ATOM_BASIC );
         break;
@@ -179,19 +177,15 @@ int32_t Write_Custom_Header( reax_system *system, control_params *control,
     strcat( frame_format, atom_format );
 
     bond_format[0] = OPT_NOBOND;
-    if ( out_control->bond_info == OPT_BOND_BASIC )
-    {
+    if ( out_control->bond_info == OPT_BOND_BASIC ) {
         snprintf( bond_format, SIZE2, "Bond_Line: %s", BOND_BASIC );
-    }
-    else if ( out_control->bond_info == OPT_BOND_FULL )
-    {
+    } else if ( out_control->bond_info == OPT_BOND_FULL ) {
         snprintf( bond_format, SIZE2, "Bond_Line_Full: %s", BOND_FULL );
     }
     strcat( frame_format, bond_format );
 
     angle_format[0] = OPT_NOANGLE;
-    if ( out_control->angle_info == OPT_ANGLE_BASIC )
-    {
+    if ( out_control->angle_info == OPT_ANGLE_BASIC ) {
         snprintf( angle_format, SIZE2, "Angle_Line: %s", ANGLE_BASIC );
     }
     strcat( frame_format, angle_format );
@@ -199,36 +193,31 @@ int32_t Write_Custom_Header( reax_system *system, control_params *control,
     frame_format_len = strnlen( frame_format, SIZE1 );
 
 
-    header_len = HEADER_INIT_LEN + (control_block_len + SIZE_INFO_LEN2) +
-                 (frame_format_len + SIZE_INFO_LEN2) +
-                 (ATOM_MAPPING_LEN * system->N + SIZE_INFO_LEN2);
+    header_len = HEADER_INIT_LEN + (control_block_len + SIZE_INFO_LEN2)
+        + (frame_format_len + SIZE_INFO_LEN2)
+        + (ATOM_MAPPING_LEN * system->N + SIZE_INFO_LEN2);
 
     out_control->write( out_control->trj, HEADER_INIT,
-                        header_len, HEADER_INIT_LEN, out_control->traj_title );
+            header_len, HEADER_INIT_LEN, out_control->traj_title );
 
     out_control->write( out_control->trj, SIZE_INFO_LINE2,
-                        control_block_len + (frame_format_len + SIZE_INFO_LEN2) +
-                        (ATOM_MAPPING_LEN * system->N + SIZE_INFO_LEN2),
-                        control_block_len );
+            control_block_len + (frame_format_len + SIZE_INFO_LEN2)
+            + (ATOM_MAPPING_LEN * system->N + SIZE_INFO_LEN2),
+            control_block_len );
     out_control->write( out_control->trj, "%s", control_block );
 
     out_control->write( out_control->trj, SIZE_INFO_LINE2,
-                        frame_format_len +
-                        (ATOM_MAPPING_LEN * system->N + SIZE_INFO_LEN2),
-                        frame_format_len );
+            frame_format_len + (ATOM_MAPPING_LEN * system->N + SIZE_INFO_LEN2),
+            frame_format_len );
     out_control->write( out_control->trj, "%s", frame_format );
 
     out_control->write( out_control->trj, SIZE_INFO_LINE2,
-                        ATOM_MAPPING_LEN * system->N,
-                        ATOM_MAPPING_LEN * system->N );
+            ATOM_MAPPING_LEN * system->N, ATOM_MAPPING_LEN * system->N );
 
-    for ( i = 0; i < system->N; ++i )
-    {
-        out_control->write( out_control->trj, ATOM_MAPPING,
-                            workspace->orig_id[i],
-                            system->atoms[i].type,
-                            system->atoms[i].name,
-                            system->reax_param.sbp[ system->atoms[i].type ].mass );
+    for ( i = 0; i < system->N; ++i ) {
+        out_control->write( out_control->trj, ATOM_MAPPING, workspace->orig_id[i],
+                system->atoms[i].type, system->atoms[i].name,
+                system->reax_param.sbp[ system->atoms[i].type ].mass );
     }
 
     fflush( out_control->trj );
@@ -245,10 +234,10 @@ int32_t Append_Custom_Frame( reax_system *system, control_params *control,
         reax_list **lists, output_controls *out_control )
 {
 #define SIZE (2048)
-    int32_t i, j, pi, pk, pk_j;
-    int32_t write_atoms, write_bonds, write_angles;
-    int32_t frame_len, atom_line_len, bond_line_len, angle_line_len, rest_of_frame_len;
-    int32_t frame_globals_len, num_bonds, num_thb_intrs;
+    uint32_t i, j, pi, pk, pk_j;
+    uint32_t write_atoms, write_bonds, write_angles;
+    uint32_t frame_len, atom_line_len, bond_line_len, angle_line_len, rest_of_frame_len;
+    uint32_t frame_globals_len, num_bonds, num_thb_intrs;
     real P;
     char buffer[SIZE];
     reax_list *bonds, *thb_intrs;
@@ -258,8 +247,7 @@ int32_t Append_Custom_Frame( reax_system *system, control_params *control,
     thb_intrs = lists[THREE_BODIES];
 
     /* IMPORTANT: This whole part will go to init_trj after finalized! */
-    switch ( out_control->atom_format )
-    {
+    switch ( out_control->atom_format ) {
     case OPT_ATOM_BASIC:
         atom_line_len = ATOM_BASIC_LEN;
         write_atoms = 1;
@@ -284,27 +272,20 @@ int32_t Append_Custom_Frame( reax_system *system, control_params *control,
 
     /* bond preparations */
     bond_line_len = write_bonds = 0;
-    if ( out_control->bond_info == OPT_BOND_BASIC )
-    {
+    if ( out_control->bond_info == OPT_BOND_BASIC ) {
         bond_line_len = BOND_BASIC_LEN;
         write_bonds = 1;
-    }
-    else if ( out_control->bond_info == OPT_BOND_FULL )
-    {
+    } else if ( out_control->bond_info == OPT_BOND_FULL ) {
         bond_line_len = BOND_FULL_LEN;
         write_bonds = 1;
     }
 
     num_bonds = 0;
-    if ( write_bonds )
-    {
-        for ( i = 0; i < system->N; ++i )
-        {
-            for ( j = Start_Index( i, bonds ); j < End_Index( i, bonds ); ++j )
-            {
+    if ( write_bonds ) {
+        for ( i = 0; i < system->N; ++i ) {
+            for ( j = Start_Index( i, bonds ); j < End_Index( i, bonds ); ++j ) {
                 if ( i < bonds->bond_list[j].nbr &&
-                        bonds->bond_list[j].bo_data.BO >= control->bg_cut )
-                {
+                        bonds->bond_list[j].bo_data.BO >= control->bg_cut ) {
                     ++num_bonds;
                 }
             }
@@ -312,38 +293,28 @@ int32_t Append_Custom_Frame( reax_system *system, control_params *control,
     }
 
     /* angle preparations */
-    if ( out_control->angle_info == OPT_ANGLE_BASIC )
-    {
+    if ( out_control->angle_info == OPT_ANGLE_BASIC ) {
         angle_line_len = ANGLE_BASIC_LEN;
         write_angles = 1;
-    }
-    else
-    {
+    } else {
         angle_line_len = 0;
         write_angles = 0;
     }
 
     num_thb_intrs = 0;
-    if ( write_angles )
-    {
-        for ( j = 0; j < system->N; ++j )
-        {
-            for ( pi = Start_Index(j, bonds); pi < End_Index(j, bonds); ++pi )
-            {
-                if ( bonds->bond_list[pi].bo_data.BO >= control->bg_cut )
-                {
+    if ( write_angles ) {
+        for ( j = 0; j < system->N; ++j ) {
+            for ( pi = Start_Index(j, bonds); pi < End_Index(j, bonds); ++pi ) {
+                if ( bonds->bond_list[pi].bo_data.BO >= control->bg_cut ) {
                     // physical j&i bond
                     for ( pk = Start_Index( pi, thb_intrs );
-                            pk < End_Index( pi, thb_intrs ); ++pk )
-                    {
+                            pk < End_Index( pi, thb_intrs ); ++pk ) {
                         if ( bonds->bond_list[pi].nbr <
-                                thb_intrs->three_body_list[pk].thb )
-                        {
+                                thb_intrs->three_body_list[pk].thb ) {
                             // get k's pointer on j's bond list
                             pk_j = thb_intrs->three_body_list[pk].pthb;
 
-                            if ( bonds->bond_list[pk_j].bo_data.BO >= control->bg_cut )
-                            {
+                            if ( bonds->bond_list[pk_j].bo_data.BO >= control->bg_cut ) {
                                 // physical j&k bond
                                 ++num_thb_intrs;
                             }
@@ -355,16 +326,11 @@ int32_t Append_Custom_Frame( reax_system *system, control_params *control,
     }
 
     /* get correct pressure */
-    if ( control->ensemble == aNPT || control->ensemble == sNPT )
-    {
+    if ( control->ensemble == aNPT || control->ensemble == sNPT ) {
         P = data->flex_bar.P_scalar;
-    }
-    else  if ( control->ensemble == iNPT )
-    {
+    } else if ( control->ensemble == iNPT ) {
         P = data->iso_bar.P;
-    }
-    else
-    {
+    } else {
         P = 0;
     }
 
@@ -384,30 +350,25 @@ int32_t Append_Custom_Frame( reax_system *system, control_params *control,
              data->E_vdW, data->E_Ele, data->E_Pol );
     frame_globals_len = strnlen( buffer, SIZE );
 
-    frame_len = frame_globals_len +
-                write_atoms  * SIZE_INFO_LEN3 + system->N * atom_line_len +
-                write_bonds  * SIZE_INFO_LEN3 + num_bonds * bond_line_len +
-                write_angles * SIZE_INFO_LEN3 + num_thb_intrs * angle_line_len;
+    frame_len = frame_globals_len + write_atoms * SIZE_INFO_LEN3 + system->N * atom_line_len
+        + write_bonds * SIZE_INFO_LEN3 + num_bonds * bond_line_len
+        + write_angles * SIZE_INFO_LEN3 + num_thb_intrs * angle_line_len;
 
     /* write size info & frame globals */
-    out_control->write( out_control->trj, SIZE_INFO_LINE2,
-                        frame_len, frame_globals_len );
+    out_control->write( out_control->trj, SIZE_INFO_LINE2, frame_len, frame_globals_len );
     out_control->write( out_control->trj, "%s", buffer );
 
     /* write size info & atom lines */
-    if ( write_atoms )
-    {
-        rest_of_frame_len = system->N * atom_line_len +
-                            write_bonds  * SIZE_INFO_LEN3 + num_bonds * bond_line_len +
-                            write_angles * SIZE_INFO_LEN3 + num_thb_intrs * angle_line_len;
+    if ( write_atoms ) {
+        rest_of_frame_len = system->N * atom_line_len
+            + write_bonds * SIZE_INFO_LEN3 + num_bonds * bond_line_len
+            + write_angles * SIZE_INFO_LEN3 + num_thb_intrs * angle_line_len;
 
         out_control->write( out_control->trj, SIZE_INFO_LINE3,
-                            rest_of_frame_len, system->N * atom_line_len,
-                            system->N );
+                rest_of_frame_len, system->N * atom_line_len, system->N );
     }
 
-    switch ( out_control->atom_format )
-    {
+    switch ( out_control->atom_format ) {
     case 4:
         for ( i = 0; i < system->N; ++i )
             out_control->write( out_control->trj, ATOM_BASIC,
@@ -461,49 +422,36 @@ int32_t Append_Custom_Frame( reax_system *system, control_params *control,
 
 
     /* write size info & bond lines */
-    if ( write_bonds )
-    {
-        rest_of_frame_len = num_bonds * bond_line_len +
-                            write_angles * SIZE_INFO_LEN3 + num_thb_intrs * angle_line_len;
+    if ( write_bonds ) {
+        rest_of_frame_len = num_bonds * bond_line_len
+            + write_angles * SIZE_INFO_LEN3 + num_thb_intrs * angle_line_len;
 
         out_control->write( out_control->trj, SIZE_INFO_LINE3,
-                            rest_of_frame_len, num_bonds * bond_line_len,
-                            num_bonds );
+                rest_of_frame_len, num_bonds * bond_line_len, num_bonds );
     }
 
-    if ( out_control->bond_info == 1 )
-    {
-        for ( i = 0; i < system->N; ++i )
-        {
-            for ( j = Start_Index( i, bonds ); j < End_Index( i, bonds ); ++j )
-            {
+    if ( out_control->bond_info == 1 ) {
+        for ( i = 0; i < system->N; ++i ) {
+            for ( j = Start_Index( i, bonds ); j < End_Index( i, bonds ); ++j ) {
                 if ( i < bonds->bond_list[j].nbr &&
-                        bonds->bond_list[j].bo_data.BO >= control->bg_cut )
-                {
+                        bonds->bond_list[j].bo_data.BO >= control->bg_cut ) {
                     bo_ij = &bonds->bond_list[j];
                     out_control->write( out_control->trj, BOND_BASIC,
-                                        workspace->orig_id[i],
-                                        workspace->orig_id[bo_ij->nbr],
-                                        bo_ij->d, bo_ij->bo_data.BO );
+                            workspace->orig_id[i], workspace->orig_id[bo_ij->nbr],
+                            bo_ij->d, bo_ij->bo_data.BO );
                 }
             }
         }
-    }
-    else if ( out_control->bond_info == 2 )
-    {
-        for ( i = 0; i < system->N; ++i )
-        {
-            for ( j = Start_Index( i, bonds ); j < End_Index( i, bonds ); ++j )
-            {
+    } else if ( out_control->bond_info == 2 ) {
+        for ( i = 0; i < system->N; ++i ) {
+            for ( j = Start_Index( i, bonds ); j < End_Index( i, bonds ); ++j ) {
                 if ( i < bonds->bond_list[j].nbr &&
-                        bonds->bond_list[j].bo_data.BO >= control->bg_cut )
-                {
+                        bonds->bond_list[j].bo_data.BO >= control->bg_cut ) {
                     bo_ij = &bonds->bond_list[j];
                     out_control->write( out_control->trj, BOND_FULL,
-                                        workspace->orig_id[i],
-                                        workspace->orig_id[bo_ij->nbr],
-                                        bo_ij->d, bo_ij->bo_data.BO, bo_ij->bo_data.BO_s,
-                                        bo_ij->bo_data.BO_pi, bo_ij->bo_data.BO_pi2 );
+                            workspace->orig_id[i], workspace->orig_id[bo_ij->nbr],
+                            bo_ij->d, bo_ij->bo_data.BO, bo_ij->bo_data.BO_s,
+                            bo_ij->bo_data.BO_pi, bo_ij->bo_data.BO_pi2 );
                 }
             }
         }
@@ -511,38 +459,30 @@ int32_t Append_Custom_Frame( reax_system *system, control_params *control,
 
     fflush( out_control->trj );
 
-
     /* write size info & angle lines */
-    if ( out_control->angle_info )
-    {
+    if ( out_control->angle_info ) {
         out_control->write( out_control->trj, SIZE_INFO_LINE3,
-                            num_thb_intrs * angle_line_len,
-                            num_thb_intrs * angle_line_len, num_thb_intrs );
+                num_thb_intrs * angle_line_len,
+                num_thb_intrs * angle_line_len, num_thb_intrs );
 
-        for ( j = 0; j < system->N; ++j )
-        {
-            for ( pi = Start_Index(j, bonds); pi < End_Index(j, bonds); ++pi )
-            {
-                if ( bonds->bond_list[pi].bo_data.BO >= control->bg_cut )
-                {
+        for ( j = 0; j < system->N; ++j ) {
+            for ( pi = Start_Index(j, bonds); pi < End_Index(j, bonds); ++pi ) {
+                if ( bonds->bond_list[pi].bo_data.BO >= control->bg_cut ) {
                     // physical j&i bond
                     for ( pk = Start_Index( pi, thb_intrs );
-                            pk < End_Index( pi, thb_intrs ); ++pk )
-                    {
+                            pk < End_Index( pi, thb_intrs ); ++pk ) {
                         if ( bonds->bond_list[pi].nbr <
-                                thb_intrs->three_body_list[pk].thb )
-                        {
+                                thb_intrs->three_body_list[pk].thb ) {
                             pk_j = thb_intrs->three_body_list[pk].pthb;
                             // get k's pointer on j's bond list
 
-                            if ( bonds->bond_list[pk_j].bo_data.BO >= control->bg_cut )
-                            {
+                            if ( bonds->bond_list[pk_j].bo_data.BO >= control->bg_cut ) {
                                 // physical j&k bond
                                 out_control->write( out_control->trj, ANGLE_BASIC,
-                                                    workspace->orig_id[bonds->bond_list[pi].nbr],
-                                                    workspace->orig_id[j],
-                                                    workspace->orig_id[thb_intrs->three_body_list[pk].thb],
-                                                    RAD2DEG(thb_intrs->three_body_list[pk].theta) );
+                                        workspace->orig_id[bonds->bond_list[pi].nbr],
+                                        workspace->orig_id[j],
+                                        workspace->orig_id[thb_intrs->three_body_list[pk].thb],
+                                        RAD2DEG(thb_intrs->three_body_list[pk].theta) );
                             }
                         }
                     }
@@ -562,7 +502,7 @@ int32_t Append_Custom_Frame( reax_system *system, control_params *control,
 #if defined(HAVE_ZLIB)
 void Read_Traj_Compressed( output_controls *out_control, char *traj_name )
 {
-    int32_t skip_all, skip_part, n;
+    uint32_t skip_all, skip_part, n;
     char size_buffer[50];
     gzFile trj;
 
@@ -570,35 +510,28 @@ void Read_Traj_Compressed( output_controls *out_control, char *traj_name )
 
     fprintf( stderr, "file opened!\n" );
 
-    while ( !gzeof( trj ) )
-    {
-        if ( gzgets( trj, size_buffer, 50 ) == Z_NULL )
-        {
+    while ( !gzeof( trj ) ) {
+        if ( gzgets( trj, size_buffer, 50 ) == Z_NULL ) {
             break;
         }
 
         fprintf( stderr, "read line\n" );
 
-        if ( strnlen( size_buffer, 50 ) >= SIZE_INFO_LEN3 )
-        {
-            if ( sscanf( size_buffer, "%d %d %d", &skip_all, &skip_part, &n ) != 3 )
-            {
+        if ( strnlen( size_buffer, 50 ) >= SIZE_INFO_LEN3 ) {
+            if ( sscanf( size_buffer, "%u %u %u", &skip_all, &skip_part, &n ) != 3 ) {
                 fprintf( stderr, "[ERROR] reading trajectory file failed\n" \
                          "  [INFO] reading skip info\n" );
                 exit( INVALID_INPUT );
             }
-        }
-        else
-        {
-            if ( sscanf( size_buffer, "%d %d", &skip_all, &skip_part ) != 2 )
-            {
+        } else {
+            if ( sscanf( size_buffer, "%u %u", &skip_all, &skip_part ) != 2 ) {
                 fprintf( stderr, "[ERROR] reading trajectory file failed\n" \
                          "  [INFO] reading skip info\n" );
                 exit( INVALID_INPUT );
             }
         }
 
-        fprintf( stderr, "%d %d\n", skip_all, skip_part );
+        fprintf( stderr, "%u %u\n", skip_all, skip_part );
 
         gzseek( trj, skip_part, SEEK_CUR );
     }
@@ -624,16 +557,14 @@ int32_t Append_xyz_Frame( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace,
         reax_list **lists, output_controls *out_control )
 {
-    int32_t i;
+    uint32_t i;
 
-    out_control->write( out_control->trj, "%d\n", system->N );
+    out_control->write( out_control->trj, "%u\n", system->N );
 
-    out_control->write( out_control->trj, "%d\t%8.3f\t%8.3f\t%8.3f\t%8.3f\n",
-            data->step, data->E_Tot, data->E_Pot,
-            data->E_Kin, data->therm.T );
+    out_control->write( out_control->trj, "%u\t%8.3f\t%8.3f\t%8.3f\t%8.3f\n",
+            data->step, data->E_Tot, data->E_Pot, data->E_Kin, data->therm.T );
 
-    for ( i = 0; i < system->N; ++i )
-    {
+    for ( i = 0; i < system->N; ++i ) {
         out_control->write( out_control->trj, "%3s %10.5f %10.5f %10.5f\n",
                 system->reax_param.sbp[ system->atoms[i].type ].name,
                 system->atoms[i].x[0], system->atoms[i].x[1], system->atoms[i].x[2] );

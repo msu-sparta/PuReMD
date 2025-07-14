@@ -76,8 +76,7 @@ static real Calculate_Omega( rvec dvec_ij, real r_ij, rvec dvec_jk, real r_jk,
     hnhe = r_ij * r_kl * sin_ijk * cos_jkl;
 
     poem = 2.0 * r_ij * r_kl * sin_ijk * sin_jkl;
-    if ( poem < 1.0e-20 )
-    {
+    if ( poem < 1.0e-20 ) {
         poem = 1.0e-20;
     }
 
@@ -86,29 +85,21 @@ static real Calculate_Omega( rvec dvec_ij, real r_ij, rvec dvec_jk, real r_jk,
                 + r_jk * r_kl * cos_jkl );
 
     arg  = tel / poem;
-    if ( arg >  1.0 )
-    {
+    if ( arg >  1.0 ) {
         arg =  1.0;
     }
-    if ( arg < -1.0 )
-    {
+    if ( arg < -1.0 ) {
         arg = -1.0;
     }
 
-    if ( sin_ijk >= 0.0 && sin_ijk <= MIN_SINE )
-    {
+    if ( sin_ijk >= 0.0 && sin_ijk <= MIN_SINE ) {
         sin_ijk = MIN_SINE;
-    }
-    else if ( sin_ijk <= 0.0 && sin_ijk >= -MIN_SINE )
-    {
+    } else if ( sin_ijk <= 0.0 && sin_ijk >= -MIN_SINE ) {
         sin_ijk = -MIN_SINE;
     }
-    if ( sin_jkl >= 0.0 && sin_jkl <= MIN_SINE )
-    {
+    if ( sin_jkl >= 0.0 && sin_jkl <= MIN_SINE ) {
         sin_jkl = MIN_SINE;
-    }
-    else if ( sin_jkl <= 0.0 && sin_jkl >= -MIN_SINE )
-    {
+    } else if ( sin_jkl <= 0.0 && sin_jkl >= -MIN_SINE ) {
         sin_jkl = -MIN_SINE;
     }
 
@@ -145,7 +136,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
         reax_list **lists, output_controls *out_control )
 {
 #if defined(DEBUG_FOCUS)
-    int32_t num_frb_intrs;
+    uint32_t num_frb_intrs;
 #endif
     real p_tor2, p_tor3, p_tor4, p_cot2;
     reax_list *bonds, *thb_intrs;
@@ -167,10 +158,10 @@ void Torsion_Angles( reax_system *system, control_params *control,
     #pragma omp parallel default(shared) reduction(+: e_tor_total, e_con_total)
 #endif
     {
-        int32_t i, j, k, l, pi, pj, pk, pl, pij, plk;
-        int32_t type_i, type_j, type_k, type_l;
-        int32_t start_j, end_j;
-        int32_t start_pj, end_pj, start_pk, end_pk;
+        uint32_t i, j, k, l, pi, pj, pk, pl, pij, plk;
+        uint32_t type_i, type_j, type_k, type_l;
+        uint32_t start_j, end_j;
+        uint32_t start_pj, end_pj, start_pk, end_pk;
         real Delta_j, Delta_k;
         real r_ij, r_jk, r_kl, r_li;
         real BOA_ij, BOA_jk, BOA_kl;
@@ -204,41 +195,36 @@ void Torsion_Angles( reax_system *system, control_params *control,
 
         #pragma omp for schedule(static)
 #endif
-        for ( j = 0; j < system->N; ++j )
-        {
+        for ( j = 0; j < system->N; ++j ) {
 #if defined(QMMM)
-            if ( system->atoms[j].qmmm_mask == TRUE )
-            {
+            if ( system->atoms[j].qmmm_mask == TRUE ) {
 #endif
             type_j = system->atoms[j].type;
             Delta_j = workspace->Delta_boc[j];
             start_j = Start_Index(j, bonds);
             end_j = End_Index(j, bonds);
 #if defined(_OPENMP)
-            f_j = &workspace->f_local[tid * system->N + j];
+            f_j = &workspace->f_local[(uint32_t) tid * system->N + j];
 #else
             f_j = &system->atoms[j].f;
 #endif
             if ( control->ensemble == sNPT || control->ensemble == iNPT
-                    || control->ensemble == aNPT || control->compute_pressure == TRUE )
-            {
+                    || control->ensemble == aNPT || control->compute_pressure == TRUE ) {
                 rvec_iMultiply( x_j, system->atoms[j].rel_map, system->box.box_norms );
                 rvec_Add( x_j, system->atoms[j].x );
             }
 
-            for ( pk = start_j; pk < end_j; ++pk )
-            {
+            for ( pk = start_j; pk < end_j; ++pk ) {
                 pbond_jk = &bonds->bond_list[pk];
                 k = pbond_jk->nbr;
 
 #if defined(QMMM)
-            if ( system->atoms[k].qmmm_mask == TRUE )
-            {
+            if ( system->atoms[k].qmmm_mask == TRUE ) {
 #endif
                 bo_jk = &pbond_jk->bo_data;
                 BOA_jk = bo_jk->BO - control->thb_cut;
 #if defined(_OPENMP)
-                f_k = &workspace->f_local[tid * system->N + k];
+                f_k = &workspace->f_local[(uint32_t) tid * system->N + k];
 #else
                 f_k = &system->atoms[k].f;
 #endif
@@ -248,15 +234,13 @@ void Torsion_Angles( reax_system *system, control_params *control,
                  * trying to form a 4-body interaction out of this neighborhood */
                 if ( j < k
                         && bo_jk->BO > control->thb_cut
-                        && Num_Entries(pk, thb_intrs) > 0 )
-                {
+                        && Num_Entries(pk, thb_intrs) > 0 ) {
                     pj = pbond_jk->sym_index; // pj points to j on k's list
 
                     /* do the same check as above:
                      * are there any 3-body interactions
                      * involving k&j where k is the central atom */
-                    if ( Num_Entries(pj, thb_intrs) > 0 )
-                    {
+                    if ( Num_Entries(pj, thb_intrs) > 0 ) {
                         type_k = system->atoms[k].type;
                         Delta_k = workspace->Delta_boc[k];
                         r_jk = pbond_jk->d;
@@ -266,8 +250,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
                         start_pj = Start_Index( pj, thb_intrs );
                         end_pj = End_Index( pj, thb_intrs );
                         if ( control->ensemble == sNPT || control->ensemble == iNPT
-                                || control->ensemble == aNPT || control->compute_pressure == TRUE )
-                        {
+                                || control->ensemble == aNPT || control->compute_pressure == TRUE ) {
                             rvec_Sum( x_k, x_j, pbond_jk->dvec );
                         }
 
@@ -279,33 +262,29 @@ void Torsion_Angles( reax_system *system, control_params *control,
                         f11_DjDk = (2.0 + exp_tor3_DjDk) * exp_tor34_inv;
 
                         /* pick i up from j-k interaction where j is the center atom */
-                        for ( pi = start_pk; pi < end_pk; ++pi )
-                        {
+                        for ( pi = start_pk; pi < end_pk; ++pi ) {
                             p_ijk = &thb_intrs->three_body_list[pi];
                             pij = p_ijk->pthb; // pij is pointer to i on j's bond_list
                             pbond_ij = &bonds->bond_list[pij];
                             bo_ij = &pbond_ij->bo_data;
 
-                            if ( bo_ij->BO > control->thb_cut )
-                            {
+                            if ( bo_ij->BO > control->thb_cut ) {
                                 i = p_ijk->thb;
 
 #if defined(QMMM)
-                                if ( system->atoms[i].qmmm_mask == TRUE )
-                                {
+                                if ( system->atoms[i].qmmm_mask == TRUE ) {
 #endif
                                 type_i = system->atoms[i].type;
                                 r_ij = pbond_ij->d;
                                 BOA_ij = bo_ij->BO - control->thb_cut;
 
 #if defined(_OPENMP)
-                                f_i = &workspace->f_local[tid * system->N + i];
+                                f_i = &workspace->f_local[(uint32_t) tid * system->N + i];
 #else
                                 f_i = &system->atoms[i].f;
 #endif
                                 if ( control->ensemble == sNPT || control->ensemble == iNPT
-                                        || control->ensemble == aNPT || control->compute_pressure == TRUE )
-                                {
+                                        || control->ensemble == aNPT || control->compute_pressure == TRUE ) {
                                     rvec_Sum( x_i, x_j, pbond_ij->dvec );
                                 }
 
@@ -313,16 +292,11 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                 sin_ijk = SIN( theta_ijk );
                                 cos_ijk = COS( theta_ijk );
                                 //tan_ijk_i = 1.0 / TAN( theta_ijk );
-                                if ( sin_ijk >= 0.0 && sin_ijk <= MIN_SINE )
-                                {
+                                if ( sin_ijk >= 0.0 && sin_ijk <= MIN_SINE ) {
                                     tan_ijk_i = cos_ijk / MIN_SINE;
-                                }
-                                else if ( sin_ijk <= 0.0 && sin_ijk >= -MIN_SINE )
-                                {
+                                } else if ( sin_ijk <= 0.0 && sin_ijk >= -MIN_SINE ) {
                                     tan_ijk_i = cos_ijk / -MIN_SINE;
-                                }
-                                else
-                                {
+                                } else {
                                     tan_ijk_i = cos_ijk / sin_ijk;
                                 }
 
@@ -330,14 +304,12 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                 exp_cot2_ij = EXP( -p_cot2 * SQR(BOA_ij - 1.5) );
 
                                 /* pick l up from j-k interaction where k is the central atom */
-                                for ( pl = start_pj; pl < end_pj; ++pl )
-                                {
+                                for ( pl = start_pj; pl < end_pj; ++pl ) {
                                     p_jkl = &thb_intrs->three_body_list[pl];
                                     l = p_jkl->thb;
 
 #if defined(QMMM)
-                                    if ( system->atoms[l].qmmm_mask == TRUE )
-                                    {
+                                    if ( system->atoms[l].qmmm_mask == TRUE ) {
 #endif
                                     plk = p_jkl->pthb; //pointer to l on k's bond_list!
                                     pbond_kl = &bonds->bond_list[plk];
@@ -349,10 +321,9 @@ void Torsion_Angles( reax_system *system, control_params *control,
 
                                     if ( i != l && fbh->cnt > 0
                                             && bo_kl->BO > control->thb_cut
-                                            && bo_ij->BO * bo_jk->BO * bo_kl->BO > control->thb_cut )
-                                    {
+                                            && bo_ij->BO * bo_jk->BO * bo_kl->BO > control->thb_cut ) {
 #if defined(_OPENMP)
-                                        f_l = &workspace->f_local[tid * system->N + l];
+                                        f_l = &workspace->f_local[(uint32_t) tid * system->N + l];
 #else
                                         f_l = &system->atoms[l].f;
 #endif
@@ -371,16 +342,11 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                         sin_jkl = SIN( theta_jkl );
                                         cos_jkl = COS( theta_jkl );
                                         //tan_jkl_i = 1.0 / TAN( theta_jkl );
-                                        if ( sin_jkl >= 0.0 && sin_jkl <= MIN_SINE )
-                                        {
+                                        if ( sin_jkl >= 0.0 && sin_jkl <= MIN_SINE ) {
                                             tan_jkl_i = cos_jkl / MIN_SINE;
-                                        }
-                                        else if ( sin_jkl <= 0.0 && sin_jkl >= -MIN_SINE )
-                                        {
+                                        } else if ( sin_jkl <= 0.0 && sin_jkl >= -MIN_SINE ) {
                                             tan_jkl_i = cos_jkl / -MIN_SINE;
-                                        }
-                                        else
-                                        {
+                                        } else {
                                             tan_jkl_i = cos_jkl / sin_jkl;
                                         }
 
@@ -531,8 +497,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
 
                                         if ( control->compute_pressure == FALSE &&
                                                 (control->ensemble == NVE || control->ensemble == nhNVT
-                                                 || control->ensemble == bNVT) )
-                                        {
+                                                 || control->ensemble == bNVT) ) {
                                             /* dcos_theta_ijk */
                                             rvec_ScaledAdd( *f_i,
                                                     CEtors7 + CEconj4, p_ijk->dcos_dk );
@@ -558,10 +523,8 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                                     CEtors9 + CEconj6, dcos_omega_dk );
                                             rvec_ScaledAdd( *f_l,
                                                     CEtors9 + CEconj6, dcos_omega_dl );
-                                        }
-                                        else if ( control->ensemble == sNPT || control->ensemble == iNPT
-                                                || control->ensemble == aNPT || control->compute_pressure == TRUE )
-                                        {
+                                        } else if ( control->ensemble == sNPT || control->ensemble == iNPT
+                                                || control->ensemble == aNPT || control->compute_pressure == TRUE ) {
                                             /* dcos_theta_ijk */
                                             rvec_Scale( force_i, CEtors7 + CEconj4, p_ijk->dcos_dk );
                                             rvec_Scale( force_j, CEtors7 + CEconj4, p_ijk->dcos_dj );

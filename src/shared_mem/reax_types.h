@@ -28,6 +28,7 @@
 #endif
 
 #include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -35,6 +36,15 @@
 
 #if defined(_OPENMP)
   #include <omp.h>
+#endif
+
+#if !defined(PMD_MEMORY_ALIGNMENT)
+  /* align heap-based memory allocations to 64-byte boundaries
+   * to improve cache performance and vectorization
+   *
+   * NOTE: alignment must be a power of 2 and a multiple of sizeof(void *);
+   *       see C11 standard docs on aligned_alloc(...) for further details */
+  #define PMD_MEMORY_ALIGNMENT (64)
 #endif
 
 /* enables debugging code */
@@ -65,8 +75,8 @@
 
 #define SUCCESS (1)
 #define FAILURE (0)
-#define TRUE (1)
-#define FALSE (0)
+#define TRUE (true)
+#define FALSE (false)
 
 /* decimal precision types for intermediate and accumlator variables */
 //#if defined(DOUBLE_PRECISION)
@@ -263,22 +273,20 @@
 
 
 /* ensemble type */
-enum ensemble
+enum ensemble_t
 {
-    /* microcanonical ensemble */
+    /* microcanonical */
     NVE = 0,
-    /* Berendsen NVT ensemble */
+    /* Berendsen NVT */
     bNVT = 1,
-    /* Nose-Hoover NVT ensemble */
+    /* Nose-Hoover NVT */
     nhNVT = 2,
-    /* Parrinello-Rehman-Nose-Hoover semi-isotropic NPT ensemble */
+    /* Parrinello-Rehman-Nose-Hoover semi-isotropic NPT */
     sNPT = 3,
-    /* Parrinello-Rehman-Nose-Hoover isotropic NPT ensemble */
+    /* Parrinello-Rehman-Nose-Hoover isotropic NPT */
     iNPT = 4,
-    /* Parrinello-Rehman-Nose-Hoover anisotropic NPT ensemble */
+    /* Parrinello-Rehman-Nose-Hoover anisotropic NPT */
     aNPT = 5,
-    /* total number of ensemble types */
-    ens_N = 6,
 };
 
 /* interaction list type */
@@ -296,7 +304,7 @@ enum interaction_list_offets
 };
 
 /* interaction type */
-enum interaction_type
+enum interaction_list_t
 {
     TYP_THREE_BODY = 0,
     TYP_BOND = 1,
@@ -305,11 +313,10 @@ enum interaction_type
     TYP_DDELTA = 4,
     TYP_FAR_NEIGHBOR = 5,
     TYP_NEAR_NEIGHBOR = 6,
-    TYP_N = 7,
 };
 
 /* error codes for simulation termination */
-enum errors
+enum pmd_error_t
 {
     FILE_NOT_FOUND = -10,
     UNKNOWN_ATOM_TYPE = -11,
@@ -324,35 +331,32 @@ enum errors
     RUNTIME_ERROR = -20,
 };
 
-enum molecular_analysis_type
+enum molecular_analysis_t
 {
     NO_ANALYSIS = 0,
     FRAGMENTS = 1,
     REACTIONS = 2,
-    NUM_ANALYSIS = 3,
 };
 
 /* restart file format */
-enum restart_formats
+enum restart_format_t
 {
     WRITE_ASCII = 0,
     WRITE_BINARY = 1,
-    RF_N = 2,
 };
 
 /* geometry file format */
-enum geo_formats
+enum geo_format_t
 {
     CUSTOM = 0,
     PDB = 1,
     BGF = 2,
     ASCII_RESTART = 3,
     BINARY_RESTART = 4,
-    GF_N = 5,
 };
 
 /* method used for computing atomic charges */
-enum charge_method
+enum charge_method_t
 {
     QEQ_CM = 0,
     EE_CM = 1,
@@ -360,7 +364,7 @@ enum charge_method
 };
 
 /* iterative linear solver used for computing atomic charges */
-enum solver
+enum solver_t
 {
     GMRES_S = 0,
     GMRES_H_S = 1,
@@ -371,7 +375,7 @@ enum solver
 
 /* initial guess type for the linear solver
  * used for computing atomic charges */
-enum init_guess_type
+enum solver_init_guess_t
 {
     /* prediction using spline extraplotation */
     SPLINE = 0,
@@ -381,7 +385,7 @@ enum init_guess_type
 };
 
 /* preconditioner used with iterative linear solver */
-enum pre_comp
+enum solver_pre_comp_t
 {
     NONE_PC = 0,
     JACOBI_PC = 1,
@@ -393,7 +397,7 @@ enum pre_comp
 };
 
 /* method used to apply preconditioner for 2-side incomplete factorizations (ICHOLT, ILU) */
-enum pre_app
+enum solver_pre_app_t
 {
     TRI_SOLVE_PA = 0,
     TRI_SOLVE_LEVEL_SCHED_PA = 1,
@@ -403,7 +407,7 @@ enum pre_app
 
 
 /* atom types as pertains to hydrogen bonding */
-enum hydrogen_bonding_atom_types
+enum hydrogen_bonding_t
 {
     NON_H_BONDING_ATOM = 0,
     H_ATOM = 1,
@@ -414,6 +418,7 @@ enum hydrogen_bonding_atom_types
 typedef double real;
 typedef real rvec[3];
 typedef int32_t ivec[3];
+typedef uint32_t uivec[3];
 typedef real rtensor[3][3];
 
 
@@ -534,13 +539,13 @@ typedef int32_t (*write_function)( FILE *, const char *, ... );
 struct global_parameters
 {
     /* num. global parameters in the force field paramater file for this simulation */
-    int32_t n_global;
+    uint32_t n_global;
     /* max. num. global parameters in the force field paramater file across all simulations */
-    int32_t max_n_global;
+    uint32_t max_n_global;
     /* parameters, see list in comment above for mapping */
     real* l;
     /* van der Waals interaction type */
-    int32_t vdw_type;
+    uint8_t vdw_type;
 };
 
 
@@ -559,8 +564,6 @@ struct single_body_parameters
     real r_vdw;
     /**/
     real epsilon;
-    /* electrostatic shielding parameter */
-    real gamma;
     /**/
     real r_pi;
     /**/
@@ -586,7 +589,7 @@ struct single_body_parameters
      *  0: non-hydrogen bonding atom
      *  1: H atom
      *  2: hydrogen bonding atom (e.g., O, S, P, N) */
-    int32_t p_hbond;
+    uint8_t p_hbond;
 
     /* Line three in field file */
     /**/
@@ -680,9 +683,11 @@ struct two_body_parameters
     real ecore;
     /**/
     real acore;
-    /* electrostatic shielding parameter,
-     * note: this parameter is stored as gamma_{ij}^-3
-     * where gamma_{ij} = \sqrt{gamma_i * gamma_j} */
+    /* electrostatic shielding 
+     *
+     * NOTE: stored as multiplicative inverse of the cube of the geometric mean
+     * of electrostatic shielding parameters for atom types i and j
+     * for computational efficiency (pre-compute to avoid on-the-fly arithmetic) */
     real gamma;
 
     /**/
@@ -715,7 +720,7 @@ struct three_body_parameters
 struct three_body_header
 {
     /**/
-    int32_t cnt;
+    uint32_t cnt;
     /**/
     three_body_parameters prm[MAX_3BODY_PARAM];
 };
@@ -733,7 +738,7 @@ struct hbond_parameters
     /**/
     real p_hb3;
     /* TRUE if parameters are set for this triplet of atom types, FALSE otherwise */
-    int32_t is_valid;
+    bool is_valid;
 };
 
 
@@ -758,7 +763,7 @@ struct four_body_parameters
 struct four_body_header
 {
     /**/
-    int32_t cnt;
+    uint32_t cnt;
     /**/
     four_body_parameters prm[MAX_4BODY_PARAM];
 };
@@ -767,9 +772,9 @@ struct four_body_header
 struct reax_interaction
 {
     /* num. atom types in force field parameter file for this simulation */
-    int32_t num_atom_types;
+    uint32_t num_atom_types;
     /* max. num. atom types in force field parameter file across all simulations */
-    int32_t max_num_atom_types;
+    uint32_t max_num_atom_types;
     /* */
     global_parameters gp;
     /* */
@@ -788,10 +793,10 @@ struct reax_interaction
 struct reax_atom
 {
     /* integer representation of element type of this atom */
-    int32_t type;
+    uint32_t type;
     /* TRUE if the atom is a dummy atom, FALSE otherwise
      * Note: dummy atoms _only_ participate in Coulomb interactions */
-    int32_t is_dummy;
+    bool is_dummy;
     /* relative coordinates in terms of periodic images of the
      * simulation box which are used to track if this atom moves
      * between images between simulation steps which regenerate
@@ -809,7 +814,7 @@ struct reax_atom
     real q;
 #if defined(QMMM)
     /* TRUE if the atom is in the QM region, FALSE otherwise (atom in MM region) */
-    int32_t qmmm_mask;
+    bool qmmm_mask;
     /* inital charge on this atom, in Coulombs */
     real q_init;
 #endif
@@ -852,36 +857,36 @@ struct simulation_box
 struct grid
 {
     /* 0 if struct members are NOT allocated, 1 otherwise */
-    int32_t allocated;
+    bool allocated;
     /* max. num. of atoms that can be binned within a grid cell;
      * used for memory allocation purposes */
-    int32_t max_atoms;
+    uint32_t max_atoms;
     /* max. num. of neighbors for a grid cell;
      * used for memory allocation purposes */
-    int32_t max_nbrs;
+    uint32_t max_nbrs;
     /* lengths of each dimesion of a grid cell */
     real cell_size;
     /**/
     ivec spread;
     /* num. of cells along each dimension for entire grid for this simulation */
-    ivec ncell;
+    uivec ncell;
     /* max. num. of cells along each dimension for entire grid across all simulations */
-    ivec ncell_max;
+    uivec ncell_max;
     /* lengths of each dimesion of a grid cell */
     rvec len;
     /* multiplicative inverse of length of each dimesion of a grid cell */
     rvec inv_len;
     /* binned atom list, where first 3 dimensions are indexed using 0-based grid cell
      * coordinates */
-    int32_t **** atoms;
+    uint32_t **** atoms;
     /**/
-    int32_t *** top;
+    uint32_t *** top;
     /**/
-    int32_t *** mark;
+    bool *** mark;
     /**/
-    int32_t *** start;
+    uint32_t *** start;
     /**/
-    int32_t *** end;
+    uint32_t *** end;
     /* list of neighboring grid cell positions for a specific grid cell, where the first
      * 3 dimensions are indexed using the 0-based grid cell coordinates */
     ivec **** nbrs;
@@ -894,31 +899,31 @@ struct grid
 struct reax_system
 {
     /* 0 if struct members for first phase (file I/O) are NOT allocated, 1 otherwise */
-    int32_t prealloc_allocated;
+    bool prealloc_allocated;
     /* 0 if struct members are NOT allocated, 1 otherwise */
-    int32_t ffield_params_allocated;
+    bool ffield_params_allocated;
     /* FALSE if struct members are NOT allocated, TRUE otherwise */
-    int32_t allocated;
+    bool allocated;
     /* number of local (non-periodic image) atoms for the current simulation */
-    int32_t N;
+    uint32_t N;
 #if defined(QMMM)
     /* number of local (non-periodic image) QM atoms for the current simulation in QMMM mode */
-    int32_t N_qm;
+    uint32_t N_qm;
     /* number of local (non-periodic image) MM atoms for the current simulation in QMMM mode */
-    int32_t N_mm;
+    uint32_t N_mm;
 #endif
     /* max. number of local (non-periodic image) atoms across all simulations */
-    int32_t N_max;
+    uint32_t N_max;
     /* dimension of the N x N sparse charge method matrix H */
-    int32_t N_cm;
+    uint32_t N_cm;
     /* max. dimension of the N x N sparse charge method matrix H across all simulations */
-    int32_t N_cm_max;
+    uint32_t N_cm_max;
     /* molecular charge constraints
      * NOTE: these constraints are currently only supported in BGF files using EEM */
     real *molec_charge_constraints;
     /* molecular charge constraints encoded as pairs of 1-based atom numbers indicating a range of atoms
      * NOTE: these constraints are currently only supported in BGF files using EEM */
-    int32_t *molec_charge_constraint_ranges;
+    uint32_t *molec_charge_constraint_ranges;
     /* num. of charge constraints on groups of atoms (i.e., molecules) */
     uint32_t num_molec_charge_constraints;
     /* max. num. of charge constraints on groups of atoms (i.e., molecules) */
@@ -932,11 +937,11 @@ struct reax_system
     /* max. num. of custom charge constraint entries (atom indices, coefficients) */
     uint32_t max_num_custom_charge_constraint_entries;
     /* entry counts for each custom charge constraint */
-    int32_t *custom_charge_constraint_count;
+    uint32_t *custom_charge_constraint_count;
     /* indices for custom charge constraint info (atom indices, coefficients) */
-    int32_t *custom_charge_constraint_start;
+    uint32_t *custom_charge_constraint_start;
     /* 1-based atom numbers used to identify entries for each custom charge constraint */
-    int32_t *custom_charge_constraint_atom_index;
+    uint32_t *custom_charge_constraint_atom_index;
     /* coefficients of entries for each custom charge constraint */
     real *custom_charge_constraint_coeff;
     /* right-hand side (RHS) constant values for each custom charge constraint */
@@ -951,11 +956,11 @@ struct reax_system
     /* collection of atomic info. */
     reax_atom *atoms;
     /* num. bonds per atom */
-    int32_t *bonds;
+    uint32_t *bonds;
     /* num. hydrogen bonds per atom */
-    int32_t *hbonds;
+    uint32_t *hbonds;
     /* num. matrix entries per row */
-    int32_t *cm_entries;
+    uint32_t *cm_entries;
 };
 
 
@@ -968,42 +973,36 @@ struct control_params
     char restart_from[MAX_STR];
     /* indicates whether this simulation is from a restart geometry file:
      * 0 = non-restarted run, 1 = restarted run */
-    int32_t restart;
+    bool restart;
     /* controls velocity initializtion for simulation with non-zero
      * starting temperatures: 0 = zero vectors, 1 = random vectors */
-    int32_t random_vel;
+    bool random_vel;
     /* controls additional atomic position translation during
      * simulation initializtion: 0 = no further translation,
      * 1 = translate positions such that the center of mass
      * is at the center of the simulation box, 2 = translate
      * positions such that the center of mass is at the origin
      * (smallest point) in the simulation box */
-    int32_t reposition_atoms;
-    /* ensemble values:
-     * 0 : microcanonical ensemble (NVE)
-     * 1 : Berendsen NVT (bNVT)
-     * 2 : Nose-Hoover NVT (nhNVT)
-     * 3 : Parrinello-Rehman-Nose-Hoover semi-isotropic NPT (sNPT)
-     * 4 : Parrinello-Rehman-Nose-Hoover isotropic NPT (iNPT) 
-     * 5 : Parrinello-Rehman-Nose-Hoover anisotropic NPT (aNPT) */
-    int32_t ensemble;
+    uint8_t reposition_atoms;
+    /* ensemble type */
+    uint8_t ensemble;
     /* number of simulation time steps */
-    int32_t nsteps;
+    uint32_t nsteps;
     /* controls whether the simulation box has perdioic boundary:
      * 0 = no periodic boundaries, 1 = periodic boundaries */
-    int32_t periodic_boundaries;
+    bool periodic_boundaries;
     /* */
-    int32_t restrict_bonds;
+    uint32_t restrict_bonds;
     /* controls whether force computations should be calculated
      * exactly or estimated (tabulated): 0 = exact computation,
      * >0 = use a lookup table (computed using splines), where
      * the positive integer value controls number of entries in the table */
-    int32_t tabulate;
+    uint32_t tabulate;
     /* simulation time step length (in ps) */
     real dt;
     /* number of simulation steps to elapse before
      * recomputing the verlet lists */
-    int32_t reneighbor;
+    uint32_t reneighbor;
     /* cutoff (in Angstroms) used for for constructing the
      * long range interaction Verlet list (a.k.a. far neighbor list) */
     real vlist_cut;
@@ -1035,7 +1034,7 @@ struct control_params
     real Tau_T;
     /* control mode for thermostat,
      * 0: none, 1: step-wise, 2: constant slope */
-    int32_t T_mode;
+    uint8_t T_mode;
     /* step-wise control mode: limit in change of temperature in thermostat per simulation step (in K)
      * constant slope control mode: scaler for change of temperature in thermostat per simulation step (in K) */
     real T_rate;
@@ -1049,34 +1048,34 @@ struct control_params
     /**/
     rvec Tau_P;
     /* mode for pressures calculations,
-     * 0: both int32_t and ext, 1: ext only, 2: int32_t only */
-    int32_t press_mode;
+     * 0: both int and ext, 1: ext only, 2: int only */
+    uint8_t press_mode;
     /**/
     real compressibility;
     /* 0: do not compute pressure, 1: compute pressure;
      * NOTE: not applicable to NPT-type ensembles (always compute) */
-    int32_t compute_pressure;
+    bool compute_pressure;
     /* frequency in simulation time steps to remove center of mass velocity */
-    int32_t remove_CoM_vel;
+    uint32_t remove_CoM_vel;
     /* format of the geometry input file */
-    int32_t geo_format;
+    uint8_t geo_format;
     /**/
-    int32_t dipole_anal;
+    bool dipole_anal;
     /**/
-    int32_t freq_dipole_anal;
+    uint32_t freq_dipole_anal;
     /**/
-    int32_t diffusion_coef;
+    bool diffusion_coef;
     /**/
-    int32_t freq_diffusion_coef;
+    uint32_t freq_diffusion_coef;
     /**/
-    int32_t restrict_type;
+    uint32_t restrict_type;
     /* method for computing atomic charges */
-    uint32_t charge_method;
+    uint8_t charge_method;
     /* frequency (in terms of simulation time steps) at which to
      * re-compute atomic charge distribution */
-    int32_t charge_freq;
+    uint32_t charge_freq;
     /* iterative linear solver type */
-    uint32_t cm_solver_type;
+    uint8_t cm_solver_type;
     /* system net charge */
     real cm_q_net;
     /* max. iterations for linear solver */
@@ -1090,27 +1089,27 @@ struct control_params
      * between 0.0 and 1.0 */
     real cm_domain_sparsity;
     /* TRUE if enabled, FALSE otherwise */
-    uint32_t cm_domain_sparsify_enabled;
+    bool cm_domain_sparsify_enabled;
     /* type of method used for computing the initial guess
      * for the iterative linear solver */
-    uint32_t cm_init_guess_type;
+    uint8_t cm_init_guess_type;
     /* order of spline extrapolation used for computing initial guess
      * to linear solver */
-    uint32_t cm_init_guess_extrap1;
+    uint8_t cm_init_guess_extrap1;
     /* order of spline extrapolation used for computing initial guess
      * to linear solver */
-    uint32_t cm_init_guess_extrap2;
+    uint8_t cm_init_guess_extrap2;
     /* file name for the GraphDef (GD) model file 
      * when predicting solver initial guesses using Tensorflow */
     char cm_init_guess_gd_model[MAX_STR];
     /* window size for the long short-term memory model (LSTM)
      * when predicting solver initial guesses using Tensorflow */
-    uint32_t cm_init_guess_win_size;
+    int32_t cm_init_guess_win_size;
     /* preconditioner type for linear solver */
-    uint32_t cm_solver_pre_comp_type;
+    uint8_t cm_solver_pre_comp_type;
     /* frequency (in terms of simulation time steps) at which to recompute
      * incomplete factorizations */
-    uint32_t cm_solver_pre_comp_refactor;
+    int32_t cm_solver_pre_comp_refactor;
     /* drop tolerance of incomplete factorization schemes (ILUT, ICHOLT, etc.)
      * used for preconditioning the iterative linear solver used in charge distribution */
     real cm_solver_pre_comp_droptol;
@@ -1122,28 +1121,28 @@ struct control_params
      * between 0.0 and 1.0 */
     real cm_solver_pre_comp_sai_thres;
     /* preconditioner application type */
-    uint32_t cm_solver_pre_app_type;
+    uint8_t cm_solver_pre_app_type;
     /* num. of iterations used to apply preconditioner via
      * Jacobi relaxation scheme (truncated Neumann series) */
     uint32_t cm_solver_pre_app_jacobi_iters;
     /* TRUE if polarization energy calculation is enabled, FALSE otherwise */
-    uint32_t polarization_energy_enabled;
+    bool polarization_energy_enabled;
     /**/
-    int32_t molec_anal;
+    uint8_t molec_anal;
     /**/
-    int32_t freq_molec_anal;
+    uint32_t freq_molec_anal;
     /* controls which bonds are printed to the trajectory file
      * if bond printing is enabled; this value is used as a cut-off
      * for comparing * against the bond order calculation value */
     real bg_cut;
     /**/
-    int32_t num_ignored;
+    uint32_t num_ignored;
     /**/
-    int32_t ignore[MAX_ATOM_TYPES];
+    uint32_t ignore[MAX_ATOM_TYPES];
     /* number of OpenMP threads to use during the simulation */
     int32_t num_threads;
     /* TRUE if the num. OpenMP has bet set, FALSE otherwise */
-    int32_t num_threads_set;
+    bool num_threads_set;
     /* function pointers for bonded interactions */
     interaction_function intr_funcs[NUM_INTRS];
     /* function pointer for computing pairwise atom distance */
@@ -1228,7 +1227,7 @@ struct reax_timing
     /**/
     real cm_solver_pre_app;
     /* num. of steps in iterative linear solver for charge distribution */
-    int32_t cm_solver_iters;
+    uint32_t cm_solver_iters;
     /**/
     real cm_solver_spmv;
     /**/
@@ -1244,18 +1243,18 @@ struct reax_timing
     /* solver time on last refactoring step */
     real cm_optimum;
     /* num. of retries in main sim. loop */
-    int32_t num_retries;
+    uint32_t num_retries;
 };
 
 
 struct simulation_data
 {
     /* integer ID uniquely identifying the simulation */
-    int32_t sim_id;
+    uint32_t sim_id;
     /* current simulation step number (0-based) */
-    int32_t step;
+    uint32_t step;
     /* last simulation step number for restarted runs (0-based) */
-    int32_t prev_steps;
+    uint32_t prev_steps;
     /* elapsed time of the simulation, in fs */
     real time;
     /* total mass of the atomic system, in AMU */
@@ -1349,9 +1348,9 @@ struct simulation_data
 struct three_body_interaction_data
 {
     /**/
-    int32_t thb;
+    uint32_t thb;
     /* index for the third body on the central atom's bond list */
-    int32_t pthb;
+    uint32_t pthb;
     /* valence angle, in degrees */
     real theta;
     /* cosine of the valence angle, in degrees */
@@ -1368,7 +1367,7 @@ struct three_body_interaction_data
 struct near_neighbor_data
 {
     /**/
-    int32_t nbr;
+    uint32_t nbr;
     /**/
     ivec rel_box;
 //    rvec ext_factor;
@@ -1382,7 +1381,7 @@ struct near_neighbor_data
 struct far_neighbor_data
 {
     /**/
-    int32_t nbr;
+    uint32_t nbr;
     /**/
     ivec rel_box;
 //    rvec ext_factor;
@@ -1396,7 +1395,7 @@ struct far_neighbor_data
 struct hbond_data
 {
     /* neighbor atom ID */
-    int32_t nbr;
+    uint32_t nbr;
     /* ??? */
     int32_t scl;
     /* neighbor in far neighbor list */
@@ -1407,7 +1406,7 @@ struct hbond_data
 struct dDelta_data
 {
     /**/
-    int32_t wrt;
+    uint32_t wrt;
     /**/
     rvec dVal;
 };
@@ -1416,7 +1415,7 @@ struct dDelta_data
 struct dbond_data
 {
     /**/
-    int32_t wrt;
+    uint32_t wrt;
     /**/
     rvec dBO;
     /**/
@@ -1456,11 +1455,11 @@ struct bond_order_data
 struct bond_data
 {
     /**/
-    int32_t nbr;
+    uint32_t nbr;
     /**/
-    int32_t sym_index;
+    uint32_t sym_index;
     /**/
-    int32_t dbond_index;
+    uint32_t dbond_index;
     /**/
     ivec rel_box;
 //    rvec ext_factor;
@@ -1480,7 +1479,7 @@ struct bond_data
 struct sparse_matrix
 {
     /* 0 if struct members are NOT allocated, 1 otherwise */
-    int32_t allocated;
+    bool allocated;
     /* active number of rows for this simulation */
     uint32_t n;
     /* max. number of rows across all simulations */
@@ -1501,31 +1500,31 @@ struct reallocate_data
 {
     /* TRUE if far neighbor list needs
      * to be reallocated, FALSE otherwise */
-    int32_t far_nbrs;
+    bool far_nbrs;
     /* total num. of (max) far neighbors across all atoms */
-    int32_t total_far_nbrs;
+    uint32_t total_far_nbrs;
     /* TRUE if charge matrix needs
      * to be reallocated, FALSE otherwise */
-    int32_t cm;
+    bool cm;
     /* total num. matrix entries (sum over max) */
-    int32_t total_cm_entries;
+    uint32_t total_cm_entries;
     /* TRUE if hbond list needs
      * to be reallocated, FALSE otherwise */
-    int32_t hbonds;
+    bool hbonds;
     /* total num. hydrogen bonds (sum over max) */
-    int32_t total_hbonds;
+    uint32_t total_hbonds;
     /* TRUE if bond list needs
      * to be reallocated, FALSE otherwise */
-    int32_t bonds;
+    bool bonds;
     /* total num. bonds (sum over max) */
-    int32_t total_bonds;
+    uint32_t total_bonds;
     /* TRUE if three body list needs
      * to be reallocated, FALSE otherwise */
-    int32_t thbody;
+    bool thbody;
     /* total num. three body interactions */
-    int32_t total_thbodies;
+    uint32_t total_thbodies;
     /**/
-    int32_t gcell_atoms;
+    uint32_t gcell_atoms;
 };
 
 
@@ -1571,7 +1570,7 @@ struct LR_lookup_table
 struct static_storage
 {
     /* FALSE if struct members are NOT allocated, TRUE otherwise */
-    int32_t allocated;
+    bool allocated;
     /* bond order related storage */
     real *total_bond_order;
     real *Deltap;
@@ -1648,8 +1647,8 @@ struct static_storage
 
     /* Level scheduling related storage for applying ICHOLT/ILUT(P)/FG-ILUT
      * preconditioners */
-    int32_t levels_L;
-    int32_t levels_U;
+    uint32_t levels_L;
+    uint32_t levels_U;
     uint32_t *row_levels_L;
     uint32_t *level_rows_L;
     uint32_t *level_rows_cnt_L;
@@ -1687,7 +1686,7 @@ struct static_storage
     uint32_t *perm_ilutp;
 
     /* num. hydrogen atoms for this simulation */
-    int32_t num_H;
+    uint32_t num_H;
 
     rvec *a; // used in integrators
     rvec *f_old;
@@ -1701,15 +1700,15 @@ struct static_storage
     /* coefficients of 6-th order polynomial taper derivative function (charges, Coulomb, van der Waals) */
     real dtap_coef[7];
 
-    int32_t *mark;
-    int32_t *old_mark;  // storage for analysis
+    bool *mark;
+    bool *old_mark;  // storage for analysis
     rvec *x_old;
 
     /* storage space for bond restrictions */
     int32_t *map_serials;
-    int32_t *orig_id;
-    int32_t *restricted;
-    int32_t **restricted_list;
+    uint32_t *orig_id;
+    uint32_t *restricted;
+    uint32_t **restricted_list;
 
 #if defined(_OPENMP)
     /* local forces per thread */
@@ -1745,37 +1744,17 @@ struct static_storage
 struct reax_list
 {
     /* FALSE if struct members are NOT allocated, TRUE otherwise */
-    int32_t allocated;
+    bool allocated;
     /* num. active entries (i.e., nested lists) in the list for this simulation */
-    int32_t n;
+    uint32_t n;
     /* max. num. entries (i.e., nested lists) in the list across all simulations */
-    int32_t n_max;
+    uint32_t n_max;
     /* total interactions across all entries which can be stored in the list */
-    int32_t total_intrs;
+    uint32_t total_intrs;
     /* starting position of interactions for an inner list */
-    int32_t *index;
+    uint32_t *index;
     /* ending position of interactions for an inner list */
-    int32_t *end_index;
-    /* interaction list (polymorphic via union dereference) */
-//    union
-//    {
-//        /* typeless interaction list */
-//        void *v;
-//        /* three body interaction list */
-//        three_body_interaction_data *three_body_list;
-//        /* bond interaction list */
-//        bond_data *bond_list;
-//        /* bond interaction list */
-//        dbond_data *dbo_list;
-//        /* test forces interaction list */
-//        dDelta_data *dDelta_list;
-//        /* far neighbor interaction list */
-//        far_neighbor_data *far_nbr_list;
-//        /* near neighbor interaction list */
-//        near_neighbor_data *near_nbr_list;
-//        /* hydrogen bond interaction list */
-//        hbond_data *hbond_list;
-//    } select;
+    uint32_t *end_index;
     /* typeless interaction list */
     void *v;
     /* three body interaction list */
@@ -1798,7 +1777,7 @@ struct reax_list
 struct output_controls
 {
     /* FALSE if struct members are NOT allocated, TRUE otherwise */
-    int32_t allocated;
+    bool allocated;
     /* trajectory file */
     FILE *trj;
     /* system-wide info file */
@@ -1820,19 +1799,19 @@ struct output_controls
     /**/
     FILE *prs;
 
-    int32_t write_steps;
-    int32_t traj_compress;
-    int32_t traj_format;
+    uint32_t write_steps;
+    uint32_t traj_compress;
+    uint32_t traj_format;
     char traj_title[81];
-    int32_t atom_format;
-    int32_t bond_info;
-    int32_t angle_info;
+    uint32_t atom_format;
+    uint8_t bond_info;
+    uint8_t angle_info;
 
-    int32_t restart_format;
-    int32_t restart_freq;
+    uint8_t restart_format;
+    uint32_t restart_freq;
     /* simulation step freqency at which log files are written
      * (excluding trajectory and restart files) */
-    int32_t log_update_freq;
+    uint32_t log_update_freq;
 
     /* trajectory-related function pointers */
     write_header_function write_header;
@@ -1886,10 +1865,10 @@ struct puremd_handle
     /* Output controls */
     output_controls *out_control;
     /* TRUE if file I/O for simulation output enabled, FALSE otherwise */
-    int32_t output_enabled;
+    bool output_enabled;
     /* TRUE if reallocation is required due to num. atoms increasing
      * (this includes first simulation run), FALSE otherwise */
-    int32_t realloc;
+    bool realloc;
     /* Callback for getting simulation state at the end of each time step */
     callback_function callback;
 };

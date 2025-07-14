@@ -28,11 +28,11 @@
 void Init_Bonded_Force_Functions( control_params * const );
 
 void Estimate_Storages( reax_system const * const, control_params const * const,
-        static_storage * const, reax_list ** const, int32_t, int32_t );
+        static_storage * const, reax_list ** const, bool, bool );
 
-int32_t Compute_Forces( reax_system * const, control_params * const,
+bool Compute_Forces( reax_system * const, control_params * const,
         simulation_data * const, static_storage * const, reax_list ** const,
-        output_controls * const, int32_t );
+        output_controls * const, bool );
 
 
 #endif

@@ -29,14 +29,13 @@
 static void Tridiagonal_Solve( const real *a, const real *b,
         real *c, real *d, real *x, uint32_t n)
 {
-    int32_t i;
+    uint32_t i;
     real id;
 
     /* Modify the coefficients. */
     c[0] /= b[0]; /* Division by zero risk. */
     d[0] /= b[0]; /* Division by zero would imply a singular matrix. */
-    for (i = 1; i < n; i++)
-    {
+    for (i = 1; i < n; i++) {
         id = (b[i] - c[i - 1] * a[i]); /* Division by zero risk. */
         c[i] /= id;         /* Last value calculated is redundant. */
         d[i] = (d[i] - d[i - 1] * a[i]) / id;
@@ -44,8 +43,7 @@ static void Tridiagonal_Solve( const real *a, const real *b,
 
     /* solve via back substitution */
     x[n - 1] = d[n - 1];
-    for (i = n - 2; i >= 0; i--)
-    {
+    for (i = n - 2; i < n; i--) {
         x[i] = d[i] - c[i] * x[i + 1];
     }
 }
@@ -68,30 +66,26 @@ static void Natural_Cubic_Spline( const real *h, const real *f,
     a[0] = 0.0;
     a[1] = 0.0;
     a[n - 1] = 0.0;
-    for ( i = 2; i < n - 1; ++i )
-    {
+    for ( i = 2; i < n - 1; ++i ) {
         a[i] = h[i - 1];
     }
 
     b[0] = 0.0;
     b[n - 1] = 0.0;
-    for ( i = 1; i < n - 1; ++i )
-    {
+    for ( i = 1; i < n - 1; ++i ) {
         b[i] = 2.0 * (h[i - 1] + h[i]);
     }
 
     c[0] = 0.0;
     c[n - 2] = 0.0;
     c[n - 1] = 0.0;
-    for ( i = 1; i < n - 2; ++i )
-    {
+    for ( i = 1; i < n - 2; ++i ) {
         c[i] = h[i];
     }
 
     d[0] = 0.0;
     d[n - 1] = 0.0;
-    for ( i = 1; i < n - 1; ++i )
-    {
+    for ( i = 1; i < n - 1; ++i ) {
         d[i] = 6.0 * ((f[i + 1] - f[i])
                 / h[i] - (f[i] - f[i - 1]) / h[i - 1]);
     }
@@ -104,8 +98,7 @@ static void Natural_Cubic_Spline( const real *h, const real *f,
     v[n - 1] = 0.0;
     Tridiagonal_Solve( a + 1, b + 1, c + 1, d + 1, v + 1, n - 2 );
 
-    for ( i = 1; i < n; ++i )
-    {
+    for ( i = 1; i < n; ++i ) {
         coef[i - 1].d = (v[i] - v[i - 1]) / (6.0 * h[i - 1]);
         coef[i - 1].c = v[i] / 2.0;
         coef[i - 1].b = (f[i] - f[i - 1]) / h[i - 1] + h[i - 1]
@@ -136,27 +129,23 @@ static void Complete_Cubic_Spline( const real *h, const real *f, real v0, real v
 
     /* build the linear system */
     a[0] = 0.0;
-    for ( i = 1; i < n; ++i )
-    {
+    for ( i = 1; i < n; ++i ) {
         a[i] = h[i - 1];
     }
 
     b[0] = 2.0 * h[0];
-    for ( i = 1; i < n; ++i )
-    {
+    for ( i = 1; i < n; ++i ) {
         b[i] = 2.0 * (h[i - 1] + h[i]);
     }
 
     c[n - 1] = 0.0;
-    for ( i = 0; i < n - 1; ++i )
-    {
+    for ( i = 0; i < n - 1; ++i ) {
         c[i] = h[i];
     }
 
     d[0] = 6.0 * (f[1] - f[0]) / h[0] - 6.0 * v0;
     d[n - 1] = 6.0 * vlast - 6.0 * (f[n - 1] - f[n - 2] / h[n - 2]);
-    for ( i = 1; i < n - 1; ++i )
-    {
+    for ( i = 1; i < n - 1; ++i ) {
         d[i] = 6.0 * ((f[i + 1] - f[i])
                 / h[i] - (f[i] - f[i - 1]) / h[i - 1]);
     }
@@ -167,8 +156,7 @@ static void Complete_Cubic_Spline( const real *h, const real *f, real v0, real v
 
     Tridiagonal_Solve( a, b, c, d, v, n );
 
-    for ( i = 1; i < n; ++i )
-    {
+    for ( i = 1; i < n; ++i ) {
         coef[i - 1].d = (v[i] - v[i - 1]) / (6.0 * h[i - 1]);
         coef[i - 1].c = v[i] / 2.0;
         coef[i - 1].b = (f[i] - f[i - 1]) / h[i - 1]
@@ -187,15 +175,17 @@ static void Complete_Cubic_Spline( const real *h, const real *f, real v0, real v
 #if defined(DEBUG_FOCUS)
 static void LR_Lookup( LR_lookup_table *t, real r, LR_data *y )
 {
-    int32_t i;
+    uint32_t i;
     real base, dif;
+    
+    assert( t->inv_dx >= 0.0 );
+    assert( r >= 0.0 );
 
-    i = (int32_t) (r * t->inv_dx);
-    if ( i == 0 )
-    {
+    i = (uint32_t) (r * t->inv_dx);
+    if ( i == 0 ) {
         ++i;
     }
-    base = (real)(i + 1) * t->dx;
+    base = (real) (i + 1) * t->dx;
     dif = r - base;
     //fprintf( stderr, "r: %f, i: %d, base: %f, dif: %f\n", r, i, base, dif );
 
@@ -219,9 +209,9 @@ static void LR_Lookup( LR_lookup_table *t, real r, LR_data *y )
 void Make_LR_Lookup_Table( reax_system *system, control_params *control,
        static_storage *workspace )
 {
-    int32_t i, j, r;
-    int32_t num_atom_types;
-    int32_t existing_types[MAX_ATOM_TYPES];
+    uint32_t i, j, r;
+    uint32_t num_atom_types;
+    uint32_t existing_types[MAX_ATOM_TYPES];
     real dr;
     real *h, *fh, *fvdw, *fele, *fCEvd, *fCEclmb;
     real v0_vdw, v0_ele, vlast_vdw, vlast_ele;
@@ -250,8 +240,7 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control,
        number of atom types in the ffield file */
     workspace->LR = smalloc( num_atom_types * sizeof(LR_lookup_table*),
            __FILE__, __LINE__ );
-    for ( i = 0; i < num_atom_types; ++i )
-    {
+    for ( i = 0; i < num_atom_types; ++i ) {
         workspace->LR[i] = smalloc( num_atom_types * sizeof(LR_lookup_table),
                 __FILE__, __LINE__ );
     }
@@ -259,25 +248,19 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control,
     /* most atom types in ffield file will not exist in the current
        simulation. to avoid unnecessary lookup table space, determine
        the atom types that exist in the current simulation */
-    for ( i = 0; i < MAX_ATOM_TYPES; ++i )
-    {
+    for ( i = 0; i < MAX_ATOM_TYPES; ++i ) {
         existing_types[i] = 0;
     }
-    for ( i = 0; i < system->N; ++i )
-    {
+    for ( i = 0; i < system->N; ++i ) {
         existing_types[ system->atoms[i].type ] = 1;
     }
 
     /* fill in the lookup table entries for existing atom types.
        only lower half should be enough. */
-    for ( i = 0; i < num_atom_types; ++i )
-    {
-        if ( existing_types[i] )
-        {
-            for ( j = i; j < num_atom_types; ++j )
-            {
-                if ( existing_types[j] )
-                {
+    for ( i = 0; i < num_atom_types; ++i ) {
+        if ( existing_types[i] ) {
+            for ( j = i; j < num_atom_types; ++j ) {
+                if ( existing_types[j] ) {
                     workspace->LR[i][j].xmin = 0;
                     workspace->LR[i][j].xmax = control->nonb_cut;
                     workspace->LR[i][j].n = control->tabulate + 1;
@@ -302,8 +285,7 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control,
                         smalloc( workspace->LR[i][j].n * sizeof(cubic_spline_coef),
                               __FILE__, __LINE__ );
 
-                    for ( r = 1; r <= control->tabulate; ++r )
-                    {
+                    for ( r = 1; r <= control->tabulate; ++r ) {
                         LR_vdW_Coulomb( system, control, workspace,
                                 i, j, r * dr, &workspace->LR[i][j].y[r] );
                         h[r] = workspace->LR[i][j].dx;
@@ -313,13 +295,10 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control,
                         fele[r] = workspace->LR[i][j].y[r].e_ele;
                         fCEclmb[r] = workspace->LR[i][j].y[r].CEclmb;
 
-                        if ( r == 1 )
-                        {
+                        if ( r == 1 ) {
                             v0_vdw = workspace->LR[i][j].y[r].CEvd;
                             v0_ele = workspace->LR[i][j].y[r].CEclmb;
-                        }
-                        else if ( r == control->tabulate )
-                        {
+                        } else if ( r == control->tabulate ) {
                             vlast_vdw = workspace->LR[i][j].y[r].CEvd;
                             vlast_ele = workspace->LR[i][j].y[r].CEclmb;
                         }
@@ -423,29 +402,23 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control,
 void Finalize_LR_Lookup_Table( reax_system *system, control_params *control,
        static_storage *workspace )
 {
-    int32_t i, j;
-    int32_t num_atom_types;
-    int32_t existing_types[MAX_ATOM_TYPES];
+    uint32_t i, j;
+    uint32_t num_atom_types;
+    uint32_t existing_types[MAX_ATOM_TYPES];
 
     num_atom_types = system->reax_param.num_atom_types;
 
-    for ( i = 0; i < MAX_ATOM_TYPES; ++i )
-    {
+    for ( i = 0; i < MAX_ATOM_TYPES; ++i ) {
         existing_types[i] = 0;
     }
-    for ( i = 0; i < system->N; ++i )
-    {
+    for ( i = 0; i < system->N; ++i ) {
         existing_types[ system->atoms[i].type ] = 1;
     }
 
-    for ( i = 0; i < num_atom_types; ++i )
-    {
-        if ( existing_types[i] )
-        {
-            for ( j = i; j < num_atom_types; ++j )
-            {
-                if ( existing_types[j] )
-                {
+    for ( i = 0; i < num_atom_types; ++i ) {
+        if ( existing_types[i] ) {
+            for ( j = i; j < num_atom_types; ++j ) {
+                if ( existing_types[j] ) {
                     sfree( workspace->LR[i][j].y, __FILE__, __LINE__ );
                     sfree( workspace->LR[i][j].H, __FILE__, __LINE__ );
                     sfree( workspace->LR[i][j].vdW, __FILE__, __LINE__ );

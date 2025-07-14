@@ -38,12 +38,10 @@ void Calculate_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
 
     *cos_theta = rvec_Dot( dvec_ji, dvec_jk ) / ( d_ji * d_jk );
 
-    if ( *cos_theta > 1.0 )
-    {
+    if ( *cos_theta > 1.0 ) {
         *cos_theta = 1.0;
     }
-    if ( *cos_theta < -1.0 )
-    {
+    if ( *cos_theta < -1.0 ) {
         *cos_theta = -1.0;
     }
 
@@ -55,7 +53,7 @@ void Calculate_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
 void Calculate_dCos_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
         rvec* dcos_theta_di, rvec* dcos_theta_dj, rvec* dcos_theta_dk )
 {
-    int32_t t;
+    uint32_t t;
     real sqr_d_ji, sqr_d_jk, inv_dists, inv_dists3, dot_dvecs, Cdot_inv3;
 
     assert( d_ji > 0.0 );
@@ -68,8 +66,7 @@ void Calculate_dCos_Theta( rvec dvec_ji, real d_ji, rvec dvec_jk, real d_jk,
     dot_dvecs = rvec_Dot( dvec_ji, dvec_jk );
     Cdot_inv3 = dot_dvecs * inv_dists3;
 
-    for ( t = 0; t < 3; ++t )
-    {
+    for ( t = 0; t < 3; ++t ) {
         (*dcos_theta_di)[t] = dvec_jk[t] * inv_dists
             - Cdot_inv3 * sqr_d_jk * dvec_ji[t];
 
@@ -94,7 +91,7 @@ void Valence_Angles( reax_system *system, control_params *control,
     real p_pen2, p_pen3, p_pen4;
     real p_coa2, p_coa3, p_coa4;
     real p_val6, p_val8, p_val9, p_val10;
-    int32_t x, num_thb_intrs;
+    uint32_t x, num_thb_intrs;
     real e_ang_total, e_pen_total, e_coa_total;
 
     bonds = lists[BONDS];
@@ -116,12 +113,10 @@ void Valence_Angles( reax_system *system, control_params *control,
     e_pen_total = 0.0;
     e_coa_total = 0.0;
 
-    for ( x = 0; x < thb_intrs->n; ++x )
-    {
+    for ( x = 0; x < thb_intrs->n; ++x ) {
         Set_Start_Index( x, 0, thb_intrs );
     }
-    for ( x = 0; x < thb_intrs->n; ++x )
-    {
+    for ( x = 0; x < thb_intrs->n; ++x ) {
         Set_End_Index( x, 0, thb_intrs );
     }
 
@@ -130,10 +125,10 @@ void Valence_Angles( reax_system *system, control_params *control,
 //    #pragma omp parallel default(shared) reduction(+:total_Eang, total_Epen, total_Ecoa, num_thb_intrs) 
 #endif
     {
-        int32_t i, j, pi, k, pk, t;
-        int32_t type_i, type_j, type_k;
-        int32_t start_j, end_j, start_pk, end_pk;
-        int32_t cnt;
+        uint32_t i, j, pi, k, pk, t;
+        uint32_t type_i, type_j, type_k;
+        uint32_t start_j, end_j, start_pk, end_pk;
+        uint32_t cnt;
         real temp, temp_bo_jt, pBOjt7;
         real p_val1, p_val2, p_val3, p_val4, p_val5, p_val7;
         real p_pen1;
@@ -162,8 +157,7 @@ void Valence_Angles( reax_system *system, control_params *control,
 //        int32_t tid = omp_get_thread_num( );
 #endif
 
-        for ( j = 0; j < system->N; ++j )
-        {
+        for ( j = 0; j < system->N; ++j ) {
             type_j = system->atoms[j].type;
             start_j = Start_Index( j, bonds );
             end_j = End_Index( j, bonds );
@@ -173,8 +167,7 @@ void Valence_Angles( reax_system *system, control_params *control,
             f_j = &system->atoms[j].f;
 //#endif
             if ( control->ensemble == sNPT || control->ensemble == iNPT
-                    || control->ensemble == aNPT || control->compute_pressure == TRUE )
-            {
+                    || control->ensemble == aNPT || control->compute_pressure == TRUE ) {
                 rvec_iMultiply( x_j, system->atoms[j].rel_map, system->box.box_norms );
                 rvec_Add( x_j, system->atoms[j].x );
             }
@@ -189,8 +182,7 @@ void Valence_Angles( reax_system *system, control_params *control,
              * used in determining the equilibrium angle between i-j-k */
             prod_SBO = 1.0;
 
-            for ( t = start_j; t < end_j; ++t )
-            {
+            for ( t = start_j; t < end_j; ++t ) {
                 bo_jt = &bond_list[t].bo_data;
                 SBOp += bo_jt->BO_pi + bo_jt->BO_pi2;
                 temp = SQR( bo_jt->BO );
@@ -200,13 +192,10 @@ void Valence_Angles( reax_system *system, control_params *control,
             }
 
             /* modifications to match Adri's code - 09/01/09 */
-            if ( workspace->vlpex[j] >= 0.0 )
-            {
+            if ( workspace->vlpex[j] >= 0.0 ) {
                 vlpadj = 0.0;
                 dSBO2 = prod_SBO - 1.0;
-            }
-            else
-            {
+            } else {
                 vlpadj = workspace->nlp[j];
                 dSBO2 = (prod_SBO - 1.0) * (1.0 - p_val8 * workspace->dDelta_lp[j]);
             }
@@ -214,23 +203,16 @@ void Valence_Angles( reax_system *system, control_params *control,
             SBO = SBOp + (1.0 - prod_SBO) * (-workspace->Delta_boc[j] - p_val8 * vlpadj);
             dSBO1 = -8.0 * prod_SBO * ( workspace->Delta_boc[j] + p_val8 * vlpadj );
 
-            if ( SBO <= 0.0 )
-            {
+            if ( SBO <= 0.0 ) {
                 SBO2 = 0.0;
                 CSBO2 = 0.0;
-            }
-            else if ( SBO > 0.0 && SBO <= 1.0 )
-            {
+            } else if ( SBO > 0.0 && SBO <= 1.0 ) {
                 SBO2 = POW( SBO, p_val9 );
                 CSBO2 = p_val9 * POW( SBO, p_val9 - 1.0 );
-            }
-            else if ( SBO > 1.0 && SBO < 2.0 )
-            {
+            } else if ( SBO > 1.0 && SBO < 2.0 ) {
                 SBO2 = 2.0 - POW( 2.0 - SBO, p_val9 );
                 CSBO2 = p_val9 * POW( 2.0 - SBO, p_val9 - 1.0 );
-            }
-            else
-            {
+            } else {
                 SBO2 = 2.0;
                 CSBO2 = 0.0;
             }
@@ -240,15 +222,13 @@ void Valence_Angles( reax_system *system, control_params *control,
             /* unlike 2-body intrs where we enforce i<j, we cannot put any such
              * restrictions here. such a restriction would prevent us from producing
              * all 4-body intrs correctly */
-            for ( pi = start_j; pi < end_j; ++pi )
-            {
+            for ( pi = start_j; pi < end_j; ++pi ) {
                 Set_Start_Index( pi, num_thb_intrs, thb_intrs );
                 pbond_ij = &bond_list[pi];
                 bo_ij = &pbond_ij->bo_data;
                 BOA_ij = bo_ij->BO - control->thb_cut;
 
-                if ( BOA_ij >= 0.0 )
-                {
+                if ( BOA_ij >= 0.0 ) {
                     i = pbond_ij->nbr;
 
                     type_i = system->atoms[i].type;
@@ -258,8 +238,7 @@ void Valence_Angles( reax_system *system, control_params *control,
                     f_i = &system->atoms[i].f;
 //#endif
                     if ( control->ensemble == sNPT || control->ensemble == iNPT
-                            || control->ensemble == aNPT || control->compute_pressure == TRUE )
-                    {
+                            || control->ensemble == aNPT || control->compute_pressure == TRUE ) {
                         rvec_Sum( x_i, x_j, pbond_ij->dvec );
                     }
 
@@ -269,15 +248,12 @@ void Valence_Angles( reax_system *system, control_params *control,
                      * instead of copying!
                      * in the second for-loop below, we compute only new 3-body intrs
                      * where i < k */
-                    for ( pk = start_j; pk < pi; ++pk )
-                    {
+                    for ( pk = start_j; pk < pi; ++pk ) {
                         start_pk = Start_Index( pk, thb_intrs );
                         end_pk = End_Index( pk, thb_intrs );
 
-                        for ( t = start_pk; t < end_pk; ++t )
-                        {
-                            if ( thb_list[t].thb == i )
-                            {
+                        for ( t = start_pk; t < end_pk; ++t ) {
+                            if ( thb_list[t].thb == i ) {
                                 p_ijk = &thb_list[num_thb_intrs];
                                 p_kji = &thb_list[t];
 
@@ -295,14 +271,12 @@ void Valence_Angles( reax_system *system, control_params *control,
                     }
 
                     /* and this is the second for loop mentioned above */
-                    for ( pk = pi + 1; pk < end_j; ++pk )
-                    {
+                    for ( pk = pi + 1; pk < end_j; ++pk ) {
                         pbond_jk = &bond_list[pk];
                         bo_jk = &pbond_jk->bo_data;
                         BOA_jk = bo_jk->BO - control->thb_cut;
 
-                        if ( BOA_jk < 0.0 )
-                        {
+                        if ( BOA_jk < 0.0 ) {
                             continue;
                         }
 
@@ -330,8 +304,7 @@ void Valence_Angles( reax_system *system, control_params *control,
                         p_ijk->theta = theta;
 
                         sin_theta = SIN( theta );
-                        if ( sin_theta < 1.0e-5 )
-                        {
+                        if ( sin_theta < 1.0e-5 ) {
                             sin_theta = 1.0e-5;
                         }
 
@@ -339,19 +312,16 @@ void Valence_Angles( reax_system *system, control_params *control,
 
                         /* Fortran ReaxFF code hard-codes the constant below
                          * as of 2019-02-27, so use that for now */
-                        if ( bo_ij->BO * bo_jk->BO < 0.00001 )
-//                        if ( bo_ij->BO * bo_jk->BO < SQR(control->thb_cut) )
-                        {
+                        if ( bo_ij->BO * bo_jk->BO < 0.00001 ) {
+//                        if ( bo_ij->BO * bo_jk->BO < SQR(control->thb_cut) ) {
                             continue;
                         }
 
                         thbh = &system->reax_param.thbp[type_i][type_j][type_k];
 
-                        for ( cnt = 0; cnt < thbh->cnt; ++cnt )
-                        {
+                        for ( cnt = 0; cnt < thbh->cnt; ++cnt ) {
                             /* valence angle does not exist in the force field */
-                            if ( FABS(thbh->prm[cnt].p_val1) < 0.001 )
-                            {
+                            if ( FABS(thbh->prm[cnt].p_val1) < 0.001 ) {
                                 continue;
                             }
 
@@ -385,13 +355,11 @@ void Valence_Angles( reax_system *system, control_params *control,
                             theta_0 = DEG2RAD( theta_0 );
 
                             expval2theta = p_val1 * EXP(-p_val2 * SQR(theta_0 - theta));
-                            if ( p_val1 >= 0.0 )
-                            {
+                            if ( p_val1 >= 0.0 ) {
                                 expval12theta = p_val1 - expval2theta;
                             }
                             /* To avoid linear Me-H-Me angles (6/6/06) */
-                            else
-                            {
+                            else {
                                 expval12theta = -expval2theta;
                             }
 
@@ -418,8 +386,7 @@ void Valence_Angles( reax_system *system, control_params *control,
                             e_ang_total += e_ang;
 
 #if defined(DEBUG_FOCUS)
-                            if ( IS_NAN_REAL(e_ang) )
-                            {
+                            if ( IS_NAN_REAL(e_ang) ) {
                                 fprintf( stderr, "[ERROR] NaN detected for e_ang (j = %d). Terminating...\n", j );
                                 fprintf( stderr, "[INFO] f7_ij = %f\n", f7_ij );
                                 fprintf( stderr, "[INFO] f7_jk = %f\n", f7_jk );
@@ -451,8 +418,7 @@ void Valence_Angles( reax_system *system, control_params *control,
                             e_pen_total += e_pen;
 
 #if defined(DEBUG_FOCUS)
-                            if ( IS_NAN_REAL(e_ang) )
-                            {
+                            if ( IS_NAN_REAL(e_ang) ) {
                                 fprintf( stderr, "[ERROR] NaN detected for e_pen (j = %d). Terminating...\n", j );
                                 fprintf( stderr, "[INFO] p_pen1 = %f\n", p_pen1 );
                                 fprintf( stderr, "[INFO] f9_Dj = %f\n", f9_Dj );
@@ -492,8 +458,7 @@ void Valence_Angles( reax_system *system, control_params *control,
 #if defined(QMMM)
                             if ( system->atoms[i].qmmm_mask == TRUE
                                     && system->atoms[j].qmmm_mask == TRUE
-                                    && system->atoms[k].qmmm_mask == TRUE )
-                            {
+                                    && system->atoms[k].qmmm_mask == TRUE ) {
 #endif
 
                             /* calculate force contributions */
@@ -518,8 +483,7 @@ void Valence_Angles( reax_system *system, control_params *control,
 #endif
                             workspace->CdDelta[k] += CEcoa5;
 
-                            for ( t = start_j; t < end_j; ++t )
-                            {
+                            for ( t = start_j; t < end_j; ++t ) {
                                 pbond_jt = &bond_list[t];
                                 bo_jt = &pbond_jt->bo_data;
                                 temp_bo_jt = bo_jt->BO;
@@ -542,15 +506,12 @@ void Valence_Angles( reax_system *system, control_params *control,
 
                             if ( control->compute_pressure == FALSE &&
                                     (control->ensemble == NVE || control->ensemble == nhNVT
-                                     || control->ensemble == bNVT) )
-                            {
+                                     || control->ensemble == bNVT) ) {
                                 rvec_ScaledAdd( *f_i, CEval8, p_ijk->dcos_di );
                                 rvec_ScaledAdd( *f_j, CEval8, p_ijk->dcos_dj );
                                 rvec_ScaledAdd( *f_k, CEval8, p_ijk->dcos_dk );
-                            }
-                            else if ( control->ensemble == sNPT || control->ensemble == iNPT
-                                    || control->ensemble == aNPT || control->compute_pressure == TRUE )
-                            {
+                            } else if ( control->ensemble == sNPT || control->ensemble == iNPT
+                                    || control->ensemble == aNPT || control->compute_pressure == TRUE ) {
                                 /* terms not related to bond order derivatives
                                  * are added directly into
                                  * forces and pressure vector/tensor */
@@ -667,8 +628,7 @@ void Valence_Angles( reax_system *system, control_params *control,
                             Add_dBO( system, lists, j, pk, CEval2, workspace->f_ang );
                             Add_dDelta( system, lists, j, CEval3 + CEval7, workspace->f_ang );
 
-                            for ( t = start_j; t < end_j; ++t )
-                            {
+                            for ( t = start_j; t < end_j; ++t ) {
                                 pbond_jt = &bond_list[t];
                                 bo_jt = &pbond_jt->bo_data;
                                 temp_bo_jt = bo_jt->BO;
@@ -716,15 +676,13 @@ void Valence_Angles( reax_system *system, control_params *control,
     data->E_Pen += e_pen_total;
     data->E_Coa += e_coa_total;
 
-    if ( num_thb_intrs >= thb_intrs->total_intrs * DANGER_ZONE )
-    {
-        workspace->realloc.total_thbodies = (int32_t) CEIL( num_thb_intrs * SAFE_ZONE );
+    if ( num_thb_intrs >= (uint32_t) (thb_intrs->total_intrs * DANGER_ZONE) ) {
+        workspace->realloc.total_thbodies = (uint32_t) CEIL( num_thb_intrs * SAFE_ZONE );
         workspace->realloc.thbody = TRUE;
 
         /* retry functionality is not implemented as valence angle list
          * computation is not an atomic transaction, so use older reallocation strategy for now */
-        if ( num_thb_intrs > thb_intrs->total_intrs )
-        {
+        if ( num_thb_intrs > thb_intrs->total_intrs ) {
             fprintf( stderr, "[ERROR] step%d-ran out of space on angle_list: top=%d, max=%d",
                      data->step, num_thb_intrs, thb_intrs->total_intrs );
             exit( INSUFFICIENT_MEMORY );

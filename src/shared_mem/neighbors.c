@@ -41,36 +41,30 @@
  * 
  * Define the preprocessor definition SMALL_BOX_SUPPORT to enable (in
  * reax_types.h). */
-typedef int32_t (*count_far_neighbors_function)( rvec, rvec, int32_t, int32_t,
+typedef uint32_t (*count_far_neighbors_function)( rvec, rvec, uint32_t, uint32_t,
         simulation_box const * const, real );
 
-typedef int32_t (*find_far_neighbors_function)( rvec, rvec, int32_t, int32_t,
-        simulation_box const * const, real, far_neighbor_data * const, int32_t );
+typedef uint32_t (*find_far_neighbors_function)( rvec, rvec, uint32_t, uint32_t,
+        simulation_box const * const, real, far_neighbor_data * const, uint32_t );
 
 
 static void Choose_Neighbor_Counter( reax_system const * const system,
         control_params const * const control,
         count_far_neighbors_function *Count_Far_Neighbors )
 {
-    if ( control->periodic_boundaries == TRUE )
-    {
+    if ( control->periodic_boundaries == TRUE ) {
 #if defined(SMALL_BOX_SUPPORT)
         if ( system->box.box_norms[0] >= 2.0 * control->vlist_cut
                 && system->box.box_norms[1] >= 2.0 * control->vlist_cut
-                && system->box.box_norms[2] >= 2.0 * control->vlist_cut )
-        {
+                && system->box.box_norms[2] >= 2.0 * control->vlist_cut ) {
             *Count_Far_Neighbors = &Count_Periodic_Far_Neighbors_Big_Box;
-        }
-        else
-        {
+        } else {
             *Count_Far_Neighbors = &Count_Periodic_Far_Neighbors_Small_Box;
         }
 #else
         *Count_Far_Neighbors = &Count_Periodic_Far_Neighbors_Big_Box;
 #endif
-    }
-    else
-    {
+    } else {
         *Count_Far_Neighbors = &Count_Non_Periodic_Far_Neighbors;
     }
 }
@@ -80,25 +74,19 @@ static void Choose_Neighbor_Finder( reax_system const * const system,
         control_params const * const control,
         find_far_neighbors_function *Find_Far_Neighbors )
 {
-    if ( control->periodic_boundaries == TRUE )
-    {
+    if ( control->periodic_boundaries == TRUE ) {
 #if defined(SMALL_BOX_SUPPORT)
         if ( system->box.box_norms[0] >= 2.0 * control->vlist_cut
                 && system->box.box_norms[1] >= 2.0 * control->vlist_cut
-                && system->box.box_norms[2] >= 2.0 * control->vlist_cut )
-        {
+                && system->box.box_norms[2] >= 2.0 * control->vlist_cut ) {
             *Find_Far_Neighbors = &Find_Periodic_Far_Neighbors_Big_Box;
-        }
-        else
-        {
+        } else {
             *Find_Far_Neighbors = &Find_Periodic_Far_Neighbors_Small_Box;
         }
 #else
         *Find_Far_Neighbors = &Find_Periodic_Far_Neighbors_Big_Box;
 #endif
-    }
-    else
-    {
+    } else {
         *Find_Far_Neighbors = &Find_Non_Periodic_Far_Neighbors;
     }
 }
@@ -107,22 +95,30 @@ static void Choose_Neighbor_Finder( reax_system const * const system,
 #if defined(DEBUG_FOCUS)
 static int32_t compare_far_nbrs( const void *v1, const void *v2 )
 {
-    return ((*(far_neighbor_data *)v1).nbr - (*(far_neighbor_data *)v2).nbr);
+    int32_t ret;
+
+    if ( (*(far_neighbor_data *)v1).nbr > (*(far_neighbor_data *)v2).nbr ) {
+        ret = 1;
+    } else if ( (*(far_neighbor_data *)v1).nbr < (*(far_neighbor_data *)v2).nbr ) {
+        ret = -1;
+    } else {
+        ret = 0;
+    }
+
+    return ret;
 }
 #endif
 
 
 static inline real DistSqr_to_CP( rvec cp, rvec x )
 {
-    int32_t i;
+    uint32_t i;
     real d_sqr;
 
     d_sqr = 0.0;
 
-    for ( i = 0; i < 3; ++i )
-    {
-        if ( cp[i] > NEG_INF )
-        {
+    for ( i = 0; i < 3; ++i ) {
+        if ( cp[i] > NEG_INF ) {
             d_sqr += SQR( cp[i] - x[i] );
         }
     }
@@ -136,11 +132,11 @@ void Estimate_Num_Neighbors( reax_system const * const system,
         control_params const * const control, static_storage * const workspace,
         reax_list ** const lists )
 {
-    int32_t i, j, k, l, m, itr;
+    uint32_t i, j, k, l, m, itr;
     int32_t x, y, z;
-    int32_t atom1, atom2, max;
-    int32_t num_far, count;
-    int32_t *nbr_atoms;
+    uint32_t atom1, atom2, max;
+    uint32_t num_far, count;
+    uint32_t *nbr_atoms;
     ivec *nbrs;
     rvec *nbrs_cp;
     grid const * const g = &system->g;
@@ -152,30 +148,24 @@ void Estimate_Num_Neighbors( reax_system const * const system,
 
     /* for each cell in the grid along the 3
      * Cartesian directions: (i, j, k) => (x, y, z) */
-    for ( i = 0; i < g->ncell[0]; i++ )
-    {
-        for ( j = 0; j < g->ncell[1]; j++ )
-        {
-            for ( k = 0; k < g->ncell[2]; k++ )
-            {
+    for ( i = 0; i < g->ncell[0]; i++ ) {
+        for ( j = 0; j < g->ncell[1]; j++ ) {
+            for ( k = 0; k < g->ncell[2]; k++ ) {
                 nbrs = g->nbrs[i][j][k];
                 nbrs_cp = g->nbrs_cp[i][j][k];
 
                 /* for each atom in the current cell */
-                for ( l = 0; l < g->top[i][j][k]; ++l )
-                {
+                for ( l = 0; l < g->top[i][j][k]; ++l ) {
                     atom1 = g->atoms[i][j][k][l];
                     itr = 0;
 
                     /* for each of the neighboring grid cells within
                      * the Verlet list cutoff distance */
-                    while ( nbrs[itr][0] >= 0 )
-                    {
+                    while ( nbrs[itr][0] >= 0 ) {
                         /* if the Verlet list cutoff covers the closest point
                          * in the neighboring grid cell, then search through the cell's atoms */
                         if ( DistSqr_to_CP(nbrs_cp[itr], system->atoms[atom1].x )
-                                <= SQR(control->vlist_cut) )
-                        {
+                                <= SQR(control->vlist_cut) ) {
                             x = nbrs[itr][0];
                             y = nbrs[itr][1];
                             z = nbrs[itr][2];
@@ -186,12 +176,10 @@ void Estimate_Num_Neighbors( reax_system const * const system,
                              * we have to compare atom1 with its own periodic images as well
                              * in the case of periodic boundary conditions,
                              * hence the equality in the if stmt below */
-                            for ( m = 0; m < max; ++m )
-                            {
+                            for ( m = 0; m < max; ++m ) {
                                 atom2 = nbr_atoms[m];
 
-                                if ( atom1 >= atom2 )
-                                {
+                                if ( atom1 >= atom2 ) {
                                     count = Count_Far_Neighbors( system->atoms[atom1].x,
                                                 system->atoms[atom2].x, atom1, atom2, 
                                                 &system->box, control->vlist_cut );
@@ -208,7 +196,7 @@ void Estimate_Num_Neighbors( reax_system const * const system,
         }
     }
 
-    workspace->realloc.total_far_nbrs = (int32_t) CEIL( num_far * SAFE_ZONE );
+    workspace->realloc.total_far_nbrs = (uint32_t) CEIL( num_far * SAFE_ZONE );
 }
 
 
@@ -217,11 +205,13 @@ int32_t Generate_Neighbor_Lists( reax_system * const system,
         control_params const * const control, simulation_data * const data,
         static_storage * const workspace, reax_list ** const lists )
 {
-    int32_t i, j, k, l, m, itr;
+    uint32_t i, j, k, l, m, itr;
     int32_t x, y, z;
-    int32_t atom1, atom2, max;
-    int32_t num_far, count, flag_oom, ret;
-    int32_t *nbr_atoms;
+    uint32_t atom1, atom2, max;
+    uint32_t num_far, count;
+    bool flag_oom;
+    uint32_t *nbr_atoms;
+    int32_t ret;
     ivec *nbrs;
     rvec *nbrs_cp;
     grid const * const g = &system->g;
@@ -237,39 +227,34 @@ int32_t Generate_Neighbor_Lists( reax_system * const system,
 
     Choose_Neighbor_Finder( system, control, &Find_Far_Neighbors );
 
-    for ( i = 0; i < far_nbrs->n; ++i )
-    {
+    for ( i = 0; i < far_nbrs->n; ++i ) {
         Set_Start_Index( i, 0, far_nbrs );
+    }
+    for ( i = 0; i < far_nbrs->n; ++i ) {
         Set_End_Index( i, 0, far_nbrs );
     }
 
     /* for each cell in the grid along the 3
      * Cartesian directions: (i, j, k) => (x, y, z) */
-    for ( i = 0; i < g->ncell[0]; i++ )
-    {
-        for ( j = 0; j < g->ncell[1]; j++ )
-        {
-            for ( k = 0; k < g->ncell[2]; k++ )
-            {
+    for ( i = 0; i < g->ncell[0]; i++ ) {
+        for ( j = 0; j < g->ncell[1]; j++ ) {
+            for ( k = 0; k < g->ncell[2]; k++ ) {
                 nbrs = g->nbrs[i][j][k];
                 nbrs_cp = g->nbrs_cp[i][j][k];
 
                 /* for each atom in the current cell */
-                for ( l = 0; l < g->top[i][j][k]; ++l )
-                {
+                for ( l = 0; l < g->top[i][j][k]; ++l ) {
                     atom1 = g->atoms[i][j][k][l];
                     Set_Start_Index( atom1, num_far, far_nbrs );
                     itr = 0;
 
                     /* for each of the neighboring grid cells within
                      * the Verlet list cutoff distance */
-                    while ( nbrs[itr][0] >= 0 )
-                    {
+                    while ( nbrs[itr][0] >= 0 ) {
                         /* if the Verlet list cutoff covers the closest point
                          * in the neighboring grid cell, then search through the cell's atoms */
                         if ( DistSqr_to_CP( nbrs_cp[itr], system->atoms[atom1].x )
-                                <= SQR(control->vlist_cut) )
-                        {
+                                <= SQR(control->vlist_cut) ) {
                             x = nbrs[itr][0];
                             y = nbrs[itr][1];
                             z = nbrs[itr][2];
@@ -280,12 +265,10 @@ int32_t Generate_Neighbor_Lists( reax_system * const system,
                              * we have to compare atom1 with its own periodic images as well
                              * in the case of periodic boundary conditions,
                              * hence the equality in the if stmt below */
-                            for ( m = 0; m < max; ++m )
-                            {
+                            for ( m = 0; m < max; ++m ) {
                                 atom2 = nbr_atoms[m];
 
-                                if ( atom1 >= atom2 )
-                                {
+                                if ( atom1 >= atom2 ) {
                                     count = Find_Far_Neighbors( system->atoms[atom1].x,
                                             system->atoms[atom2].x, atom1, atom2,
                                             &system->box, control->vlist_cut,
@@ -294,8 +277,7 @@ int32_t Generate_Neighbor_Lists( reax_system * const system,
 
                                     num_far += count;
 
-                                    if ( num_far >= far_nbrs->total_intrs )
-                                    {
+                                    if ( num_far >= far_nbrs->total_intrs ) {
                                         goto OUT_OF_MEMORY;
                                     }
                                 }
@@ -312,20 +294,17 @@ int32_t Generate_Neighbor_Lists( reax_system * const system,
     }
 
     //TODO: conditionally perform these assignments if periodic boundary conditions are enabled
-    for ( i = 0; i < system->N; i++ )
-    {
+    for ( i = 0; i < system->N; i++ ) {
         ivec_MakeZero( system->atoms[i].rel_map );
     }
 
-    if ( flag_oom == TRUE )
-    {
+    if ( flag_oom == TRUE ) {
         OUT_OF_MEMORY:
             ret = FAILURE;
     }
 
 #if defined(DEBUG_FOCUS)
-    for ( i = 0; i < system->N; ++i )
-    {
+    for ( i = 0; i < system->N; ++i ) {
         qsort( &far_nbrs->far_nbr_list[ Start_Index(i, far_nbrs) ],
                 Num_Entries(i, far_nbrs), sizeof(far_neighbor_data),
                 compare_far_nbrs );

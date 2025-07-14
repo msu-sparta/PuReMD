@@ -33,14 +33,14 @@ typedef enum
 void Sort_Matrix_Rows( sparse_matrix * const );
 
 void setup_sparse_approx_inverse( const sparse_matrix * const, sparse_matrix *, 
-        sparse_matrix *, sparse_matrix *, sparse_matrix *, const real, int32_t );
+        sparse_matrix *, sparse_matrix *, sparse_matrix *, const real, bool );
 
-int32_t Estimate_LU_Fill( const sparse_matrix * const, const real * const );
+uint32_t Estimate_LU_Fill( const sparse_matrix * const, const real * const );
 
 void Calculate_Droptol( const sparse_matrix * const,
         real * const, const real );
 
-real jacobi( const sparse_matrix * const, real * const, int32_t, int32_t );
+real jacobi( const sparse_matrix * const, real * const, uint8_t, uint32_t );
 
 real ICHOLT( const sparse_matrix * const, const real * const,
         sparse_matrix * const, sparse_matrix * const );
@@ -75,7 +75,7 @@ void tri_solve( const sparse_matrix * const, const real * const,
 void tri_solve_level_sched( static_storage *,
         const sparse_matrix * const,
         const real * const, real * const,
-        const TRIANGULARITY, int32_t );
+        const TRIANGULARITY, bool );
 
 void jacobi_iter( const static_storage * const,
         const sparse_matrix * const, const real * const,
@@ -84,29 +84,29 @@ void jacobi_iter( const static_storage * const,
 
 void setup_graph_coloring( const control_params * const,
         const static_storage * const, const sparse_matrix * const,
-        sparse_matrix *, sparse_matrix *, int32_t );
+        sparse_matrix *, sparse_matrix *, bool );
 
-int32_t GMRES( const static_storage * const, const control_params * const,
+uint32_t GMRES( const static_storage * const, const control_params * const,
         simulation_data * const, const sparse_matrix * const,
         const real * const, const real, real * const,
-        const int32_t );
+        const bool );
 
-int32_t GMRES_HouseHolder( const static_storage * const, const control_params * const,
+uint32_t GMRES_HouseHolder( const static_storage * const, const control_params * const,
         simulation_data * const, const sparse_matrix * const,
         const real * const, const real, real * const,
-        const int32_t );
+        const bool );
 
-int32_t CG( const static_storage * const, const control_params * const,
+uint32_t CG( const static_storage * const, const control_params * const,
         simulation_data * const, const sparse_matrix * const, const real * const,
-        const real, real * const, const int32_t );
+        const real, real * const, const bool );
 
-int32_t BiCGStab( const static_storage * const, const control_params * const,
+uint32_t BiCGStab( const static_storage * const, const control_params * const,
         simulation_data * const, const sparse_matrix * const, const real * const,
-        const real, real * const, const int32_t );
+        const real, real * const, const bool );
 
-int32_t SDM( const static_storage * const, const control_params * const,
+uint32_t SDM( const static_storage * const, const control_params * const,
         simulation_data * const, const sparse_matrix * const, const real * const, const real,
-        real * const, const int32_t );
+        real * const, const bool );
 
 real condest( const sparse_matrix * const, const sparse_matrix * const );
 

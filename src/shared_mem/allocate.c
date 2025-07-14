@@ -29,67 +29,55 @@
 /* allocate space for atoms */
 void PreAllocate_Space( reax_system * const system,
         control_params const  * const control,
-        static_storage * const workspace, int32_t n )
+        static_storage * const workspace, uint32_t n )
 {
-    int32_t i;
+    uint32_t i;
 
-    if ( system->prealloc_allocated == FALSE )
-    {
+    if ( system->prealloc_allocated == FALSE ) {
         system->prealloc_allocated = TRUE;
 
         system->atoms = scalloc( n, sizeof(reax_atom), __FILE__, __LINE__ );
-        workspace->orig_id = scalloc( n, sizeof(int32_t), __FILE__, __LINE__ );
+        workspace->orig_id = scalloc( n, sizeof(uint32_t), __FILE__, __LINE__ );
 
         /* bond restriction info */
-        if ( control->restrict_bonds )
-        {
-            workspace->restricted = scalloc( n, sizeof(int32_t), __FILE__, __LINE__ );
-            workspace->restricted_list = scalloc( n, sizeof(int32_t *), __FILE__, __LINE__ );
+        if ( control->restrict_bonds ) {
+            workspace->restricted = scalloc( n, sizeof(uint32_t), __FILE__, __LINE__ );
+            workspace->restricted_list = scalloc( n, sizeof(uint32_t *), __FILE__, __LINE__ );
 
-            for ( i = 0; i < n; ++i )
-            {
-                workspace->restricted_list[i] = scalloc( MAX_RESTRICT, sizeof(int32_t),
+            for ( i = 0; i < n; ++i ) {
+                workspace->restricted_list[i] = scalloc( MAX_RESTRICT, sizeof(uint32_t),
                         __FILE__, __LINE__ );
             }
         }
 
         if ( control->geo_format == BGF
                 || control->geo_format == ASCII_RESTART
-                || control->geo_format == BINARY_RESTART )
-        {
+                || control->geo_format == BINARY_RESTART ) {
             workspace->map_serials = scalloc( MAX_ATOM_ID, sizeof(int32_t),
                     __FILE__, __LINE__ );
         }
-    }
-    else
-    {
+    } else {
         sfree( system->atoms, __FILE__, __LINE__ );
         sfree( workspace->orig_id, __FILE__, __LINE__ );
 
         /* bond restriction info */
-        if ( control->restrict_bonds )
-        {
+        if ( control->restrict_bonds ) {
             sfree( workspace->restricted, __FILE__, __LINE__ );
-
-            for ( i = 0; i < n; ++i )
-            {
+            for ( i = 0; i < n; ++i ) {
                 sfree( workspace->restricted_list[i], __FILE__, __LINE__ );
             }
-
             sfree( workspace->restricted_list, __FILE__, __LINE__ );
         }
 
         system->atoms = scalloc( n, sizeof(reax_atom), __FILE__, __LINE__ );
-        workspace->orig_id = scalloc( n, sizeof(int32_t), __FILE__, __LINE__ );
+        workspace->orig_id = scalloc( n, sizeof(uint32_t), __FILE__, __LINE__ );
 
         /* bond restriction info */
-        if ( control->restrict_bonds )
-        {
+        if ( control->restrict_bonds ) {
             workspace->restricted = scalloc( n, sizeof(int32_t), __FILE__, __LINE__ );
             workspace->restricted_list = scalloc( n, sizeof(int32_t*), __FILE__, __LINE__ );
 
-            for ( i = 0; i < n; ++i )
-            {
+            for ( i = 0; i < n; ++i ) {
                 workspace->restricted_list[i] = scalloc( MAX_RESTRICT, sizeof(int32_t),
                         __FILE__, __LINE__ );
             }
@@ -98,14 +86,12 @@ void PreAllocate_Space( reax_system * const system,
 }
 
 
-static void Reallocate_Neighbor_List( reax_list * const far_nbr_list, int32_t n,
-        int32_t n_max, int32_t num_intrs )
+static void Reallocate_Neighbor_List( reax_list * const far_nbr_list, uint32_t n,
+        uint32_t n_max, uint32_t num_intrs )
 {
-    if ( far_nbr_list->allocated == TRUE )
-    {
+    if ( far_nbr_list->allocated == TRUE ) {
         Delete_List( TYP_FAR_NEIGHBOR, far_nbr_list );
     }
-
     Make_List( n, n_max, num_intrs, TYP_FAR_NEIGHBOR, far_nbr_list );
 }
 
@@ -117,7 +103,7 @@ static void Reallocate_Neighbor_List( reax_list * const far_nbr_list, int32_t n,
  * n_max: max. num. rows of the matrix
  * m: number of nonzeros to allocate space for in matrix
  * */
-void Allocate_Matrix( sparse_matrix * const H, int32_t n, int32_t n_max, int32_t m )
+void Allocate_Matrix( sparse_matrix * const H, uint32_t n, uint32_t n_max, uint32_t m )
 {
     H->allocated = TRUE;
 
@@ -145,46 +131,40 @@ void Deallocate_Matrix( sparse_matrix * const H )
 }
 
 
-static void Reallocate_Matrix( sparse_matrix *H, int32_t n, int32_t n_max, int32_t m )
+static void Reallocate_Matrix( sparse_matrix *H, uint32_t n, uint32_t n_max, uint32_t m )
 {
     Deallocate_Matrix( H );
     Allocate_Matrix( H, n, n_max, m );
 }
 
 
-static void Reallocate_List( reax_list * const list, int32_t n, int32_t n_max,
-        int32_t max_intrs, int32_t type )
+static void Reallocate_List( reax_list * const list, uint32_t n, uint32_t n_max,
+        uint32_t max_intrs, uint8_t type )
 {
-    if ( list->allocated == TRUE )
-    {
+    if ( list->allocated == TRUE ) {
         Delete_List( type, list );
     }
     Make_List( n, n_max, max_intrs, type, list );
 }
 
 
-void Reallocate_Part1( reax_system * const system, control_params const * const control,
-        static_storage * const workspace, reax_list ** const lists )
+void Reallocate_Part1( reax_system * const system, static_storage * const workspace )
 {
-    int32_t i, j, k;
+    uint32_t i, j, k;
     reallocate_data *realloc;
     grid *g;
 
     realloc = &workspace->realloc;
     g = &system->g;
 
-    if ( realloc->gcell_atoms > -1 )
-    {
+    if ( realloc->gcell_atoms > 0 ) {
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "[INFO] reallocating gcell: g->max_atoms: %d\n", g->max_atoms );
 #endif
 
-        for ( i = 0; i < g->ncell_max[0]; i++ )
-        {
-            for ( j = 0; j < g->ncell_max[1]; j++ )
-            {
-                for ( k = 0; k < g->ncell_max[2]; k++ )
-                {
+        for ( i = 0; i < g->ncell_max[0]; i++ ) {
+            for ( j = 0; j < g->ncell_max[1]; j++ ) {
+                for ( k = 0; k < g->ncell_max[2]; k++ ) {
                     sfree( g->atoms[i][j][k], __FILE__, __LINE__ );
                     g->atoms[i][j][k] = scalloc( workspace->realloc.gcell_atoms,
                             sizeof(int32_t), __FILE__, __LINE__ );
@@ -192,7 +172,7 @@ void Reallocate_Part1( reax_system * const system, control_params const * const 
             }
         }
 
-        realloc->gcell_atoms = -1;
+        realloc->gcell_atoms = 0;
     }
 }
 
@@ -201,22 +181,20 @@ void Reallocate_Part2( reax_system const * const system,
         control_params const * const control, simulation_data const * const data,
         static_storage * const workspace, reax_list ** const lists )
 {
-    int32_t renbr;
+    uint32_t renbr;
     reallocate_data *realloc;
 
     realloc = &workspace->realloc;
     renbr = ((data->step - data->prev_steps) % control->reneighbor) == 0 ? TRUE : FALSE;
 
-    if ( renbr == TRUE && realloc->far_nbrs == TRUE )
-    {
+    if ( renbr == TRUE && realloc->far_nbrs == TRUE ) {
         Reallocate_Neighbor_List( lists[FAR_NBRS],
                 system->N, system->N_max, realloc->total_far_nbrs );
 
         realloc->far_nbrs = FALSE;
     }
 
-    if ( realloc->cm == TRUE )
-    {
+    if ( realloc->cm == TRUE ) {
         Reallocate_Matrix( &workspace->H, system->N_cm, system->N_cm_max,
                 realloc->total_cm_entries );
         Reallocate_Matrix( &workspace->H_sp, system->N_cm, system->N_cm_max,
@@ -225,8 +203,7 @@ void Reallocate_Part2( reax_system const * const system,
         realloc->cm = FALSE;
     }
 
-    if ( realloc->bonds == TRUE )
-    {
+    if ( realloc->bonds == TRUE ) {
         Reallocate_List( lists[BONDS], system->N, system->N_max,
                 realloc->total_bonds, TYP_BOND );
 
@@ -234,18 +211,16 @@ void Reallocate_Part2( reax_system const * const system,
         realloc->thbody = TRUE;
     }
 
-    if ( control->hbond_cut > 0.0 && workspace->num_H > 0 && realloc->hbonds == TRUE )
-    {
+    if ( control->hbond_cut > 0.0 && workspace->num_H > 0 && realloc->hbonds == TRUE ) {
         Reallocate_List( lists[HBONDS], system->N, system->N_max,
                 realloc->total_hbonds, TYP_HBOND );
 
         realloc->hbonds = FALSE;
     }
 
-    if ( realloc->thbody == TRUE )
-    {
+    if ( realloc->thbody == TRUE ) {
         Reallocate_List( lists[THREE_BODIES], realloc->total_bonds,
-                (int32_t) CEIL( realloc->total_bonds * SAFE_ZONE ),
+                (uint32_t) CEIL( realloc->total_bonds * SAFE_ZONE ),
                 realloc->total_thbodies, TYP_THREE_BODY );
 
         realloc->thbody = FALSE;

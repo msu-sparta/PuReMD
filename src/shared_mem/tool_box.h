@@ -49,7 +49,7 @@ real Get_Time( );
 real Get_Timing_Info( real );
 
 /* from io_tools.h */
-int32_t Get_Atom_Type( reax_interaction *, char *, size_t );
+uint32_t Get_Atom_Type( reax_interaction *, char *, size_t );
 
 char * Get_Element( reax_system *, int32_t );
 
@@ -61,7 +61,7 @@ void Allocate_Tokenizer_Space( char **, size_t, char **, size_t, char ***,
 void Deallocate_Tokenizer_Space( char **, char **, char ***,
         size_t );
 
-int32_t Tokenize( char *, char ***, size_t );
+uint32_t Tokenize( char *, char ***, size_t );
 
 void * smalloc( size_t, const char * const, int32_t );
 
@@ -76,6 +76,8 @@ FILE * sfopen( const char *, const char *, const char * const, int32_t );
 void sfclose( FILE *, const char * const, int32_t );
 
 int32_t sstrtol( const char * const, const char * const, int32_t );
+
+uint32_t sstrtoul( const char * const, const char * const, int32_t );
 
 double sstrtod( const char * const, const char * const, int32_t );
 

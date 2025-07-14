@@ -35,23 +35,22 @@ typedef struct
 
 
 #if defined(TEST_FORCES)
-void Add_dBO( reax_system*, reax_list**, int, int, real, rvec* );
+void Add_dBO( reax_system*, reax_list**, uint32_t, uint32_t, real, rvec* );
 
-void Add_dBOpinpi2( reax_system*, reax_list**, int, int, real, real, rvec*, rvec* );
+void Add_dBOpinpi2( reax_system*, reax_list**, uint32_t, uint32_t, real, real, rvec*, rvec* );
 
-void Add_dBO_to_Forces( reax_system*, reax_list**, int, int, real );
+void Add_dBO_to_Forces( reax_system*, reax_list**, uint32_t, real );
 
-void Add_dBOpinpi2_to_Forces( reax_system*, reax_list**, int, int, real, real );
+void Add_dBOpinpi2_to_Forces( reax_system*, reax_list**, uint32_t, real, real );
 
-void Add_dDelta( reax_system*, reax_list**, int, real, rvec* );
+void Add_dDelta( reax_system*, reax_list**, uint32_t, real, rvec* );
 
-void Add_dDelta_to_Forces( reax_system *, reax_list**, int, real );
+void Add_dDelta_to_Forces( reax_system *, reax_list**, uint32_t, real );
 #endif
 
-void Add_dBond_to_Forces( int, int, reax_system*, simulation_data*,
-        static_storage*, reax_list** );
+void Add_dBond_to_Forces( uint32_t, uint32_t, reax_system*, static_storage*, reax_list** );
 
-void Add_dBond_to_Forces_NPT( int, int, reax_system*, simulation_data*,
+void Add_dBond_to_Forces_NPT( uint32_t, uint32_t, reax_system*, simulation_data*,
         static_storage*, reax_list** );
 
 void BO( reax_system*, control_params*, simulation_data*,

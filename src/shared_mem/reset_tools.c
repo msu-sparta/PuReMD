@@ -36,10 +36,8 @@ void Reset_Pressures( control_params *control, simulation_data *data )
     rtensor_MakeZero( data->press );
 #if defined(_OPENMP)
     if ( control->ensemble == sNPT || control->ensemble == iNPT
-            || control->ensemble == aNPT || control->compute_pressure == TRUE )
-    {
-        for ( i = 0; i < control->num_threads; ++i )
-        {
+            || control->ensemble == aNPT || control->compute_pressure == TRUE ) {
+        for ( i = 0; i < control->num_threads; ++i ) {
             rtensor_MakeZero( data->press_local[i] );
         }
     }
@@ -50,58 +48,45 @@ void Reset_Pressures( control_params *control, simulation_data *data )
 #if defined(TEST_FORCES)
 static void Reset_Test_Forces( reax_system *system, static_storage *workspace )
 {
-    int32_t i;
+    uint32_t i;
 
-    for ( i = 0; i < system->N; i++ )
-    {
+    for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->dDelta[i] );
     }
-    for ( i = 0; i < system->N; i++ )
-    {
+    for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->f_ele[i] );
     }
-    for ( i = 0; i < system->N; i++ )
-    {
+    for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->f_vdw[i] );
     }
-    for ( i = 0; i < system->N; i++ )
-    {
+    for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->f_be[i] );
     }
-    for ( i = 0; i < system->N; i++ )
-    {
+    for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->f_lp[i] );
     }
-    for ( i = 0; i < system->N; i++ )
-    {
+    for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->f_ov[i] );
     }
-    for ( i = 0; i < system->N; i++ )
-    {
+    for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->f_un[i] );
     }
-    for ( i = 0; i < system->N; i++ )
-    {
+    for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->f_ang[i] );
     }
-    for ( i = 0; i < system->N; i++ )
-    {
+    for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->f_coa[i] );
     }
-    for ( i = 0; i < system->N; i++ )
-    {
+    for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->f_pen[i] );
     }
-    for ( i = 0; i < system->N; i++ )
-    {
+    for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->f_hb[i] );
     }
-    for ( i = 0; i < system->N; i++ )
-    {
+    for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->f_tor[i] );
     }
-    for ( i = 0; i < system->N; i++ )
-    {
+    for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->f_con[i] );
     }
 }
@@ -110,10 +95,9 @@ static void Reset_Test_Forces( reax_system *system, static_storage *workspace )
 
 void Reset_Atomic_Forces( reax_system* system )
 {
-    int32_t i;
+    uint32_t i;
 
-    for ( i = 0; i < system->N; ++i )
-    {
+    for ( i = 0; i < system->N; ++i ) {
         rvec_MakeZero( system->atoms[i].f );
     }
 }
@@ -142,21 +126,18 @@ void Reset_Energies( simulation_data* data )
 
 void Reset_Workspace( reax_system *system, static_storage *workspace )
 {
-    int32_t i;
+    uint32_t i;
 #if defined(_OPENMP)
     int32_t tid;
 #endif
 
-    for ( i = 0; i < system->N; i++ )
-    {
+    for ( i = 0; i < system->N; i++ ) {
         workspace->total_bond_order[i] = 0.0;
     }
-    for ( i = 0; i < system->N; i++ )
-    {
+    for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->dDeltap_self[i] );
     }
-    for ( i = 0; i < system->N; i++ )
-    {
+    for ( i = 0; i < system->N; i++ ) {
         workspace->CdDelta[i] = 0.0;
     }
 
@@ -165,9 +146,8 @@ void Reset_Workspace( reax_system *system, static_storage *workspace )
     {
         tid = omp_get_thread_num( );
 
-        for ( i = 0; i < system->N; ++i )
-        {
-            rvec_MakeZero( workspace->f_local[tid * system->N + i] );
+        for ( i = 0; i < system->N; ++i ) {
+            rvec_MakeZero( workspace->f_local[(uint32_t) tid * system->N + i] );
         }
     }
 #endif
@@ -186,8 +166,7 @@ void Reset( reax_system *system, control_params *control,
     Reset_Energies( data );
 
     if ( control->ensemble == sNPT || control->ensemble == iNPT
-            || control->ensemble == aNPT || control->compute_pressure == TRUE )
-    {
+            || control->ensemble == aNPT || control->compute_pressure == TRUE ) {
         Reset_Pressures( control, data );
     }
 
@@ -197,14 +176,11 @@ void Reset( reax_system *system, control_params *control,
 
 void Reset_Grid( grid *g )
 {
-    int32_t i, j, k;
+    uint32_t i, j, k;
 
-    for ( i = 0; i < g->ncell[0]; i++ )
-    {
-        for ( j = 0; j < g->ncell[1]; j++ )
-        {
-            for ( k = 0; k < g->ncell[2]; k++ )
-            {
+    for ( i = 0; i < g->ncell[0]; i++ ) {
+        for ( j = 0; j < g->ncell[1]; j++ ) {
+            for ( k = 0; k < g->ncell[2]; k++ ) {
                 g->top[i][j][k] = 0;
             }
         }
@@ -212,12 +188,11 @@ void Reset_Grid( grid *g )
 }
 
 
-void Reset_Marks( grid *g, ivec *grid_stack, int32_t grid_top )
+void Reset_Marks( grid *g, ivec *grid_stack, uint32_t grid_top )
 {
-    int32_t i;
+    uint32_t i;
 
-    for ( i = 0; i < grid_top; ++i )
-    {
-        g->mark[grid_stack[i][0]][grid_stack[i][1]][grid_stack[i][2]] = 0;
+    for ( i = 0; i < grid_top; ++i ) {
+        g->mark[grid_stack[i][0]][grid_stack[i][1]][grid_stack[i][2]] = FALSE;
     }
 }

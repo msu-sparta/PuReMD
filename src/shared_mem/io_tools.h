@@ -25,10 +25,6 @@
 #include "reax_types.h"
 
 
-char *Get_Element( reax_system*, int32_t );
-
-char *Get_Atom_Name( reax_system*, int32_t );
-
 void Print_Near_Neighbors( reax_system*, control_params*, static_storage*,
         reax_list** );
 
@@ -45,11 +41,11 @@ void Output_Results( reax_system*, control_params*, simulation_data*,
 void Print_Bond_Orders( reax_system*, control_params*, simulation_data*,
         static_storage*, reax_list**, output_controls* );
 
-void Print_Linear_System( reax_system*, control_params*, static_storage*, int32_t );
+void Print_Linear_System( reax_system*, control_params*, static_storage*, uint32_t );
 
-void Print_Charges( reax_system*, control_params*, static_storage*, int32_t );
+void Print_Charges( reax_system*, control_params*, static_storage*, uint32_t );
 
-void Print_Soln( static_storage*, real*, real*, real*, int32_t );
+void Print_Soln( static_storage*, real*, real*, real*, uint32_t );
 
 void Print_Sparse_Matrix( sparse_matrix* );
 

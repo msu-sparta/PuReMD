@@ -31,122 +31,116 @@
  * NOTE: this assumes the atom positions are within the 
  * simulation box boundaries [0, d_i) where d_i is the simulation
  * box length along a particular dimension */
-static int32_t Estimate_GCell_Population( reax_system * const system )
+static uint32_t Estimate_GCell_Population( reax_system * const system )
 {
-    int32_t i, j, k, l;
-    int32_t max_atoms;
+    uint32_t i, j, k, l;
+    uint32_t max_atoms;
     grid *g;
 
     g = &system->g;
 
     Reset_Grid( g );
 
-    for ( l = 0; l < system->N; l++ )
-    {
+    for ( l = 0; l < system->N; l++ ) {
         assert( system->atoms[l].x[0] >= 0.0 && system->atoms[l].x[0] < system->box.box_norms[0] );
         assert( system->atoms[l].x[1] >= 0.0 && system->atoms[l].x[1] < system->box.box_norms[1] );
         assert( system->atoms[l].x[2] >= 0.0 && system->atoms[l].x[2] < system->box.box_norms[2] );
 
-        i = (int32_t) (system->atoms[l].x[0] * g->inv_len[0]);
-        j = (int32_t) (system->atoms[l].x[1] * g->inv_len[1]);
-        k = (int32_t) (system->atoms[l].x[2] * g->inv_len[2]);
+        i = (uint32_t) (system->atoms[l].x[0] * g->inv_len[0]);
+        j = (uint32_t) (system->atoms[l].x[1] * g->inv_len[1]);
+        k = (uint32_t) (system->atoms[l].x[2] * g->inv_len[2]);
         g->top[i][j][k]++;
 
-//        fprintf( stderr, "\tatom%-6d (%8.3f%8.3f%8.3f) --> (%3d%3d%3d)\n",
+//        fprintf( stderr, "\tatom%-6u (%8.3f%8.3f%8.3f) --> (%3u%3u%3u)\n",
 //                l, system->atoms[l].x[0], system->atoms[l].x[1], system->atoms[l].x[2],
 //                i, j, k );
     }
 
     max_atoms = 0;
-    for ( i = 0; i < g->ncell[0]; i++ )
-    {
-        for ( j = 0; j < g->ncell[1]; j++ )
-        {
-            for ( k = 0; k < g->ncell[2]; k++ )
-            {
-                if ( max_atoms < g->top[i][j][k] )
-                {
+    for ( i = 0; i < g->ncell[0]; i++ ) {
+        for ( j = 0; j < g->ncell[1]; j++ ) {
+            for ( k = 0; k < g->ncell[2]; k++ ) {
+                if ( max_atoms < g->top[i][j][k] ) {
                     max_atoms = g->top[i][j][k];
                 }
             }
         }
     }
 
-    return MAX( max_atoms * SAFE_ZONE, MIN_GCELL_POPL );
+    return MAX( (uint32_t) (max_atoms * SAFE_ZONE), MIN_GCELL_POPL );
 }
 
 
-static void Allocate_Space_for_Grid( reax_system * const system, int32_t alloc )
+static void Allocate_Space_for_Grid( reax_system * const system, bool alloc )
 {
-    int32_t i, j, k, l, max_atoms;
+    uint32_t i, j, k, l, max_atoms;
     grid *g;
 
     g = &system->g;
     g->allocated = TRUE;
-    g->max_nbrs = (2 * g->spread[0] + 1)
-        * (2 * g->spread[1] + 1) * (2 * g->spread[2] + 1) + 3;
+    g->max_nbrs = (uint32_t) ((2 * g->spread[0] + 1)
+        * (2 * g->spread[1] + 1) * (2 * g->spread[2] + 1) + 3);
 
-    if ( alloc == TRUE )
-    {
+    if ( alloc == TRUE ) {
         /* allocate space for the new grid */
-        g->atoms = scalloc( g->ncell_max[0], sizeof( int32_t*** ),
+        g->atoms = scalloc( g->ncell_max[0], sizeof( uint32_t*** ),
                 __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
-            g->atoms[i] = scalloc( g->ncell_max[1], sizeof( int32_t** ),
+            g->atoms[i] = scalloc( g->ncell_max[1], sizeof( uint32_t** ),
                     __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
-                g->atoms[i][j] = scalloc( g->ncell_max[2], sizeof( int32_t* ),
+                g->atoms[i][j] = scalloc( g->ncell_max[2], sizeof( uint32_t* ),
                         __FILE__, __LINE__ );
 
-        g->top = scalloc( g->ncell_max[0], sizeof( int32_t** ),
+        g->top = scalloc( g->ncell_max[0], sizeof( uint32_t** ),
                 __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
-            g->top[i] = scalloc( g->ncell_max[1], sizeof( int32_t* ),
+            g->top[i] = scalloc( g->ncell_max[1], sizeof( uint32_t* ),
                     __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
-                g->top[i][j] = scalloc( g->ncell_max[2], sizeof( int32_t ),
+                g->top[i][j] = scalloc( g->ncell_max[2], sizeof( uint32_t ),
                         __FILE__, __LINE__ );
 
-        g->mark = scalloc( g->ncell_max[0], sizeof( int32_t** ),
+        g->mark = scalloc( g->ncell_max[0], sizeof( bool** ),
                 __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
-            g->mark[i] = scalloc( g->ncell_max[1], sizeof( int32_t* ),
+            g->mark[i] = scalloc( g->ncell_max[1], sizeof( bool* ),
                     __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
-                g->mark[i][j] = scalloc( g->ncell_max[2], sizeof( int32_t ),
+                g->mark[i][j] = scalloc( g->ncell_max[2], sizeof( bool ),
                         __FILE__, __LINE__ );
 
-        g->start = scalloc( g->ncell_max[0], sizeof( int32_t** ),
+        g->start = scalloc( g->ncell_max[0], sizeof( uint32_t** ),
                 __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
-            g->start[i] = scalloc( g->ncell_max[1], sizeof( int32_t* ),
+            g->start[i] = scalloc( g->ncell_max[1], sizeof( uint32_t* ),
                     __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
-                g->start[i][j] = scalloc( g->ncell_max[2], sizeof( int32_t ),
+                g->start[i][j] = scalloc( g->ncell_max[2], sizeof( uint32_t ),
                         __FILE__, __LINE__ );
 
-        g->end = scalloc( g->ncell_max[0], sizeof( int32_t** ),
+        g->end = scalloc( g->ncell_max[0], sizeof( uint32_t** ),
                 __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
-            g->end[i] = scalloc( g->ncell_max[1], sizeof( int32_t* ),
+            g->end[i] = scalloc( g->ncell_max[1], sizeof( uint32_t* ),
                     __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
-                g->end[i][j] = scalloc( g->ncell_max[2], sizeof( int32_t ),
+                g->end[i][j] = scalloc( g->ncell_max[2], sizeof( uint32_t ),
                         __FILE__, __LINE__ );
 
         g->nbrs = scalloc( g->ncell_max[0], sizeof( ivec*** ),
@@ -194,7 +188,7 @@ static void Allocate_Space_for_Grid( reax_system * const system, int32_t alloc )
     for ( i = 0; i < g->ncell[0]; i++ )
         for ( j = 0; j < g->ncell[1]; j++ )
             for ( k = 0; k < g->ncell[2]; k++ )
-                g->mark[i][j][k] = 0;
+                g->mark[i][j][k] = FALSE;
 
     for ( i = 0; i < g->ncell[0]; i++ )
         for ( j = 0; j < g->ncell[1]; j++ )
@@ -209,8 +203,7 @@ static void Allocate_Space_for_Grid( reax_system * const system, int32_t alloc )
     for ( i = 0; i < g->ncell[0]; i++ )
         for ( j = 0; j < g->ncell[1]; j++ )
             for ( k = 0; k < g->ncell[2]; k++ )
-                for ( l = 0; l < g->max_nbrs; ++l )
-                {
+                for ( l = 0; l < g->max_nbrs; ++l ) {
                     g->nbrs[i][j][k][l][0] = -1;
                     g->nbrs[i][j][k][l][1] = -1;
                     g->nbrs[i][j][k][l][2] = -1;
@@ -219,8 +212,7 @@ static void Allocate_Space_for_Grid( reax_system * const system, int32_t alloc )
     for ( i = 0; i < g->ncell[0]; i++ )
         for ( j = 0; j < g->ncell[1]; j++ )
             for ( k = 0; k < g->ncell[2]; k++ )
-                for ( l = 0; l < g->max_nbrs; ++l )
-                {
+                for ( l = 0; l < g->max_nbrs; ++l ) {
                     g->nbrs_cp[i][j][k][l][0] = -1.0;
                     g->nbrs_cp[i][j][k][l][1] = -1.0;
                     g->nbrs_cp[i][j][k][l][2] = -1.0;
@@ -228,19 +220,17 @@ static void Allocate_Space_for_Grid( reax_system * const system, int32_t alloc )
 
     max_atoms = Estimate_GCell_Population( system );
 
-    if ( alloc == TRUE )
-    {
+    if ( alloc == TRUE ) {
         g->max_atoms = MAX( max_atoms, g->max_atoms );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
                 for ( k = 0; k < g->ncell_max[2]; k++ )
-                    g->atoms[i][j][k] = smalloc( g->max_atoms * sizeof( int32_t ),
+                    g->atoms[i][j][k] = smalloc( g->max_atoms * sizeof( uint32_t ),
                            __FILE__, __LINE__ );
     }
     /* case: grid large enough but max. atoms per grid cells insufficient */
-    else if ( g->max_atoms > 0 && g->max_atoms < max_atoms )
-    {
+    else if ( g->max_atoms > 0 && g->max_atoms < max_atoms ) {
         g->max_atoms = max_atoms;
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
@@ -251,7 +241,7 @@ static void Allocate_Space_for_Grid( reax_system * const system, int32_t alloc )
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
                 for ( k = 0; k < g->ncell_max[2]; k++ )
-                    g->atoms[i][j][k] = smalloc( g->max_atoms * sizeof( int32_t ),
+                    g->atoms[i][j][k] = smalloc( g->max_atoms * sizeof( uint32_t ),
                            __FILE__, __LINE__ );
     }
 
@@ -265,23 +255,21 @@ static void Allocate_Space_for_Grid( reax_system * const system, int32_t alloc )
 
 static void Deallocate_Grid_Space( grid * const g )
 {
-    int32_t i, j, k;
+    uint32_t i, j, k;
 
     g->allocated = FALSE;
 
     /* deallocate the old grid */
     for ( i = 0; i < g->ncell_max[0]; i++ )
         for ( j = 0; j < g->ncell_max[1]; j++ )
-            for ( k = 0; k < g->ncell_max[2]; k++ )
-            {
+            for ( k = 0; k < g->ncell_max[2]; k++ ) {
                 sfree( g->atoms[i][j][k], __FILE__, __LINE__ );
                 sfree( g->nbrs[i][j][k], __FILE__, __LINE__ );
                 sfree( g->nbrs_cp[i][j][k], __FILE__, __LINE__ );
             }
 
     for ( i = 0; i < g->ncell_max[0]; i++ )
-        for ( j = 0; j < g->ncell_max[1]; j++ )
-        {
+        for ( j = 0; j < g->ncell_max[1]; j++ ) {
             sfree( g->atoms[i][j], __FILE__, __LINE__ );
             sfree( g->top[i][j], __FILE__, __LINE__ );
             sfree( g->mark[i][j], __FILE__, __LINE__ );
@@ -291,8 +279,7 @@ static void Deallocate_Grid_Space( grid * const g )
             sfree( g->nbrs_cp[i][j], __FILE__, __LINE__ );
         }
 
-    for ( i = 0; i < g->ncell_max[0]; i++ )
-    {
+    for ( i = 0; i < g->ncell_max[0]; i++ ) {
         sfree( g->atoms[i], __FILE__, __LINE__ );
         sfree( g->top[i], __FILE__, __LINE__ );
         sfree( g->mark[i], __FILE__, __LINE__ );
@@ -319,8 +306,7 @@ static inline int32_t Shift( int32_t p, int32_t dp, int32_t dim, grid const * co
     dim_len = 0;
     newp = p + dp;
 
-    switch ( dim )
-    {
+    switch ( dim ) {
     case 0:
         dim_len = g->ncell[0];
         break;
@@ -331,12 +317,10 @@ static inline int32_t Shift( int32_t p, int32_t dp, int32_t dim, grid const * co
         dim_len = g->ncell[2];
     }
 
-    while ( newp < 0 )
-    {
+    while ( newp < 0 ) {
         newp = newp + dim_len;
     }
-    while ( newp >= dim_len )
-    {
+    while ( newp >= dim_len ) {
         newp = newp - dim_len;
     }
 
@@ -349,43 +333,31 @@ static inline int32_t Shift( int32_t p, int32_t dp, int32_t dim, grid const * co
 static void Find_Closest_Point( grid const * const g, int32_t c1x, int32_t c1y, int32_t c1z,
         int32_t c2x, int32_t c2y, int32_t c2z, rvec closest_point )
 {
-    int32_t i, d;
+    uint32_t i;
+    int32_t d;
     ivec c1 = { c1x, c1y, c1z };
     ivec c2 = { c2x, c2y, c2z };
 
-    for ( i = 0; i < 3; i++ )
-    {
-        if ( g->ncell[i] < 5 )
-        {
+    for ( i = 0; i < 3; i++ ) {
+        if ( g->ncell[i] < 5 ) {
             closest_point[i] = NEG_INF - 1.0;
             continue;
         }
 
         d = c2[i] - c1[i];
-        if ( ABS(d) <= g->ncell[i] / 2 )
-        {
-            if ( d > 0 )
-            {
+        if ( ABS(d) <= (int32_t) g->ncell[i] / 2 ) {
+            if ( d > 0 ) {
                 closest_point[i] = c2[i] * g->len[i];
-            }
-            else if ( d == 0 )
-            {
+            } else if ( d == 0 ) {
                 closest_point[i] = NEG_INF - 1.0;
-            }
-            else
-            {
+            } else {
                 closest_point[i] = (c2[i] + 1) * g->len[i];
             }
-        }
-        else
-        {
-            if ( d > 0 )
-            {
-                closest_point[i] = (c2[i] - g->ncell[i] + 1) * g->len[i];
-            }
-            else
-            {
-                closest_point[i] = (c2[i] + g->ncell[i]) * g->len[i];
+        } else {
+            if ( d > 0 ) {
+                closest_point[i] = (c2[i] - (int32_t) g->ncell[i] + 1) * g->len[i];
+            } else {
+                closest_point[i] = (c2[i] + (int32_t) g->ncell[i]) * g->len[i];
             }
         }
     }
@@ -394,39 +366,30 @@ static void Find_Closest_Point( grid const * const g, int32_t c1x, int32_t c1y, 
 
 static void Find_Neighbor_Grid_Cells( grid * const g )
 {
-    int32_t i, j, k;
-    int32_t di, dj, dk;
-    int32_t x, y, z;
-    int32_t stack_top;
+    int32_t i, j, k, di, dj, dk, x, y, z;
+    uint32_t stack_top;
     ivec *nbrs_stack;
     rvec *cp_stack;
 
     /* for each cell in the grid */
-    for ( i = 0; i < g->ncell[0]; i++ )
-    {
-        for ( j = 0; j < g->ncell[1]; j++ )
-        {
-            for ( k = 0; k < g->ncell[2]; k++ )
-            {
+    for ( i = 0; i < (int32_t) g->ncell[0]; i++ ) {
+        for ( j = 0; j < (int32_t) g->ncell[1]; j++ ) {
+            for ( k = 0; k < (int32_t) g->ncell[2]; k++ ) {
                 nbrs_stack = g->nbrs[i][j][k];
                 cp_stack = g->nbrs_cp[i][j][k];
                 stack_top = 0;
 
                 /* choose an unmarked neighbor cell */
-                for ( di = -1 * g->spread[0]; di <= g->spread[0]; di++ )
-                {
+                for ( di = -1 * g->spread[0]; di <= g->spread[0]; di++ ) {
                     x = Shift( i, di, 0, g );
 
-                    for ( dj = -1 * g->spread[1]; dj <= g->spread[1]; dj++ )
-                    {
+                    for ( dj = -1 * g->spread[1]; dj <= g->spread[1]; dj++ ) {
                         y = Shift( j, dj, 1, g );
 
-                        for ( dk = -1 * g->spread[2]; dk <= g->spread[2]; dk++ )
-                        {
+                        for ( dk = -1 * g->spread[2]; dk <= g->spread[2]; dk++ ) {
                             z = Shift( k, dk, 2, g );
 
-                            if ( !g->mark[x][y][z] )
-                            {
+                            if ( g->mark[x][y][z] == FALSE ) {
                                 /*(di < 0 || // 9 combinations
                                  (di == 0 && dj < 0) || // 3 combinations
                                  (di == 0 && dj == 0 && dk < 0) ) )*/
@@ -435,7 +398,7 @@ static void Find_Neighbor_Grid_Cells( grid * const g )
                                 nbrs_stack[stack_top][0] = x;
                                 nbrs_stack[stack_top][1] = y;
                                 nbrs_stack[stack_top][2] = z;
-                                g->mark[x][y][z] = 1;
+                                g->mark[x][y][z] = TRUE;
 
                                 Find_Closest_Point( g, i, j, k, x, y, z, cp_stack[stack_top] );
                                 stack_top++;
@@ -469,7 +432,8 @@ static void Find_Neighbor_Grid_Cells( grid * const g )
 
 void Setup_Grid( reax_system * const system )
 {
-    int32_t d, alloc;
+    int32_t d;
+    bool alloc;
     grid *g;
     simulation_box *my_box;
 
@@ -478,69 +442,61 @@ void Setup_Grid( reax_system * const system )
     my_box = &system->box;
 
     /* determine number of grid cells in each direction */
-    ivec_rScale( g->ncell, 1.0 / g->cell_size, my_box->box_norms );
+    uivec_rScale( g->ncell, 1.0 / g->cell_size, my_box->box_norms );
 
-    for ( d = 0; d < 3; ++d )
-    {
-        if ( g->ncell[d] <= 0 )
-        {
+    for ( d = 0; d < 3; ++d ) {
+        if ( g->ncell[d] == 0 ) {
             g->ncell[d] = 1;
         }
     }
 
-    if ( g->allocated == FALSE )
-    {
-        g->ncell_max[0] = (int32_t) CEIL( SAFE_ZONE * g->ncell[0] );
-        g->ncell_max[1] = (int32_t) CEIL( SAFE_ZONE * g->ncell[1] );
-        g->ncell_max[2] = (int32_t) CEIL( SAFE_ZONE * g->ncell[2] );
+    if ( g->allocated == FALSE ) {
+        g->ncell_max[0] = (uint32_t) CEIL( SAFE_ZONE * g->ncell[0] );
+        g->ncell_max[1] = (uint32_t) CEIL( SAFE_ZONE * g->ncell[1] );
+        g->ncell_max[2] = (uint32_t) CEIL( SAFE_ZONE * g->ncell[2] );
         g->max_atoms = 0;
 
         alloc = TRUE;
-    }
-    else if ( g->ncell[0] > g->ncell_max[0] || g->ncell[1] > g->ncell_max[1]
-            || g->ncell[2] > g->ncell_max[2] )
-    {
-        if ( g->allocated == TRUE )
-        {
+    } else if ( g->ncell[0] > g->ncell_max[0] || g->ncell[1] > g->ncell_max[1]
+            || g->ncell[2] > g->ncell_max[2] ) {
+        if ( g->allocated == TRUE ) {
             Deallocate_Grid_Space( g );
         }
 
-        if ( g->ncell[0] > g->ncell_max[0] )
-        {
-            g->ncell_max[0] = (int32_t) CEIL( SAFE_ZONE * MAX( g->ncell[0], g->ncell_max[0] ) );
+        if ( g->ncell[0] > g->ncell_max[0] ) {
+            g->ncell_max[0] = (uint32_t) CEIL( SAFE_ZONE * MAX( g->ncell[0], g->ncell_max[0] ) );
         }
-        if ( g->ncell[1] > g->ncell_max[1] )
-        {
-            g->ncell_max[1] = (int32_t) CEIL( SAFE_ZONE * MAX( g->ncell[1], g->ncell_max[1] ) );
+        if ( g->ncell[1] > g->ncell_max[1] ) {
+            g->ncell_max[1] = (uint32_t) CEIL( SAFE_ZONE * MAX( g->ncell[1], g->ncell_max[1] ) );
         }
-        if ( g->ncell[2] > g->ncell_max[2] )
-        {
-            g->ncell_max[2] = (int32_t) CEIL( SAFE_ZONE * MAX( g->ncell[2], g->ncell_max[2] ) );
+        if ( g->ncell[2] > g->ncell_max[2] ) {
+            g->ncell_max[2] = (uint32_t) CEIL( SAFE_ZONE * MAX( g->ncell[2], g->ncell_max[2] ) );
         }
 
         alloc = TRUE;
     }
 
     /* compute cell lengths */
-    rvec_iDivide( g->len, my_box->box_norms, g->ncell );
+    rvec_uiDivide( g->len, my_box->box_norms, g->ncell );
     rvec_Invert( g->inv_len, g->len );
 
     Allocate_Space_for_Grid( system, alloc );
     Find_Neighbor_Grid_Cells( g );
 
 #if defined(DEBUG_FOCUS)
-    fprintf( stderr, "[INFO] g->ncell = (%d, %d, %d)\n", g->ncell[0], g->ncell[1], g->ncell[2] );
-    fprintf( stderr, "[INFO] g->ncell_max = (%d, %d, %d)\n", g->ncell_max[0], g->ncell_max[1], g->ncell_max[2] );
+    fprintf( stderr, "[INFO] g->ncell = (%u, %u, %u)\n", g->ncell[0], g->ncell[1], g->ncell[2] );
+    fprintf( stderr, "[INFO] g->ncell_max = (%u, %u, %u)\n", g->ncell_max[0], g->ncell_max[1], g->ncell_max[2] );
     fprintf( stderr, "[INFO] g->len = (%5.2f, %5.2f, %5.2f)\n", g->len[0], g->len[1], g->len[2] );
-    fprintf( stderr, "[INFO] g->max_atoms = %d\n", g->max_atoms );
+    fprintf( stderr, "[INFO] g->max_atoms = %u\n", g->max_atoms );
 #endif
 }
 
 
 void Update_Grid( reax_system * const system )
 {
-    int32_t d, i, j, k, x, y, z, itr;
-    ivec ncell;
+    uint32_t d, itr;
+    int32_t i, j, k, x, y, z;
+    uivec ncell;
     ivec *nbrs;
     rvec *nbrs_cp;
     grid *g;
@@ -550,36 +506,29 @@ void Update_Grid( reax_system * const system )
     my_box = &system->box;
 
     /* determine number of grid cells in each direction */
-    ivec_rScale( ncell, 1.0 / g->cell_size, my_box->box_norms );
+    uivec_rScale( ncell, 1.0 / g->cell_size, my_box->box_norms );
 
-    for ( d = 0; d < 3; ++d )
-    {
-        if ( ncell[d] == 0 )
-        {
+    for ( d = 0; d < 3; ++d ) {
+        if ( ncell[d] == 0 ) {
             ncell[d] = 1;
         }
     }
 
     /* ncell are unchanged */
-    if ( ivec_isEqual( ncell, g->ncell ) )
-    {
+    if ( uivec_isEqual( ncell, g->ncell ) ) {
         /* update cell lengths */
-        rvec_iDivide( g->len, my_box->box_norms, g->ncell );
+        rvec_uiDivide( g->len, my_box->box_norms, g->ncell );
         rvec_Invert( g->inv_len, g->len );
 
         /* update closest point distances between gcells */
-        for ( i = 0; i < g->ncell[0]; i++ )
-        {
-            for ( j = 0; j < g->ncell[1]; j++ )
-            {
-                for ( k = 0; k < g->ncell[2]; k++ )
-                {
+        for ( i = 0; i < (int32_t) g->ncell[0]; i++ ) {
+            for ( j = 0; j < (int32_t) g->ncell[1]; j++ ) {
+                for ( k = 0; k < (int32_t) g->ncell[2]; k++ ) {
                     nbrs = g->nbrs[i][j][k];
                     nbrs_cp = g->nbrs_cp[i][j][k];
 
                     itr = 0;
-                    while ( nbrs[itr][0] >= 0 )
-                    {
+                    while ( nbrs[itr][0] >= 0 ) {
                         x = nbrs[itr][0];
                         y = nbrs[itr][1];
                         z = nbrs[itr][2];
@@ -592,18 +541,16 @@ void Update_Grid( reax_system * const system )
         }
     }
     /* at least one of ncell has changed */
-    else
-    {
-        if ( system->g.allocated == TRUE )
-        {
+    else {
+        if ( system->g.allocated == TRUE ) {
             Deallocate_Grid_Space( g );
         }
 
         /* update number of grid cells */
-        ivec_Copy( g->ncell, ncell );
+        uivec_Copy( g->ncell, ncell );
 
         /* update cell lengths */
-        rvec_iDivide( g->len, my_box->box_norms, g->ncell );
+        rvec_uiDivide( g->len, my_box->box_norms, g->ncell );
         rvec_Invert( g->inv_len, g->len );
 
         Allocate_Space_for_Grid( system, TRUE );
@@ -611,11 +558,11 @@ void Update_Grid( reax_system * const system )
 
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "updated grid: " );
-        fprintf( stderr, "ncell[%d %d %d] ",
+        fprintf( stderr, "ncell[%u %u %u] ",
                  g->ncell[0], g->ncell[1], g->ncell[2] );
         fprintf( stderr, "len[%5.2f %5.2f %5.2f] ",
                  g->len[0], g->len[1], g->len[2] );
-        fprintf( stderr, "g->max_atoms = %d\n", g->max_atoms );
+        fprintf( stderr, "g->max_atoms = %u\n", g->max_atoms );
 #endif
     }
 }
@@ -628,23 +575,22 @@ void Update_Grid( reax_system * const system )
  * box length along a particular dimension */
 void Bin_Atoms( reax_system * const system, static_storage * const workspace )
 {
-    int32_t i, j, k, l;
-    int32_t max_atoms;
+    uint32_t i, j, k, l;
+    uint32_t max_atoms;
     grid *g;
 
     g = &system->g;
 
     Reset_Grid( g );
 
-    for ( l = 0; l < system->N; l++ )
-    {
+    for ( l = 0; l < system->N; l++ ) {
         assert( system->atoms[l].x[0] >= 0.0 && system->atoms[l].x[0] < system->box.box_norms[0] );
         assert( system->atoms[l].x[1] >= 0.0 && system->atoms[l].x[1] < system->box.box_norms[1] );
         assert( system->atoms[l].x[2] >= 0.0 && system->atoms[l].x[2] < system->box.box_norms[2] );
 
-        i = (int32_t) (system->atoms[l].x[0] * g->inv_len[0]);
-        j = (int32_t) (system->atoms[l].x[1] * g->inv_len[1]);
-        k = (int32_t) (system->atoms[l].x[2] * g->inv_len[2]);
+        i = (uint32_t) (system->atoms[l].x[0] * g->inv_len[0]);
+        j = (uint32_t) (system->atoms[l].x[1] * g->inv_len[1]);
+        k = (uint32_t) (system->atoms[l].x[2] * g->inv_len[2]);
         /* atom index in grid cell => atom number */
         g->atoms[i][j][k][g->top[i][j][k]] = l;
         /* count of current atoms in this grid cell */
@@ -659,14 +605,10 @@ void Bin_Atoms( reax_system * const system, static_storage * const workspace )
 
     /* find max number of atoms per cell across all cells */
     max_atoms = 0;
-    for ( i = 0; i < g->ncell[0]; i++ )
-    {
-        for ( j = 0; j < g->ncell[1]; j++ )
-        {
-            for ( k = 0; k < g->ncell[2]; k++ )
-            {
-                if ( max_atoms < g->top[i][j][k] )
-                {
+    for ( i = 0; i < g->ncell[0]; i++ ) {
+        for ( j = 0; j < g->ncell[1]; j++ ) {
+            for ( k = 0; k < g->ncell[2]; k++ ) {
+                if ( max_atoms < g->top[i][j][k] ) {
                     max_atoms = g->top[i][j][k];
                 }
             }
@@ -674,9 +616,8 @@ void Bin_Atoms( reax_system * const system, static_storage * const workspace )
     }
 
     /* reallocation check */
-    if ( max_atoms >= (int32_t) CEIL( g->max_atoms * SAFE_ZONE ) )
-    {
-        workspace->realloc.gcell_atoms = MAX( (int32_t) CEIL( max_atoms * SAFE_ZONE ),
+    if ( max_atoms >= (uint32_t) CEIL( g->max_atoms * SAFE_ZONE ) ) {
+        workspace->realloc.gcell_atoms = MAX( (uint32_t) CEIL( max_atoms * SAFE_ZONE ),
                 MIN_GCELL_POPL );
     }
 }
@@ -684,8 +625,7 @@ void Bin_Atoms( reax_system * const system, static_storage * const workspace )
 
 void Finalize_Grid( reax_system * const system )
 {
-    if ( system->g.allocated == TRUE )
-    {
+    if ( system->g.allocated == TRUE ) {
         Deallocate_Grid_Space( &system->g );
     }
 }
@@ -708,20 +648,21 @@ static void reax_atom_Copy( reax_atom * const dest, reax_atom * const src )
 
 
 static void Copy_Storage( reax_system const * const system,static_storage * const workspace,
-        control_params const * const control, int32_t top, int32_t old_id, int32_t old_type,
-        real ** const v, real ** const s, real ** const t, int32_t * const orig_id,
+        control_params const * const control, uint32_t top, uint32_t old_id, uint32_t old_type,
+        real ** const v, real ** const s, real ** const t, uint32_t * const orig_id,
         rvec * const f_old )
 {
-    int32_t i;
+    uint32_t i;
 
-    for ( i = 0; i < control->cm_solver_restart + 1; ++i )
-    {
+    for ( i = 0; i < control->cm_solver_restart + 1; ++i ) {
         v[i][top] = workspace->v[i][old_id];
     }
 
-    for ( i = 0; i < 5; ++i )
-    {
+    for ( i = 0; i < 5; ++i ) {
         s[i][top] = workspace->s[i][old_id];
+    }
+
+    for ( i = 0; i < 5; ++i ) {
         t[i][top] = workspace->t[i][old_id];
     }
 
@@ -737,16 +678,14 @@ static void Copy_Storage( reax_system const * const system,static_storage * cons
 static void Free_Storage( static_storage * const workspace,
         control_params const * const control )
 {
-    int32_t i;
+    uint32_t i;
 
-    for ( i = 0; i < control->cm_solver_restart + 1; ++i )
-    {
+    for ( i = 0; i < control->cm_solver_restart + 1; ++i ) {
         sfree( workspace->v[i], __FILE__, __LINE__ );
     }
     sfree( workspace->v, __FILE__, __LINE__ );
 
-    for ( i = 0; i < 3; ++i )
-    {
+    for ( i = 0; i < 3; ++i ) {
         sfree( workspace->s[i], __FILE__, __LINE__ );
         sfree( workspace->t[i], __FILE__, __LINE__ );
     }
@@ -758,7 +697,7 @@ static void Free_Storage( static_storage * const workspace,
 
 
 static void Assign_New_Storage( static_storage *workspace,
-        real **v, real **s, real **t, int32_t *orig_id, rvec *f_old )
+        real **v, real **s, real **t, uint32_t *orig_id, rvec *f_old )
 {
     workspace->v = v;
     workspace->s = s;
@@ -772,10 +711,10 @@ static void Assign_New_Storage( static_storage *workspace,
 void Reorder_Atoms( reax_system * const system, static_storage * const workspace,
         control_params const * const control )
 {
-    int32_t i, j, k, l, top, old_id;
+    uint32_t i, j, k, l, top, old_id;
     reax_atom *old_atom, *new_atoms;
     grid *g;
-    int32_t *orig_id;
+    uint32_t *orig_id;
     real **v;
     real **s, **t;
     rvec *f_old;
@@ -784,34 +723,30 @@ void Reorder_Atoms( reax_system * const system, static_storage * const workspace
     g = &system->g;
 
     new_atoms = scalloc( system->N, sizeof(reax_atom), __FILE__, __LINE__ );
-    orig_id = scalloc( system->N, sizeof(int32_t), __FILE__, __LINE__ );
+    orig_id = scalloc( system->N, sizeof(uint32_t), __FILE__, __LINE__ );
     f_old = scalloc( system->N, sizeof(rvec), __FILE__, __LINE__ );
 
     s = scalloc( 5, sizeof(real *), __FILE__, __LINE__ );
     t = scalloc( 5, sizeof(real *), __FILE__, __LINE__ );
-    for ( i = 0; i < 5; ++i )
-    {
+    for ( i = 0; i < 5; ++i ) {
         s[i] = scalloc( system->N_cm, sizeof(real), __FILE__, __LINE__ );
+    }
+    for ( i = 0; i < 5; ++i ) {
         t[i] = scalloc( system->N_cm, sizeof(real), __FILE__, __LINE__ );
     }
 
     v = scalloc( control->cm_solver_restart + 1, sizeof(real *),
             __FILE__, __LINE__ );
-    for ( i = 0; i < control->cm_solver_restart + 1; ++i )
-    {
+    for ( i = 0; i < control->cm_solver_restart + 1; ++i ) {
         v[i] = scalloc( system->N_cm, sizeof(real), __FILE__, __LINE__ );
     }
 
-    for ( i = 0; i < g->ncell[0]; i++ )
-    {
-        for ( j = 0; j < g->ncell[1]; j++ )
-        {
-            for ( k = 0; k < g->ncell[2]; k++ )
-            {
+    for ( i = 0; i < g->ncell[0]; i++ ) {
+        for ( j = 0; j < g->ncell[1]; j++ ) {
+            for ( k = 0; k < g->ncell[2]; k++ ) {
                 g->start[i][j][k] = top;
 
-                for ( l = 0; l < g->top[i][j][k]; ++l )
-                {
+                for ( l = 0; l < g->top[i][j][k]; ++l ) {
                     old_id = g->atoms[i][j][k][l];
                     old_atom = &system->atoms[old_id];
 

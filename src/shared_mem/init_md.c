@@ -41,43 +41,34 @@
 static void Generate_Initial_Velocities( reax_system * const system,
         control_params const * const control, real T )
 {
-    int32_t i;
+    uint32_t i;
     real scale, norm;
 
-    if ( T <= 0.1 || control->random_vel == FALSE )
-    {
+    if ( T <= 0.1 || control->random_vel == FALSE ) {
         /* warnings if conflicts between initial temperature and control file parameter */
-        if ( control->random_vel == TRUE )
-        {
+        if ( control->random_vel == TRUE ) {
             fprintf( stderr, "[ERROR] conflicting control file parameters\n" );
             fprintf( stderr, "[INFO] random_vel = 1 and small initial temperature (t_init = %f)\n", T );
             fprintf( stderr, "[INFO] set random_vel = 0 to resolve this (atom initial velocites set to zero)\n" );
             exit( INVALID_INPUT );
-        }
-        else if ( T > 0.1 )
-        {
+        } else if ( T > 0.1 ) {
             fprintf( stderr, "[ERROR] conflicting control file paramters\n" );
             fprintf( stderr, "[INFO] random_vel = 0 and large initial temperature (t_init = %f)\n", T );
             fprintf( stderr, "[INFO] set random_vel = 1 to resolve this (random atom initial velocites according to t_init)\n" );
             exit( INVALID_INPUT );
         }
 
-        for ( i = 0; i < system->N; i++ )
-        {
+        for ( i = 0; i < system->N; i++ ) {
             rvec_MakeZero( system->atoms[i].v );
         }
-    }
-    else
-    {
-        if ( T <= 0.0 )
-        {
+    } else {
+        if ( T <= 0.0 ) {
             fprintf( stderr, "[ERROR] random atom initial velocities specified with invalid temperature (%f). Terminating...\n",
                   T );
             exit( INVALID_INPUT );
         }
 
-        for ( i = 0; i < system->N; i++ )
-        {
+        for ( i = 0; i < system->N; i++ ) {
             rvec_Random( system->atoms[i].v );
 
             norm = rvec_Norm_Sqr( system->atoms[i].v );
@@ -99,15 +90,14 @@ static void Generate_Initial_Velocities( reax_system * const system,
 
 
 static void Init_System( reax_system * const system, control_params * const control,
-        simulation_data * const data, static_storage * const workspace, int32_t realloc )
+        simulation_data * const data, static_storage * const workspace, bool realloc )
 {
-    int32_t i;
+    uint32_t i;
     rvec dx;
 
     system->allocated = TRUE;
 
-    if ( control->restart == FALSE )
-    {
+    if ( control->restart == FALSE ) {
         Reset_Atomic_Forces( system );
     }
 
@@ -115,30 +105,24 @@ static void Init_System( reax_system * const system, control_params * const cont
     Compute_Center_of_Mass( system, data );
 
     /* just fit the atoms to the periodic box */
-    if ( control->reposition_atoms == 0 )
-    {
+    if ( control->reposition_atoms == 0 ) {
         rvec_MakeZero( dx );
     }
     /* put the center of mass to the center of the box */
-    else if ( control->reposition_atoms == 1 )
-    {
+    else if ( control->reposition_atoms == 1 ) {
         rvec_Scale( dx, 0.5, system->box.box_norms );
         rvec_ScaledAdd( dx, -1.0, data->xcm );
     }
     /* put the center of mass to the origin */
-    else if ( control->reposition_atoms == 2 )
-    {
+    else if ( control->reposition_atoms == 2 ) {
         rvec_Scale( dx, -1.0, data->xcm );
-    }
-    else
-    {
+    } else {
         fprintf( stderr, "[ERROR] Unknown option for reposition_atoms (%d). Terminating...\n",
               control->reposition_atoms );
         exit( UNKNOWN_OPTION );
     }
 
-    for ( i = 0; i < system->N; ++i )
-    {
+    for ( i = 0; i < system->N; ++i ) {
         /* re-map the atom positions to fall within the simulation box,
          * where the corners of the box are (0,0,0) and (d_x, d_y, d_z)
          * with d_i being the box length along dimension i */
@@ -151,8 +135,7 @@ static void Init_System( reax_system * const system, control_params * const cont
 
     /* Initialize velocities so that desired init T can be attained */
     if ( control->restart == FALSE
-            || (control->restart == TRUE && control->random_vel == TRUE) )
-    {
+            || (control->restart == TRUE && control->random_vel == TRUE) ) {
         Generate_Initial_Velocities( system, control, control->T_init );
     }
 
@@ -164,24 +147,21 @@ static void Init_System( reax_system * const system, control_params * const cont
     Reorder_Atoms( system, workspace, control );
 #endif
 
-    if ( realloc == TRUE )
-    {
+    if ( realloc == TRUE ) {
         /* list management */
-        system->bonds = smalloc( sizeof(int32_t) * system->N_max, __FILE__, __LINE__ );
-
-        system->hbonds = smalloc( sizeof(int32_t) * system->N_max, __FILE__, __LINE__ );
+        system->bonds = smalloc( sizeof(uint32_t) * system->N_max, __FILE__, __LINE__ );
+        system->hbonds = smalloc( sizeof(uint32_t) * system->N_max, __FILE__, __LINE__ );
     }
 }
 
 
 static void Init_Simulation_Data( reax_system * const system,
         control_params * const control, simulation_data * const data,
-        evolve_function * const Evolve, int32_t realloc )
+        evolve_function * const Evolve, bool realloc )
 {
 #if defined(_OPENMP)
     if ( realloc == TRUE && (control->ensemble == sNPT || control->ensemble == iNPT
-            || control->ensemble == aNPT || control->compute_pressure == TRUE) )
-    {
+            || control->ensemble == aNPT || control->compute_pressure == TRUE) ) {
         data->press_local = smalloc( sizeof( rtensor ) * control->num_threads,
                __FILE__, __LINE__ );
     }
@@ -198,16 +178,14 @@ static void Init_Simulation_Data( reax_system * const system,
 
     /* initialize for non-restarted run,
      * code in restart.c (restart file parser) initializes otherwise */
-    if ( control->restart == FALSE )
-    {
+    if ( control->restart == FALSE ) {
         data->step = 0;
         data->prev_steps = 0;
     }
 
     data->time = 0.0;
 
-    switch ( control->ensemble )
-    {
+    switch ( control->ensemble ) {
     case NVE:
         data->N_f = 3.0 * system->N;
         *Evolve = &Velocity_Verlet_NVE;
@@ -223,8 +201,7 @@ static void Init_Simulation_Data( reax_system * const system,
         *Evolve = &Velocity_Verlet_Nose_Hoover_NVT_Klein;
 
         if ( control->restart == FALSE
-                || (control->restart == TRUE && control->random_vel == TRUE) )
-        {
+                || (control->restart == TRUE && control->random_vel == TRUE) ) {
             data->therm.G_xi = control->Tau_T * (2.0 * data->E_Kin
                     - data->N_f * K_B / F_CONV * control->T);
             data->therm.v_xi = data->therm.G_xi * control->dt;
@@ -241,10 +218,9 @@ static void Init_Simulation_Data( reax_system * const system,
         data->N_f = 3.0 * system->N + 9.0;
         *Evolve = &Velocity_Verlet_Berendsen_Isotropic_NPT;
 
-        if ( control->restart == FALSE )
-        {
-            data->therm.G_xi = control->Tau_T * (2.0 * data->E_Kin -
-                    data->N_f * K_B / F_CONV * control->T);
+        if ( control->restart == FALSE ) {
+            data->therm.G_xi = control->Tau_T * (2.0 * data->E_Kin
+                    - data->N_f * K_B / F_CONV * control->T);
             data->therm.v_xi = data->therm.G_xi * control->dt;
             data->iso_bar.eps = 1.0 / 3.0 * LOG( system->box.volume );
 //            data->inv_W = 1.0 / (data->N_f * K_B * control->T * SQR(control->Tau_P));
@@ -305,18 +281,14 @@ static void Init_Taper( control_params const * const control,
     swa = control->nonb_low;
     swb = control->nonb_cut;
 
-    if ( FABS( swa ) > 0.01 )
-    {
+    if ( FABS( swa ) > 0.01 ) {
         fprintf( stderr, "[WARNING] non-zero lower Taper-radius cutoff in force field parameters (%f)\n", swa );
     }
 
-    if ( swb < 0.0 )
-    {
+    if ( swb < 0.0 ) {
         fprintf( stderr, "[ERROR] negative upper Taper-radius cutoff in force field parameters (%f)\n", swb );
         exit( INVALID_INPUT );
-    }
-    else if ( swb < 5.0 )
-    {
+    } else if ( swb < 5.0 ) {
         fprintf( stderr, "[WARNING] very low Taper-radius cutoff in force field parameters (%f)\n", swb );
     }
 
@@ -349,14 +321,13 @@ static void Init_Taper( control_params const * const control,
 
 static void Init_Workspace( reax_system * const system,
         control_params const * const control, static_storage * const workspace,
-        int32_t realloc )
+        bool realloc )
 {
-    int32_t i;
+    uint32_t i;
 
     workspace->allocated = TRUE;
 
-    if ( realloc == TRUE )
-    {
+    if ( realloc == TRUE ) {
         /* bond order related storage  */
         workspace->total_bond_order = smalloc( system->N_max * sizeof( real ),
                __FILE__, __LINE__ );
@@ -394,12 +365,10 @@ static void Init_Workspace( reax_system * const system,
     }
 
     /* charge method storage */
-    switch ( control->charge_method )
-    {
+    switch ( control->charge_method ) {
         case QEQ_CM:
             system->N_cm = system->N;
-            if ( realloc == TRUE || system->N_cm > system->N_cm_max )
-            {
+            if ( realloc == TRUE || system->N_cm > system->N_cm_max ) {
                 system->N_cm_max = system->N_max;
             }
             break;
@@ -408,8 +377,7 @@ static void Init_Workspace( reax_system * const system,
                 + system->num_molec_charge_constraints
                 + system->num_custom_charge_constraints
                 + (system->num_molec_charge_constraints == 0 && system->num_custom_charge_constraints == 0 ? 1 : 0);
-            if ( realloc == TRUE || system->N_cm > system->N_cm_max )
-            {
+            if ( realloc == TRUE || system->N_cm > system->N_cm_max ) {
                 system->N_cm_max = system->N_max
                     + system->num_molec_charge_constraints
                     + system->num_custom_charge_constraints
@@ -418,8 +386,7 @@ static void Init_Workspace( reax_system * const system,
             break;
         case ACKS2_CM:
             system->N_cm = 2 * system->N + 2;
-            if ( realloc == TRUE || system->N_cm > system->N_cm_max )
-            {
+            if ( realloc == TRUE || system->N_cm > system->N_cm_max ) {
                 system->N_cm_max = 2 * system->N_max + 2;
             }
             break;
@@ -429,15 +396,13 @@ static void Init_Workspace( reax_system * const system,
             break;
     }
 
-    if ( realloc == TRUE )
-    {
+    if ( realloc == TRUE ) {
         workspace->Hdia_inv = NULL;
 
         if ( control->cm_solver_pre_comp_type == ICHOLT_PC
                 || (control->cm_solver_pre_comp_type == ILUT_PC && control->cm_solver_pre_comp_droptol > 0.0 )
                 || control->cm_solver_pre_comp_type == ILUTP_PC
-                || control->cm_solver_pre_comp_type == FG_ILUT_PC )
-        {
+                || control->cm_solver_pre_comp_type == FG_ILUT_PC ) {
             workspace->droptol = scalloc( system->N_cm_max, sizeof( real ),
                     __FILE__, __LINE__ );
         }
@@ -454,49 +419,42 @@ static void Init_Workspace( reax_system * const system,
                 __FILE__, __LINE__ );
         workspace->t = scalloc( 5, sizeof( real* ),
                 __FILE__, __LINE__ );
-        for ( i = 0; i < 5; ++i )
-        {
+        for ( i = 0; i < 5; ++i ) {
             workspace->s[i] = scalloc( system->N_cm_max, sizeof( real ),
                     __FILE__, __LINE__ );
+        }
+        for ( i = 0; i < 5; ++i ) {
             workspace->t[i] = scalloc( system->N_cm_max, sizeof( real ),
                     __FILE__, __LINE__ );
         }
     }
 
-    switch ( control->charge_method )
-    {
+    switch ( control->charge_method ) {
         case QEQ_CM:
-            for ( i = 0; i < system->N; ++i )
-            {
+            for ( i = 0; i < system->N; ++i ) {
                 workspace->b_s[i] = -1.0 * system->reax_param.sbp[ system->atoms[i].type ].chi;
+            }
+            for ( i = 0; i < system->N; ++i ) {
                 workspace->b_t[i] = -1.0;
             }
             break;
 
         case EE_CM:
-            for ( i = 0; i < system->N; ++i )
-            {
+            for ( i = 0; i < system->N; ++i ) {
                 workspace->b_s[i] = -system->reax_param.sbp[ system->atoms[i].type ].chi;
             }
 
             if ( system->num_molec_charge_constraints == 0
-                    && system->num_custom_charge_constraints == 0 )
-            {
+                    && system->num_custom_charge_constraints == 0 ) {
                 workspace->b_s[system->N] = control->cm_q_net;
-            }
-            else
-            {
-                if ( system->num_molec_charge_constraints > 0 )
-                {
-                    for ( i = 0; i < system->num_molec_charge_constraints; ++i )
-                    {
+            } else {
+                if ( system->num_molec_charge_constraints > 0 ) {
+                    for ( i = 0; i < system->num_molec_charge_constraints; ++i ) {
                         workspace->b_s[system->N + i] = system->molec_charge_constraints[i];
                     }
                 }
-                if ( system->num_custom_charge_constraints > 0 )
-                {
-                    for ( i = 0; i < system->num_custom_charge_constraints; ++i )
-                    {
+                if ( system->num_custom_charge_constraints > 0 ) {
+                    for ( i = 0; i < system->num_custom_charge_constraints; ++i ) {
                         workspace->b_s[system->N + system->num_molec_charge_constraints + i]
                             = system->custom_charge_constraint_rhs[i];
                     }
@@ -505,8 +463,7 @@ static void Init_Workspace( reax_system * const system,
             break;
 
         case ACKS2_CM:
-            for ( i = 0; i < system->N; ++i )
-            {
+            for ( i = 0; i < system->N; ++i ) {
                 workspace->b_s[i] = -system->reax_param.sbp[ system->atoms[i].type ].chi;
             }
 
@@ -515,8 +472,7 @@ static void Init_Workspace( reax_system * const system,
              * to the total charge divided by the number of atoms.
              * Except for trivial cases, this leads to fractional
              * reference charges, which is usually not desirable. */
-            for ( i = 0; i < system->N; ++i )
-            {
+            for ( i = 0; i < system->N; ++i ) {
                 workspace->b_s[system->N + i] = control->cm_q_net / system->N;
             }
 
@@ -530,10 +486,8 @@ static void Init_Workspace( reax_system * const system,
             break;
     }
 
-    if ( realloc == TRUE )
-    {
-        switch ( control->cm_solver_type )
-        {
+    if ( realloc == TRUE ) {
+        switch ( control->cm_solver_type ) {
             case GMRES_S:
             case GMRES_H_S:
                 workspace->y = scalloc( control->cm_solver_restart + 1, sizeof( real ),
@@ -553,12 +507,15 @@ static void Init_Workspace( reax_system * const system,
                 workspace->v = scalloc( control->cm_solver_restart + 1, sizeof( real*),
                         __FILE__, __LINE__ );
 
-                for ( i = 0; i < control->cm_solver_restart + 1; ++i )
-                {
+                for ( i = 0; i < control->cm_solver_restart + 1; ++i ) {
                     workspace->h[i] = scalloc( control->cm_solver_restart + 1, sizeof( real ),
                             __FILE__, __LINE__ );
+                }
+                for ( i = 0; i < control->cm_solver_restart + 1; ++i ) {
                     workspace->rn[i] = scalloc( system->N_cm_max * 2, sizeof( real ),
                             __FILE__, __LINE__ );
+                }
+                for ( i = 0; i < control->cm_solver_restart + 1; ++i ) {
                     workspace->v[i] = scalloc( system->N_cm_max, sizeof( real ),
                             __FILE__, __LINE__ );
                 }
@@ -630,11 +587,9 @@ static void Init_Workspace( reax_system * const system,
     /* level scheduling related */
     workspace->levels_L = 1;
     workspace->levels_U = 1;
-    if ( realloc == TRUE )
-    {
+    if ( realloc == TRUE ) {
         if ( control->cm_solver_pre_app_type == TRI_SOLVE_LEVEL_SCHED_PA ||
-                control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
-        {
+                control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA ) {
             workspace->row_levels_L = smalloc( system->N_cm_max * sizeof(uint32_t),
                     __FILE__, __LINE__ );
             workspace->level_rows_L = smalloc( system->N_cm_max * sizeof(uint32_t),
@@ -649,9 +604,7 @@ static void Init_Workspace( reax_system * const system,
                     __FILE__, __LINE__ );
             workspace->top = smalloc( (system->N_cm_max + 1) * sizeof(uint32_t),
                     __FILE__, __LINE__ );
-        }
-        else
-        {
+        } else {
             workspace->row_levels_L = NULL;
             workspace->level_rows_L = NULL;
             workspace->level_rows_cnt_L = NULL;
@@ -664,10 +617,8 @@ static void Init_Workspace( reax_system * const system,
 
     /* graph coloring related */
     workspace->recolor_cnt = 0;
-    if ( realloc == TRUE )
-    {
-        if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
-        {
+    if ( realloc == TRUE ) {
+        if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA ) {
             workspace->color = smalloc( sizeof(uint32_t) * system->N_cm_max,
                     __FILE__, __LINE__ );
             workspace->to_color = smalloc( sizeof(uint32_t) * system->N_cm_max,
@@ -684,9 +635,7 @@ static void Init_Workspace( reax_system * const system,
                     __FILE__, __LINE__ );
             workspace->permuted_row_col_inv = smalloc( sizeof(uint32_t) * system->N_cm_max,
                     __FILE__, __LINE__ );
-        }
-        else
-        {
+        } else {
             workspace->color = NULL;
             workspace->to_color = NULL;
             workspace->conflict = NULL;
@@ -699,20 +648,16 @@ static void Init_Workspace( reax_system * const system,
 
         /* graph coloring related OR ILUTP preconditioner */
         if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA 
-                || control->cm_solver_pre_comp_type == ILUTP_PC )
-        {
+                || control->cm_solver_pre_comp_type == ILUTP_PC ) {
             workspace->y_p = smalloc( sizeof(real) * system->N_cm_max, __FILE__, __LINE__ );
             workspace->x_p = smalloc( sizeof(real) * system->N_cm_max, __FILE__, __LINE__ );
-        }
-        else
-        {
+        } else {
             workspace->y_p = NULL;
             workspace->x_p = NULL;
         }
 
         /* Jacobi iteration related */
-        if ( control->cm_solver_pre_app_type == JACOBI_ITER_PA )
-        {
+        if ( control->cm_solver_pre_app_type == JACOBI_ITER_PA ) {
             workspace->Dinv_L = smalloc( sizeof(real) * system->N_cm_max,
                     __FILE__, __LINE__ );
             workspace->Dinv_U = smalloc( sizeof(real) * system->N_cm_max,
@@ -723,9 +668,7 @@ static void Init_Workspace( reax_system * const system,
                     __FILE__, __LINE__ );
             workspace->rp2 = smalloc( sizeof(real) * system->N_cm_max,
                     __FILE__, __LINE__ );
-        }
-        else
-        {
+        } else {
             workspace->Dinv_L = NULL;
             workspace->Dinv_U = NULL;
             workspace->Dinv_b = NULL;
@@ -734,13 +677,10 @@ static void Init_Workspace( reax_system * const system,
         }
 
         /* ILUTP preconditioner related */
-        if ( control->cm_solver_pre_comp_type == ILUTP_PC )
-        {
+        if ( control->cm_solver_pre_comp_type == ILUTP_PC ) {
             workspace->perm_ilutp = smalloc( sizeof( int32_t ) * system->N_cm_max,
                    __FILE__, __LINE__ );
-        }
-        else
-        {
+        } else {
             workspace->perm_ilutp = NULL;
         }
 
@@ -758,25 +698,18 @@ static void Init_Workspace( reax_system * const system,
 #endif
 
         /* storage for analysis */
-        if ( control->molec_anal || control->diffusion_coef )
-        {
-            workspace->mark = scalloc( system->N_max, sizeof(int32_t),
-                    __FILE__, __LINE__ );
-            workspace->old_mark = scalloc( system->N_max, sizeof(int32_t),
-                    __FILE__, __LINE__ );
-        }
-        else
-        {
-            workspace->mark = workspace->old_mark = NULL;
+        if ( control->molec_anal || control->diffusion_coef ) {
+            workspace->mark = scalloc( system->N_max, sizeof(bool), __FILE__, __LINE__ );
+            workspace->old_mark = scalloc( system->N_max, sizeof(bool), __FILE__, __LINE__ );
+        } else {
+            workspace->mark = NULL;
+            workspace->old_mark = NULL;
         }
 
-        if ( control->diffusion_coef )
-        {
+        if ( control->diffusion_coef ) {
             workspace->x_old = scalloc( system->N_max, sizeof( rvec ),
                     __FILE__, __LINE__ );
-        }
-        else
-        {
+        } else {
             workspace->x_old = NULL;
         }
     }
@@ -815,7 +748,7 @@ static void Init_Workspace( reax_system * const system,
     workspace->realloc.hbonds = FALSE;
     workspace->realloc.bonds = FALSE;
     workspace->realloc.thbody = FALSE;
-    workspace->realloc.gcell_atoms = -1;
+    workspace->realloc.gcell_atoms = 0;
 
     Reset_Workspace( system, workspace );
 
@@ -825,24 +758,20 @@ static void Init_Workspace( reax_system * const system,
 
 static void Init_Lists( reax_system * const system,
         control_params * const control, simulation_data * const data,
-        static_storage * const workspace, reax_list ** const lists, int32_t realloc )
+        static_storage * const workspace, reax_list ** const lists, bool realloc )
 {
-    int32_t i, ret;
+    uint32_t i;
+    int32_t ret;
 
-    if ( realloc == TRUE )
-    {
+    if ( realloc == TRUE ) {
         Estimate_Num_Neighbors( system, control, workspace, lists );
 
-        if ( lists[FAR_NBRS]->allocated == FALSE )
-        {
+        if ( lists[FAR_NBRS]->allocated == FALSE ) {
             Make_List( system->N, system->N_max, workspace->realloc.total_far_nbrs,
                     TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
-        }
-        else if ( realloc == TRUE
-                || lists[FAR_NBRS]->total_intrs < workspace->realloc.total_far_nbrs )
-        {
-            if ( lists[FAR_NBRS]->allocated == TRUE )
-            {
+        } else if ( realloc == TRUE
+                || lists[FAR_NBRS]->total_intrs < workspace->realloc.total_far_nbrs ) {
+            if ( lists[FAR_NBRS]->allocated == TRUE ) {
                 Delete_List( TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
             }
             Make_List( system->N, system->N_max, 
@@ -855,8 +784,7 @@ static void Init_Lists( reax_system * const system,
 
     ret = Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
-    if ( ret != SUCCESS )
-    {
+    if ( ret != SUCCESS ) {
         Estimate_Num_Neighbors( system, control, workspace, lists );
 
         Delete_List( TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
@@ -866,52 +794,40 @@ static void Init_Lists( reax_system * const system,
 
         ret = Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
-        if ( ret != SUCCESS )
-        {
+        if ( ret != SUCCESS ) {
             fprintf( stderr, "[ERROR] Unrecoverable memory allocation issue (Generate_Neighbor_Lists). Terminating...\n" );
             exit( INVALID_INPUT );
         }
     }
 
-    if ( realloc == TRUE )
-    {
+    if ( realloc == TRUE ) {
         Estimate_Storages( system, control, workspace, lists, TRUE, TRUE );
     }
 
-    if ( workspace->H.allocated == FALSE )
-    {
+    if ( workspace->H.allocated == FALSE ) {
         Allocate_Matrix( &workspace->H, system->N_cm, system->N_cm_max,
                 workspace->realloc.total_cm_entries );
-    }
-    else if ( realloc == TRUE || workspace->H.m < workspace->realloc.total_cm_entries
-            || workspace->H.n_max < system->N_cm_max )
-    {
-        if ( workspace->H.allocated == TRUE )
-        {
+    } else if ( realloc == TRUE || workspace->H.m < workspace->realloc.total_cm_entries
+            || workspace->H.n_max < system->N_cm_max ) {
+        if ( workspace->H.allocated == TRUE ) {
             Deallocate_Matrix( &workspace->H );
         }
         Allocate_Matrix( &workspace->H, system->N_cm, system->N_cm_max,
                 workspace->realloc.total_cm_entries );
-    }
-    else
-    {
+    } else {
         workspace->H.n = system->N_cm;
     }
 
-    if ( workspace->H_sp.allocated == FALSE )
-    {
+    if ( workspace->H_sp.allocated == FALSE ) {
         /* TODO: better estimate for H_sp?
          *   If so, need to refactor Estimate_Storages
          *   to use various cut-off distances as parameters
          *   (non-bonded, hydrogen, 3body, etc.) */
         Allocate_Matrix( &workspace->H_sp, system->N_cm, system->N_cm_max,
                 workspace->realloc.total_cm_entries );
-    }
-    else if ( realloc == TRUE || workspace->H_sp.m < workspace->realloc.total_cm_entries
-            || workspace->H.n_max < system->N_cm_max )
-    {
-        if ( workspace->H_sp.allocated == TRUE )
-        {
+    } else if ( realloc == TRUE || workspace->H_sp.m < workspace->realloc.total_cm_entries
+            || workspace->H.n_max < system->N_cm_max ) {
+        if ( workspace->H_sp.allocated == TRUE ) {
             Deallocate_Matrix( &workspace->H_sp );
         }
         /* TODO: better estimate for H_sp?
@@ -920,90 +836,66 @@ static void Init_Lists( reax_system * const system,
          *   (non-bonded, hydrogen, 3body, etc.) */
         Allocate_Matrix( &workspace->H_sp, system->N_cm, system->N_cm_max,
                 workspace->realloc.total_cm_entries );
-    }
-    else
-    {
+    } else {
         workspace->H_sp.n = system->N_cm;
     }
 
     workspace->num_H = 0;
-    if ( control->hbond_cut > 0.0 )
-    {
-        for ( i = 0; i < system->N; ++i )
-        {
-            if ( system->reax_param.sbp[ system->atoms[i].type ].p_hbond == H_ATOM )
-            {
+    if ( control->hbond_cut > 0.0 ) {
+        for ( i = 0; i < system->N; ++i ) {
+            if ( system->reax_param.sbp[ system->atoms[i].type ].p_hbond == H_ATOM ) {
                 ++(workspace->num_H);
             }
         }
     }
 
-    if ( control->hbond_cut > 0.0 && workspace->num_H > 0 )
-    {
-        if ( lists[HBONDS]->allocated == FALSE )
-        {
+    if ( control->hbond_cut > 0.0 && workspace->num_H > 0 ) {
+        if ( lists[HBONDS]->allocated == FALSE ) {
             Make_List( system->N, system->N_max,
-                    (int32_t) CEIL( SAFE_ZONE * workspace->realloc.total_hbonds ),
+                    (uint32_t) CEIL( SAFE_ZONE * workspace->realloc.total_hbonds ),
                     TYP_HBOND, lists[HBONDS] );
-        }
-        else if ( system->N_max < system->N
-                || lists[HBONDS]->total_intrs < workspace->realloc.total_hbonds )
-        {
-            if ( lists[HBONDS]->allocated == TRUE )
-            {
+        } else if ( system->N_max < system->N
+                || lists[HBONDS]->total_intrs < workspace->realloc.total_hbonds ) {
+            if ( lists[HBONDS]->allocated == TRUE ) {
                 Delete_List( TYP_HBOND, lists[HBONDS] );
             }
             Make_List( system->N, system->N_max,
                     MAX( workspace->realloc.total_hbonds, lists[HBONDS]->total_intrs ),
                     TYP_HBOND, lists[HBONDS] );
-        }
-        else
-        {
+        } else {
             lists[HBONDS]->n = system->N;
         }
     }
 
     /* bonds list */
-    if ( lists[BONDS]->allocated == FALSE )
-    {
-        Make_List( system->N, system->N_max, (int32_t) CEIL( workspace->realloc.total_bonds * SAFE_ZONE ),
+    if ( lists[BONDS]->allocated == FALSE ) {
+        Make_List( system->N, system->N_max, (uint32_t) CEIL( workspace->realloc.total_bonds * SAFE_ZONE ),
                 TYP_BOND, lists[BONDS] );
-    }
-    else if ( realloc == TRUE || lists[BONDS]->total_intrs < workspace->realloc.total_bonds )
-    {
-        if ( lists[BONDS]->allocated == TRUE )
-        {
+    } else if ( realloc == TRUE || lists[BONDS]->total_intrs < workspace->realloc.total_bonds ) {
+        if ( lists[BONDS]->allocated == TRUE ) {
             Delete_List( TYP_BOND, lists[BONDS] );
         }
         Make_List( system->N, system->N_max,
                 MAX( workspace->realloc.total_bonds, lists[BONDS]->total_intrs ),
                 TYP_BOND, lists[BONDS] );
-    }
-    else
-    {
+    } else {
         lists[BONDS]->n = system->N;
     }
 
     /* 3bodies list */
-    if ( lists[THREE_BODIES]->allocated == FALSE )
-    {
-        Make_List( workspace->realloc.total_bonds, (int32_t) CEIL( workspace->realloc.total_bonds * SAFE_ZONE ),
+    if ( lists[THREE_BODIES]->allocated == FALSE ) {
+        Make_List( workspace->realloc.total_bonds, (uint32_t) CEIL( workspace->realloc.total_bonds * SAFE_ZONE ),
                 workspace->realloc.total_thbodies, TYP_THREE_BODY, lists[THREE_BODIES] );
-    }
-    else if ( lists[THREE_BODIES]->n_max < workspace->realloc.total_bonds
-            || lists[THREE_BODIES]->total_intrs < workspace->realloc.total_thbodies )
-    {
-        if ( lists[THREE_BODIES]->allocated == TRUE )
-        {
+    } else if ( lists[THREE_BODIES]->n_max < workspace->realloc.total_bonds
+            || lists[THREE_BODIES]->total_intrs < workspace->realloc.total_thbodies ) {
+        if ( lists[THREE_BODIES]->allocated == TRUE ) {
             Delete_List( TYP_THREE_BODY, lists[THREE_BODIES] );
         }
         Make_List( workspace->realloc.total_bonds,
                 MAX( workspace->realloc.total_bonds, lists[THREE_BODIES]->n_max),
                 MAX( workspace->realloc.total_thbodies, lists[THREE_BODIES]->total_intrs ),
                 TYP_THREE_BODY, lists[THREE_BODIES] );
-    }
-    else
-    {
+    } else {
         lists[THREE_BODIES]->n = workspace->realloc.total_bonds;
     }
 
@@ -1011,18 +903,20 @@ static void Init_Lists( reax_system * const system,
     //TODO: increased num. of DDELTA list elements, find a better count later
     Make_List( system->N, workspace->realloc.total_bonds * 20, TYP_DDELTA, lists[DDELTA] );
 
-    for ( i = 0; i < lists[DDELTA]->n; ++i )
-    {
+    for ( i = 0; i < lists[DDELTA]->n; ++i ) {
         Set_Start_Index( i, 0, lists[DDELTA] );
+    }
+    for ( i = 0; i < lists[DDELTA]->n; ++i ) {
         Set_End_Index( i, 0, lists[DDELTA] );
     }
 
     Make_List( workspace->realloc.total_bonds, workspace->realloc.total_bonds * MAX_BONDS * 3,
             TYP_DBO, lists[DBO] );
 
-    for ( i = 0; i < lists[DBO]->n; ++i )
-    {
+    for ( i = 0; i < lists[DBO]->n; ++i ) {
         Set_Start_Index( i, 0, lists[DBO] );
+    }
+    for ( i = 0; i < lists[DBO]->n; ++i ) {
         Set_End_Index( i, 0, lists[DBO] );
     }
 #endif
@@ -1037,21 +931,17 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
 
     out_control->allocated = TRUE;
 
-    if ( output_enabled == TRUE && out_control->write_steps > 0 )
-    {
+    if ( output_enabled == TRUE && out_control->write_steps > 0 ) {
         strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
         temp[TEMP_SIZE - 5] = '\0';
         strcat( temp, ".trj" );
         out_control->trj = sfopen( temp, "w", __FILE__, __LINE__ );
         out_control->write_header( system, control, workspace, out_control );
-    }
-    else
-    {
+    } else {
         out_control->trj = NULL;
     }
 
-    if ( output_enabled == TRUE && out_control->log_update_freq > 0 )
-    {
+    if ( output_enabled == TRUE && out_control->log_update_freq > 0 ) {
         strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
         temp[TEMP_SIZE - 5] = '\0';
         strcat( temp, ".out" );
@@ -1079,17 +969,14 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
                  "step", "total", "neighbors", "init", "bonded",
                  "nonbonded", "cm", "cm_sort", "s_iters", "pre_comp", "pre_app",
                  "s_spmv", "s_vec_ops", "s_orthog", "s_tsolve" );
-    }
-    else
-    {
+    } else {
         out_control->out = NULL;
         out_control->pot = NULL;
         out_control->log = NULL;
     }
 
     if ( output_enabled == TRUE && (control->ensemble == sNPT || control->ensemble == iNPT
-            || control->ensemble == aNPT || control->compute_pressure == TRUE) )
-    {
+            || control->ensemble == aNPT || control->compute_pressure == TRUE) ) {
         strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
         temp[TEMP_SIZE - 5] = '\0';
         strcat( temp, ".prs" );
@@ -1104,31 +991,24 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
                 "Pxx", "Pyy", "Pzz", "Pavg", "Volume" );
 
         fflush( out_control->prs );
-    }
-    else
-    {
+    } else {
         out_control->prs = NULL;
     }
 
     /* Init molecular analysis file */
-    if ( output_enabled == TRUE && control->molec_anal )
-    {
+    if ( output_enabled == TRUE && control->molec_anal ) {
         snprintf( temp, TEMP_SIZE, "%.*s.mol", TEMP_SIZE - 5, control->sim_name );
         out_control->mol = sfopen( temp, "w", __FILE__, __LINE__ );
-        if ( control->num_ignored )
-        {
+        if ( control->num_ignored ) {
             snprintf( temp, TEMP_SIZE, "%.*s.ign", TEMP_SIZE - 5, control->sim_name );
             out_control->ign = sfopen( temp, "w", __FILE__, __LINE__ );
         }
-    }
-    else
-    {
+    } else {
         out_control->mol = NULL;
         out_control->ign = NULL;
     }
 
-    if ( output_enabled == TRUE && control->dipole_anal )
-    {
+    if ( output_enabled == TRUE && control->dipole_anal ) {
         strncpy( temp, control->sim_name, TEMP_SIZE - 5 );
         temp[TEMP_SIZE - 5] = '\0';
         strcat( temp, ".dpl" );
@@ -1136,23 +1016,18 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
         fprintf( out_control->dpl,
                  "Step      Molecule Count  Avg. Dipole Moment Norm\n" );
         fflush( out_control->dpl );
-    }
-    else
-    {
+    } else {
         out_control->dpl = NULL;
     }
 
-    if ( output_enabled == TRUE && control->diffusion_coef )
-    {
+    if ( output_enabled == TRUE && control->diffusion_coef ) {
         strncpy( temp, control->sim_name, TEMP_SIZE - 6 );
         temp[TEMP_SIZE - 6] = '\0';
         strcat( temp, ".drft" );
         out_control->drft = sfopen( temp, "w", __FILE__, __LINE__ );
         fprintf( out_control->drft, "Step     Type Count   Avg Squared Disp\n" );
         fflush( out_control->drft );
-    }
-    else
-    {
+    } else {
         out_control->drft = NULL;
     }
 
@@ -1295,15 +1170,14 @@ static void Init_Out_Controls( reax_system *system, control_params *control,
 void Initialize( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
         reax_list ** const lists, output_controls * const out_control,
-        evolve_function * const Evolve, int32_t output_enabled, int32_t realloc )
+        evolve_function * const Evolve, bool output_enabled, bool realloc )
 {
 #if defined(_OPENMP)
     #pragma omp parallel default(none) shared(control)
     {
         #pragma omp single
         {
-            if ( control->num_threads_set == FALSE )
-            {
+            if ( control->num_threads_set == FALSE ) {
                 /* set using OMP_NUM_THREADS environment variable */
                 control->num_threads = omp_get_num_threads( );
                 control->num_threads_set = TRUE;
@@ -1319,24 +1193,17 @@ void Initialize( reax_system * const system, control_params * const control,
     Randomize( );
 
     Init_System( system, control, data, workspace, realloc );
-
     Init_Simulation_Data( system, control, data, Evolve, realloc );
-
     Init_Workspace( system, control, workspace, realloc );
-
     Init_Lists( system, control, data, workspace, lists, realloc );
-
     Init_Out_Controls( system, control, workspace, out_control, output_enabled );
-
     /* These are done in forces.c, only forces.c can see all those functions */
     Init_Bonded_Force_Functions( control );
-
 #if defined(TEST_FORCES)
     Init_Force_Test_Functions( control );
 #endif
 
-    if ( control->tabulate )
-    {
+    if ( control->tabulate > 0) {
         Make_LR_Lookup_Table( system, control, workspace );
     }
 }
@@ -1345,27 +1212,24 @@ void Initialize( reax_system * const system, control_params * const control,
 static void Finalize_System( reax_system *system, control_params *control,
         simulation_data *data, int32_t reset )
 {
-    int32_t i, j, k;
+    uint32_t i, j, k;
     reax_interaction *reax;
 
     system->prealloc_allocated = FALSE;
     system->ffield_params_allocated = FALSE;
 
-    if ( system->max_num_molec_charge_constraints > 0 )
-    {
+    if ( system->max_num_molec_charge_constraints > 0 ) {
         sfree( system->molec_charge_constraints, __FILE__, __LINE__ );
         sfree( system->molec_charge_constraint_ranges, __FILE__, __LINE__ );
     }
 
-    if ( system->max_num_custom_charge_constraints > 0 )
-    {
+    if ( system->max_num_custom_charge_constraints > 0 ) {
         sfree( system->custom_charge_constraint_count, __FILE__, __LINE__ );
         sfree( system->custom_charge_constraint_start, __FILE__, __LINE__ );
         sfree( system->custom_charge_constraint_rhs, __FILE__, __LINE__ );
     }
 
-    if ( system->max_num_custom_charge_constraint_entries > 0 )
-    {
+    if ( system->max_num_custom_charge_constraint_entries > 0 ) {
         sfree( system->custom_charge_constraint_atom_index, __FILE__, __LINE__ );
         sfree( system->custom_charge_constraint_coeff, __FILE__, __LINE__ );
     }
@@ -1381,16 +1245,12 @@ static void Finalize_System( reax_system *system, control_params *control,
 
     Finalize_Grid( system );
 
-    if ( reset == FALSE )
-    {
+    if ( reset == FALSE ) {
         sfree( reax->gp.l, __FILE__, __LINE__ );
 
-        for ( i = 0; i < reax->max_num_atom_types; i++ )
-        {
-            for ( j = 0; j < reax->max_num_atom_types; j++ )
-            {
-                for ( k = 0; k < reax->max_num_atom_types; k++ )
-                {
+        for ( i = 0; i < reax->max_num_atom_types; i++ ) {
+            for ( j = 0; j < reax->max_num_atom_types; j++ ) {
+                for ( k = 0; k < reax->max_num_atom_types; k++ ) {
                     sfree( reax->fbp[i][j][k], __FILE__, __LINE__ );
                 }
 
@@ -1414,8 +1274,7 @@ static void Finalize_System( reax_system *system, control_params *control,
         sfree( system->atoms, __FILE__, __LINE__ );
     }
 
-    if ( system->allocated == TRUE )
-    {
+    if ( system->allocated == TRUE ) {
         sfree( system->bonds, __FILE__, __LINE__ );
         sfree( system->hbonds, __FILE__, __LINE__ );
     }
@@ -1429,8 +1288,7 @@ static void Finalize_Simulation_Data( reax_system *system, control_params *contr
 {
 #if defined(_OPENMP)
     if ( control->ensemble == sNPT || control->ensemble == iNPT
-            || control->ensemble == aNPT || control->compute_pressure == TRUE )
-    {
+            || control->ensemble == aNPT || control->compute_pressure == TRUE ) {
         sfree( data->press_local, __FILE__, __LINE__ );
     }
 #endif
@@ -1440,10 +1298,9 @@ static void Finalize_Simulation_Data( reax_system *system, control_params *contr
 static void Finalize_Workspace( reax_system *system, control_params *control,
         static_storage *workspace, int32_t reset )
 {
-    int32_t i;
+    uint32_t i;
 
-    if ( workspace->allocated == TRUE )
-    {
+    if ( workspace->allocated == TRUE ) {
         sfree( workspace->total_bond_order, __FILE__, __LINE__ );
         sfree( workspace->Deltap, __FILE__, __LINE__ );
         sfree( workspace->Deltap_boc, __FILE__, __LINE__ );
@@ -1461,58 +1318,48 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
         sfree( workspace->CdDelta, __FILE__, __LINE__ );
         sfree( workspace->vlpex, __FILE__, __LINE__ );
 
-        if ( workspace->H.allocated == TRUE )
-        {
+        if ( workspace->H.allocated == TRUE ) {
             Deallocate_Matrix( &workspace->H );
         }
-        if ( workspace->H_full.allocated == TRUE )
-        {
+        if ( workspace->H_full.allocated == TRUE ) {
             Deallocate_Matrix( &workspace->H_full );
         }
-        if ( workspace->H_sp.allocated == TRUE )
-        {
+        if ( workspace->H_sp.allocated == TRUE ) {
             Deallocate_Matrix( &workspace->H_sp );
         }
-        if ( workspace->H_p.allocated == TRUE )
-        {
+        if ( workspace->H_p.allocated == TRUE ) {
             Deallocate_Matrix( &workspace->H_p );
         }
-        if ( workspace->H_spar_patt.allocated == TRUE )
-        {
+        if ( workspace->H_spar_patt.allocated == TRUE ) {
             Deallocate_Matrix( &workspace->H_spar_patt );
         }
-        if ( workspace->H_spar_patt_full.allocated == TRUE )
-        {
+        if ( workspace->H_spar_patt_full.allocated == TRUE ) {
             Deallocate_Matrix( &workspace->H_spar_patt_full );
         }
-        if ( workspace->H_app_inv.allocated == TRUE )
-        {
+        if ( workspace->H_app_inv.allocated == TRUE ) {
             Deallocate_Matrix( &workspace->H_app_inv );
         }
-        if ( workspace->L.allocated == TRUE )
-        {
+        if ( workspace->L.allocated == TRUE ) {
             Deallocate_Matrix( &workspace->L );
         }
-        if ( workspace->U.allocated == TRUE )
-        {
+        if ( workspace->U.allocated == TRUE ) {
             Deallocate_Matrix( &workspace->U );
         }
 
-        for ( i = 0; i < 5; ++i )
-        {
+        for ( i = 0; i < 5; ++i ) {
             sfree( workspace->s[i], __FILE__, __LINE__ );
+        }
+        for ( i = 0; i < 5; ++i ) {
             sfree( workspace->t[i], __FILE__, __LINE__ );
         }
 
-        if ( control->cm_solver_pre_comp_type == JACOBI_PC )
-        {
+        if ( control->cm_solver_pre_comp_type == JACOBI_PC ) {
             sfree( workspace->Hdia_inv, __FILE__, __LINE__ );
         }
         if ( control->cm_solver_pre_comp_type == ICHOLT_PC
                 || (control->cm_solver_pre_comp_type == ILUT_PC && control->cm_solver_pre_comp_droptol > 0.0 )
                 || control->cm_solver_pre_comp_type == ILUTP_PC
-                || control->cm_solver_pre_comp_type == FG_ILUT_PC )
-        {
+                || control->cm_solver_pre_comp_type == FG_ILUT_PC ) {
             sfree( workspace->droptol, __FILE__, __LINE__ );
         }
         sfree( workspace->b_s, __FILE__, __LINE__ );
@@ -1522,12 +1369,10 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
         sfree( workspace->s, __FILE__, __LINE__ );
         sfree( workspace->t, __FILE__, __LINE__ );
 
-        switch ( control->cm_solver_type )
-        {
+        switch ( control->cm_solver_type ) {
             case GMRES_S:
             case GMRES_H_S:
-                for ( i = 0; i < control->cm_solver_restart + 1; ++i )
-                {
+                for ( i = 0; i < control->cm_solver_restart + 1; ++i ) {
                     sfree( workspace->h[i], __FILE__, __LINE__ );
                     sfree( workspace->rn[i], __FILE__, __LINE__ );
                     sfree( workspace->v[i], __FILE__, __LINE__ );
@@ -1585,9 +1430,8 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
 #endif
 
         /* level scheduling related */
-        if ( control->cm_solver_pre_app_type == TRI_SOLVE_LEVEL_SCHED_PA ||
-                control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
-        {
+        if ( control->cm_solver_pre_app_type == TRI_SOLVE_LEVEL_SCHED_PA
+                || control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA ) {
             sfree( workspace->row_levels_L, __FILE__, __LINE__ );
             sfree( workspace->level_rows_L, __FILE__, __LINE__ );
             sfree( workspace->level_rows_cnt_L, __FILE__, __LINE__ );
@@ -1598,8 +1442,7 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
         }
 
         /* graph coloring related */
-        if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA )
-        {
+        if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA ) {
             sfree( workspace->color, __FILE__, __LINE__ );
             sfree( workspace->to_color, __FILE__, __LINE__ );
             sfree( workspace->conflict, __FILE__, __LINE__ );
@@ -1612,15 +1455,13 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
 
         /* graph coloring related OR ILUTP preconditioner */
         if ( control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA 
-                || control->cm_solver_pre_comp_type == ILUTP_PC )
-        {
+                || control->cm_solver_pre_comp_type == ILUTP_PC ) {
             sfree( workspace->y_p, __FILE__, __LINE__ );
             sfree( workspace->x_p, __FILE__, __LINE__ );
         }
 
         /* Jacobi iteration related */
-        if ( control->cm_solver_pre_app_type == JACOBI_ITER_PA )
-        {
+        if ( control->cm_solver_pre_app_type == JACOBI_ITER_PA ) {
             sfree( workspace->Dinv_L, __FILE__, __LINE__ );
             sfree( workspace->Dinv_U, __FILE__, __LINE__ );
             sfree( workspace->Dinv_b, __FILE__, __LINE__ );
@@ -1629,8 +1470,7 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
         }
 
         /* ILUTP preconditioner related */
-        if ( control->cm_solver_pre_comp_type == ILUTP_PC )
-        {
+        if ( control->cm_solver_pre_comp_type == ILUTP_PC ) {
             sfree( workspace->perm_ilutp, __FILE__, __LINE__ );
         }
 
@@ -1644,34 +1484,28 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
 #endif
 
         /* storage for analysis */
-        if ( control->molec_anal || control->diffusion_coef )
-        {
+        if ( control->molec_anal || control->diffusion_coef ) {
             sfree( workspace->mark, __FILE__, __LINE__ );
             sfree( workspace->old_mark, __FILE__, __LINE__ );
         }
 
-        if ( control->diffusion_coef )
-        {
+        if ( control->diffusion_coef ) {
             sfree( workspace->x_old, __FILE__, __LINE__ );
         }
     }
 
     if ( reset == FALSE && (control->geo_format == BGF
             || control->geo_format == ASCII_RESTART
-            || control->geo_format == BINARY_RESTART) )
-    {
+            || control->geo_format == BINARY_RESTART) ) {
         sfree( workspace->map_serials, __FILE__, __LINE__ );
     }
 
-    if ( reset == FALSE )
-    {
+    if ( reset == FALSE ) {
         sfree( workspace->orig_id, __FILE__, __LINE__ );
 
         /* space for keeping restriction info, if any */
-        if ( control->restrict_bonds )
-        {
-            for ( i = 0; i < system->N; ++i )
-            {
+        if ( control->restrict_bonds ) {
+            for ( i = 0; i < system->N; ++i ) {
                 sfree( workspace->restricted_list[i],
                         __FILE__, __LINE__ );
             }
@@ -1703,34 +1537,27 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
 
 static void Finalize_Lists( reax_list **lists )
 {
-    if ( lists[FAR_NBRS]->allocated == TRUE )
-    {
+    if ( lists[FAR_NBRS]->allocated == TRUE ) {
         Delete_List( TYP_FAR_NEIGHBOR, lists[FAR_NBRS] );
     }
-    if ( lists[HBONDS]->allocated == TRUE )
-    {
+    if ( lists[HBONDS]->allocated == TRUE ) {
         Delete_List( TYP_HBOND, lists[HBONDS] );
     }
-    if ( lists[BONDS]->allocated == TRUE )
-    {
+    if ( lists[BONDS]->allocated == TRUE ) {
         Delete_List( TYP_BOND, lists[BONDS] );
     }
-    if ( lists[OLD_BONDS]->allocated == TRUE )
-    {
+    if ( lists[OLD_BONDS]->allocated == TRUE ) {
         Delete_List( TYP_BOND, lists[OLD_BONDS] );
     }
-    if ( lists[THREE_BODIES]->allocated == TRUE )
-    {
+    if ( lists[THREE_BODIES]->allocated == TRUE ) {
         Delete_List( TYP_THREE_BODY, lists[THREE_BODIES] );
     }
 
 #if defined(TEST_FORCES)
-    if ( lists[DDELTA]->allocated == TRUE )
-    {
+    if ( lists[DDELTA]->allocated == TRUE ) {
         Delete_List( TYP_DDELTA, lists[DDELTA] );
     }
-    if ( lists[DBO]->allocated == TRUE )
-    {
+    if ( lists[DBO]->allocated == TRUE ) {
         Delete_List( TYP_DBO, lists[DBO] );
     }
 #endif
@@ -1740,43 +1567,35 @@ static void Finalize_Lists( reax_list **lists )
 void Finalize_Out_Controls( reax_system *system, control_params *control,
         static_storage *workspace, output_controls *out_control )
 {
-    if ( out_control->allocated == TRUE )
-    {
-        if ( out_control->write_steps > 0 )
-        {
+    if ( out_control->allocated == TRUE ) {
+        if ( out_control->write_steps > 0 ) {
             sfclose( out_control->trj, __FILE__, __LINE__ );
         }
 
-        if ( out_control->log_update_freq > 0 )
-        {
+        if ( out_control->log_update_freq > 0 ) {
             sfclose( out_control->out, __FILE__, __LINE__ );
             sfclose( out_control->pot, __FILE__, __LINE__ );
             sfclose( out_control->log, __FILE__, __LINE__ );
         }
 
         if ( control->ensemble == sNPT || control->ensemble == iNPT
-                || control->ensemble == aNPT || control->compute_pressure == TRUE )
-        {
+                || control->ensemble == aNPT || control->compute_pressure == TRUE ) {
             sfclose( out_control->prs, __FILE__, __LINE__ );
         }
 
-        if ( control->molec_anal )
-        {
+        if ( control->molec_anal ) {
             sfclose( out_control->mol, __FILE__, __LINE__ );
 
-            if ( control->num_ignored )
-            {
+            if ( control->num_ignored ) {
                 sfclose( out_control->ign, __FILE__, __LINE__ );
             }
         }
 
-        if ( control->dipole_anal )
-        {
+        if ( control->dipole_anal ) {
             sfclose( out_control->dpl, __FILE__, __LINE__ );
         }
 
-        if ( control->diffusion_coef )
-        {
+        if ( control->diffusion_coef ) {
             sfclose( out_control->drft, __FILE__, __LINE__ );
         }
 
@@ -1819,23 +1638,16 @@ void Finalize_Out_Controls( reax_system *system, control_params *control,
  */
 void Finalize( reax_system *system, control_params *control,
         simulation_data *data, static_storage *workspace, reax_list **lists,
-        output_controls *out_control, int32_t output_enabled, int32_t reset )
+        output_controls *out_control, bool output_enabled, bool reset )
 {
-    if ( control->tabulate )
-    {
+    if ( control->tabulate > 0 ) {
         Finalize_LR_Lookup_Table( system, control, workspace );
     }
-
-    if ( output_enabled == TRUE && reset == FALSE )
-    {
+    if ( output_enabled == TRUE && reset == FALSE ) {
         Finalize_Out_Controls( system, control, workspace, out_control );
     }
-
     Finalize_Lists( lists );
-
     Finalize_Workspace( system, control, workspace, reset );
-
     Finalize_Simulation_Data( system, control, data, out_control );
-
     Finalize_System( system, control, data, reset );
 }

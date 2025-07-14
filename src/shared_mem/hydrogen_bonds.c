@@ -35,7 +35,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
         reax_list **lists, output_controls *out_control )
 {
 #if defined(TEST_FORCES)
-    int32_t num_hb_intrs;
+    uint32_t num_hb_intrs;
 #endif
     real e_hb_total;
 
@@ -48,10 +48,10 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
     #pragma omp parallel default(shared) reduction(+: e_hb_total)
 #endif
     {
-        int32_t i, j, k, pi, pk, itr, top;
-        int32_t type_i, type_j, type_k;
-        int32_t start_j, end_j, hb_start_j, hb_end_j;
-        int32_t *hblist, hblist_size;
+        uint32_t i, j, k, pi, pk, itr, top;
+        uint32_t type_i, type_j, type_k;
+        uint32_t start_j, end_j, hb_start_j, hb_end_j;
+        uint32_t *hblist, hblist_size;
         real r_ij, r_jk, theta, cos_theta, sin_xhz4, cos_xhz1, sin_theta2;
         real e_hb, exp_hb2, exp_hb3, CEhb1, CEhb2, CEhb3;
         rvec dcos_theta_di, dcos_theta_dj, dcos_theta_dk;
@@ -85,15 +85,13 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
 #if defined(_OPENMP)
         #pragma omp for schedule(guided)
 #endif
-        for ( j = 0; j < system->N; ++j )
-        {
+        for ( j = 0; j < system->N; ++j ) {
             /* j must be a hydrogen atom */
             if ( system->reax_param.sbp[system->atoms[j].type].p_hbond == H_ATOM
 #if defined(QMMM)
                     && system->atoms[j].qmmm_mask == TRUE
 #endif
-               )
-            {
+               ) {
                 type_j = system->atoms[j].type;
                 start_j = Start_Index( j, bonds );
                 end_j = End_Index( j, bonds );
@@ -105,41 +103,35 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                 f_j = &system->atoms[j].f;
 #endif
                 if ( control->ensemble == sNPT || control->ensemble == iNPT
-                        || control->ensemble == aNPT || control->compute_pressure == TRUE )
-                {
+                        || control->ensemble == aNPT || control->compute_pressure == TRUE ) {
                     rvec_iMultiply( x_j, system->atoms[j].rel_map, system->box.box_norms );
                     rvec_Add( x_j, system->atoms[j].x );
                 }
 
                 top = 0;
-                if ( Num_Entries( j, bonds ) > hblist_size )
-                {
+                if ( Num_Entries( j, bonds ) > hblist_size ) {
                     hblist_size = Num_Entries( j, bonds );
-                    hblist = srealloc( hblist, sizeof(int32_t) * hblist_size,
+                    hblist = srealloc( hblist, sizeof(uint32_t) * hblist_size,
                             __FILE__, __LINE__ );
                 }
 
-                for ( pi = start_j; pi < end_j; ++pi )
-                {
+                for ( pi = start_j; pi < end_j; ++pi ) {
                     pbond_ij = &bond_list[pi];
                     i = pbond_ij->nbr;
                     bo_ij = &pbond_ij->bo_data;
                     type_i = system->atoms[i].type;
 
                     if ( system->reax_param.sbp[type_i].p_hbond == H_BONDING_ATOM
-                            && bo_ij->BO >= HB_THRESHOLD )
-                    {
+                            && bo_ij->BO >= HB_THRESHOLD ) {
                         hblist[top++] = pi;
                     }
                 }
 
-                for ( pk = hb_start_j; pk < hb_end_j; ++pk )
-                {
+                for ( pk = hb_start_j; pk < hb_end_j; ++pk ) {
                     k = hbond_list[pk].nbr;
 
 #if defined(QMMM)
-                    if ( system->atoms[k].qmmm_mask == TRUE )
-                    {
+                    if ( system->atoms[k].qmmm_mask == TRUE ) {
 #endif
 
                     type_k = system->atoms[k].type;
@@ -152,15 +144,13 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                     f_k = &system->atoms[k].f;
 #endif
 
-                    for ( itr = 0; itr < top; ++itr )
-                    {
+                    for ( itr = 0; itr < top; ++itr ) {
                         pi = hblist[itr];
                         pbond_ij = &bond_list[pi];
                         i = pbond_ij->nbr;
 
                         if ( i != k
-                                && system->reax_param.hbp[system->atoms[i].type][type_j][type_k].is_valid == TRUE )
-                        {
+                                && system->reax_param.hbp[system->atoms[i].type][type_j][type_k].is_valid == TRUE ) {
                             bo_ij = &pbond_ij->bo_data;
                             type_i = system->atoms[i].type;
                             r_ij = pbond_ij->d;
@@ -213,8 +203,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
 
                             if ( control->compute_pressure == FALSE &&
                                     (control->ensemble == NVE || control->ensemble == nhNVT
-                                     || control->ensemble == bNVT) )
-                            {
+                                     || control->ensemble == bNVT) ) {
                                 /* dcos terms */
                                 rvec_ScaledAdd( *f_i, CEhb2, dcos_theta_di );
                                 rvec_ScaledAdd( *f_j, CEhb2, dcos_theta_dj );
@@ -223,10 +212,8 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                                 /* dr terms */
                                 rvec_ScaledAdd( *f_j, -CEhb3 / r_jk, dvec_jk );
                                 rvec_ScaledAdd( *f_k, CEhb3 / r_jk, dvec_jk );
-                            }
-                            else if ( control->ensemble == sNPT || control->ensemble == iNPT
-                                    || control->ensemble == aNPT || control->compute_pressure == TRUE )
-                            {
+                            } else if ( control->ensemble == sNPT || control->ensemble == iNPT
+                                    || control->ensemble == aNPT || control->compute_pressure == TRUE ) {
                                 /* for pressure coupling, terms that are not related
                                  * to bond order derivatives are added directly into
                                  * pressure vector/tensor */
@@ -285,12 +272,9 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
 //                                        temp_rvec, system->atoms[k].x );
 //                                rtensor_Add( total_rtensor, temp_rtensor );
 //
-//                                if ( pbond_ij->imaginary || pbond_jk->imaginary )
-//                                {
+//                                if ( pbond_ij->imaginary || pbond_jk->imaginary ) {
 //                                    rtensor_ScaledAdd( data->flex_bar.P, -1.0, total_rtensor );
-//                                }
-//                                else
-//                                {
+//                                } else {
 //                                    rtensor_Add( data->flex_bar.P, total_rtensor );
 //                                }
                             }
@@ -331,8 +315,7 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
             }
         }
 
-        if ( hblist != NULL )
-        {
+        if ( hblist != NULL ) {
             sfree( hblist, __FILE__, __LINE__ );
         }
     }

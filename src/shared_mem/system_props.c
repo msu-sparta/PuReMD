@@ -31,28 +31,21 @@ void Temperature_Control( control_params *control, simulation_data *data,
     real tmp;
 
     /* step-wise temperature control */
-    if ( control->T_mode == 1 )
-    {
+    if ( control->T_mode == 1 ) {
         if ( (data->step - data->prev_steps) %
-                ((int32_t) (control->T_freq / control->dt)) == 0 )
-        {
-            if ( FABS( control->T - control->T_final ) >= FABS( control->T_rate ) )
-            {
+                ((uint32_t) (control->T_freq / control->dt)) == 0 ) {
+            if ( FABS( control->T - control->T_final ) >= FABS( control->T_rate ) ) {
                 control->T += control->T_rate;
-            }
-            else
-            {
+            } else {
                 control->T = control->T_final;
             }
         }
     }
     /* constant slope control */
-    else if ( control->T_mode == 2 )
-    {
+    else if ( control->T_mode == 2 ) {
         tmp = control->T_rate * control->dt / control->T_freq;
 
-        if ( FABS( control->T - control->T_final ) >= FABS( tmp ) )
-        {
+        if ( FABS( control->T - control->T_final ) >= FABS( tmp ) ) {
             control->T += tmp;
         }
     }
@@ -62,12 +55,11 @@ void Temperature_Control( control_params *control, simulation_data *data,
 void Compute_Total_Mass( reax_system const * const system,
         simulation_data * const data )
 {
-    int32_t i;
+    uint32_t i;
 
     data->M = 0.0;
 
-    for ( i = 0; i < system->N; i++ )
-    {
+    for ( i = 0; i < system->N; i++ ) {
         data->M += system->reax_param.sbp[ system->atoms[i].type ].mass;
     }
 
@@ -78,7 +70,7 @@ void Compute_Total_Mass( reax_system const * const system,
 void Compute_Center_of_Mass( reax_system const * const system,
         simulation_data * const data )
 {
-    int32_t i;
+    uint32_t i;
     real m, xx, xy, xz, yy, yz, zz, det;
     rvec tvec, diff;
     rtensor mat, inv;
@@ -89,8 +81,7 @@ void Compute_Center_of_Mass( reax_system const * const system,
     rvec_MakeZero( data->avcm ); // angular velocity of CoM
 
     /* Compute the position, velocity and angular momentum about the CoM */
-    for ( i = 0; i < system->N; ++i )
-    {
+    for ( i = 0; i < system->N; ++i ) {
         m = system->reax_param.sbp[ system->atoms[i].type ].mass;
 
         rvec_ScaledAdd( data->xcm, m, system->atoms[i].x );
@@ -116,8 +107,7 @@ void Compute_Center_of_Mass( reax_system const * const system,
     yz = 0.0;
     zz = 0.0;
 
-    for ( i = 0; i < system->N; ++i )
-    {
+    for ( i = 0; i < system->N; ++i ) {
         m = system->reax_param.sbp[ system->atoms[i].type ].mass;
 
         rvec_ScaledSum( diff, 1.0, system->atoms[i].x, -1.0, data->xcm );
@@ -157,12 +147,9 @@ void Compute_Center_of_Mass( reax_system const * const system,
     inv[2][1] = mat[2][0] * mat[0][1] - mat[0][0] * mat[2][1];
     inv[2][2] = mat[0][0] * mat[1][1] - mat[1][0] * mat[0][1];
 
-    if ( FABS(det) > ALMOST_ZERO )
-    {
-        rtensor_Scale( inv, 1. / det, inv );
-    }
-    else
-    {
+    if ( FABS(det) > ALMOST_ZERO ) {
+        rtensor_Scale( inv, 1.0 / det, inv );
+    } else {
         rtensor_MakeZero( inv );
     }
 
@@ -186,14 +173,13 @@ void Compute_Center_of_Mass( reax_system const * const system,
 void Compute_Kinetic_Energy( reax_system const * const  system,
         simulation_data * const data )
 {
-    int32_t i;
+    uint32_t i;
     real m;
     rvec p;
 
     data->E_Kin = 0.0;
 
-    for ( i = 0; i < system->N; i++ )
-    {
+    for ( i = 0; i < system->N; i++ ) {
         m = system->reax_param.sbp[system->atoms[i].type].mass;
 
         rvec_Scale( p, m, system->atoms[i].v );
@@ -205,8 +191,7 @@ void Compute_Kinetic_Energy( reax_system const * const  system,
     data->therm.T = (2.0 * data->E_Kin) / (data->N_f * K_B / F_CONV);
 
     /* avoid T being an absolute zero! */
-    if ( FABS( data->therm.T ) < ALMOST_ZERO )
-    {
+    if ( FABS( data->therm.T ) < ALMOST_ZERO ) {
         data->therm.T = ALMOST_ZERO;
     }
 }
@@ -215,9 +200,9 @@ void Compute_Kinetic_Energy( reax_system const * const  system,
 /* Compute potential and total energies */
 void Compute_Total_Energy( simulation_data* data )
 {
-    data->E_Pot = data->E_BE + data->E_Ov + data->E_Un  + data->E_Lp +
-        data->E_Ang + data->E_Pen + data->E_Coa + data->E_HB +
-        data->E_Tor + data->E_Con + data->E_vdW + data->E_Ele + data->E_Pol;
+    data->E_Pot = data->E_BE + data->E_Ov + data->E_Un  + data->E_Lp
+        + data->E_Ang + data->E_Pen + data->E_Coa + data->E_HB
+        + data->E_Tor + data->E_Con + data->E_vdW + data->E_Ele + data->E_Pol;
 
     data->E_Tot = data->E_Pot + data->E_Kin;
 }
@@ -226,20 +211,17 @@ void Compute_Total_Energy( simulation_data* data )
 /* Check for numeric breakdowns in the energies */
 void Check_Energy( simulation_data* data )
 {
-    if ( IS_NAN_REAL(data->E_Pol) )
-    {
+    if ( IS_NAN_REAL(data->E_Pol) ) {
         fprintf( stderr, "[ERROR] NaN detected for polarization energy. Terminating...\n" );
         exit( NUMERIC_BREAKDOWN );
     }
 
-    if ( IS_NAN_REAL(data->E_Pot) )
-    {
+    if ( IS_NAN_REAL(data->E_Pot) ) {
         fprintf( stderr, "[ERROR] NaN detected for potential energy. Terminating...\n" );
         exit( NUMERIC_BREAKDOWN );
     }
 
-    if ( IS_NAN_REAL(data->E_Tot) )
-    {
+    if ( IS_NAN_REAL(data->E_Tot) ) {
         fprintf( stderr, "[ERROR] NaN detected for total energy. Terminating...\n" );
         exit( NUMERIC_BREAKDOWN );
     }
@@ -257,7 +239,10 @@ void Check_Energy( simulation_data* data )
 void Compute_Pressure_Isotropic( reax_system* system, control_params *control,
         simulation_data* data, output_controls *out_control )
 {
-    int32_t i;
+    uint32_t i;
+#if defined(_OPENMP)
+    int32_t j;
+#endif
     simulation_box *box;
     rtensor temp;
 
@@ -265,8 +250,7 @@ void Compute_Pressure_Isotropic( reax_system* system, control_params *control,
 
     /* kinetic contribution */
     rtensor_MakeZero( data->kin_press );
-    for ( i = 0; i < system->N; i++ )
-    {
+    for ( i = 0; i < system->N; i++ ) {
         rvec_OuterProduct( temp, system->atoms[i].v, system->atoms[i].v );
         rtensor_ScaledAdd( data->kin_press,
                 system->reax_param.sbp[system->atoms[i].type].mass, temp );
@@ -276,9 +260,8 @@ void Compute_Pressure_Isotropic( reax_system* system, control_params *control,
 
     /* virial contribution */
 #if defined(_OPENMP)
-    for ( i = 0; i < control->num_threads; ++i )
-    {
-        rtensor_Add( data->press, data->press_local[i] );
+    for ( j = 0; j < control->num_threads; ++j ) {
+        rtensor_Add( data->press, data->press_local[j] );
     }
 #endif
     rtensor_Scale( data->press, -1.0, data->press );
@@ -320,14 +303,13 @@ void Compute_Pressure_Isotropic( reax_system* system, control_params *control,
  */
 void Compute_Pressure_Isotropic_Klein( reax_system* system, simulation_data* data )
 {
-    int32_t i;
+    uint32_t i;
     reax_atom *p_atom;
     rvec dx;
 
     data->iso_bar.P = 2.0 * data->E_Kin;
 
-    for ( i = 0; i < system->N; ++i )
-    {
+    for ( i = 0; i < system->N; ++i ) {
         p_atom = &system->atoms[i];
         rvec_ScaledSum( dx, 1.0, p_atom->x, -1.0, data->xcm );
         data->iso_bar.P += -F_CONV * rvec_Dot( p_atom->f, dx );
@@ -340,14 +322,13 @@ void Compute_Pressure_Isotropic_Klein( reax_system* system, simulation_data* dat
 void Compute_Pressure( reax_system* system, simulation_data* data,
         static_storage *workspace )
 {
-    int32_t i;
+    uint32_t i;
     reax_atom *p_atom;
     rtensor temp;
 
     rtensor_MakeZero( data->flex_bar.P );
 
-    for ( i = 0; i < system->N; ++i )
-    {
+    for ( i = 0; i < system->N; ++i ) {
         p_atom = &system->atoms[i];
 
         rvec_OuterProduct( temp, p_atom->v, p_atom->v );

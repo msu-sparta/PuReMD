@@ -25,11 +25,10 @@
 #include "list.h"
 
 
-void Bonds( reax_system *system, control_params *control,
-        simulation_data *data, static_storage *workspace,
-        reax_list **lists, output_controls *out_control )
+void Bonds( reax_system * system, control_params * control, simulation_data * data,
+        static_storage * workspace, reax_list ** lists, output_controls * out_control )
 {
-    int32_t i;
+    uint32_t i;
     real gp3, gp4, gp7, gp10, ebond_total;
     reax_list *bonds;
 
@@ -57,24 +56,19 @@ void Bonds( reax_system *system, control_params *control,
 #if defined(_OPENMP)
 //        #pragma omp for schedule(guided)
 #endif
-        for ( i = 0; i < system->N; ++i )
-        {
+        for ( i = 0; i < system->N; ++i ) {
 #if defined(QMMM)
-            if ( system->atoms[i].qmmm_mask == TRUE )
-            {
+            if ( system->atoms[i].qmmm_mask == TRUE ) {
 #endif
             start_i = Start_Index(i, bonds);
             end_i = End_Index(i, bonds);
 
-            for ( pj = start_i; pj < end_i; ++pj )
-            {
-                if ( i < bonds->bond_list[pj].nbr )
-                {
+            for ( pj = start_i; pj < end_i; ++pj ) {
+                if ( i < bonds->bond_list[pj].nbr ) {
                     j = bonds->bond_list[pj].nbr;
 
 #if defined(QMMM)
-                    if ( system->atoms[j].qmmm_mask == TRUE )
-                    {
+                    if ( system->atoms[j].qmmm_mask == TRUE ) {
 #endif
 
                     type_i = system->atoms[i].type;
@@ -116,13 +110,11 @@ void Bonds( reax_system *system, control_params *control,
 #endif
 
                     /* Stabilisation terminal triple bond in C-O */
-                    if ( bo_ij->BO >= 1.00 )
-                    {
+                    if ( bo_ij->BO >= 1.00 ) {
                         if ( (strncmp( sbp_i->name, "C", sizeof(sbp_i->name) ) == 0
                                     && strncmp( sbp_j->name, "O", sizeof(sbp_j->name) ) == 0)
                                 || (strncmp( sbp_i->name, "O", sizeof(sbp_i->name) ) == 0
-                                    && strncmp( sbp_j->name, "C", sizeof(sbp_j->name) ) == 0) )
-                        {
+                                    && strncmp( sbp_j->name, "C", sizeof(sbp_j->name) ) == 0) ) {
                             //ba = SQR( bo_ij->BO - 2.5 );
                             exphu = EXP( -gp7 * SQR(bo_ij->BO - 2.5) );
                             //oboa = abo(j1) - boa;

@@ -38,7 +38,7 @@ void Reset( reax_system*, control_params*, simulation_data*,
 
 void Reset_Grid( grid* );
 
-void Reset_Marks( grid*, ivec*, int32_t );
+void Reset_Marks( grid*, ivec*, uint32_t );
 
 
 #endif

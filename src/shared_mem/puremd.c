@@ -47,18 +47,16 @@ static void Post_Evolve( reax_system * const system, control_params * const cont
         simulation_data * const data, static_storage * const workspace,
         reax_list ** const lists, output_controls * const out_control )
 {
-    int32_t i;
+    uint32_t i;
     rvec diff, cross;
 
     /* remove rotational and translational velocity of the center of mass */
     if ( control->ensemble != NVE && control->remove_CoM_vel > 0
-            && data->step % control->remove_CoM_vel == 0 )
-    {
+            && data->step % control->remove_CoM_vel == 0 ) {
         /* compute velocity of the center of mass */
         Compute_Center_of_Mass( system, data );
 
-        for ( i = 0; i < system->N; i++ )
-        {
+        for ( i = 0; i < system->N; i++ ) {
             /* remove translational */
             rvec_ScaledAdd( system->atoms[i].v, -1.0, data->vcm );
 
@@ -69,16 +67,14 @@ static void Post_Evolve( reax_system * const system, control_params * const cont
         }
     }
 
-    if ( control->ensemble == NVE )
-    {
+    if ( control->ensemble == NVE ) {
         Compute_Kinetic_Energy( system, data );
     }
 
     Compute_Total_Energy( data );
 
     if ( control->compute_pressure == TRUE && control->ensemble != sNPT
-            && control->ensemble != iNPT && control->ensemble != aNPT )
-    {
+            && control->ensemble != iNPT && control->ensemble != aNPT ) {
         Compute_Pressure_Isotropic( system, control, data, out_control );
     }
 }
@@ -94,54 +90,38 @@ static void Read_Input_Files( const char * const geo_file,
         const char * const ffield_file, const char * const control_file,
         reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
-        output_controls * const out_control, int32_t reset )
+        output_controls * const out_control, bool reset )
 {
-    if ( ffield_file != NULL )
-    {
+    if ( ffield_file != NULL ) {
         Read_Force_Field( ffield_file, system, &system->reax_param );
     }
 
-    if ( reset == FALSE || control_file != NULL )
-    {
+    if ( reset == FALSE || control_file != NULL ) {
         Set_Control_Defaults( system, control, out_control );
     }
 
-    if ( control_file != NULL )
-    {
-        Read_Control_File( control_file, system, control, out_control );
+    if ( control_file != NULL ) {
+        Read_Control_File( control_file, control, out_control );
     }
 
-    if ( reset == FALSE || control_file != NULL )
-    {
+    if ( reset == FALSE || control_file != NULL ) {
         Set_Control_Derived_Values( system, control );
     }
 
-    if ( geo_file != NULL )
-    {
-        if ( control->geo_format == CUSTOM )
-        {
+    if ( geo_file != NULL ) {
+        if ( control->geo_format == CUSTOM ) {
             Read_Geo( geo_file, system, control, data, workspace );
-        }
-        else if ( control->geo_format == PDB )
-        {
+        } else if ( control->geo_format == PDB ) {
             Read_PDB( geo_file, system, control, data, workspace );
-        }
-        else if ( control->geo_format == BGF )
-        {
+        } else if ( control->geo_format == BGF ) {
             Read_BGF( geo_file, system, control, data, workspace );
-        }
-        else if ( control->geo_format == ASCII_RESTART )
-        {
+        } else if ( control->geo_format == ASCII_RESTART ) {
             Read_ASCII_Restart( geo_file, system, control, data, workspace );
             control->restart = TRUE;
-        }
-        else if ( control->geo_format == BINARY_RESTART )
-        {
+        } else if ( control->geo_format == BINARY_RESTART ) {
             Read_Binary_Restart( geo_file, system, control, data, workspace );
             control->restart = TRUE;
-        }
-        else
-        {
+        } else {
             fprintf( stderr, "[ERROR] unknown geo file format. terminating!\n" );
             exit( INVALID_GEO );
         }
@@ -155,7 +135,7 @@ static void Read_Input_Files( const char * const geo_file,
 
 static void Allocate_Top_Level_Structs( puremd_handle ** handle )
 {
-    int32_t i;
+    uint32_t i;
 
     /* top-level allocation */
     *handle = smalloc( sizeof(puremd_handle), __FILE__, __LINE__ );
@@ -166,8 +146,7 @@ static void Allocate_Top_Level_Structs( puremd_handle ** handle )
     (*handle)->data = smalloc( sizeof(simulation_data), __FILE__, __LINE__ );
     (*handle)->workspace = smalloc( sizeof(static_storage), __FILE__, __LINE__ );
     (*handle)->lists = smalloc( sizeof(reax_list *) * LIST_N, __FILE__, __LINE__ );
-    for ( i = 0; i < LIST_N; ++i )
-    {
+    for ( i = 0; i < LIST_N; ++i ) {
         (*handle)->lists[i] = smalloc( sizeof(reax_list), __FILE__, __LINE__ );
     }
     (*handle)->out_control = smalloc( sizeof(output_controls), __FILE__, __LINE__ );
@@ -176,7 +155,7 @@ static void Allocate_Top_Level_Structs( puremd_handle ** handle )
 
 static void Initialize_Top_Level_Structs( puremd_handle * handle )
 {
-    int32_t i;
+    uint32_t i;
 
     /* top-level initializations */
     handle->output_enabled = TRUE;
@@ -207,12 +186,9 @@ static void Initialize_Top_Level_Structs( puremd_handle * handle )
     handle->workspace->H_app_inv.allocated = FALSE;
     handle->workspace->L.allocated = FALSE;
     handle->workspace->U.allocated = FALSE;
-
-    for ( i = 0; i < LIST_N; ++i )
-    {
+    for ( i = 0; i < LIST_N; ++i ) {
         handle->lists[i]->allocated = FALSE;
     }
-
     handle->out_control->allocated = FALSE;
 }
 
@@ -237,7 +213,7 @@ void * setup( const char * const geo_file, const char * const ffield_file,
             pmd_handle->data, pmd_handle->workspace,
             pmd_handle->out_control, FALSE );
 
-    pmd_handle->system->N_max = (int32_t) CEIL( SAFE_ZONE * pmd_handle->system->N );
+    pmd_handle->system->N_max = (uint32_t) CEIL( SAFE_ZONE * pmd_handle->system->N );
 
     return (void *) pmd_handle;
 }
@@ -260,8 +236,7 @@ void * setup2( int32_t num_atoms, const int32_t * const atom_type,
         const double * const pos, const double * const sim_box_info,
         const char * const ffield_file, const char * const control_file )
 {
-    int32_t i;
-//    char atom_name[9];
+    uint32_t i;
     rvec x;
     puremd_handle *pmd_handle;
 
@@ -279,14 +254,13 @@ void * setup2( int32_t num_atoms, const int32_t * const atom_type,
     pmd_handle->system->N = num_atoms;
 
     PreAllocate_Space( pmd_handle->system, pmd_handle->control,
-            pmd_handle->workspace, (int32_t) CEIL( SAFE_ZONE * pmd_handle->system->N ) );
+            pmd_handle->workspace, (uint32_t) CEIL( SAFE_ZONE * pmd_handle->system->N ) );
 
     Setup_Box( sim_box_info[0], sim_box_info[1], sim_box_info[2],
             sim_box_info[3], sim_box_info[4], sim_box_info[5],
             &pmd_handle->system->box );
 
-    for ( i = 0; i < pmd_handle->system->N; ++i )
-    {
+    for ( i = 0; i < pmd_handle->system->N; ++i ) {
         assert( atom_type[i] >= 0
                 && atom_type[i] < pmd_handle->system->reax_param.num_atom_types );
 
@@ -308,12 +282,9 @@ void * setup2( int32_t num_atoms, const int32_t * const atom_type,
         pmd_handle->system->atoms[i].q = 0.0;
             
         /* check for dummy atom */
-        if ( strncmp( pmd_handle->system->atoms[i].name, "X\0", 2 ) == 0 )
-        {
+        if ( strncmp( pmd_handle->system->atoms[i].name, "X\0", 2 ) == 0 ) {
            pmd_handle->system->atoms[i].is_dummy = TRUE;
-        }
-        else
-        {
+        } else {
             pmd_handle->system->atoms[i].is_dummy = FALSE;            
         }		
     }
@@ -339,8 +310,7 @@ int32_t setup_callback( const void * const handle, const callback_function callb
 
     ret = PUREMD_FAILURE;
 
-    if ( handle != NULL && callback != NULL )
-    {
+    if ( handle != NULL && callback != NULL ) {
         pmd_handle = (puremd_handle*) handle;
         pmd_handle->callback = callback;
         ret = PUREMD_SUCCESS;
@@ -364,8 +334,7 @@ int32_t simulate( const void * const handle )
 
     ret = PUREMD_FAILURE;
 
-    if ( handle != NULL )
-    {
+    if ( handle != NULL ) {
         pmd_handle = (puremd_handle*) handle;
 
         Initialize( pmd_handle->system, pmd_handle->control, pmd_handle->data,
@@ -383,8 +352,7 @@ int32_t simulate( const void * const handle )
                 pmd_handle->workspace, pmd_handle->lists, pmd_handle->out_control,
                 pmd_handle->realloc );
 
-        if ( ret_forces != SUCCESS )
-        {
+        if ( ret_forces != SUCCESS ) {
             Estimate_Storages( pmd_handle->system, pmd_handle->control,
                    pmd_handle->workspace, pmd_handle->lists,
                    pmd_handle->workspace->realloc.cm,
@@ -399,8 +367,7 @@ int32_t simulate( const void * const handle )
                     pmd_handle->workspace, pmd_handle->lists, pmd_handle->out_control,
                     pmd_handle->realloc );
 
-            if ( ret_forces != SUCCESS )
-            {
+            if ( ret_forces != SUCCESS ) {
                 fprintf( stderr, "[ERROR] Unrecoverable memory allocation issue (Compute_Forces). Terminating...\n" );
                 exit( INVALID_GEO );
             }
@@ -409,34 +376,29 @@ int32_t simulate( const void * const handle )
         Compute_Kinetic_Energy( pmd_handle->system, pmd_handle->data );
 
         if ( pmd_handle->control->compute_pressure == TRUE && pmd_handle->control->ensemble != sNPT
-                && pmd_handle->control->ensemble != iNPT && pmd_handle->control->ensemble != aNPT )
-        {
+                && pmd_handle->control->ensemble != iNPT && pmd_handle->control->ensemble != aNPT ) {
             Compute_Pressure_Isotropic( pmd_handle->system, pmd_handle->control,
                     pmd_handle->data, pmd_handle->out_control );
         }
 
         Compute_Total_Energy( pmd_handle->data );
 
-        if ( pmd_handle->output_enabled == TRUE )
-        {
+        if ( pmd_handle->output_enabled == TRUE ) {
             Output_Results( pmd_handle->system, pmd_handle->control, pmd_handle->data,
                     pmd_handle->workspace, pmd_handle->lists, pmd_handle->out_control );
         }
 
         Check_Energy( pmd_handle->data );
 
-        if ( pmd_handle->output_enabled == TRUE )
-        {
+        if ( pmd_handle->output_enabled == TRUE ) {
             if ( pmd_handle->out_control->write_steps > 0
-                    && pmd_handle->data->step % pmd_handle->out_control->write_steps == 0 )
-            {
+                    && pmd_handle->data->step % pmd_handle->out_control->write_steps == 0 ) {
                 Write_PDB( pmd_handle->system, pmd_handle->lists[BONDS], pmd_handle->data,
                         pmd_handle->control, pmd_handle->workspace, pmd_handle->out_control );
             }
         }
 
-        if ( pmd_handle->callback != NULL )
-        {
+        if ( pmd_handle->callback != NULL ) {
             pmd_handle->callback( pmd_handle->system->N, pmd_handle->system->atoms,
                     pmd_handle->data );
         }
@@ -445,12 +407,10 @@ int32_t simulate( const void * const handle )
         ++pmd_handle->data->step;
         retries = 0;
         while ( pmd_handle->data->step <= pmd_handle->control->nsteps
-                && retries < MAX_RETRIES )
-        {
+                && retries < MAX_RETRIES ) {
             ret = SUCCESS;
 
-            if ( pmd_handle->control->T_mode != 0 )
-            {
+            if ( pmd_handle->control->T_mode != 0 ) {
                 Temperature_Control( pmd_handle->control, pmd_handle->data,
                         pmd_handle->out_control );
             }
@@ -458,55 +418,46 @@ int32_t simulate( const void * const handle )
             ret = Evolve( pmd_handle->system, pmd_handle->control, pmd_handle->data,
                     pmd_handle->workspace, pmd_handle->lists, pmd_handle->out_control );
 
-            if ( ret == SUCCESS )
-            {
+            if ( ret == SUCCESS ) {
                 Post_Evolve( pmd_handle->system, pmd_handle->control, pmd_handle->data,
                         pmd_handle->workspace, pmd_handle->lists, pmd_handle->out_control );
             }
 
-            if ( ret == SUCCESS )
-            {
-                if ( pmd_handle->output_enabled == TRUE )
-                {
+            if ( ret == SUCCESS ) {
+                if ( pmd_handle->output_enabled == TRUE ) {
                     Output_Results( pmd_handle->system, pmd_handle->control, pmd_handle->data,
                             pmd_handle->workspace, pmd_handle->lists, pmd_handle->out_control );
                 }
 
                 Check_Energy( pmd_handle->data );
 
-                if ( pmd_handle->output_enabled == TRUE )
-                {
+                if ( pmd_handle->output_enabled == TRUE ) {
                     steps = pmd_handle->data->step - pmd_handle->data->prev_steps;
 
                     Analysis( pmd_handle->system, pmd_handle->control, pmd_handle->data,
                             pmd_handle->workspace, pmd_handle->lists, pmd_handle->out_control );
 
                     if ( pmd_handle->out_control->restart_freq > 0
-                            && steps % pmd_handle->out_control->restart_freq == 0 )
-                    {
+                            && steps % pmd_handle->out_control->restart_freq == 0 ) {
                         Write_Restart( pmd_handle->system, pmd_handle->control, pmd_handle->data,
                                 pmd_handle->workspace, pmd_handle->out_control );
                     }
 
                     if ( pmd_handle->out_control->write_steps > 0
-                            && steps % pmd_handle->out_control->write_steps == 0 )
-                    {
+                            && steps % pmd_handle->out_control->write_steps == 0 ) {
                         Write_PDB( pmd_handle->system, pmd_handle->lists[BONDS], pmd_handle->data,
                                 pmd_handle->control, pmd_handle->workspace, pmd_handle->out_control );
                     }
                 }
 
-                if ( pmd_handle->callback != NULL )
-                {
+                if ( pmd_handle->callback != NULL ) {
                     pmd_handle->callback( pmd_handle->system->N, pmd_handle->system->atoms,
                             pmd_handle->data );
                 }
 
                 ++pmd_handle->data->step;
                 retries = 0;
-            }
-            else
-            {
+            } else {
                 ++retries;
 
 #if defined(DEBUG_FOCUS)
@@ -519,8 +470,7 @@ int32_t simulate( const void * const handle )
         pmd_handle->data->timing.elapsed = Get_Timing_Info( pmd_handle->data->timing.start );
 
         if ( pmd_handle->output_enabled == TRUE
-                && pmd_handle->out_control->log_update_freq > 0 )
-        {
+                && pmd_handle->out_control->log_update_freq > 0 ) {
             fprintf( pmd_handle->out_control->out, "Total Simulation Time: %.2f secs\n",
                     pmd_handle->data->timing.elapsed );
         }
@@ -541,13 +491,13 @@ int32_t simulate( const void * const handle )
  */
 int32_t cleanup( const void * const handle )
 {
-    int32_t i, ret;
+    uint32_t i;
+    int32_t ret;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
 
-    if ( handle != NULL )
-    {
+    if ( handle != NULL ) {
         pmd_handle = (puremd_handle*) handle;
 
         Finalize( pmd_handle->system, pmd_handle->control, pmd_handle->data,
@@ -555,8 +505,7 @@ int32_t cleanup( const void * const handle )
                 pmd_handle->output_enabled, FALSE );
 
         sfree( pmd_handle->out_control, __FILE__, __LINE__ );
-        for ( i = 0; i < LIST_N; ++i )
-        {
+        for ( i = 0; i < LIST_N; ++i ) {
             sfree( pmd_handle->lists[i], __FILE__, __LINE__ );
         }
         sfree( pmd_handle->lists, __FILE__, __LINE__ );
@@ -592,13 +541,11 @@ int32_t reset( const void * const handle, const char * const geo_file,
 
     ret = PUREMD_FAILURE;
 
-    if ( handle != NULL )
-    {
+    if ( handle != NULL ) {
         pmd_handle = (puremd_handle*) handle;
 
         /* close files used in previous simulation */
-        if ( pmd_handle->output_enabled == TRUE )
-        {
+        if ( pmd_handle->output_enabled == TRUE ) {
             Finalize_Out_Controls( pmd_handle->system, pmd_handle->control,
                     pmd_handle->workspace, pmd_handle->out_control );
         }
@@ -615,8 +562,7 @@ int32_t reset( const void * const handle, const char * const geo_file,
         pmd_handle->system->num_custom_charge_constraints = 0;
         pmd_handle->system->num_custom_charge_constraint_entries = 0;
 
-        if ( pmd_handle->system->N > pmd_handle->system->N_max )
-        {
+        if ( pmd_handle->system->N > pmd_handle->system->N_max ) {
             /* deallocate everything which needs more space
              * (i.e., structures whose space is a function of the number of atoms),
              * except for data structures allocated while parsing input files */
@@ -654,19 +600,18 @@ int32_t reset2( const void * const handle, int32_t num_atoms,
         const double * const sim_box_info, const char * const ffield_file,
         const char * const control_file )
 {
-    int32_t i, ret;
+    uint32_t i;
+    int32_t ret;
     rvec x;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
 
-    if ( handle != NULL )
-    {
+    if ( handle != NULL ) {
         pmd_handle = (puremd_handle*) handle;
 
         /* close files used in previous simulation */
-        if ( pmd_handle->output_enabled == TRUE )
-        {
+        if ( pmd_handle->output_enabled == TRUE ) {
             Finalize_Out_Controls( pmd_handle->system, pmd_handle->control,
                     pmd_handle->workspace, pmd_handle->out_control );
         }
@@ -685,8 +630,7 @@ int32_t reset2( const void * const handle, int32_t num_atoms,
         pmd_handle->system->num_custom_charge_constraint_entries = 0;
 
         if ( pmd_handle->system->prealloc_allocated == FALSE
-                || pmd_handle->system->N > pmd_handle->system->N_max )
-        {
+                || pmd_handle->system->N > pmd_handle->system->N_max ) {
             PreAllocate_Space( pmd_handle->system, pmd_handle->control,
                     pmd_handle->workspace, (int32_t) CEIL( SAFE_ZONE * pmd_handle->system->N ) );
         }
@@ -695,8 +639,7 @@ int32_t reset2( const void * const handle, int32_t num_atoms,
                 sim_box_info[3], sim_box_info[4], sim_box_info[5],
                 &pmd_handle->system->box );
 
-        for ( i = 0; i < pmd_handle->system->N; ++i )
-        {
+        for ( i = 0; i < pmd_handle->system->N; ++i ) {
             assert( atom_type[i] >= 0
                     && atom_type[i] < pmd_handle->system->reax_param.num_atom_types );
 
@@ -718,18 +661,14 @@ int32_t reset2( const void * const handle, int32_t num_atoms,
             pmd_handle->system->atoms[i].q = 0.0;
                 
             /* check for dummy atom */
-            if ( strncmp( pmd_handle->system->atoms[i].name, "X\0", 2 ) == 0 )
-            {
+            if ( strncmp( pmd_handle->system->atoms[i].name, "X\0", 2 ) == 0 ) {
                pmd_handle->system->atoms[i].is_dummy = TRUE;
-            }
-            else
-            {
+            } else {
                 pmd_handle->system->atoms[i].is_dummy = FALSE;            
             }		
         }
 
-        if ( pmd_handle->system->N > pmd_handle->system->N_max )
-        {
+        if ( pmd_handle->system->N > pmd_handle->system->N_max ) {
             /* deallocate everything which needs more space
              * (i.e., structures whose space is a function of the number of atoms),
              * except for data structures allocated while parsing input files */
@@ -757,17 +696,16 @@ int32_t reset2( const void * const handle, int32_t num_atoms,
  */
 int32_t get_atom_positions( const void * const handle, double * const pos )
 {
-    int32_t i, ret;
+    uint32_t i;
+    int32_t ret;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
 
-    if ( handle != NULL )
-    {
+    if ( handle != NULL ) {
         pmd_handle = (puremd_handle*) handle;
 
-        for ( i = 0; i < pmd_handle->system->N; ++i )
-        {
+        for ( i = 0; i < pmd_handle->system->N; ++i ) {
             pos[3 * i] = pmd_handle->system->atoms[i].x[0];
             pos[3 * i + 1] = pmd_handle->system->atoms[i].x[1];
             pos[3 * i + 2] = pmd_handle->system->atoms[i].x[2];
@@ -789,17 +727,16 @@ int32_t get_atom_positions( const void * const handle, double * const pos )
  */
 int32_t get_atom_velocities( const void * const handle, double * const vel )
 {
-    int32_t i, ret;
+    uint32_t i;
+    int32_t ret;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
 
-    if ( handle != NULL )
-    {
+    if ( handle != NULL ) {
         pmd_handle = (puremd_handle*) handle;
 
-        for ( i = 0; i < pmd_handle->system->N; ++i )
-        {
+        for ( i = 0; i < pmd_handle->system->N; ++i ) {
             vel[3 * i] = pmd_handle->system->atoms[i].v[0];
             vel[3 * i + 1] = pmd_handle->system->atoms[i].v[1];
             vel[3 * i + 2] = pmd_handle->system->atoms[i].v[2];
@@ -821,17 +758,16 @@ int32_t get_atom_velocities( const void * const handle, double * const vel )
  */
 int32_t get_atom_forces( const void * const handle, double * const f )
 {
-    int32_t i, ret;
+    uint32_t i;
+    int32_t ret;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
 
-    if ( handle != NULL )
-    {
+    if ( handle != NULL ) {
         pmd_handle = (puremd_handle*) handle;
 
-        for ( i = 0; i < pmd_handle->system->N; ++i )
-        {
+        for ( i = 0; i < pmd_handle->system->N; ++i ) {
             f[3 * i] = pmd_handle->system->atoms[i].f[0];
             f[3 * i + 1] = pmd_handle->system->atoms[i].f[1];
             f[3 * i + 2] = pmd_handle->system->atoms[i].f[2];
@@ -853,17 +789,16 @@ int32_t get_atom_forces( const void * const handle, double * const f )
  */
 int32_t get_atom_charges( const void * const handle, double * const q )
 {
-    int32_t i, ret;
+    uint32_t i;
+    int32_t ret;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
 
-    if ( handle != NULL )
-    {
+    if ( handle != NULL ) {
         pmd_handle = (puremd_handle*) handle;
 
-        for ( i = 0; i < pmd_handle->system->N; ++i )
-        {
+        for ( i = 0; i < pmd_handle->system->N; ++i ) {
             q[i] = pmd_handle->system->atoms[i].q;
         }
 
@@ -895,37 +830,30 @@ int32_t get_system_info( const void * const handle, double * const e_pot,
 
     ret = PUREMD_FAILURE;
 
-    if ( handle != NULL )
-    {
+    if ( handle != NULL ) {
         pmd_handle = (puremd_handle*) handle;
 
-        if ( e_pot != NULL )
-        {
+        if ( e_pot != NULL ) {
             *e_pot = pmd_handle->data->E_Pot;
         }
 
-        if ( e_kin != NULL )
-        {
+        if ( e_kin != NULL ) {
             *e_kin = pmd_handle->data->E_Kin;
         }
 
-        if ( e_tot != NULL )
-        {
+        if ( e_tot != NULL ) {
             *e_tot = pmd_handle->data->E_Tot;
         }
 
-        if ( temp != NULL )
-        {
+        if ( temp != NULL ) {
             *temp = pmd_handle->data->therm.T;
         }
 
-        if ( vol != NULL )
-        {
+        if ( vol != NULL ) {
             *vol = pmd_handle->system->box.volume;
         }
 
-        if ( pres != NULL )
-        {
+        if ( pres != NULL ) {
             *pres = (pmd_handle->control->P[0] + pmd_handle->control->P[1]
                     + pmd_handle->control->P[2]) / 3.0;
         }
@@ -950,8 +878,7 @@ int32_t get_total_energy( const void * const handle, double * const e_tot )
 
     ret = get_system_info( handle, e_tot, NULL, NULL, NULL, NULL, NULL );
 
-    if ( ret == SUCCESS )
-    {
+    if ( ret == SUCCESS ) {
         ret = PUREMD_SUCCESS;
     }
 
@@ -973,8 +900,7 @@ int32_t set_output_enabled( const void * const handle, const int32_t enabled )
 
     ret = PUREMD_FAILURE;
 
-    if ( handle != NULL )
-    {
+    if ( handle != NULL ) {
         pmd_handle = (puremd_handle*) handle;
         pmd_handle->output_enabled = enabled;
         ret = PUREMD_SUCCESS;
@@ -1000,15 +926,13 @@ int32_t set_control_parameter( const void * const handle, const char * const key
 
     ret = PUREMD_FAILURE;
 
-    if ( handle != NULL )
-    {
+    if ( handle != NULL ) {
         pmd_handle = (puremd_handle*) handle;
 
         ret_ = Set_Control_Parameter( keyword, values, pmd_handle->control,
                 pmd_handle->out_control );
 
-        if ( ret_ == SUCCESS )
-        {
+        if ( ret_ == SUCCESS ) {
             ret = PUREMD_SUCCESS;
         }
     }
@@ -1032,22 +956,20 @@ int32_t set_contiguous_charge_constraints( const void * const handle,
         const int32_t * const charge_constraint_contig_end,
         const double * const charge_constraint_contig_value )
 {
-    int32_t i, ret;
+    uint32_t i;
+    int32_t ret;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
 
-    if ( handle != NULL )
-    {
+    if ( handle != NULL ) {
         pmd_handle = (puremd_handle*) handle;
 
         pmd_handle->system->num_molec_charge_constraints = num_charge_constraint_contig;
 
         if ( pmd_handle->system->num_molec_charge_constraints
-                > pmd_handle->system->max_num_molec_charge_constraints )
-        {
-            if ( pmd_handle->system->max_num_molec_charge_constraints > 0 )
-            {
+                > pmd_handle->system->max_num_molec_charge_constraints ) {
+            if ( pmd_handle->system->max_num_molec_charge_constraints > 0 ) {
                 sfree( pmd_handle->system->molec_charge_constraints,
                         __FILE__, __LINE__ );
                 sfree( pmd_handle->system->molec_charge_constraint_ranges,
@@ -1065,16 +987,13 @@ int32_t set_contiguous_charge_constraints( const void * const handle,
                 = pmd_handle->system->num_molec_charge_constraints;
         }
 
-        if ( pmd_handle->system->num_molec_charge_constraints > 0 )
-        {
-            for ( i = 0; i < pmd_handle->system->num_molec_charge_constraints; ++i )
-            {
+        if ( pmd_handle->system->num_molec_charge_constraints > 0 ) {
+            for ( i = 0; i < pmd_handle->system->num_molec_charge_constraints; ++i ) {
                 pmd_handle->system->molec_charge_constraint_ranges[2 * i] = charge_constraint_contig_start[i];
                 pmd_handle->system->molec_charge_constraint_ranges[2 * i + 1] = charge_constraint_contig_end[i];
             }
 
-            for ( i = 0; i < pmd_handle->system->num_molec_charge_constraints; ++i )
-            {
+            for ( i = 0; i < pmd_handle->system->num_molec_charge_constraints; ++i ) {
                 pmd_handle->system->molec_charge_constraints[i] = charge_constraint_contig_value[i];
             }
         }
@@ -1104,22 +1023,20 @@ int32_t set_custom_charge_constraints( const void * const handle,
         const double * const charge_constraint_custom_coeff,
         const double * const charge_constraint_custom_rhs )
 {
-    int32_t i, ret;
+    uint32_t i;
+    int32_t ret;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
 
-    if ( handle != NULL )
-    {
+    if ( handle != NULL ) {
         pmd_handle = (puremd_handle*) handle;
 
         pmd_handle->system->num_custom_charge_constraints = num_charge_constraint_custom;
 
         if ( pmd_handle->system->num_custom_charge_constraints
-                > pmd_handle->system->max_num_custom_charge_constraints )
-        {
-            if ( pmd_handle->system->max_num_custom_charge_constraints > 0 )
-            {
+                > pmd_handle->system->max_num_custom_charge_constraints ) {
+            if ( pmd_handle->system->max_num_custom_charge_constraints > 0 ) {
                 sfree( pmd_handle->system->custom_charge_constraint_count,
                         __FILE__, __LINE__ );
                 sfree( pmd_handle->system->custom_charge_constraint_start,
@@ -1144,10 +1061,8 @@ int32_t set_custom_charge_constraints( const void * const handle,
 
         pmd_handle->system->num_custom_charge_constraint_entries = 0;
 
-        if ( pmd_handle->system->num_custom_charge_constraints > 0 )
-        {
-            for ( i = 0; i < pmd_handle->system->num_custom_charge_constraints; ++i )
-            {
+        if ( pmd_handle->system->num_custom_charge_constraints > 0 ) {
+            for ( i = 0; i < pmd_handle->system->num_custom_charge_constraints; ++i ) {
                 pmd_handle->system->custom_charge_constraint_count[i] = charge_constraint_custom_count[i];
                 pmd_handle->system->custom_charge_constraint_start[i] = (i == 0 ? 0 :
                         pmd_handle->system->custom_charge_constraint_start[i - 1] + charge_constraint_custom_count[i - 1]);
@@ -1160,10 +1075,8 @@ int32_t set_custom_charge_constraints( const void * const handle,
         }
 
         if ( pmd_handle->system->num_custom_charge_constraint_entries
-                > pmd_handle->system->max_num_custom_charge_constraint_entries )
-        {
-            if ( pmd_handle->system->max_num_custom_charge_constraint_entries > 0 )
-            {
+                > pmd_handle->system->max_num_custom_charge_constraint_entries ) {
+            if ( pmd_handle->system->max_num_custom_charge_constraint_entries > 0 ) {
                 sfree( pmd_handle->system->custom_charge_constraint_atom_index,
                         __FILE__, __LINE__ );
                 sfree( pmd_handle->system->custom_charge_constraint_coeff,
@@ -1181,15 +1094,12 @@ int32_t set_custom_charge_constraints( const void * const handle,
                 = pmd_handle->system->num_custom_charge_constraint_entries;
         }
 
-        if ( pmd_handle->system->num_custom_charge_constraint_entries > 0 )
-        {
-            for ( i = 0; i < pmd_handle->system->num_custom_charge_constraint_entries; ++i )
-            {
+        if ( pmd_handle->system->num_custom_charge_constraint_entries > 0 ) {
+            for ( i = 0; i < pmd_handle->system->num_custom_charge_constraint_entries; ++i ) {
                 pmd_handle->system->custom_charge_constraint_atom_index[i] = charge_constraint_custom_atom_index[i];
             }
 
-            for ( i = 0; i < pmd_handle->system->num_custom_charge_constraint_entries; ++i )
-            {
+            for ( i = 0; i < pmd_handle->system->num_custom_charge_constraint_entries; ++i ) {
                 pmd_handle->system->custom_charge_constraint_coeff[i] = charge_constraint_custom_coeff[i];
             }
         }
@@ -1222,7 +1132,7 @@ void * setup_qmmm( int32_t qm_num_atoms, const char * const qm_symbols,
         const double * const mm_pos_q, const double * const sim_box_info,
         const char * const ffield_file, const char * const control_file )
 {
-    int32_t i;
+    uint32_t i;
     char element[3];
     rvec x;
     puremd_handle *pmd_handle;
@@ -1251,8 +1161,7 @@ void * setup_qmmm( int32_t qm_num_atoms, const char * const qm_symbols,
 
     element[2] = '\0';
 
-    for ( i = 0; i < pmd_handle->system->N_qm; ++i )
-    {
+    for ( i = 0; i < pmd_handle->system->N_qm; ++i ) {
         x[0] = qm_pos[3 * i];
         x[1] = qm_pos[3 * i + 1];
         x[2] = qm_pos[3 * i + 2];
@@ -1276,18 +1185,14 @@ void * setup_qmmm( int32_t qm_num_atoms, const char * const qm_symbols,
         pmd_handle->system->atoms[i].qmmm_mask = TRUE;
             
         /* check for dummy atom */
-        if ( strncmp( element, "X\0", 2 ) == 0 )
-        {
+        if ( strncmp( element, "X\0", 2 ) == 0 ) {
            pmd_handle->system->atoms[i].is_dummy = TRUE;
-        }
-        else
-        {
+        } else {
             pmd_handle->system->atoms[i].is_dummy = FALSE;            
         }		
     }
 
-    for ( i = pmd_handle->system->N_qm; i < pmd_handle->system->N; ++i )
-    {
+    for ( i = pmd_handle->system->N_qm; i < pmd_handle->system->N; ++i ) {
         x[0] = mm_pos_q[4 * (i - pmd_handle->system->N_qm)];
         x[1] = mm_pos_q[4 * (i - pmd_handle->system->N_qm) + 1];
         x[2] = mm_pos_q[4 * (i - pmd_handle->system->N_qm) + 2];
@@ -1311,12 +1216,9 @@ void * setup_qmmm( int32_t qm_num_atoms, const char * const qm_symbols,
         pmd_handle->system->atoms[i].qmmm_mask = FALSE;
             
         /* check for dummy atom */
-        if ( strncmp( element, "X\0", 2 ) == 0 )
-        {
+        if ( strncmp( element, "X\0", 2 ) == 0 ) {
            pmd_handle->system->atoms[i].is_dummy = TRUE;
-        }
-        else
-        {
+        } else {
             pmd_handle->system->atoms[i].is_dummy = FALSE;            
         }		
     }
@@ -1351,20 +1253,19 @@ int32_t reset_qmmm( const void * const handle, int32_t qm_num_atoms,
         const double * const mm_pos_q, const double * const sim_box_info,
         const char * const ffield_file, const char * const control_file )
 {
-    int32_t i, ret;
+    uint32_t i;
+    int32_t ret;
     char element[3];
     rvec x;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
 
-    if ( handle != NULL )
-    {
+    if ( handle != NULL ) {
         pmd_handle = (puremd_handle*) handle;
 
         /* close files used in previous simulation */
-        if ( pmd_handle->output_enabled == TRUE )
-        {
+        if ( pmd_handle->output_enabled == TRUE ) {
             Finalize_Out_Controls( pmd_handle->system, pmd_handle->control,
                     pmd_handle->workspace, pmd_handle->out_control );
         }
@@ -1385,8 +1286,7 @@ int32_t reset_qmmm( const void * const handle, int32_t qm_num_atoms,
         pmd_handle->system->num_custom_charge_constraint_entries = 0;
 
         if ( pmd_handle->system->prealloc_allocated == FALSE
-                || pmd_handle->system->N > pmd_handle->system->N_max )
-        {
+                || pmd_handle->system->N > pmd_handle->system->N_max ) {
             PreAllocate_Space( pmd_handle->system, pmd_handle->control,
                     pmd_handle->workspace, (int32_t) CEIL( SAFE_ZONE * pmd_handle->system->N ) );
         }
@@ -1397,8 +1297,7 @@ int32_t reset_qmmm( const void * const handle, int32_t qm_num_atoms,
 
         element[2] = '\0';
 
-        for ( i = 0; i < pmd_handle->system->N_qm; ++i )
-        {
+        for ( i = 0; i < pmd_handle->system->N_qm; ++i ) {
             x[0] = qm_pos[3 * i];
             x[1] = qm_pos[3 * i + 1];
             x[2] = qm_pos[3 * i + 2];
@@ -1422,18 +1321,14 @@ int32_t reset_qmmm( const void * const handle, int32_t qm_num_atoms,
             pmd_handle->system->atoms[i].qmmm_mask = TRUE;
             
             /* check for dummy atom */
-            if ( strncmp( element, "X\0", 2 ) == 0 )
-            {
+            if ( strncmp( element, "X\0", 2 ) == 0 ) {
                pmd_handle->system->atoms[i].is_dummy = TRUE;
-            }
-            else
-            {
+            } else {
                 pmd_handle->system->atoms[i].is_dummy = FALSE;            
             }		
         }
 
-        for ( i = pmd_handle->system->N_qm; i < pmd_handle->system->N; ++i )
-        {
+        for ( i = pmd_handle->system->N_qm; i < pmd_handle->system->N; ++i ) {
             x[0] = mm_pos_q[4 * (i - pmd_handle->system->N_qm)];
             x[1] = mm_pos_q[4 * (i - pmd_handle->system->N_qm) + 1];
             x[2] = mm_pos_q[4 * (i - pmd_handle->system->N_qm) + 2];
@@ -1457,18 +1352,14 @@ int32_t reset_qmmm( const void * const handle, int32_t qm_num_atoms,
             pmd_handle->system->atoms[i].qmmm_mask = FALSE;
             
             /* check for dummy atom */
-            if ( strncmp( element, "X\0", 2 ) == 0 )
-            {
+            if ( strncmp( element, "X\0", 2 ) == 0 ) {
                pmd_handle->system->atoms[i].is_dummy = TRUE;
-            }
-            else
-            {
+            } else {
                 pmd_handle->system->atoms[i].is_dummy = FALSE;            
             }		
         }
 
-        if ( pmd_handle->system->N > pmd_handle->system->N_max )
-        {
+        if ( pmd_handle->system->N > pmd_handle->system->N_max ) {
             /* deallocate everything which needs more space
              * (i.e., structures whose space is a function of the number of atoms),
              * except for data structures allocated while parsing input files */
@@ -1498,29 +1389,25 @@ int32_t reset_qmmm( const void * const handle, int32_t qm_num_atoms,
 int32_t get_atom_positions_qmmm( const void * const handle, double * const qm_pos,
         double * const mm_pos )
 {
-    int32_t i, ret;
+    uint32_t i;
+    int32_t ret;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
 
-    if ( handle != NULL )
-    {
+    if ( handle != NULL ) {
         pmd_handle = (puremd_handle*) handle;
 
-        if ( qm_pos != NULL )
-        {
-            for ( i = 0; i < pmd_handle->system->N_qm; ++i )
-            {
+        if ( qm_pos != NULL ) {
+            for ( i = 0; i < pmd_handle->system->N_qm; ++i ) {
                 qm_pos[3 * i] = pmd_handle->system->atoms[i].x[0];
                 qm_pos[3 * i + 1] = pmd_handle->system->atoms[i].x[1];
                 qm_pos[3 * i + 2] = pmd_handle->system->atoms[i].x[2];
             }
         }
 
-        if ( mm_pos != NULL )
-        {
-            for ( i = pmd_handle->system->N_qm; i < pmd_handle->system->N; ++i )
-            {
+        if ( mm_pos != NULL ) {
+            for ( i = pmd_handle->system->N_qm; i < pmd_handle->system->N; ++i ) {
                 mm_pos[3 * (i - pmd_handle->system->N_qm)] = pmd_handle->system->atoms[i].x[0];
                 mm_pos[3 * (i - pmd_handle->system->N_qm) + 1] = pmd_handle->system->atoms[i].x[1];
                 mm_pos[3 * (i - pmd_handle->system->N_qm) + 2] = pmd_handle->system->atoms[i].x[2];
@@ -1545,29 +1432,25 @@ int32_t get_atom_positions_qmmm( const void * const handle, double * const qm_po
 int32_t get_atom_velocities_qmmm( const void * const handle, double * const qm_vel,
         double * const mm_vel )
 {
-    int32_t i, ret;
+    uint32_t i;
+    int32_t ret;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
 
-    if ( handle != NULL )
-    {
+    if ( handle != NULL ) {
         pmd_handle = (puremd_handle*) handle;
 
-        if ( qm_vel != NULL )
-        {
-            for ( i = 0; i < pmd_handle->system->N_qm; ++i )
-            {
+        if ( qm_vel != NULL ) {
+            for ( i = 0; i < pmd_handle->system->N_qm; ++i ) {
                 qm_vel[3 * i] = pmd_handle->system->atoms[i].v[0];
                 qm_vel[3 * i + 1] = pmd_handle->system->atoms[i].v[1];
                 qm_vel[3 * i + 2] = pmd_handle->system->atoms[i].v[2];
             }
         }
 
-        if ( mm_vel != NULL )
-        {
-            for ( i = pmd_handle->system->N_qm; i < pmd_handle->system->N; ++i )
-            {
+        if ( mm_vel != NULL ) {
+            for ( i = pmd_handle->system->N_qm; i < pmd_handle->system->N; ++i ) {
                 mm_vel[3 * (i - pmd_handle->system->N_qm)] = pmd_handle->system->atoms[i].v[0];
                 mm_vel[3 * (i - pmd_handle->system->N_qm) + 1] = pmd_handle->system->atoms[i].v[1];
                 mm_vel[3 * (i - pmd_handle->system->N_qm) + 2] = pmd_handle->system->atoms[i].v[2];
@@ -1592,29 +1475,25 @@ int32_t get_atom_velocities_qmmm( const void * const handle, double * const qm_v
 int32_t get_atom_forces_qmmm( const void * const handle, double * const qm_f,
         double * const mm_f )
 {
-    int32_t i, ret;
+    uint32_t i;
+    int32_t ret;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
 
-    if ( handle != NULL )
-    {
+    if ( handle != NULL ) {
         pmd_handle = (puremd_handle*) handle;
 
-        if ( qm_f != NULL )
-        {
-            for ( i = 0; i < pmd_handle->system->N_qm; ++i )
-            {
+        if ( qm_f != NULL ) {
+            for ( i = 0; i < pmd_handle->system->N_qm; ++i ) {
                 qm_f[3 * i] = pmd_handle->system->atoms[i].f[0];
                 qm_f[3 * i + 1] = pmd_handle->system->atoms[i].f[1];
                 qm_f[3 * i + 2] = pmd_handle->system->atoms[i].f[2];
             }
         }
 
-        if ( mm_f != NULL )
-        {
-            for ( i = pmd_handle->system->N_qm; i < pmd_handle->system->N; ++i )
-            {
+        if ( mm_f != NULL ) {
+            for ( i = pmd_handle->system->N_qm; i < pmd_handle->system->N; ++i ) {
                 mm_f[3 * (i - pmd_handle->system->N_qm)] = pmd_handle->system->atoms[i].f[0];
                 mm_f[3 * (i - pmd_handle->system->N_qm) + 1] = pmd_handle->system->atoms[i].f[1];
                 mm_f[3 * (i - pmd_handle->system->N_qm) + 2] = pmd_handle->system->atoms[i].f[2];
@@ -1639,27 +1518,23 @@ int32_t get_atom_forces_qmmm( const void * const handle, double * const qm_f,
 int32_t get_atom_charges_qmmm( const void * const handle, double * const qm_q,
         double * const mm_q )
 {
-    int32_t i, ret;
+    uint32_t i;
+    int32_t ret;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
 
-    if ( handle != NULL )
-    {
+    if ( handle != NULL ) {
         pmd_handle = (puremd_handle*) handle;
 
-        if ( qm_q != NULL )
-        {
-            for ( i = 0; i < pmd_handle->system->N_qm; ++i )
-            {
+        if ( qm_q != NULL ) {
+            for ( i = 0; i < pmd_handle->system->N_qm; ++i ) {
                 qm_q[i] = pmd_handle->system->atoms[i].q;
             }
         }
 
-        if ( mm_q != NULL )
-        {
-            for ( i = pmd_handle->system->N_qm; i < pmd_handle->system->N; ++i )
-            {
+        if ( mm_q != NULL ) {
+            for ( i = pmd_handle->system->N_qm; i < pmd_handle->system->N; ++i ) {
                 mm_q[i - pmd_handle->system->N_qm] = pmd_handle->system->atoms[i].q;
             }
         }
