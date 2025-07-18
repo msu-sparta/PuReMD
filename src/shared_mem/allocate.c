@@ -41,11 +41,11 @@ void PreAllocate_Space( reax_system * const system,
 
         /* bond restriction info */
         if ( control->restrict_bonds ) {
-            workspace->restricted = scalloc( n, sizeof(uint32_t), __FILE__, __LINE__ );
-            workspace->restricted_list = scalloc( n, sizeof(uint32_t *), __FILE__, __LINE__ );
+            workspace->restricted = scalloc( n, sizeof(int32_t), __FILE__, __LINE__ );
+            workspace->restricted_list = scalloc( n, sizeof(int32_t *), __FILE__, __LINE__ );
 
             for ( i = 0; i < n; ++i ) {
-                workspace->restricted_list[i] = scalloc( MAX_RESTRICT, sizeof(uint32_t),
+                workspace->restricted_list[i] = scalloc( MAX_RESTRICT, sizeof(int32_t),
                         __FILE__, __LINE__ );
             }
         }

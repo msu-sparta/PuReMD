@@ -882,7 +882,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
                     ratom = workspace->map_serials[ bgf_serial ];
                 }
 
-                workspace->restricted[ ratom ] = token_cnt - 2;
+                workspace->restricted[ ratom ] = (int32_t) token_cnt - 2;
                 for ( i = 2; i < token_cnt; ++i ) {
                     bgf_serial = sstrtol( tokens[i], __FILE__, __LINE__ );
                     if ( is_Valid_Serial( workspace->map_serials[ bgf_serial ] ) == TRUE ) {

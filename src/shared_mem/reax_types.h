@@ -1707,8 +1707,8 @@ struct static_storage
     /* storage space for bond restrictions */
     int32_t *map_serials;
     uint32_t *orig_id;
-    uint32_t *restricted;
-    uint32_t **restricted_list;
+    int32_t *restricted;
+    int32_t **restricted_list;
 
 #if defined(_OPENMP)
     /* local forces per thread */

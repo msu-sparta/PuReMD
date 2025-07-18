@@ -1508,8 +1508,7 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
         /* space for keeping restriction info, if any */
         if ( control->restrict_bonds ) {
             for ( i = 0; i < system->N; ++i ) {
-                sfree( workspace->restricted_list[i],
-                        __FILE__, __LINE__ );
+                sfree( workspace->restricted_list[i], __FILE__, __LINE__ );
             }
 
             sfree( workspace->restricted, __FILE__, __LINE__ );

@@ -42,6 +42,9 @@ static inline bool Vector_isZero( const real * const v, const uint32_t k )
 {
     uint32_t i;
 
+#if defined(_OPENMP)
+    #pragma omp single
+#endif
     ret_omp = TRUE;
 
 #if defined(_OPENMP)
@@ -146,6 +149,9 @@ static inline real Dot( const real * const v1, const real * const v2,
 {
     uint32_t i;
 
+#if defined(_OPENMP)
+    #pragma omp single
+#endif
     ret2_omp = 0.0;
 
 #if defined(_OPENMP)
@@ -163,6 +169,9 @@ static inline real Norm( const real * const v1, const uint32_t k )
 {
     uint32_t i;
 
+#if defined(_OPENMP)
+    #pragma omp single
+#endif
     ret2_omp = 0.0;
 
 #if defined(_OPENMP)
@@ -172,6 +181,10 @@ static inline real Norm( const real * const v1, const uint32_t k )
         ret2_omp += SQR( v1[i] );
     }
 
+
+#if defined(_OPENMP)
+    #pragma omp single
+#endif
     ret2_omp = SQRT( ret2_omp );
 
     return ret2_omp;

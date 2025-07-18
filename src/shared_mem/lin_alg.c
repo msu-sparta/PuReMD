@@ -2084,9 +2084,7 @@ void graph_coloring( const control_params * const control,
 #if defined(_OPENMP)
         #pragma omp single
 #endif
-        {
-            workspace->recolor_cnt = A->n;
-        }
+        workspace->recolor_cnt = A->n;
 
         /* ordering of vertices to color depends on triangularity of factor
          * for which coloring is to be used for */
@@ -2145,9 +2143,7 @@ void graph_coloring( const control_params * const control,
 
             #pragma omp single
 #endif
-            {
-                workspace->recolor_cnt = 0;
-            }
+            workspace->recolor_cnt = 0;
 
 #if defined(_OPENMP)
             #pragma omp for schedule(static)
