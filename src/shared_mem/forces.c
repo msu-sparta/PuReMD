@@ -349,6 +349,246 @@ static inline real Init_Charge_Matrix_Entry( reax_system const * const system,
 
 static bool Init_Charge_Matrix_Remaining_Entries( reax_system const * const system,
         control_params const * const control, reax_list const * const far_nbr_list,
+        sparse_matrix * const H, uint32_t * const Htop )
+{
+    uint32_t i, j, pj, target;
+    bool val_flag, flag_oom;
+    real d, xcut, bond_softness, * X_diag;
+
+    flag_oom = FALSE;
+
+    switch ( control->charge_method ) {
+        case QEQ_CM:
+            break;
+
+        case EE_CM:
+            if ( system->num_molec_charge_constraints == 0
+                    && system->num_custom_charge_constraints == 0 ) {
+                H->start[system->N] = *Htop;
+
+                for ( i = 0; i < system->N; ++i ) {
+                    /* total charge constraint on atoms */
+                    if ( *Htop < H->m ) {
+                        H->j[*Htop] = i;
+                        H->val[*Htop] = 1.0;
+                        ++(*Htop);
+                    } else {
+                        flag_oom = TRUE;
+                        break;
+                    }
+                }
+
+                if ( *Htop < H->m ) {
+                    H->j[*Htop] = system->N;
+                    H->val[*Htop] = 0.0;
+                    ++(*Htop);
+                } else {
+                    flag_oom = TRUE;
+                }
+            } else {
+                for ( i = 0; i < system->num_molec_charge_constraints; ++i ) {
+                    H->start[system->N + i] = *Htop;
+
+                    for ( j = system->molec_charge_constraint_ranges[2 * i];
+                            j <= system->molec_charge_constraint_ranges[2 * i + 1]; ++j ) {
+                        /* molecule charge constraint on atoms */
+                        if ( *Htop < H->m ) {
+                            H->j[*Htop] = j - 1;
+                            H->val[*Htop] = 1.0;
+                            ++(*Htop);
+                        } else {
+                            flag_oom = TRUE;
+                            break;
+                        }
+                    }
+
+                    /* explicit zeros on diagonals */
+                    if ( *Htop < H->m ) {
+                        H->j[*Htop] = system->N + i;
+                        H->val[*Htop] = 0.0; 
+                        ++(*Htop);
+                    } else {
+                        flag_oom = TRUE;
+                    }
+                }
+
+                for ( i = system->num_molec_charge_constraints;
+                        i < system->num_molec_charge_constraints + system->num_custom_charge_constraints; ++i ) {
+                    if ( flag_oom == FALSE ) {
+                        H->start[system->N + i] = *Htop;
+
+                        for ( j = system->custom_charge_constraint_start[i - system->num_molec_charge_constraints];
+                                j < system->custom_charge_constraint_start[i - system->num_molec_charge_constraints + 1]; ++j ) {
+                            /* custom charge constraint on atoms */
+                            if ( *Htop < H->m ) {
+                                H->j[*Htop] = system->custom_charge_constraint_atom_index[j] - 1;
+                                H->val[*Htop] = system->custom_charge_constraint_coeff[j];
+                                ++(*Htop);
+                            } else {
+                                flag_oom = TRUE;
+                                break;
+                            }
+                        }
+
+                        /* explicit zeros on diagonals */
+                        if ( *Htop < H->m ) {
+                            H->j[*Htop] = system->N + i;
+                            H->val[*Htop] = 0.0; 
+                            ++(*Htop);
+                        } else {
+                            flag_oom = TRUE;
+                        }
+                    }
+                }
+            }
+            break;
+
+        case ACKS2_CM:
+            X_diag = smalloc( sizeof(real) * system->N, __FILE__, __LINE__ );
+
+            for ( i = 0; i < system->N; ++i ) {
+                X_diag[i] = 0.0;
+            }
+
+            for ( i = 0; i < system->N; ++i ) {
+                if ( flag_oom == FALSE ) {
+                    H->start[system->N + i] = *Htop;
+
+                    /* constraint on ref. value for kinetic energy potential */
+                    if ( *Htop < H->m ) {
+                        H->j[*Htop] = i;
+                        H->val[*Htop] = 1.0;
+                        ++(*Htop);
+                    } else {
+                        flag_oom = TRUE;
+                    }
+
+                    /* kinetic energy terms */
+                    for ( pj = Start_Index(i, far_nbr_list); pj < End_Index(i, far_nbr_list); ++pj ) {
+                        /* exclude self-periodic images of atoms for
+                         * kinetic energy term because the effective
+                         * potential is the same on an atom and its periodic image */
+                        if ( far_nbr_list->far_nbr_list[pj].d <= control->nonb_cut ) {
+                            j = far_nbr_list->far_nbr_list[pj].nbr;
+
+                            xcut = 0.5 * ( system->reax_param.sbp[ system->atoms[i].type ].b_s_acks2
+                                    + system->reax_param.sbp[ system->atoms[j].type ].b_s_acks2 );
+
+                            if ( far_nbr_list->far_nbr_list[pj].d < xcut ) {
+                                d = far_nbr_list->far_nbr_list[pj].d / xcut;
+                                bond_softness = system->reax_param.gp.l[34] * CUBE( d )
+                                    * SIXTH( 1.0 - d );
+
+                                if ( bond_softness > 0.0 ) {
+                                    val_flag = FALSE;
+
+                                    for ( target = H->start[system->N + i]; target < *Htop; ++target ) {
+                                        if ( H->j[target] == system->N + j ) {
+                                            H->val[target] += bond_softness;
+                                            val_flag = TRUE;
+                                            break;
+                                        }
+                                    }
+
+                                    if ( val_flag == FALSE ) {
+                                        if ( *Htop < H->m ) {
+                                            H->j[*Htop] = system->N + j;
+                                            H->val[*Htop] = bond_softness;
+                                            ++(*Htop);
+                                        } else {
+                                            flag_oom = TRUE;
+                                            break;
+                                        }
+                                    }
+
+                                    X_diag[i] -= bond_softness;
+                                    X_diag[j] -= bond_softness;
+                                }
+                            }
+                        }
+                    }
+
+                    /* placeholders for diagonal entries, to be replaced below */
+                    if ( *Htop < H->m ) {
+                        H->j[*Htop] = system->N + i;
+                        H->val[*Htop] = 0.0;
+                        ++(*Htop);
+                    } else {
+                        flag_oom = TRUE;
+                    }
+                }
+            }
+
+            /* second to last row */
+            H->start[system->N_cm - 2] = *Htop;
+
+            /* place accumulated diagonal entries (needed second to last row marker above before this code) */
+            for ( i = system->N; i < 2 * system->N; ++i ) {
+                for ( pj = H->start[i]; pj < H->start[i + 1]; ++pj ) {
+                    if ( H->j[pj] == i ) {
+                        H->val[pj] = X_diag[i - system->N];
+                        break;
+                    }
+                }
+            }
+
+            /* coupling with the kinetic energy potential */
+            for ( i = 0; i < system->N; ++i ) {
+                if ( *Htop < H->m ) {
+                    H->j[*Htop] = system->N + i;
+                    H->val[*Htop] = 1.0;
+                    ++(*Htop);
+                } else {
+                    flag_oom = TRUE;
+                    break;
+                }
+            }
+
+            /* explicitly store zero on diagonal */
+            if ( *Htop < H->m ) {
+                H->j[*Htop] = system->N_cm - 2;
+                H->val[*Htop] = 0.0;
+                ++(*Htop);
+            } else {
+                flag_oom = TRUE;
+            }
+
+            /* last row */
+            H->start[system->N_cm - 1] = *Htop;
+
+            for ( i = 0; i < system->N; ++i ) {
+                if ( *Htop < H->m ) {
+                    H->j[*Htop] = i;
+                    H->val[*Htop] = 1.0;
+                    ++(*Htop);
+                } else {
+                    flag_oom = TRUE;
+                    break;
+                }
+            }
+
+            /* explicitly store zero on diagonal */
+            if ( *Htop < H->m ) {
+                H->j[*Htop] = system->N_cm - 1;
+                H->val[*Htop] = 0.0;
+                ++(*Htop);
+            } else {
+                flag_oom = TRUE;
+            }
+
+            sfree( X_diag, __FILE__, __LINE__ );
+            break;
+
+        default:
+            break;
+    }
+
+    return flag_oom;
+}
+
+
+static bool Init_Charge_Matrix_Remaining_Entries2( reax_system const * const system,
+        control_params const * const control, reax_list const * const far_nbr_list,
         sparse_matrix * const H, sparse_matrix * const H_sp,
         uint32_t * const Htop, uint32_t * const H_sp_top )
 {
@@ -762,6 +1002,91 @@ static void Init_CM_Half( reax_system const * const system,
 {
     uint32_t i, j, pj, target;
     uint32_t start_i, end_i;
+    uint32_t Htop;
+    bool flag, val_flag, flag_oom;
+    real val;
+    sparse_matrix *H;
+    reax_list *far_nbrs;
+
+    far_nbrs = lists[FAR_NBRS];
+    H = &workspace->H;
+    Htop = 0;
+    flag_oom = FALSE;
+
+    for ( i = 0; i < far_nbrs->n; ++i ) {
+        if ( flag_oom == FALSE ) {
+            start_i = Start_Index( i, far_nbrs );
+            end_i = End_Index( i, far_nbrs );
+            H->start[i] = Htop;
+
+            for ( pj = start_i; pj < end_i; ++pj ) {
+                j = far_nbrs->far_nbr_list[pj].nbr;
+                flag = FALSE;
+
+                if ( far_nbrs->far_nbr_list[pj].d <= control->nonb_cut ) {
+                    flag = TRUE;
+                }
+
+                if ( flag == TRUE ) {
+                    val = Init_Charge_Matrix_Entry( system, control,
+                                workspace, i, j, far_nbrs->far_nbr_list[pj].d,
+                                OFF_DIAGONAL );
+                    val_flag = FALSE;
+
+                    for ( target = H->start[i]; target < Htop; ++target ) {
+                        if ( H->j[target] == j ) {
+                            H->val[target] += val;
+                            val_flag = TRUE;
+                            break;
+                        }
+                    }
+
+                    if ( val_flag == FALSE ) {
+                        if ( Htop < H->m ) {
+                            H->j[Htop] = j;
+                            H->val[Htop] = val;
+                            ++Htop;
+                        } else {
+                            flag_oom = TRUE;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            /* diagonal entry */
+            if ( Htop < H->m ) {
+                H->j[Htop] = i;
+                H->val[Htop] = Init_Charge_Matrix_Entry( system, control,
+                        workspace, i, i, 0.0, DIAGONAL );
+                ++Htop;
+            } else {
+                flag_oom = TRUE;
+            }
+        }
+    }
+
+    if ( flag_oom == FALSE ) {
+        flag_oom = Init_Charge_Matrix_Remaining_Entries( system, control, far_nbrs, H, &Htop );
+    }
+
+    H->start[system->N_cm] = Htop;
+    
+    if ( flag_oom == TRUE ) {
+        workspace->realloc.cm = TRUE;
+    }
+}
+
+
+/* Compute the charge matrix entries and store the matrix in half format
+ * using the far neighbors list (stored in half format)
+ */
+static void Init_CM_Half2( reax_system const * const system,
+        control_params const * const control,
+        static_storage * const workspace, reax_list ** const lists )
+{
+    uint32_t i, j, pj, target;
+    uint32_t start_i, end_i;
     uint32_t Htop, H_sp_top;
     bool flag, flag_sp, val_flag, flag_oom;
     real val;
@@ -867,7 +1192,7 @@ static void Init_CM_Half( reax_system const * const system,
     }
 
     if ( flag_oom == FALSE ) {
-        flag_oom = Init_Charge_Matrix_Remaining_Entries( system, control, far_nbrs,
+        flag_oom = Init_Charge_Matrix_Remaining_Entries2( system, control, far_nbrs,
                 H, H_sp, &Htop, &H_sp_top );
     }
 
@@ -994,7 +1319,7 @@ static void Init_CM_Tab_Half( reax_system const * const system,
     }
 
     if ( flag_oom == FALSE ) {
-        flag_oom = Init_Charge_Matrix_Remaining_Entries( system, control, far_nbrs,
+        flag_oom = Init_Charge_Matrix_Remaining_Entries2( system, control, far_nbrs,
                 H, H_sp, &Htop, &H_sp_top );
 
         H->start[system->N_cm] = Htop;
@@ -1275,7 +1600,11 @@ static bool Init_Forces( reax_system * const system,
             && cm_done == FALSE ) {
         if ( control->tabulate == 0 ) {
 //            if ( workspace->H.format == SYM_HALF_MATRIX ) {
+            if ( control->cm_domain_sparsify_enabled == FALSE ) {
                 Init_CM_Half( system, control, workspace, lists );
+            } else if ( control->cm_domain_sparsify_enabled == TRUE ) {
+                Init_CM_Half2( system, control, workspace, lists );
+            }
 //            } else {
 //                Init_CM_Full( system, control, data, workspace, lists, out_control );
 //            }

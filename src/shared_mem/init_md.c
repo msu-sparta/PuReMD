@@ -818,26 +818,28 @@ static void Init_Lists( reax_system * const system,
         workspace->H.n = system->N_cm;
     }
 
-    if ( workspace->H_sp.allocated == FALSE ) {
-        /* TODO: better estimate for H_sp?
-         *   If so, need to refactor Estimate_Storages
-         *   to use various cut-off distances as parameters
-         *   (non-bonded, hydrogen, 3body, etc.) */
-        Allocate_Matrix( &workspace->H_sp, system->N_cm, system->N_cm_max,
-                workspace->realloc.total_cm_entries );
-    } else if ( realloc == TRUE || workspace->H_sp.m < workspace->realloc.total_cm_entries
-            || workspace->H.n_max < system->N_cm_max ) {
-        if ( workspace->H_sp.allocated == TRUE ) {
-            Deallocate_Matrix( &workspace->H_sp );
+    if ( control->cm_domain_sparsify_enabled == TRUE ) {
+        if ( workspace->H_sp.allocated == FALSE ) {
+            /* TODO: better estimate for H_sp?
+             *   If so, need to refactor Estimate_Storages
+             *   to use various cut-off distances as parameters
+             *   (non-bonded, hydrogen, 3body, etc.) */
+            Allocate_Matrix( &workspace->H_sp, system->N_cm, system->N_cm_max,
+                    workspace->realloc.total_cm_entries );
+        } else if ( realloc == TRUE || workspace->H_sp.m < workspace->realloc.total_cm_entries
+                || workspace->H.n_max < system->N_cm_max ) {
+            if ( workspace->H_sp.allocated == TRUE ) {
+                Deallocate_Matrix( &workspace->H_sp );
+            }
+            /* TODO: better estimate for H_sp?
+             *   If so, need to refactor Estimate_Storages
+             *   to use various cut-off distances as parameters
+             *   (non-bonded, hydrogen, 3body, etc.) */
+            Allocate_Matrix( &workspace->H_sp, system->N_cm, system->N_cm_max,
+                    workspace->realloc.total_cm_entries );
+        } else {
+            workspace->H_sp.n = system->N_cm;
         }
-        /* TODO: better estimate for H_sp?
-         *   If so, need to refactor Estimate_Storages
-         *   to use various cut-off distances as parameters
-         *   (non-bonded, hydrogen, 3body, etc.) */
-        Allocate_Matrix( &workspace->H_sp, system->N_cm, system->N_cm_max,
-                workspace->realloc.total_cm_entries );
-    } else {
-        workspace->H_sp.n = system->N_cm;
     }
 
     workspace->num_H = 0;
@@ -1324,7 +1326,7 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
         if ( workspace->H_full.allocated == TRUE ) {
             Deallocate_Matrix( &workspace->H_full );
         }
-        if ( workspace->H_sp.allocated == TRUE ) {
+        if ( control->cm_domain_sparsify_enabled == TRUE && workspace->H_sp.allocated == TRUE ) {
             Deallocate_Matrix( &workspace->H_sp );
         }
         if ( workspace->H_p.allocated == TRUE ) {
