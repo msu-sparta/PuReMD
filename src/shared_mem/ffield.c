@@ -233,6 +233,14 @@ void Read_Force_Field( const char * const ffield_file,
                 reax->sbp[i].name[j] = toupper( reax->sbp[i].name[j] );
             }
 
+            for ( j = 0; j < i; j++ ) {
+                if ( strncmp( reax->sbp[i].name, reax->sbp[j].name, sizeof(reax->sbp[i].name) - 1 ) == 0 ) {
+                    fprintf( stderr, "[ERROR] reading force field failed\n" \
+                             "  [INFO] duplicate single body parameters (entries %d and %d)\n", j + 1, i + 1 );
+                    exit( INVALID_INPUT );
+                }
+            }
+
             val = sstrtod( tmp[1], __FILE__, __LINE__ );
             reax->sbp[i].r_s = val;
             val = sstrtod( tmp[2], __FILE__, __LINE__ );
