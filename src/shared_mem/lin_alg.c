@@ -2761,8 +2761,7 @@ uint32_t GMRES( const static_storage * const workspace, const control_params * c
         simulation_data * const data, const sparse_matrix * const H, const real * const b,
         const real tol, real * const x, const bool fresh_pre )
 {
-    uint32_t i, j, itr, N, g_j, g_itr;
-    int32_t ii, kk;
+    uint32_t i, j, k, itr, N, g_j, g_itr;
     real cc, tmp1, tmp2, temp, bnorm, g_bnorm;
     real t_start, t_ortho, t_pa, t_spmv, t_ts, t_vops;
 
@@ -2777,7 +2776,7 @@ uint32_t GMRES( const static_storage * const workspace, const control_params * c
 
 #if defined(_OPENMP)
     #pragma omp parallel default(none) \
-    private(i, j, ii, kk, itr, bnorm, temp, t_start) \
+    private(i, j, k, itr, bnorm, temp, t_start) \
     firstprivate(control, workspace, H, b, tol, x, fresh_pre) \
     shared(N, cc, tmp1, tmp2, g_itr, g_j, g_bnorm, stderr) \
     reduction(+: t_ortho, t_pa, t_spmv, t_ts, t_vops)
@@ -2902,13 +2901,13 @@ uint32_t GMRES( const static_storage * const workspace, const control_params * c
             #pragma omp single
 #endif
             {
-                for ( ii = (int32_t) (j - 1); ii >= 0; ii-- ) {
-                    temp = workspace->g[ii];
-                    for ( kk = (int32_t) (j - 1); kk > ii; kk-- ) {
-                        temp -= workspace->h[ii][kk] * workspace->y[kk];
+                for ( i = j - 1; i < j; i-- ) {
+                    temp = workspace->g[i];
+                    for ( k = j - 1; k > i; k-- ) {
+                        temp -= workspace->h[i][k] * workspace->y[k];
                     }
 
-                    workspace->y[ii] = temp / workspace->h[ii][ii];
+                    workspace->y[i] = temp / workspace->h[i][i];
                 }
             }
             t_ts += Get_Timing_Info( t_start );
