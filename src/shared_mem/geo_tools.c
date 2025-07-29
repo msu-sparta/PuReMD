@@ -233,10 +233,13 @@ static int32_t Read_Box_Info( reax_system *system, FILE *fp, uint8_t geo_format 
  * fp: file pointer to open geometry file 
  * geo_format: type of geometry file
  * */
-static uint32_t Count_Atoms( reax_system *system, FILE *fp, uint8_t geo_format )
+static uint32_t Count_Atoms( FILE *fp, uint8_t geo_format, bool periodic_boundaries, rvec dx )
 {
-    uint32_t n;
     char line[MAX_LINE];
+    uint32_t i, j, n, serial;
+    char element[3], name[9];
+    char s_x[9], s_y[9], s_z[9];
+    rvec x;
 
     n = 0;
 
@@ -251,6 +254,24 @@ static uint32_t Count_Atoms( reax_system *system, FILE *fp, uint8_t geo_format )
                 if ( strncmp( line, "ATOM", 4 ) == 0
                         || strncmp( line, "HETATM", 6 ) == 0 ) {
                     ++n;
+                    if ( periodic_boundaries == FALSE ) {
+                        strncpy( s_x, line + 30, sizeof(s_x) - 1 );
+                        s_x[sizeof(s_x) - 1] = '\0';
+                        strncpy( s_y, line + 38, sizeof(s_y) - 1 );
+                        s_y[sizeof(s_y) - 1] = '\0';
+                        strncpy( s_z, line + 46, sizeof(s_z) - 1 );
+                        s_z[sizeof(s_z) - 1] = '\0';
+
+                        Make_Point( sstrtod( s_x, __FILE__, __LINE__ ),
+                                sstrtod( s_y, __FILE__, __LINE__ ),
+                                sstrtod( s_z, __FILE__, __LINE__ ), &x );
+
+                        for ( i = 0; i < 3; ++i ) {
+                            if ( x[i] < dx[i] ) {
+                                dx[i] = x[i];
+                            }
+                        }
+                    }
                 }
             }
 
@@ -272,6 +293,38 @@ static uint32_t Count_Atoms( reax_system *system, FILE *fp, uint8_t geo_format )
                 exit( INVALID_INPUT );
             }
 
+            if ( periodic_boundaries == FALSE ) {
+                for ( i = 0; i < n; ++i ) {
+                    if ( fscanf( fp, CUSTOM_ATOM_FORMAT,
+                                &serial, element, name, &x[0], &x[1], &x[2] ) != 6 ) {
+                        fprintf( stderr, "[ERROR] reading geometry file failed\n" \
+                                 "  [INFO] reading atom info (entry %d)\n", i );
+                        exit( INVALID_INPUT );
+                    }
+
+                    for ( j = 0; j < 3; ++j ) {
+                        if ( x[j] < dx[j] ) {
+                            dx[j] = x[j];
+                        }
+                    }
+                }
+
+                /* reset file pointer to beginning of third line in file */
+                fseek( fp, 0, SEEK_SET );
+
+                if ( fgets( line, MAX_LINE, fp ) == NULL ) {
+                    fprintf( stderr, "[ERROR] reading geometry file failed\n" \
+                             "  [INFO] reading simulation box info\n" );
+                    exit( INVALID_INPUT );
+                }
+
+                if ( fgets( line, MAX_LINE, fp ) == NULL ) {
+                    fprintf( stderr, "[ERROR] reading geometry file failed\n" \
+                             "  [INFO] reading number of atoms\n" );
+                    exit( INVALID_INPUT );
+                }
+            }
+
             break;
 
         default:
@@ -281,6 +334,10 @@ static uint32_t Count_Atoms( reax_system *system, FILE *fp, uint8_t geo_format )
     }
 
     assert( n > 0 );
+
+    for ( i = 0; i < 3; ++i ) {
+        dx[i] *= -1.0;
+    }
 
 #if defined(DEBUG)
     fprintf( stderr, "[INFO] Count_Atoms: " );
@@ -304,7 +361,7 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
 {
     FILE *geo;
     uint32_t i, j, n, serial, top;
-    rvec x;
+    rvec x, dx;
     char element[3], name[9];
     reax_atom *atom;
 
@@ -317,7 +374,7 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
     }
 
     /* count atoms and allocate storage */
-    n = Count_Atoms( system, geo, CUSTOM );
+    n = Count_Atoms( geo, CUSTOM, control->periodic_boundaries, dx );
     if ( system->prealloc_allocated == FALSE || n > system->N_max ) {
         PreAllocate_Space( system, control, workspace, (uint32_t) CEIL( SAFE_ZONE * n ) );
     }
@@ -338,7 +395,11 @@ void Read_Geo( const char * const geo_file, reax_system* system, control_params 
         }
         element[sizeof(element) - 1] = '\0';
 
-        Fit_to_Periodic_Box( &system->box, x );
+        if ( control->periodic_boundaries == TRUE ) {
+            Fit_To_Periodic_Box( &system->box, x );
+        } else {
+            Fit_To_Non_Periodic_Box( x, dx );
+        }
 
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "[INFO] atom: id = %u, element = %s, name = %s, x = (%f, %f, %f)\n",
@@ -390,7 +451,7 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
     char occupancy[7], temp_factor[7];
     char seg_id[5], element[3], charge[3];
 //    char alt_loc, chain_id, icode;
-    rvec x;
+    rvec x, dx;
     reax_atom *atom;
 
     pdb = sfopen( pdb_file, "r", __FILE__, __LINE__ );
@@ -404,7 +465,7 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
         exit( INVALID_GEO );
     }
 
-    n = Count_Atoms( system, pdb, PDB );
+    n = Count_Atoms( pdb, PDB, control->periodic_boundaries, dx );
     if ( system->prealloc_allocated == FALSE || n > system->N_max ) {
         PreAllocate_Space( system, control, workspace, (uint32_t) CEIL( SAFE_ZONE * n ) );
     }
@@ -492,7 +553,11 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
                     sstrtod( s_y, __FILE__, __LINE__ ),
                     sstrtod( s_z, __FILE__, __LINE__ ), &x );
 
-            Fit_to_Periodic_Box( &system->box, x );
+            if ( control->periodic_boundaries == TRUE ) {
+                Fit_To_Periodic_Box( &system->box, x );
+            } else {
+                Fit_To_Non_Periodic_Box( x, dx );
+            }
 
             if ( is_Inside_Box( &system->box, x ) ) {
                 /* store orig_id, type, name and coord info of the new atom */
@@ -628,7 +693,7 @@ void Write_PDB( reax_system* system, reax_list* bonds, simulation_data *data,
         Trim_Spaces( name, sizeof(name) );
 
         memcpy( x, p_atom->x, 3 * sizeof(real) );
-        Fit_to_Periodic_Box( &system->box, x );
+        Fit_To_Periodic_Box( &system->box, x );
 
         fprintf( pdb, PDB_ATOM_FORMAT_O,
                 "ATOM  ", workspace->orig_id[i], name,
@@ -667,7 +732,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
 //    char chain_id;
     char s_a[12], s_b[12], s_c[12], s_alpha[12], s_beta[12], s_gamma[12];
     uint32_t i, n, num_mcc, atom_cnt, token_cnt, bgf_serial, ratom, crystx_found;
-    rvec x;
+    rvec x, dx;
 
     ratom = 0;
     crystx_found = FALSE;
@@ -681,14 +746,37 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
     n = 0;
     num_mcc = 0;
     line[0] = 0;
+    rvec_MakeZero( dx );
 
     while ( fgets( line, MAX_LINE, bgf ) ) {
+        if ( control->periodic_boundaries == FALSE ) {
+            strncpy( backup, line, MAX_LINE - 1 );
+            backup[MAX_LINE - 1] = '\0';
+        }
         tokens[0][0] = '\0';
         token_cnt = Tokenize( line, &tokens, MAX_TOKEN_LEN );
 
         if ( strncmp( tokens[0], "ATOM", 4 ) == 0
                 || strncmp( tokens[0], "HETATM", 6 ) == 0 ) {
             ++n;
+            if ( control->periodic_boundaries == FALSE ) {
+                strncpy( s_x, backup + 30, sizeof(s_x) - 1 );
+                s_x[sizeof(s_x) - 1] = '\0';
+                strncpy( s_y, backup + 40, sizeof(s_y) - 1 );
+                s_y[sizeof(s_y) - 1] = '\0';
+                strncpy( s_z, backup + 50, sizeof(s_x) - 1 );
+                s_z[sizeof(s_x) - 1] = '\0';
+
+                x[0] = sstrtod( s_x, __FILE__, __LINE__ );
+                x[1] = sstrtod( s_y, __FILE__, __LINE__ );
+                x[2] = sstrtod( s_z, __FILE__, __LINE__ );
+
+                for ( i = 0; i < 3; ++i ) {
+                    if ( x[i] < dx[i] ) {
+                        dx[i] = x[i];
+                    }
+                }
+            }
         } else if ( strncmp( tokens[0], "MOLCHARGE", 9 ) == 0 ) {
             ++num_mcc;
         }
@@ -698,6 +786,12 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
     if ( ferror( bgf ) ) {
         fprintf( stderr, "[ERROR] Unable to read BGF file. Terminating...\n" );
         exit( INVALID_INPUT );
+    }
+
+    if ( control->periodic_boundaries == FALSE ) {
+        for ( i = 0; i < 3; ++i ) {
+            dx[i] *= -1.0;
+        }
     }
 
     if ( system->prealloc_allocated == FALSE || n > system->N_max ) {
@@ -836,7 +930,11 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             x[1] = sstrtod( s_y, __FILE__, __LINE__ );
             x[2] = sstrtod( s_z, __FILE__, __LINE__ );
 
-            Fit_to_Periodic_Box( &system->box, x );
+            if ( control->periodic_boundaries == TRUE ) {
+                Fit_To_Periodic_Box( &system->box, x );
+            } else {
+                Fit_To_Non_Periodic_Box( x, dx );
+            }
 
             system->atoms[atom_cnt].x[0] = x[0];
             system->atoms[atom_cnt].x[1] = x[1];

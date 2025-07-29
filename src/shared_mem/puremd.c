@@ -236,8 +236,8 @@ void * setup2( int32_t num_atoms, const int32_t * const atom_type,
         const double * const pos, const double * const sim_box_info,
         const char * const ffield_file, const char * const control_file )
 {
-    uint32_t i;
-    rvec x;
+    uint32_t i, j;
+    rvec x, dx;
     puremd_handle *pmd_handle;
 
     Allocate_Top_Level_Structs( &pmd_handle );
@@ -260,6 +260,24 @@ void * setup2( int32_t num_atoms, const int32_t * const atom_type,
             sim_box_info[3], sim_box_info[4], sim_box_info[5],
             &pmd_handle->system->box );
 
+    if ( pmd_handle->control->periodic_boundaries == FALSE ) {
+        dx[0] = pos[0];
+        dx[1] = pos[1];
+        dx[2] = pos[2];
+
+        for ( i = 1; i < pmd_handle->system->N; ++i ) {
+            for ( j = 0; j < 3; ++j ) {
+                if ( pos[3 * i + j] < dx[j] ) {
+                    dx[j] = pos[3 * i + j];
+                }
+            }
+        }
+
+        for ( i = 0; i < 3; ++i ) {
+            dx[i] *= -1.0;
+        }
+    }
+
     for ( i = 0; i < pmd_handle->system->N; ++i ) {
         assert( atom_type[i] >= 0
                 && atom_type[i] < pmd_handle->system->reax_param.num_atom_types );
@@ -268,7 +286,11 @@ void * setup2( int32_t num_atoms, const int32_t * const atom_type,
         x[1] = pos[3 * i + 1];
         x[2] = pos[3 * i + 2];
 
-        Fit_to_Periodic_Box( &pmd_handle->system->box, x );
+        if ( pmd_handle->control->periodic_boundaries == TRUE ) {
+            Fit_To_Periodic_Box( &pmd_handle->system->box, x );
+        } else {
+            Fit_To_Non_Periodic_Box( x, dx );
+        }
 
         pmd_handle->workspace->orig_id[i] = i + 1;
         pmd_handle->system->atoms[i].type = atom_type[i];
@@ -600,9 +622,9 @@ int32_t reset2( const void * const handle, int32_t num_atoms,
         const double * const sim_box_info, const char * const ffield_file,
         const char * const control_file )
 {
-    uint32_t i;
+    uint32_t i, j;
     int32_t ret;
-    rvec x;
+    rvec x, dx;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
@@ -639,6 +661,24 @@ int32_t reset2( const void * const handle, int32_t num_atoms,
                 sim_box_info[3], sim_box_info[4], sim_box_info[5],
                 &pmd_handle->system->box );
 
+        if ( pmd_handle->control->periodic_boundaries == FALSE ) {
+            dx[0] = pos[0];
+            dx[1] = pos[1];
+            dx[2] = pos[2];
+
+            for ( i = 1; i < pmd_handle->system->N; ++i ) {
+                for ( j = 0; j < 3; ++j ) {
+                    if ( pos[3 * i + j] < dx[j] ) {
+                        dx[j] = pos[3 * i + j];
+                    }
+                }
+            }
+
+            for ( i = 0; i < 3; ++i ) {
+                dx[i] *= -1.0;
+            }
+        }
+
         for ( i = 0; i < pmd_handle->system->N; ++i ) {
             assert( atom_type[i] >= 0
                     && atom_type[i] < pmd_handle->system->reax_param.num_atom_types );
@@ -647,7 +687,11 @@ int32_t reset2( const void * const handle, int32_t num_atoms,
             x[1] = pos[3 * i + 1];
             x[2] = pos[3 * i + 2];
 
-            Fit_to_Periodic_Box( &pmd_handle->system->box, x );
+            if ( pmd_handle->control->periodic_boundaries == TRUE ) {
+                Fit_To_Periodic_Box( &pmd_handle->system->box, x );
+            } else {
+                Fit_To_Non_Periodic_Box( x, dx );
+            }
 
             pmd_handle->workspace->orig_id[i] = i + 1;
             pmd_handle->system->atoms[i].type = atom_type[i];
@@ -1132,9 +1176,9 @@ void * setup_qmmm( int32_t qm_num_atoms, const char * const qm_symbols,
         const double * const mm_pos_q, const double * const sim_box_info,
         const char * const ffield_file, const char * const control_file )
 {
-    uint32_t i;
+    uint32_t i, j;
     char element[3];
-    rvec x;
+    rvec x, dx;
     puremd_handle *pmd_handle;
 
     Allocate_Top_Level_Structs( &pmd_handle );
@@ -1159,6 +1203,32 @@ void * setup_qmmm( int32_t qm_num_atoms, const char * const qm_symbols,
             sim_box_info[3], sim_box_info[4], sim_box_info[5],
             &pmd_handle->system->box );
 
+    if ( handle->control->periodic_boundaries == FALSE ) {
+        dx[0] = pos[0];
+        dx[1] = pos[1];
+        dx[2] = pos[2];
+
+        for ( i = 1; i < handle->system->N_qm; ++i ) {
+            for ( j = 0; j < 3; ++j ) {
+                if ( qm_pos[3 * i + j] < dx[j] ) {
+                    dx[j] = qm_pos[3 * i + j];
+                }
+            }
+        }
+
+        for ( i = 0; i < handle->system->N - handle->system->N_qm; ++i ) {
+            for ( j = 0; j < 3; ++j ) {
+                if ( mm_pos_q[4 * i + j] < dx[j] ) {
+                    dx[j] = mm_pos_q[4 * i + j];
+                }
+            }
+        }
+
+        for ( i = 0; i < 3; ++i ) {
+            dx[i] *= -1.0;
+        }
+    }
+
     element[2] = '\0';
 
     for ( i = 0; i < pmd_handle->system->N_qm; ++i ) {
@@ -1166,7 +1236,11 @@ void * setup_qmmm( int32_t qm_num_atoms, const char * const qm_symbols,
         x[1] = qm_pos[3 * i + 1];
         x[2] = qm_pos[3 * i + 2];
 
-        Fit_to_Periodic_Box( &pmd_handle->system->box, x );
+        if ( handle->control->periodic_boundaries == TRUE ) {
+            Fit_To_Periodic_Box( &pmd_handle->system->box, x );
+        } else {
+            Fit_To_Non_Periodic_Box( x, dx );
+        }
 
         pmd_handle->workspace->orig_id[i] = i + 1;
         element[0] = toupper( qm_symbols[2 * i] );
@@ -1197,7 +1271,11 @@ void * setup_qmmm( int32_t qm_num_atoms, const char * const qm_symbols,
         x[1] = mm_pos_q[4 * (i - pmd_handle->system->N_qm) + 1];
         x[2] = mm_pos_q[4 * (i - pmd_handle->system->N_qm) + 2];
 
-        Fit_to_Periodic_Box( &pmd_handle->system->box, x );
+        if ( handle->control->periodic_boundaries == TRUE ) {
+            Fit_To_Periodic_Box( &pmd_handle->system->box, x );
+        } else {
+            Fit_To_Non_Periodic_Box( x, dx );
+        }
 
         pmd_handle->workspace->orig_id[i] = i + 1;
         element[0] = toupper( mm_symbols[2 * (i - pmd_handle->system->N_qm)] );
@@ -1253,10 +1331,10 @@ int32_t reset_qmmm( const void * const handle, int32_t qm_num_atoms,
         const double * const mm_pos_q, const double * const sim_box_info,
         const char * const ffield_file, const char * const control_file )
 {
-    uint32_t i;
+    uint32_t i, j;
     int32_t ret;
     char element[3];
-    rvec x;
+    rvec x, dx;
     puremd_handle *pmd_handle;
 
     ret = PUREMD_FAILURE;
@@ -1295,6 +1373,32 @@ int32_t reset_qmmm( const void * const handle, int32_t qm_num_atoms,
                 sim_box_info[3], sim_box_info[4], sim_box_info[5],
                 &pmd_handle->system->box );
 
+        if ( handle->control->periodic_boundaries == FALSE ) {
+            dx[0] = pos[0];
+            dx[1] = pos[1];
+            dx[2] = pos[2];
+
+            for ( i = 1; i < handle->system->N_qm; ++i ) {
+                for ( j = 0; j < 3; ++j ) {
+                    if ( qm_pos[3 * i + j] < dx[j] ) {
+                        dx[j] = qm_pos[3 * i + j];
+                    }
+                }
+            }
+
+            for ( i = 0; i < handle->system->N - handle->system->N_qm; ++i ) {
+                for ( j = 0; j < 3; ++j ) {
+                    if ( mm_pos_q[4 * i + j] < dx[j] ) {
+                        dx[j] = mm_pos_q[4 * i + j];
+                    }
+                }
+            }
+
+            for ( i = 0; i < 3; ++i ) {
+                dx[i] *= -1.0;
+            }
+        }
+
         element[2] = '\0';
 
         for ( i = 0; i < pmd_handle->system->N_qm; ++i ) {
@@ -1302,7 +1406,11 @@ int32_t reset_qmmm( const void * const handle, int32_t qm_num_atoms,
             x[1] = qm_pos[3 * i + 1];
             x[2] = qm_pos[3 * i + 2];
 
-            Fit_to_Periodic_Box( &pmd_handle->system->box, x );
+            if ( handle->control->periodic_boundaries == TRUE ) {
+                Fit_To_Periodic_Box( &pmd_handle->system->box, x );
+            } else {
+                Fit_To_Non_Periodic_Box( x, dx );
+            }
 
             pmd_handle->workspace->orig_id[i] = i + 1;
             element[0] = toupper( qm_symbols[2 * i] );
@@ -1333,7 +1441,11 @@ int32_t reset_qmmm( const void * const handle, int32_t qm_num_atoms,
             x[1] = mm_pos_q[4 * (i - pmd_handle->system->N_qm) + 1];
             x[2] = mm_pos_q[4 * (i - pmd_handle->system->N_qm) + 2];
 
-            Fit_to_Periodic_Box( &pmd_handle->system->box, x );
+            if ( handle->control->periodic_boundaries == TRUE ) {
+                Fit_To_Periodic_Box( &pmd_handle->system->box, x );
+            } else {
+                Fit_To_Non_Periodic_Box( x, dx );
+            }
 
             pmd_handle->workspace->orig_id[i] = i + 1;
             element[0] = toupper( mm_symbols[2 * (i - pmd_handle->system->N_qm)] );

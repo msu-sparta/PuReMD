@@ -98,8 +98,11 @@ void Transform_to_UnitBox( rvec x1, simulation_box *box, int32_t flag, rvec x2 )
 /* Check and remap (if necessary) an atom position to fall
  * within the boundaries of a periodic simulation box where
  * the boundaries are [0, d_i) with d_i being the length
- * of the simulation box in a particular dimension */
-void Fit_to_Periodic_Box( simulation_box *box, rvec p )
+ * of the simulation box in a particular dimension
+ *
+ * box: simulation box dimensions
+ * x: atom position to be remapped, if necessary */
+void Fit_To_Periodic_Box( simulation_box *box, rvec p )
 {
     int32_t i;
 
@@ -115,6 +118,23 @@ void Fit_to_Periodic_Box( simulation_box *box, rvec p )
                 p[i] -= box->box_norms[i];
             }
         }
+    }
+}
+
+
+/* Check and remap (if necessary) an atom position to fall
+ * within the boundaries of a non-periodic simulation box where
+ * the boundaries are [0, d_i) with d_i being the length
+ * of the simulation box in a particular dimension 
+ *
+ * x: atom position to be remapped, if necessary
+ * dx: position offset to be applied, if necessary (may be zero) */
+void Fit_To_Non_Periodic_Box( rvec x, const rvec dx )
+{
+    uint32_t i;
+
+    for ( i = 0; i < 3; ++i ) {
+        x[i] += dx[i];
     }
 }
 
