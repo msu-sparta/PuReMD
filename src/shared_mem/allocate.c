@@ -197,8 +197,10 @@ void Reallocate_Part2( reax_system const * const system,
     if ( realloc->cm == TRUE ) {
         Reallocate_Matrix( &workspace->H, system->N_cm, system->N_cm_max,
                 realloc->total_cm_entries );
-        Reallocate_Matrix( &workspace->H_sp, system->N_cm, system->N_cm_max,
-                realloc->total_cm_entries );
+        if ( control->cm_domain_sparsify_enabled == TRUE ) {
+            Reallocate_Matrix( &workspace->H_sp, system->N_cm, system->N_cm_max,
+                    realloc->total_cm_entries );
+        }
 
         realloc->cm = FALSE;
     }
