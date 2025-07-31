@@ -293,9 +293,10 @@ int32_t Generate_Neighbor_Lists( reax_system * const system,
         }
     }
 
-    //TODO: conditionally perform these assignments if periodic boundary conditions are enabled
-    for ( i = 0; i < system->N; i++ ) {
-        ivec_MakeZero( system->atoms[i].rel_map );
+    if ( control->periodic_boundaries == TRUE ) {
+        for ( i = 0; i < system->N; i++ ) {
+            ivec_MakeZero( system->atoms[i].rel_map );
+        }
     }
 
     if ( flag_oom == TRUE ) {

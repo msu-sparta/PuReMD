@@ -817,13 +817,13 @@ void Print_Sparse_Matrix2( sparse_matrix *A, char *fname, char *mode )
         /* off-diagonals */
         for ( j = A->start[i]; j < A->start[i + 1] - 1; ++j ) {
             //Convert 0-based to 1-based (for Matlab)
-            fprintf( f, "%6d %6d %24.15f\n", i + 1, A->j[j] + 1, A->val[j] );
+            fprintf( f, "%6u %6u %24.15f\n", i + 1, A->j[j] + 1, A->val[j] );
             /* print symmetric entry */
-//            fprintf( f, "%6d %6d %24.15f\n", A->j[j] + 1, i + 1, A->val[j] );
+//            fprintf( f, "%6u %6u %24.15f\n", A->j[j] + 1, i + 1, A->val[j] );
         }
 
         /* diagonal */
-        fprintf( f, "%6d %6d %24.15f\n", i + 1, A->j[A->start[i + 1] - 1] + 1, A->val[A->start[i + 1] - 1] );
+        fprintf( f, "%6d %6u %24.15f\n", i + 1, A->j[A->start[i + 1] - 1] + 1, A->val[A->start[i + 1] - 1] );
     }
 
     sfclose( f, __FILE__, __LINE__ );

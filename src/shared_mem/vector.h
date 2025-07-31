@@ -181,7 +181,6 @@ static inline real Norm( const real * const v1, const uint32_t k )
         ret2_omp += SQR( v1[i] );
     }
 
-
 #if defined(_OPENMP)
     #pragma omp single
 #endif

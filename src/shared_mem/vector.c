@@ -27,13 +27,11 @@ void Vector_Print( FILE * const fout, const char * const vname, const real * con
 {
     uint32_t i;
 
-    if ( vname != NULL )
-    {
+    if ( vname != NULL ) {
         fprintf( fout, "%s:\n", vname );
     }
 
-    for ( i = 0; i < k; ++i )
-    {
+    for ( i = 0; i < k; ++i ) {
         fprintf( fout, "%24.15e\n", v[i] );
     }
 }
@@ -43,11 +41,9 @@ void Print_rTensor( FILE * const fp, rtensor t )
 {
     uint32_t i, j;
 
-    for (i = 0; i < 3; i++)
-    {
+    for (i = 0; i < 3; i++) {
         fprintf(fp, "[");
-        for (j = 0; j < 3; j++)
-        {
+        for (j = 0; j < 3; j++) {
             fprintf(fp, "%8.3f,\t", t[i][j]);
         }
         fprintf(fp, "]\n");

@@ -137,8 +137,7 @@ void Sort_Matrix_Rows( sparse_matrix * const A )
 #if defined(_OPENMP)
 //        #pragma omp for schedule(guided)
 #endif
-        for ( i = 0; i < A->n; ++i )
-        {
+        for ( i = 0; i < A->n; ++i ) {
             si = A->start[i];
             ei = A->start[i + 1];
 
@@ -243,11 +242,8 @@ void setup_sparse_approx_inverse( const sparse_matrix * const A,
         sparse_matrix * A_spar_patt_full, sparse_matrix * A_app_inv,
         const real filter, bool realloc )
 {
-    uint32_t i, pj, size;
-    uint32_t left, right, k, p, turn;
-    real pivot, tmp;
-    real threshold;
-    real *list;
+    uint32_t i, pj, size, left, right, k, p, turn;
+    real pivot, tmp, threshold, *list;
 
     if ( A_spar_patt->allocated == FALSE ) {
         Allocate_Matrix( A_spar_patt, A->n, A->n_max, A->m );
@@ -1824,8 +1820,8 @@ void Transpose_I( sparse_matrix * const A )
 
     Transpose( A, &A_t );
 
-    memcpy( A->start, A_t.start, sizeof(int32_t) * (A_t.n + 1) );
-    memcpy( A->j, A_t.j, sizeof(int32_t) * (A_t.start[A_t.n]) );
+    memcpy( A->start, A_t.start, sizeof(uint32_t) * (A_t.n + 1) );
+    memcpy( A->j, A_t.j, sizeof(uint32_t) * (A_t.start[A_t.n]) );
     memcpy( A->val, A_t.val, sizeof(real) * (A_t.start[A_t.n]) );
 
     Deallocate_Matrix( &A_t );
@@ -2394,8 +2390,8 @@ void setup_graph_coloring( const control_params * const control,
     graph_coloring( control, (static_storage *) workspace, H_full, LOWER );
     sort_rows_by_colors( workspace, H_full->n );
 
-    memcpy( H_p->start, H->start, sizeof(int32_t) * (H->n + 1) );
-    memcpy( H_p->j, H->j, sizeof(int32_t) * (H->start[H->n]) );
+    memcpy( H_p->start, H->start, sizeof(uint32_t) * (H->n + 1) );
+    memcpy( H_p->j, H->j, sizeof(uint32_t) * (H->start[H->n]) );
     memcpy( H_p->val, H->val, sizeof(real) * (H->start[H->n]) );
     permute_matrix( workspace, H_p, LOWER );
 }
@@ -2455,7 +2451,6 @@ void jacobi_iter( const static_storage * const workspace,
                 si = R->start[i];
                 ei = R->start[i + 1] - 1;
             } else {
-
                 si = R->start[i] + 1;
                 ei = R->start[i + 1];
             }
@@ -2534,8 +2529,7 @@ static void apply_preconditioner( const static_storage * const workspace,
                 }
                 break;
             case TRI_SOLVE_LEVEL_SCHED_PA:
-                switch ( control->cm_solver_pre_comp_type )
-                {
+                switch ( control->cm_solver_pre_comp_type ) {
                 case JACOBI_PC:
                     jacobi_app( workspace->Hdia_inv, y, x, workspace->H.n );
                     break;
@@ -2560,8 +2554,7 @@ static void apply_preconditioner( const static_storage * const workspace,
                 }
                 break;
             case TRI_SOLVE_GC_PA:
-                switch ( control->cm_solver_pre_comp_type )
-                {
+                switch ( control->cm_solver_pre_comp_type ) {
                 case JACOBI_PC:
                 case SAI_PC:
                     fprintf( stderr, "[ERROR] Unsupported preconditioner computation/application method combination. Terminating...\n" );
@@ -2587,8 +2580,7 @@ static void apply_preconditioner( const static_storage * const workspace,
                 }
                 break;
             case JACOBI_ITER_PA:
-                switch ( control->cm_solver_pre_comp_type )
-                {
+                switch ( control->cm_solver_pre_comp_type ) {
                 case JACOBI_PC:
                 case SAI_PC:
                     fprintf( stderr, "[ERROR] Unsupported preconditioner computation/application method combination. Terminating...\n" );
@@ -2759,7 +2751,7 @@ static void apply_preconditioner( const static_storage * const workspace,
  * left preconditioning for sparse linear systems */
 uint32_t GMRES( const static_storage * const workspace, const control_params * const control,
         simulation_data * const data, const sparse_matrix * const H, const real * const b,
-        const real tol, real * const x, const bool fresh_pre )
+        const real tol, real * const x, bool fresh_pre )
 {
     uint32_t i, j, k, itr, N, g_j, g_itr;
     real cc, tmp1, tmp2, temp, bnorm, g_bnorm;
@@ -2958,7 +2950,7 @@ uint32_t GMRES( const static_storage * const workspace, const control_params * c
 uint32_t GMRES_HouseHolder( const static_storage * const workspace,
         const control_params * const control, simulation_data * const data,
         const sparse_matrix * const H, const real * const b, real tol,
-        real * const x, const bool fresh_pre )
+        real * const x, bool fresh_pre )
 {
     uint32_t i, j, k, itr, N, g_j, g_itr;
     real cc, tmp1, tmp2, temp, bnorm, g_bnorm;
@@ -3109,7 +3101,7 @@ uint32_t GMRES_HouseHolder( const static_storage * const workspace,
                         tmp1 =  workspace->hc[j] * v[j] + workspace->hs[j] * v[j + 1];
                         tmp2 = -workspace->hs[j] * v[j] + workspace->hc[j] * v[j + 1];
 
-                        v[j]   = tmp1;
+                        v[j] = tmp1;
                         v[j + 1] = tmp2;
 
                         /* Givens rotations to rhs */
@@ -3187,7 +3179,7 @@ uint32_t GMRES_HouseHolder( const static_storage * const workspace,
 /* Conjugate Gradient */
 uint32_t CG( const static_storage * const workspace, const control_params * const control,
         simulation_data * const data, const sparse_matrix * const H, const real * const b,
-        const real tol, real * const x, const bool fresh_pre )
+        const real tol, real * const x, bool fresh_pre )
 {
     uint32_t i, g_itr, N;
     real tmp, alpha, beta, bnorm, g_bnorm, rnorm, g_rnorm;
@@ -3306,7 +3298,7 @@ uint32_t CG( const static_storage * const workspace, const control_params * cons
  * */
 uint32_t BiCGStab( const static_storage * const workspace, const control_params * const control,
         simulation_data * const data, const sparse_matrix * const H, const real * const b,
-        const real tol, real * const x, const bool fresh_pre )
+        const real tol, real * const x, bool fresh_pre )
 {
     uint32_t i, g_itr, N;
     real tmp, alpha, beta, omega, sigma, rho, rho_old, rnorm, g_rnorm, bnorm, g_bnorm, g_omega, g_rho;
@@ -3476,7 +3468,7 @@ uint32_t BiCGStab( const static_storage * const workspace, const control_params 
 /* Steepest Descent */
 uint32_t SDM( const static_storage * const workspace, const control_params * const control,
          simulation_data * const data, const sparse_matrix * const H, const real * const b,
-         const real tol, real * const x, const bool fresh_pre )
+         const real tol, real * const x, bool fresh_pre )
 {
     uint32_t i, g_itr, N;
     real tmp, alpha, bnorm, g_bnorm;

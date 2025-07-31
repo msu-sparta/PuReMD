@@ -334,8 +334,7 @@ static void Predict_Charges_TF_LSTM( const reax_system * const system,
 
 
 static void Spline_Extrapolate_Charges_QEq( const reax_system * const system,
-        const control_params * const control,
-        simulation_data * const data, static_storage * const workspace )
+        const control_params * const control, static_storage * const workspace )
 {
     uint32_t i;
     real tmp;
@@ -418,8 +417,7 @@ static void Spline_Extrapolate_Charges_QEq( const reax_system * const system,
 
 
 static void Spline_Extrapolate_Charges_EE( const reax_system * const system,
-        const control_params * const control,
-        simulation_data * const data, static_storage * const workspace )
+        const control_params * const control, static_storage * const workspace )
 {
     uint32_t i;
     real tmp;
@@ -1238,7 +1236,8 @@ static void QEq( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
         const output_controls * const out_control, bool realloc )
 {
-    uint32_t iters, refactor;
+    uint32_t iters;
+    bool refactor;
 
     refactor = is_refactoring_step( control, data );
 
@@ -1249,13 +1248,13 @@ static void QEq( reax_system * const system, control_params * const control,
 
     switch ( control->cm_init_guess_type ) {
     case SPLINE:
-        Spline_Extrapolate_Charges_QEq( system, control, data, workspace );
+        Spline_Extrapolate_Charges_QEq( system, control, workspace );
         break;
 
     case TF_FROZEN_MODEL_LSTM:
 #if defined(HAVE_TENSORFLOW)
         if ( data->step < control->cm_init_guess_win_size ) {
-            Spline_Extrapolate_Charges_QEq( system, control, data, workspace );
+            Spline_Extrapolate_Charges_QEq( system, control, workspace );
         } else {
             Predict_Charges_TF_LSTM( system, control, data, workspace );
         }
@@ -1347,7 +1346,8 @@ static void EE( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
         const output_controls * const out_control, bool realloc )
 {
-    uint32_t iters, refactor;
+    uint32_t iters;
+    bool refactor;
 
     refactor = is_refactoring_step( control, data );
 
@@ -1358,13 +1358,13 @@ static void EE( reax_system * const system, control_params * const control,
 
     switch ( control->cm_init_guess_type ) {
     case SPLINE:
-        Spline_Extrapolate_Charges_EE( system, control, data, workspace );
+        Spline_Extrapolate_Charges_EE( system, control, workspace );
         break;
 
     case TF_FROZEN_MODEL_LSTM:
 #if defined(HAVE_TENSORFLOW)
         if ( data->step < control->cm_init_guess_win_size ) {
-            Spline_Extrapolate_Charges_EE( system, control, data, workspace );
+            Spline_Extrapolate_Charges_EE( system, control, workspace );
         } else {
             Predict_Charges_TF_LSTM( system, control, data, workspace );
         }
@@ -1440,7 +1440,8 @@ static void ACKS2( reax_system * const system, control_params * const control,
         simulation_data * const data, static_storage * const workspace,
         const output_controls * const out_control, bool realloc )
 {
-    uint32_t iters, refactor;
+    uint32_t iters;
+    bool refactor;
 
     refactor = is_refactoring_step( control, data );
 
@@ -1453,13 +1454,13 @@ static void ACKS2( reax_system * const system, control_params * const control,
 
     switch ( control->cm_init_guess_type ) {
     case SPLINE:
-        Spline_Extrapolate_Charges_EE( system, control, data, workspace );
+        Spline_Extrapolate_Charges_EE( system, control, workspace );
         break;
 
     case TF_FROZEN_MODEL_LSTM:
 #if defined(HAVE_TENSORFLOW)
         if ( data->step < control->cm_init_guess_win_size ) {
-            Spline_Extrapolate_Charges_EE( system, control, data, workspace );
+            Spline_Extrapolate_Charges_EE( system, control, workspace );
         } else {
             Predict_Charges_TF_LSTM( system, control, data, workspace );
         }
@@ -1540,6 +1541,9 @@ void Compute_Charges( reax_system * const system, control_params * const control
         simulation_data * const data, static_storage * const workspace,
         const output_controls * const out_control, bool realloc )
 {
+    uint32_t i;
+    bool nan_detected;
+
 #if defined(DEBUG_FOCUS)
 #define SIZE (200)
     char fname[SIZE];
@@ -1580,5 +1584,22 @@ void Compute_Charges( reax_system * const system, control_params * const control
         fprintf( stderr, "[ERROR] Invalid charge method. Terminating...\n" );
         exit( UNKNOWN_OPTION );
         break;
+    }
+
+    nan_detected = FALSE;
+    for ( i = 0; i < system->N; ++i ) {
+        if ( IS_NAN_REAL(system->atoms[i].q) ) {
+            nan_detected = TRUE;
+        }
+    }
+
+    if ( nan_detected == TRUE ) {
+        fprintf( stderr, "[ERROR] charge computation failure (NaN). Terminating...\n" );
+        for ( i = 0; i < system->N; ++i ) {
+            if ( IS_NAN_REAL(system->atoms[i].q) ) {
+                fprintf( stderr, "  [INFO] NaN charge value detected for atom %d.\n", i );
+            }
+        }
+        exit( NUMERIC_BREAKDOWN );
     }
 }

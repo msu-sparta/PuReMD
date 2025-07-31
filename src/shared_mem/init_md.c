@@ -588,8 +588,8 @@ static void Init_Workspace( reax_system * const system,
     workspace->levels_L = 1;
     workspace->levels_U = 1;
     if ( realloc == TRUE ) {
-        if ( control->cm_solver_pre_app_type == TRI_SOLVE_LEVEL_SCHED_PA ||
-                control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA ) {
+        if ( control->cm_solver_pre_app_type == TRI_SOLVE_LEVEL_SCHED_PA
+                || control->cm_solver_pre_app_type == TRI_SOLVE_GC_PA ) {
             workspace->row_levels_L = smalloc( system->N_cm_max * sizeof(uint32_t),
                     __FILE__, __LINE__ );
             workspace->level_rows_L = smalloc( system->N_cm_max * sizeof(uint32_t),
@@ -678,7 +678,7 @@ static void Init_Workspace( reax_system * const system,
 
         /* ILUTP preconditioner related */
         if ( control->cm_solver_pre_comp_type == ILUTP_PC ) {
-            workspace->perm_ilutp = smalloc( sizeof( int32_t ) * system->N_cm_max,
+            workspace->perm_ilutp = smalloc( sizeof( uint32_t ) * system->N_cm_max,
                    __FILE__, __LINE__ );
         } else {
             workspace->perm_ilutp = NULL;
@@ -926,7 +926,7 @@ static void Init_Lists( reax_system * const system,
 
 
 static void Init_Out_Controls( reax_system *system, control_params *control,
-        static_storage *workspace, output_controls *out_control, int32_t output_enabled )
+        static_storage *workspace, output_controls *out_control, bool output_enabled )
 {
 #define TEMP_SIZE (1000)
     char temp[TEMP_SIZE];
@@ -1204,7 +1204,6 @@ void Initialize( reax_system * const system, control_params * const control,
 #if defined(TEST_FORCES)
     Init_Force_Test_Functions( control );
 #endif
-
     if ( control->tabulate > 0) {
         Make_LR_Lookup_Table( system, control, workspace );
     }
@@ -1212,7 +1211,7 @@ void Initialize( reax_system * const system, control_params * const control,
 
 
 static void Finalize_System( reax_system *system, control_params *control,
-        simulation_data *data, int32_t reset )
+        simulation_data *data, bool reset )
 {
     uint32_t i, j, k;
     reax_interaction *reax;
@@ -1298,7 +1297,7 @@ static void Finalize_Simulation_Data( reax_system *system, control_params *contr
 
 
 static void Finalize_Workspace( reax_system *system, control_params *control,
-        static_storage *workspace, int32_t reset )
+        static_storage *workspace, bool reset )
 {
     uint32_t i;
 

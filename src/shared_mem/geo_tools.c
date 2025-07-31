@@ -242,6 +242,7 @@ static uint32_t Count_Atoms( FILE *fp, uint8_t geo_format, bool periodic_boundar
     rvec x;
 
     n = 0;
+    rvec_MakeZero( dx );
 
     fseek( fp, 0, SEEK_SET );
 
@@ -266,9 +267,13 @@ static uint32_t Count_Atoms( FILE *fp, uint8_t geo_format, bool periodic_boundar
                                 sstrtod( s_y, __FILE__, __LINE__ ),
                                 sstrtod( s_z, __FILE__, __LINE__ ), &x );
 
-                        for ( i = 0; i < 3; ++i ) {
-                            if ( x[i] < dx[i] ) {
-                                dx[i] = x[i];
+                        if ( n == 1 ) {
+                            rvec_Copy( dx, x );
+                        } else {
+                            for ( i = 0; i < 3; ++i ) {
+                                if ( x[i] < dx[i] ) {
+                                    dx[i] = x[i];
+                                }
                             }
                         }
                     }
@@ -801,7 +806,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             system->molec_charge_constraints = smalloc(
                     sizeof(real) * num_mcc, __FILE__, __LINE__ );
             system->molec_charge_constraint_ranges = smalloc(
-                    sizeof(int32_t) * 2 * num_mcc, __FILE__, __LINE__ );
+                    sizeof(uint32_t) * 2 * num_mcc, __FILE__, __LINE__ );
 
             system->max_num_molec_charge_constraints = num_mcc;
         } else if ( num_mcc > system->max_num_molec_charge_constraints ) {
@@ -813,7 +818,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             system->molec_charge_constraints = smalloc(
                     sizeof(real) * num_mcc, __FILE__, __LINE__ );
             system->molec_charge_constraint_ranges = smalloc(
-                    sizeof(int32_t) * 2 * num_mcc, __FILE__, __LINE__ );
+                    sizeof(uint32_t) * 2 * num_mcc, __FILE__, __LINE__ );
 
             system->max_num_molec_charge_constraints = num_mcc;
         }

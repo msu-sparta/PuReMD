@@ -33,8 +33,7 @@
  * box length along a particular dimension */
 static uint32_t Estimate_GCell_Population( reax_system * const system )
 {
-    uint32_t i, j, k, l;
-    uint32_t max_atoms;
+    uint32_t i, j, k, l, max_atoms;
     grid *g;
 
     g = &system->g;
@@ -67,7 +66,7 @@ static uint32_t Estimate_GCell_Population( reax_system * const system )
         }
     }
 
-    return MAX( (uint32_t) (max_atoms * SAFE_ZONE), MIN_GCELL_POPL );
+    return MAX( (uint32_t) CEIL(max_atoms * SAFE_ZONE), MIN_GCELL_POPL );
 }
 
 
@@ -575,8 +574,7 @@ void Update_Grid( reax_system * const system )
  * box length along a particular dimension */
 void Bin_Atoms( reax_system * const system, static_storage * const workspace )
 {
-    uint32_t i, j, k, l;
-    uint32_t max_atoms;
+    uint32_t i, j, k, l, max_atoms;
     grid *g;
 
     g = &system->g;
@@ -597,7 +595,7 @@ void Bin_Atoms( reax_system * const system, static_storage * const workspace )
         g->top[i][j][k]++;
 
 #if defined(DEBUG_FOCUS)
-        fprintf( stderr, "[INFO] Bin_Atoms: atom id = %-6d, x = (%8.3f, %8.3f, %8.3f), bin = (%3d, %3d, %3d)\n",
+        fprintf( stderr, "[INFO] Bin_Atoms: atom id = %-6u, x = (%8.3f, %8.3f, %8.3f), bin = (%3u, %3u, %3u)\n",
                 l, system->atoms[l].x[0], system->atoms[l].x[1], system->atoms[l].x[2],
                 i, j, k );
 #endif
@@ -687,6 +685,8 @@ static void Free_Storage( static_storage * const workspace,
 
     for ( i = 0; i < 3; ++i ) {
         sfree( workspace->s[i], __FILE__, __LINE__ );
+    }
+    for ( i = 0; i < 3; ++i ) {
         sfree( workspace->t[i], __FILE__, __LINE__ );
     }
     sfree( workspace->s, __FILE__, __LINE__ );

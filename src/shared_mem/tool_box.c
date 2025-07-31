@@ -102,20 +102,20 @@ void Transform_to_UnitBox( rvec x1, simulation_box *box, int32_t flag, rvec x2 )
  *
  * box: simulation box dimensions
  * x: atom position to be remapped, if necessary */
-void Fit_To_Periodic_Box( simulation_box *box, rvec p )
+void Fit_To_Periodic_Box( simulation_box *box, rvec x )
 {
-    int32_t i;
+    uint32_t i;
 
     for ( i = 0; i < 3; ++i ) {
-        if ( p[i] < box->min[i] ) {
+        if ( x[i] < box->min[i] ) {
             /* handle lower coords */
-            while ( p[i] < box->min[i] ) {
-                p[i] += box->box_norms[i];
+            while ( x[i] < box->min[i] ) {
+                x[i] += box->box_norms[i];
             }
-        } else if ( p[i] >= box->max[i] ) {
+        } else if ( x[i] >= box->max[i] ) {
             /* handle higher coords */
-            while ( p[i] >= box->max[i] ) {
-                p[i] -= box->box_norms[i];
+            while ( x[i] >= box->max[i] ) {
+                x[i] -= box->box_norms[i];
             }
         }
     }
@@ -691,7 +691,7 @@ uint32_t sstrtoul( const char * const str,
     errno = 0;
     ret = strtoul( str, &endptr, INTBASE );
 
-    if ( (errno == ERANGE && (ret == ULONG_MAX || ret == 0) )
+    if ( (errno == ERANGE && (ret == ULONG_MAX || ret == 0))
             || (errno != 0 && ret == 0) ) {
         fprintf( stderr, "[ERROR] strtoul: invalid string\n" );
         /* strlen safe here only if filename is NULL-terminated

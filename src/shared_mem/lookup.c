@@ -187,7 +187,7 @@ static void LR_Lookup( LR_lookup_table *t, real r, LR_data *y )
     }
     base = (real) (i + 1) * t->dx;
     dif = r - base;
-    //fprintf( stderr, "r: %f, i: %d, base: %f, dif: %f\n", r, i, base, dif );
+    //fprintf( stderr, "r: %f, i: %u, base: %f, dif: %f\n", r, i, base, dif );
 
     y->e_vdW = ((t->vdW[i].d * dif + t->vdW[i].c) * dif + t->vdW[i].b) * dif +
                t->vdW[i].a;

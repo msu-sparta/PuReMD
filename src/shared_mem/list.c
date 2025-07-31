@@ -33,8 +33,7 @@ void Make_List( uint32_t n, uint32_t n_max, uint32_t total_intrs, uint8_t type, 
     assert( total_intrs >= 0 );
     assert( l != NULL );
 
-    if ( l->allocated == TRUE )
-    {
+    if ( l->allocated == TRUE ) {
         fprintf( stderr, "[WARNING] attempted to allocate list which was already allocated."
                 " Returning without allocation...\n" );
         return;
@@ -45,91 +44,69 @@ void Make_List( uint32_t n, uint32_t n_max, uint32_t total_intrs, uint8_t type, 
     l->n_max = n_max;
     l->total_intrs = total_intrs;
 
-    l->index = smalloc( n_max * sizeof(int32_t), __FILE__, __LINE__ );
-    l->end_index = smalloc( n_max * sizeof(int32_t), __FILE__, __LINE__ );
+    l->index = smalloc( n_max * sizeof(uint32_t), __FILE__, __LINE__ );
+    l->end_index = smalloc( n_max * sizeof(uint32_t), __FILE__, __LINE__ );
 
-    switch ( type )
-    {
+    switch ( type ) {
     case TYP_THREE_BODY:
-        if ( l->total_intrs > 0 )
-        {
+        if ( l->total_intrs > 0 ) {
             l->three_body_list = smalloc( l->total_intrs * sizeof(three_body_interaction_data),
                     __FILE__, __LINE__ );
-        }
-        else
-        {
+        } else {
             l->three_body_list = NULL;
         }
         break;
 
     case TYP_BOND:
-        if ( l->total_intrs > 0 )
-        {
+        if ( l->total_intrs > 0 ) {
             l->bond_list = smalloc( l->total_intrs * sizeof(bond_data),
                     __FILE__, __LINE__ );
-        }
-        else
-        {
+        } else {
             l->bond_list = NULL;
         }
         break;
 
     case TYP_DBO:
-        if ( l->total_intrs > 0 )
-        {
+        if ( l->total_intrs > 0 ) {
             l->dbo_list = smalloc( l->total_intrs * sizeof(dbond_data),
                     __FILE__, __LINE__ );
-        }
-        else
-        {
+        } else {
             l->dbo_list = NULL;
         }
         break;
 
     case TYP_DDELTA:
-        if ( l->total_intrs > 0 )
-        {
+        if ( l->total_intrs > 0 ) {
             l->dDelta_list = smalloc( l->total_intrs * sizeof(dDelta_data),
                     __FILE__, __LINE__ );
-        }
-        else
-        {
+        } else {
             l->dDelta_list = NULL;
         }
         break;
 
     case TYP_FAR_NEIGHBOR:
-        if ( l->total_intrs > 0 )
-        {
+        if ( l->total_intrs > 0 ) {
             l->far_nbr_list = smalloc( l->total_intrs * sizeof(far_neighbor_data),
                     __FILE__, __LINE__ );
-        }
-        else
-        {
+        } else {
             l->far_nbr_list = NULL;
         }
         break;
 
     case TYP_NEAR_NEIGHBOR:
-        if ( l->total_intrs > 0 )
-        {
+        if ( l->total_intrs > 0 ) {
             l->near_nbr_list = smalloc( l->total_intrs * sizeof(near_neighbor_data),
                     __FILE__, __LINE__ );
-        }
-        else
-        {
+        } else {
             l->near_nbr_list = NULL;
         }
         break;
 
     case TYP_HBOND:
-        if ( l->total_intrs > 0 )
-        {
+        if ( l->total_intrs > 0 ) {
             l->hbond_list = smalloc( l->total_intrs * sizeof(hbond_data),
                     __FILE__, __LINE__ );
-        }
-        else
-        {
+        } else {
             l->hbond_list = NULL;
         }
         break;
@@ -147,8 +124,7 @@ void Delete_List( uint8_t type, reax_list * const l )
 {
     assert( l != NULL );
 
-    if ( l->allocated == FALSE )
-    {
+    if ( l->allocated == FALSE ) {
         fprintf( stderr, "[WARNING] attempted to free list which was not allocated."
                 " Returning without deallocation...\n" );
         return;
@@ -162,53 +138,45 @@ void Delete_List( uint8_t type, reax_list * const l )
     sfree( l->index, __FILE__, __LINE__ );
     sfree( l->end_index, __FILE__, __LINE__ );
 
-    switch ( type )
-    {
+    switch ( type ) {
     case TYP_THREE_BODY:
-        if ( l->three_body_list != NULL )
-        {
+        if ( l->three_body_list != NULL ) {
             sfree( l->three_body_list, __FILE__, __LINE__ );
         }
         break;
 
     case TYP_BOND:
-        if ( l->bond_list != NULL )
-        {
+        if ( l->bond_list != NULL ) {
             sfree( l->bond_list, __FILE__, __LINE__ );
         }
         break;
 
     case TYP_DBO:
-        if ( l->dbo_list != NULL )
-        {
+        if ( l->dbo_list != NULL ) {
             sfree( l->dbo_list, __FILE__, __LINE__ );
         }
         break;
 
     case TYP_DDELTA:
-        if ( l->dDelta_list != NULL )
-        {
+        if ( l->dDelta_list != NULL ) {
             sfree( l->dDelta_list, __FILE__, __LINE__ );
         }
         break;
 
     case TYP_FAR_NEIGHBOR:
-        if ( l->far_nbr_list != NULL )
-        {
+        if ( l->far_nbr_list != NULL ) {
             sfree( l->far_nbr_list, __FILE__, __LINE__ );
         }
         break;
 
     case TYP_NEAR_NEIGHBOR:
-        if ( l->near_nbr_list != NULL )
-        {
+        if ( l->near_nbr_list != NULL ) {
             sfree( l->near_nbr_list, __FILE__, __LINE__ );
         }
         break;
 
     case TYP_HBOND:
-        if ( l->hbond_list != NULL )
-        {
+        if ( l->hbond_list != NULL ) {
             sfree( l->hbond_list, __FILE__, __LINE__ );
         }
         break;
@@ -238,8 +206,7 @@ void Init_List_Indices( reax_list * const l, uint32_t * const max_intrs )
      * set end indices to the same as start indices for safety */
     Set_Start_Index( 0, 0, l );
     Set_End_Index( 0, 0, l );
-    for ( i = 1; i < l->n; ++i )
-    {
+    for ( i = 1; i < l->n; ++i ) {
         Set_Start_Index( i, Start_Index( i - 1, l ) + max_intrs[i - 1], l );
         Set_End_Index( i, Start_Index( i, l ), l );
     }

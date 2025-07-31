@@ -88,25 +88,23 @@ void setup_graph_coloring( const control_params * const,
 
 uint32_t GMRES( const static_storage * const, const control_params * const,
         simulation_data * const, const sparse_matrix * const,
-        const real * const, const real, real * const,
-        const bool );
+        const real * const, const real, real * const, bool );
 
 uint32_t GMRES_HouseHolder( const static_storage * const, const control_params * const,
         simulation_data * const, const sparse_matrix * const,
-        const real * const, const real, real * const,
-        const bool );
+        const real * const, const real, real * const, bool );
 
 uint32_t CG( const static_storage * const, const control_params * const,
         simulation_data * const, const sparse_matrix * const, const real * const,
-        const real, real * const, const bool );
+        const real, real * const, bool );
 
 uint32_t BiCGStab( const static_storage * const, const control_params * const,
         simulation_data * const, const sparse_matrix * const, const real * const,
-        const real, real * const, const bool );
+        const real, real * const, bool );
 
 uint32_t SDM( const static_storage * const, const control_params * const,
         simulation_data * const, const sparse_matrix * const, const real * const, const real,
-        real * const, const bool );
+        real * const, bool );
 
 real condest( const sparse_matrix * const, const sparse_matrix * const );
 

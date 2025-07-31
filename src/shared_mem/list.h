@@ -44,8 +44,8 @@ void Init_List_Indices( reax_list * const, uint32_t * const );
  *  size of i-th internal list
  *
  * Unchecked runtime exceptions:
- *  l is not a NULL pointer
  *  i is a valid internal list index
+ *  l is not a NULL pointer
  * */
 static inline uint32_t Num_Entries( uint32_t i, reax_list const * const l )
 {
