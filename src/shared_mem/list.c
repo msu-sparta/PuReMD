@@ -200,7 +200,7 @@ void Init_List_Indices( reax_list * const l, uint32_t * const max_intrs )
 
     assert( l != NULL );
     assert( l->n > 0 );
-    assert( max_intrs > 0 );
+    assert( *max_intrs > 0 );
 
     /* exclusive prefix sum of max_intrs replaces start indices,
      * set end indices to the same as start indices for safety */
