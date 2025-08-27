@@ -34,6 +34,7 @@ void Atom_Energy( reax_system *system, control_params *control,
     uint32_t i, j, pj, type_i, type_j;
     real Delta_lpcorr, dfvl;
     real e_lp, expvd2, inv_expvd2, dElp, CElp, DlpVi;
+    real CdDelta_i;
     real e_lph, Di, vov3, deahu2dbo, deahu2dsbo;
     real e_ov, CEover1, CEover2, CEover3, CEover4;
     real exp_ovun1, exp_ovun2, sum_ovun1, sum_ovun2;
@@ -77,7 +78,8 @@ void Atom_Energy( reax_system *system, control_params *control,
             + 75.0 * p_lp2 * workspace->Delta_lp[i] * expvd2 * SQR(inv_expvd2);
         CElp = dElp * workspace->dDelta_lp[i];
 
-        workspace->CdDelta[i] += CElp;      // lp - 1st term
+        // lp - 1st term
+        CdDelta_i = CElp;
 
 #if defined(TEST_ENERGY)
         fprintf( out_control->elp, "%23.15e%23.15e%23.15e%23.15e\n",
@@ -116,7 +118,7 @@ void Atom_Energy( reax_system *system, control_params *control,
                                 * (-1.0 - 0.16 * CUBE( Di ));
 
                             bo_ij->Cdbo += deahu2dbo;
-                            workspace->CdDelta[i] += deahu2dsbo;
+                            CdDelta_i += deahu2dsbo;
 
 #if defined(TEST_ENERGY)
                             fprintf( out_control->elp, "C2cor%6d%6d%23.15e%23.15e%23.15e\n",
@@ -133,6 +135,8 @@ void Atom_Energy( reax_system *system, control_params *control,
                 }
             }
         }
+
+        workspace->CdDelta[i] += CdDelta_i;
 #if defined(QMMM)
         }
 #endif
@@ -213,8 +217,8 @@ void Atom_Energy( reax_system *system, control_params *control,
         //       i+1, sum_ovun2, e_ov, e_un );
 
         /* forces */
-        workspace->CdDelta[i] += CEover3;   // OvCoor - 2nd term
-        workspace->CdDelta[i] += CEunder3;  // UnCoor - 1st term
+       // OvCoor - 2nd term, UnCoor - 1st term
+        CdDelta_i = CEover3 + CEunder3;
 
 #if defined(TEST_FORCES)
         Add_dDelta( system, lists, i, CEover3, workspace->f_ov );  // OvCoor - 2nd
@@ -312,6 +316,8 @@ void Atom_Energy( reax_system *system, control_params *control,
         fprintf( out_control->eov, "%6d%15.8f%15.8f\n",
                  i + 1/*workspace->orig_id[i]+1*/, e_un, data->E_Ov + data->E_Un );
 #endif
+
+        workspace->CdDelta[i] += CdDelta_i;
 #if defined(QMMM)
         }
 #endif

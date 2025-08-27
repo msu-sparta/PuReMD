@@ -43,7 +43,7 @@ void Read_Force_Field( const char * const ffield_file,
 
     if ( fp != NULL ) {
         s = smalloc( sizeof(char) * MAX_LINE, __FILE__, __LINE__ );
-        tmp = smalloc( sizeof(char*) * MAX_TOKENS, __FILE__, __LINE__ );
+        tmp = smalloc( sizeof(char *) * MAX_TOKENS, __FILE__, __LINE__ );
         for ( i = 0; i < MAX_TOKENS; i++ ) {
             tmp[i] = smalloc( sizeof(char) * MAX_TOKEN_LEN, __FILE__, __LINE__ );
         }

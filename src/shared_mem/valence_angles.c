@@ -135,7 +135,7 @@ void Valence_Angles( reax_system *system, control_params *control,
         real p_coa1;
         real trm8, expval6, expval7, expval2theta, expval12theta, exp3ij, exp3jk;
         real exp_pen2ij, exp_pen2jk, exp_pen3, exp_pen4, trm_pen34, exp_coa2;
-        real dSBO1, dSBO2, SBO, SBO2, CSBO2, SBOp, prod_SBO;
+        real dSBO1, dSBO2, SBO, SBO2, CSBO2, SBOp, prod_SBO, vlpadj;
         real CEval1, CEval2, CEval3, CEval4, CEval5, CEval6, CEval7, CEval8;
         real CEpen1, CEpen2, CEpen3;
         real e_ang, e_coa, e_pen;
@@ -144,7 +144,7 @@ void Valence_Angles( reax_system *system, control_params *control,
         real f7_ij, f7_jk, f8_Dj, f9_Dj;
         real Ctheta_0, theta_0, theta_00, theta, cos_theta, sin_theta;
         real BOA_ij, BOA_jk;
-        real vlpadj;
+        real Cdbo_ij, CdDelta_i, CdDelta_j;
         rvec *f_i, *f_j, *f_k, force, x_i, x_j, x_k;
         rtensor press;
         //rtensor temp_rtensor, total_rtensor;
@@ -161,6 +161,7 @@ void Valence_Angles( reax_system *system, control_params *control,
             type_j = system->atoms[j].type;
             start_j = Start_Index( j, bonds );
             end_j = End_Index( j, bonds );
+            CdDelta_j = 0.0;
 //#if defined(_OPENMP)
 //            f_j = &workspace->f_local[tid * system->N + j];
 //#else
@@ -230,6 +231,8 @@ void Valence_Angles( reax_system *system, control_params *control,
 
                 if ( BOA_ij >= 0.0 ) {
                     i = pbond_ij->nbr;
+                    Cdbo_ij = 0.0;
+                    CdDelta_i = 0.0;
 
                     type_i = system->atoms[i].type;
 //#if defined(_OPENMP)
@@ -462,22 +465,13 @@ void Valence_Angles( reax_system *system, control_params *control,
 #endif
 
                             /* calculate force contributions */
-#if defined(_OPENMP)
-//                            #pragma omp atomic
-#endif
-                            bo_ij->Cdbo += CEval1 + CEpen2 + (CEcoa1 - CEcoa4);
+                            Cdbo_ij += CEval1 + CEpen2 + (CEcoa1 - CEcoa4);
 #if defined(_OPENMP)
 //                            #pragma omp atomic
 #endif
                             bo_jk->Cdbo += CEval2 + CEpen3 + (CEcoa2 - CEcoa5);
-#if defined(_OPENMP)
-//                            #pragma omp atomic
-#endif
-                            workspace->CdDelta[j] += (CEval3 + CEval7) + CEpen1 + CEcoa3;
-#if defined(_OPENMP)
-//                            #pragma omp atomic
-#endif
-                            workspace->CdDelta[i] += CEcoa4;
+                            CdDelta_j += (CEval3 + CEval7) + CEpen1 + CEcoa3;
+                            CdDelta_i += CEcoa4;
 #if defined(_OPENMP)
 //                            #pragma omp atomic
 #endif
@@ -665,10 +659,24 @@ void Valence_Angles( reax_system *system, control_params *control,
 #endif
                         }
                     }
+
+#if defined(_OPENMP)
+//                    #pragma omp atomic
+#endif
+                    bo_ij->Cdbo += Cdbo_ij;
+#if defined(_OPENMP)
+                    #pragma omp atomic
+#endif
+                    workspace->CdDelta[i] += CdDelta_i;
                 }
 
                 Set_End_Index( pi, num_thb_intrs, thb_intrs );
             }
+
+#if defined(_OPENMP)
+            #pragma omp atomic
+#endif
+            workspace->CdDelta[j] += CdDelta_j;
         }
     }
 

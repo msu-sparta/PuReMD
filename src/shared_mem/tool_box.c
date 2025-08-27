@@ -330,8 +330,7 @@ void Deallocate_Tokenizer_Space( char **line, char **backup,
 uint32_t Tokenize( char* s, char*** tok, size_t token_len )
 {
     uint32_t count;
-    size_t word_len;
-    char test[MAX_LINE];
+    char test[MAX_TOKEN_LEN];
     const char *sep = "\t \n!=";
     char *word, *saveptr;
 
@@ -342,9 +341,8 @@ uint32_t Tokenize( char* s, char*** tok, size_t token_len )
 
     for ( word = strtok_r(test, sep, &saveptr); word != NULL;
             word = strtok_r(NULL, sep, &saveptr) ) {
-        word_len = MIN( strlen(word), token_len - 1 );
-        strncpy( (*tok)[count], word, word_len );
-        (*tok)[count][word_len] = '\0';
+        strncpy( (*tok)[count], word, token_len - 1 );
+        (*tok)[count][token_len - 1] = '\0';
         count++;
     }
 

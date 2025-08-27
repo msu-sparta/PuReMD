@@ -181,6 +181,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
         real CEconj4, CEconj5, CEconj6;
         real e_tor, e_con;
         rvec dvec_li, force_i, force_j, force_k, force_l, x_i, x_j, x_k, x_l;
+        real CdDelta_j, CdDelta_k, Cdbopi_jk, Cdbo_ij, Cdbo_jk;
         rtensor press;
         ivec rel_box_li;
         //rtensor total_rtensor, temp_rtensor;
@@ -203,6 +204,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
             Delta_j = workspace->Delta_boc[j];
             start_j = Start_Index(j, bonds);
             end_j = End_Index(j, bonds);
+            CdDelta_j = 0.0;
 #if defined(_OPENMP)
             f_j = &workspace->f_local[(uint32_t) tid * system->N + j];
 #else
@@ -244,6 +246,9 @@ void Torsion_Angles( reax_system *system, control_params *control,
                         type_k = system->atoms[k].type;
                         Delta_k = workspace->Delta_boc[k];
                         r_jk = pbond_jk->d;
+                        CdDelta_k = 0.0;
+                        Cdbopi_jk = 0.0;
+                        Cdbo_jk = 0.0;
 
                         start_pk = Start_Index( pk, thb_intrs );
                         end_pk = End_Index( pk, thb_intrs );
@@ -276,6 +281,7 @@ void Torsion_Angles( reax_system *system, control_params *control,
 #endif
                                 type_i = system->atoms[i].type;
                                 r_ij = pbond_ij->d;
+                                Cdbo_ij = 0.0;
                                 BOA_ij = bo_ij->BO - control->thb_cut;
 
 #if defined(_OPENMP)
@@ -470,26 +476,11 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                         //    sin_jkl, cos_jkl, tan_jkl_i );
 
                                         /* forces */
-#if defined(_OPENMP)
-                                        #pragma omp atomic
-#endif
-                                        bo_jk->Cdbopi += CEtors2;
-#if defined(_OPENMP)
-                                        #pragma omp atomic
-#endif
-                                        workspace->CdDelta[j] += CEtors3;
-#if defined(_OPENMP)
-                                        #pragma omp atomic
-#endif
-                                        workspace->CdDelta[k] += CEtors3;
-#if defined(_OPENMP)
-                                        #pragma omp atomic
-#endif
-                                        bo_ij->Cdbo += (CEtors4 + CEconj1);
-#if defined(_OPENMP)
-                                        #pragma omp atomic
-#endif
-                                        bo_jk->Cdbo += (CEtors5 + CEconj2);
+                                        Cdbopi_jk += CEtors2;
+                                        CdDelta_j += CEtors3;
+                                        CdDelta_k += CEtors3;
+                                        Cdbo_ij += (CEtors4 + CEconj1);
+                                        Cdbo_jk += (CEtors5 + CEconj2);
 #if defined(_OPENMP)
                                         #pragma omp atomic
 #endif
@@ -738,14 +729,37 @@ void Torsion_Angles( reax_system *system, control_params *control,
 #if defined(QMMM)
                                 }
 #endif
+
+#if defined(_OPENMP)
+                            #pragma omp atomic
+#endif
+                            bo_ij->Cdbo += Cdbo_ij;
                             } // pi check ends
                         } // pi loop ends
+
+#if defined(_OPENMP)
+                        #pragma omp atomic
+#endif
+                        bo_jk->Cdbo += Cdbo_jk;
+#if defined(_OPENMP)
+                        #pragma omp atomic
+#endif
+                        bo_jk->Cdbopi += Cdbopi_jk;
+#if defined(_OPENMP)
+                        #pragma omp atomic
+#endif
+                        workspace->CdDelta[k] += CdDelta_k;
                     } // k-j neighbor check ends
                 } // j<k && j-k neighbor check ends
 #if defined(QMMM)
                 }
 #endif
             } // pk loop ends
+
+#if defined(_OPENMP)
+                                        #pragma omp atomic
+#endif
+            workspace->CdDelta[j] += CdDelta_j;
 #if defined(QMMM)
             }
 #endif

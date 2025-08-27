@@ -49,6 +49,7 @@ void Bonds( reax_system * system, control_params * control, simulation_data * da
         real ebond, pow_BOs_be2, exp_be12, CEbo;
         real exphu, exphua1, exphub1, exphuov, hulpov, estriph;
         real decobdbo, decobdboua, decobdboub;
+        real total_bond_order_i, Delta_i, CdDelta_i;
         single_body_parameters *sbp_i, *sbp_j;
         two_body_parameters *twbp;
         bond_order_data *bo_ij;
@@ -62,6 +63,9 @@ void Bonds( reax_system * system, control_params * control, simulation_data * da
 #endif
             start_i = Start_Index(i, bonds);
             end_i = End_Index(i, bonds);
+            total_bond_order_i = workspace->total_bond_order[i];
+            Delta_i = workspace->Delta[i];
+            CdDelta_i = 0.0;
 
             for ( pj = start_i; pj < end_i; ++pj ) {
                 if ( i < bonds->bond_list[pj].nbr ) {
@@ -119,10 +123,10 @@ void Bonds( reax_system * system, control_params * control, simulation_data * da
                             exphu = EXP( -gp7 * SQR(bo_ij->BO - 2.5) );
                             //oboa = abo(j1) - boa;
                             //obob = abo(j2) - boa;
-                            exphua1 = EXP(-gp3 * (workspace->total_bond_order[i] - bo_ij->BO));
+                            exphua1 = EXP(-gp3 * (total_bond_order_i - bo_ij->BO));
                             exphub1 = EXP(-gp3 * (workspace->total_bond_order[j] - bo_ij->BO));
                             //ovoab = abo(j1) - aval(it1) + abo(j2) - aval(it2);
-                            exphuov = EXP(gp4 * (workspace->Delta[i] + workspace->Delta[j]));
+                            exphuov = EXP(gp4 * (Delta_i + workspace->Delta[j]));
                             hulpov = 1.0 / (1.0 + 25.0 * exphuov);
 
                             estriph = gp10 * exphu * hulpov * (exphua1 + exphub1);
@@ -138,7 +142,7 @@ void Bonds( reax_system * system, control_params * control, simulation_data * da
                                 * (gp3 * exphub1 + 25.0 * gp4 * exphuov * hulpov * (exphua1 + exphub1));
 
                             bo_ij->Cdbo += decobdbo;
-                            workspace->CdDelta[i] += decobdboua;
+                            CdDelta_i += decobdboua;
                             workspace->CdDelta[j] += decobdboub;
 
 #if defined(TEST_ENERGY)
@@ -161,6 +165,8 @@ void Bonds( reax_system * system, control_params * control, simulation_data * da
 #endif
                 }
             }
+
+            workspace->CdDelta[i] += CdDelta_i;
 #if defined(QMMM)
             }
 #endif

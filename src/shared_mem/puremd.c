@@ -296,7 +296,7 @@ void * setup2( int32_t num_atoms, const int32_t * const atom_type,
         pmd_handle->system->atoms[i].type = atom_type[i];
         strncpy( pmd_handle->system->atoms[i].name,
                 pmd_handle->system->reax_param.sbp[atom_type[i]].name,
-                sizeof(pmd_handle->system->atoms[i].name) - 1 );
+                sizeof(pmd_handle->system->atoms[i].name) );
         pmd_handle->system->atoms[i].name[sizeof(pmd_handle->system->atoms[i].name) - 1] = '\0';
         rvec_Copy( pmd_handle->system->atoms[i].x, x );
         rvec_MakeZero( pmd_handle->system->atoms[i].v );
@@ -697,7 +697,7 @@ int32_t reset2( const void * const handle, int32_t num_atoms,
             pmd_handle->system->atoms[i].type = atom_type[i];
             strncpy( pmd_handle->system->atoms[i].name,
                     pmd_handle->system->reax_param.sbp[atom_type[i]].name,
-                    sizeof(pmd_handle->system->atoms[i].name) - 1 );
+                    sizeof(pmd_handle->system->atoms[i].name) );
             pmd_handle->system->atoms[i].name[sizeof(pmd_handle->system->atoms[i].name) - 1] = '\0';
             rvec_Copy( pmd_handle->system->atoms[i].x, x );
             rvec_MakeZero( pmd_handle->system->atoms[i].v );

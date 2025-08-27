@@ -553,7 +553,7 @@ struct single_body_parameters
 {
     /* Line one in field file */
     /* two character atom name */
-    char name[15];
+    char name[9];
     /**/
     real r_s;
     /* valency of the atom */
