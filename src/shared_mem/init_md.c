@@ -1391,7 +1391,8 @@ static void Finalize_Workspace( reax_system *system, control_params *control,
             sfree( workspace->t[i], __FILE__, __LINE__ );
         }
 
-        if ( control->cm_solver_pre_comp_type == JACOBI_PC ) {
+        if ( control->cm_solver_pre_comp_type == JACOBI_PC
+                && control->charge_freq > 0 ) {
             sfree( workspace->Hdia_inv, __FILE__, __LINE__ );
         }
         if ( control->cm_solver_pre_comp_type == ICHOLT_PC

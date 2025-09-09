@@ -27,6 +27,8 @@
 #include "vector.h"
 
 #include <ctype.h>
+#include <limits.h>
+#include <errno.h>
 
 
 // CUSTOM_BOXGEO: BOXGEO box_x box_y box_z  angle1 angle2 angle3
@@ -450,12 +452,14 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
     FILE *pdb;
     char **tmp;
     char *s, *s1;
+    char *endptr;
     char descriptor[7], serial[6];
     char atom_name[5], res_name[4], res_seq[5];
     char s_x[9], s_y[9], s_z[9];
     char occupancy[7], temp_factor[7];
     char seg_id[5], element[3], charge[3];
 //    char alt_loc, chain_id, icode;
+    real q;
     rvec x, dx;
     reax_atom *atom;
 
@@ -558,6 +562,17 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
                     sstrtod( s_y, __FILE__, __LINE__ ),
                     sstrtod( s_z, __FILE__, __LINE__ ), &x );
 
+            errno = 0;
+            q = strtod( charge, &endptr );
+
+            /* failure check to parse charge field as double */
+            if ( (errno == ERANGE && (q == LONG_MAX || q == LONG_MIN) )
+                    || (errno != 0 && q == 0)
+                    || endptr == charge
+                    || *endptr != '\0' ) {
+                q = 0.0;
+            }
+
             if ( control->periodic_boundaries == TRUE ) {
                 Fit_To_Periodic_Box( &system->box, x );
             } else {
@@ -588,7 +603,7 @@ void Read_PDB( const char * const pdb_file, reax_system* system, control_params 
                 rvec_Copy( atom->x, x );
                 rvec_MakeZero( atom->v );
                 rvec_MakeZero( atom->f );
-                atom->q = 0;
+                atom->q = q;
 
 #if defined(DEBUG_FOCUS)
                 fprintf( stderr, "[INFO] atom: id = %u, name = %s, serial = %u, type = %u, ",
@@ -729,7 +744,8 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
     FILE *bgf;
     char **tokens;
     char *line, *backup;
-    char descriptor[7], serial[6];
+    char *endptr;
+    char descriptor[9], serial[6];
     char atom_name[6], res_name[4], res_seq[6];
     char s_x[11], s_y[11], s_z[11];
     char occupancy[4], temp_factor[3];
@@ -737,6 +753,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
 //    char chain_id;
     char s_a[12], s_b[12], s_c[12], s_alpha[12], s_beta[12], s_gamma[12];
     uint32_t i, n, num_mcc, atom_cnt, token_cnt, bgf_serial, ratom, crystx_found;
+    real q;
     rvec x, dx;
 
     ratom = 0;
@@ -905,8 +922,8 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             s_x[sizeof(s_x) - 1] = '\0';
             strncpy( s_y, backup + 40, sizeof(s_y) - 1 );
             s_y[sizeof(s_y) - 1] = '\0';
-            strncpy( s_z, backup + 50, sizeof(s_x) - 1 );
-            s_z[sizeof(s_x) - 1] = '\0';
+            strncpy( s_z, backup + 50, sizeof(s_z) - 1 );
+            s_z[sizeof(s_z) - 1] = '\0';
             strncpy( element, backup + 61, sizeof(element) - 1 );
             element[sizeof(element) - 1] = '\0';
             strncpy( occupancy, backup + 66, sizeof(occupancy) - 1 );
@@ -935,6 +952,17 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             x[1] = sstrtod( s_y, __FILE__, __LINE__ );
             x[2] = sstrtod( s_z, __FILE__, __LINE__ );
 
+            errno = 0;
+            q = strtod( charge, &endptr );
+
+            /* failure check to parse charge field as double */
+            if ( (errno == ERANGE && (q == LONG_MAX || q == LONG_MIN) )
+                    || (errno != 0 && q == 0)
+                    || endptr == charge
+                    || *endptr != '\0' ) {
+                q = 0.0;
+            }
+
             if ( control->periodic_boundaries == TRUE ) {
                 Fit_To_Periodic_Box( &system->box, x );
             } else {
@@ -944,6 +972,7 @@ void Read_BGF( const char * const bgf_file, reax_system* system, control_params 
             system->atoms[atom_cnt].x[0] = x[0];
             system->atoms[atom_cnt].x[1] = x[1];
             system->atoms[atom_cnt].x[2] = x[2];
+            system->atoms[atom_cnt].q = q;
 
             /* atom name and type */
             strncpy( system->atoms[atom_cnt].name, atom_name,
