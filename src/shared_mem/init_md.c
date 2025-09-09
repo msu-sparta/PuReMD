@@ -68,6 +68,10 @@ static void Generate_Initial_Velocities( reax_system * const system,
             exit( INVALID_INPUT );
         }
 
+#if defined(_OPENMP)
+        #pragma omp parallel for schedule(dynamic,32) \
+            shared(system) private(i, norm, scale)
+#endif
         for ( i = 0; i < system->N; i++ ) {
             rvec_Random( system->atoms[i].v );
 
@@ -97,10 +101,6 @@ static void Init_System( reax_system * const system, control_params * const cont
 
     system->allocated = TRUE;
 
-    if ( control->restart == FALSE ) {
-        Reset_Atomic_Forces( system );
-    }
-
     Compute_Total_Mass( system, data );
     Compute_Center_of_Mass( system, data );
 
@@ -122,6 +122,10 @@ static void Init_System( reax_system * const system, control_params * const cont
         exit( UNKNOWN_OPTION );
     }
 
+#if defined(_OPENMP)
+    #pragma omp parallel for schedule(dynamic,32) \
+        shared(system) private(i)
+#endif
     for ( i = 0; i < system->N; ++i ) {
         /* re-map the atom positions to fall within the simulation box,
          * where the corners of the box are (0,0,0) and (d_x, d_y, d_z)
@@ -150,7 +154,9 @@ static void Init_System( reax_system * const system, control_params * const cont
     if ( realloc == TRUE ) {
         /* list management */
         system->bonds = smalloc( sizeof(uint32_t) * system->N_max, __FILE__, __LINE__ );
+        system->max_bonds = smalloc( sizeof(uint32_t) * system->N_max, __FILE__, __LINE__ );
         system->hbonds = smalloc( sizeof(uint32_t) * system->N_max, __FILE__, __LINE__ );
+        system->max_hbonds = smalloc( sizeof(uint32_t) * system->N_max, __FILE__, __LINE__ );
     }
 }
 
@@ -427,19 +433,32 @@ static void Init_Workspace( reax_system * const system,
             workspace->t[i] = scalloc( system->N_cm_max, sizeof( real ),
                     __FILE__, __LINE__ );
         }
+
+        /* list management (deferred until after N_cm / N_cm_max set) */
+        system->cm_entries = smalloc( sizeof(uint32_t) * system->N_cm_max, __FILE__, __LINE__ );
+        system->max_cm_entries = smalloc( sizeof(uint32_t) * system->N_cm_max, __FILE__, __LINE__ );
     }
 
     switch ( control->charge_method ) {
         case QEQ_CM:
+#if defined(_OPENMP)
+            #pragma omp parallel for schedule(dynamic,32) shared(system, workspace) private(i)
+#endif
             for ( i = 0; i < system->N; ++i ) {
                 workspace->b_s[i] = -1.0 * system->reax_param.sbp[ system->atoms[i].type ].chi;
             }
+#if defined(_OPENMP)
+            #pragma omp parallel for schedule(dynamic,32) shared(system, workspace) private(i)
+#endif
             for ( i = 0; i < system->N; ++i ) {
                 workspace->b_t[i] = -1.0;
             }
             break;
 
         case EE_CM:
+#if defined(_OPENMP)
+            #pragma omp parallel for schedule(dynamic,32) shared(system, workspace) private(i)
+#endif
             for ( i = 0; i < system->N; ++i ) {
                 workspace->b_s[i] = -system->reax_param.sbp[ system->atoms[i].type ].chi;
             }
@@ -463,6 +482,9 @@ static void Init_Workspace( reax_system * const system,
             break;
 
         case ACKS2_CM:
+#if defined(_OPENMP)
+            #pragma omp parallel for schedule(dynamic,32) shared(system, workspace) private(i)
+#endif
             for ( i = 0; i < system->N; ++i ) {
                 workspace->b_s[i] = -system->reax_param.sbp[ system->atoms[i].type ].chi;
             }
@@ -472,6 +494,9 @@ static void Init_Workspace( reax_system * const system,
              * to the total charge divided by the number of atoms.
              * Except for trivial cases, this leads to fractional
              * reference charges, which is usually not desirable. */
+#if defined(_OPENMP)
+            #pragma omp parallel for schedule(dynamic,32) shared(system, workspace) private(i)
+#endif
             for ( i = 0; i < system->N; ++i ) {
                 workspace->b_s[system->N + i] = control->cm_q_net / system->N;
             }
@@ -594,15 +619,15 @@ static void Init_Workspace( reax_system * const system,
                     __FILE__, __LINE__ );
             workspace->level_rows_L = smalloc( system->N_cm_max * sizeof(uint32_t),
                     __FILE__, __LINE__ );
-            workspace->level_rows_cnt_L = smalloc( (system->N_cm_max + 1) * sizeof(uint32_t),
+            workspace->level_rows_cnt_L = smalloc( system->N_cm_max * sizeof(uint32_t),
                     __FILE__, __LINE__ );
             workspace->row_levels_U = smalloc( system->N_cm_max * sizeof(uint32_t),
                     __FILE__, __LINE__ );
             workspace->level_rows_U = smalloc( system->N_cm_max * sizeof(uint32_t),
                     __FILE__, __LINE__ );
-            workspace->level_rows_cnt_U = smalloc( (system->N_cm_max + 1) * sizeof(uint32_t),
+            workspace->level_rows_cnt_U = smalloc( system->N_cm_max * sizeof(uint32_t),
                     __FILE__, __LINE__ );
-            workspace->top = smalloc( (system->N_cm_max + 1) * sizeof(uint32_t),
+            workspace->top = smalloc( system->N_cm_max * sizeof(uint32_t),
                     __FILE__, __LINE__ );
         } else {
             workspace->row_levels_L = NULL;
@@ -629,7 +654,7 @@ static void Init_Workspace( reax_system * const system,
                     __FILE__, __LINE__ );
             workspace->recolor = smalloc( sizeof(uint32_t) * system->N_cm_max,
                     __FILE__, __LINE__ );
-            workspace->color_top = smalloc( sizeof(uint32_t) * (system->N_cm_max + 1),
+            workspace->color_top = smalloc( sizeof(uint32_t) * system->N_cm_max,
                     __FILE__, __LINE__ );
             workspace->permuted_row_col = smalloc( sizeof(uint32_t) * system->N_cm_max,
                     __FILE__, __LINE__ );
@@ -760,7 +785,7 @@ static void Init_Lists( reax_system * const system,
         control_params * const control, simulation_data * const data,
         static_storage * const workspace, reax_list ** const lists, bool realloc )
 {
-    uint32_t i;
+    uint32_t i, num_H;
     int32_t ret;
 
     if ( realloc == TRUE ) {
@@ -806,17 +831,19 @@ static void Init_Lists( reax_system * const system,
 
     if ( workspace->H.allocated == FALSE ) {
         Allocate_Matrix( &workspace->H, system->N_cm, system->N_cm_max,
-                workspace->realloc.total_cm_entries );
+                workspace->realloc.total_cm_entries, SYM_HALF_MATRIX );
     } else if ( realloc == TRUE || workspace->H.m < workspace->realloc.total_cm_entries
             || workspace->H.n_max < system->N_cm_max ) {
         if ( workspace->H.allocated == TRUE ) {
             Deallocate_Matrix( &workspace->H );
         }
         Allocate_Matrix( &workspace->H, system->N_cm, system->N_cm_max,
-                workspace->realloc.total_cm_entries );
+                workspace->realloc.total_cm_entries, SYM_HALF_MATRIX );
     } else {
         workspace->H.n = system->N_cm;
     }
+
+    Init_Matrix_Row_Indices( &workspace->H, system->max_cm_entries );
 
     if ( control->cm_domain_sparsify_enabled == TRUE ) {
         if ( workspace->H_sp.allocated == FALSE ) {
@@ -825,7 +852,7 @@ static void Init_Lists( reax_system * const system,
              *   to use various cut-off distances as parameters
              *   (non-bonded, hydrogen, 3body, etc.) */
             Allocate_Matrix( &workspace->H_sp, system->N_cm, system->N_cm_max,
-                    workspace->realloc.total_cm_entries );
+                    workspace->realloc.total_cm_entries, SYM_HALF_MATRIX );
         } else if ( realloc == TRUE || workspace->H_sp.m < workspace->realloc.total_cm_entries
                 || workspace->H.n_max < system->N_cm_max ) {
             if ( workspace->H_sp.allocated == TRUE ) {
@@ -836,20 +863,26 @@ static void Init_Lists( reax_system * const system,
              *   to use various cut-off distances as parameters
              *   (non-bonded, hydrogen, 3body, etc.) */
             Allocate_Matrix( &workspace->H_sp, system->N_cm, system->N_cm_max,
-                    workspace->realloc.total_cm_entries );
+                    workspace->realloc.total_cm_entries, SYM_HALF_MATRIX );
         } else {
             workspace->H_sp.n = system->N_cm;
         }
+
+        Init_Matrix_Row_Indices( &workspace->H_sp, system->max_cm_entries );
     }
 
-    workspace->num_H = 0;
+    num_H = 0;
     if ( control->hbond_cut > 0.0 ) {
+#if defined(_OPENMP)
+        #pragma omp parallel for schedule(dynamic,32) shared(system) private(i) reduction(+: num_H)
+#endif
         for ( i = 0; i < system->N; ++i ) {
             if ( system->reax_param.sbp[ system->atoms[i].type ].p_hbond == H_ATOM ) {
-                ++(workspace->num_H);
+                ++num_H;
             }
         }
     }
+    workspace->num_H = num_H;
 
     if ( control->hbond_cut > 0.0 && workspace->num_H > 0 ) {
         if ( lists[HBONDS]->allocated == FALSE ) {
@@ -1277,7 +1310,11 @@ static void Finalize_System( reax_system *system, control_params *control,
 
     if ( system->allocated == TRUE ) {
         sfree( system->bonds, __FILE__, __LINE__ );
+        sfree( system->max_bonds, __FILE__, __LINE__ );
         sfree( system->hbonds, __FILE__, __LINE__ );
+        sfree( system->max_hbonds, __FILE__, __LINE__ );
+        sfree( system->cm_entries, __FILE__, __LINE__ );
+        sfree( system->max_cm_entries, __FILE__, __LINE__ );
     }
 
     system->allocated = FALSE;

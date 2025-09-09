@@ -50,6 +50,9 @@ int32_t Velocity_Verlet_NVE( reax_system * const system, control_params * const 
     scalar2 = -0.5 * SQR( control->dt ) * F_CONV;
 
     if ( verlet_part1_done == FALSE ) {
+#if defined(_OPENMP)
+        #pragma omp parallel for schedule(dynamic,32) shared(system, scalar1, scalar2) private(i, inv_m, dx)
+#endif
         for ( i = 0; i < system->N; i++ ) {
             inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
@@ -75,12 +78,12 @@ int32_t Velocity_Verlet_NVE( reax_system * const system, control_params * const 
 #endif
         }
 
+        Reset( system, control, data, workspace );
+
         verlet_part1_done = TRUE;
     }
 
     Reallocate_Part2( system, control, data, workspace, lists );
-
-    Reset( system, control, data, workspace, lists );
 
     if ( renbr == TRUE && gen_nbr_list == FALSE ) {
         ret = Generate_Neighbor_Lists( system, control, data, workspace, lists );
@@ -98,6 +101,9 @@ int32_t Velocity_Verlet_NVE( reax_system * const system, control_params * const 
     }
 
     if ( ret == SUCCESS ) {
+#if defined(_OPENMP)
+        #pragma omp parallel for schedule(dynamic,32) shared(system, scalar1) private(i, inv_m)
+#endif
         for ( i = 0; i < system->N; i++ ) {
             inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
@@ -138,6 +144,9 @@ int32_t Velocity_Verlet_Berendsen_NVT( reax_system * const system,
 
     if ( verlet_part1_done == FALSE ) {
         /* velocity verlet, 1st part */
+#if defined(_OPENMP)
+        #pragma omp parallel for schedule(dynamic,32) shared(system, scalar1, scalar2) private(i, inv_m, dx)
+#endif
         for ( i = 0; i < system->N; i++ ) {
             inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
@@ -160,12 +169,12 @@ int32_t Velocity_Verlet_Berendsen_NVT( reax_system * const system,
 #endif
         }
 
+        Reset( system, control, data, workspace );
+
         verlet_part1_done = TRUE;
     }
 
     Reallocate_Part2( system, control, data, workspace, lists );
-
-    Reset( system, control, data, workspace, lists );
 
     if ( renbr == TRUE && gen_nbr_list == FALSE ) {
         ret = Generate_Neighbor_Lists( system, control, data, workspace, lists );
@@ -184,6 +193,9 @@ int32_t Velocity_Verlet_Berendsen_NVT( reax_system * const system,
 
     if ( ret == SUCCESS ) {
         /* velocity verlet, 2nd part */
+#if defined(_OPENMP)
+        #pragma omp parallel for schedule(dynamic,32) shared(system, scalar1) private(i, inv_m)
+#endif
         for ( i = 0; i < system->N; i++ ) {
             inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
@@ -208,6 +220,9 @@ int32_t Velocity_Verlet_Berendsen_NVT( reax_system * const system,
         }
 
         /* Scale velocities and positions at t+dt */
+#if defined(_OPENMP)
+        #pragma omp parallel for schedule(dynamic,32) shared(system, lambda) private(i)
+#endif
         for ( i = 0; i < system->N; ++i ) {
             rvec_Scale( system->atoms[i].v, lambda, system->atoms[i].v );
         }
@@ -252,6 +267,9 @@ int32_t Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
 
     if ( verlet_part1_done == FALSE ) {
         /* Compute x(t + dt) and copy old forces */
+#if defined(_OPENMP)
+        #pragma omp parallel for schedule(dynamic,32) shared(system, scalar1, scalar2) private(i, inv_m, dx)
+#endif
         for ( i = 0; i < system->N; i++ ) {
             inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
@@ -277,12 +295,12 @@ int32_t Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
 #endif
         }
 
+        Reset( system, control, data, workspace );
+
         verlet_part1_done = TRUE;
     }
 
     Reallocate_Part2( system, control, data, workspace, lists );
-
-    Reset( system, control, data, workspace, lists );
 
     if ( renbr == TRUE && gen_nbr_list == FALSE ) {
         ret = Generate_Neighbor_Lists( system, control, data, workspace, lists );
@@ -302,6 +320,9 @@ int32_t Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
 
     if ( ret == SUCCESS ) {
         /* Compute iteration constants for each atom's velocity */
+#if defined(_OPENMP)
+        #pragma omp parallel for schedule(dynamic,32) shared(system, scalar3) private(i, inv_m)
+#endif
         for ( i = 0; i < system->N; ++i ) {
             inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
@@ -324,6 +345,9 @@ int32_t Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
             coef_v = 1.0 / (1.0 + 0.5 * control->dt * v_xi_old);
             E_kin_new = 0.0;
 
+#if defined(_OPENMP)
+            #pragma omp parallel for schedule(dynamic,32) shared(system) private(i) reduction(+: E_kin_new)
+#endif
             for ( i = 0; i < system->N; ++i ) {
                 rvec_Scale( system->atoms[i].v, coef_v, workspace->v_const[i] );
 
@@ -371,6 +395,9 @@ int32_t Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system * const system,
 
     if ( verlet_part1_done == FALSE ) {
         /* velocity verlet, 1st part */
+#if defined(_OPENMP)
+        #pragma omp parallel for schedule(dynamic,32) shared(system) private(i, inv_m, dx)
+#endif
         for ( i = 0; i < system->N; i++ ) {
             inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
@@ -397,12 +424,12 @@ int32_t Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system * const system,
 #endif
         }
 
+        Reset( system, control, data, workspace );
+
         verlet_part1_done = TRUE;
     }
 
     Reallocate_Part2( system, control, data, workspace, lists );
-
-    Reset( system, control, data, workspace, lists );
 
     if ( renbr == TRUE && gen_nbr_list == FALSE ) {
         ret = Generate_Neighbor_Lists( system, control, data, workspace, lists );
@@ -421,6 +448,9 @@ int32_t Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system * const system,
 
     if ( ret == SUCCESS ) {
         /* velocity verlet, 2nd part */
+#if defined(_OPENMP)
+        #pragma omp parallel for schedule(dynamic,32) shared(system) private(i, inv_m)
+#endif
         for ( i = 0; i < system->N; i++ ) {
             inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
@@ -461,6 +491,9 @@ int32_t Velocity_Verlet_Berendsen_Isotropic_NPT( reax_system * const system,
         }
 
         /* Scale velocities and positions at t+dt */
+#if defined(_OPENMP)
+        #pragma omp parallel for schedule(dynamic,32) shared(system, lambda, mu) private(i)
+#endif
         for ( i = 0; i < system->N; ++i ) {
             rvec_Scale( system->atoms[i].v, lambda, system->atoms[i].v );
 
@@ -505,6 +538,9 @@ int32_t Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system * const system
 
     if ( verlet_part1_done == FALSE ) {
         /* velocity verlet, 1st part */
+#if defined(_OPENMP)
+        #pragma omp parallel for schedule(dynamic,32) shared(system, dt) private(i, inv_m, dx)
+#endif
         for ( i = 0; i < system->N; i++ ) {
             inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
@@ -531,12 +567,12 @@ int32_t Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system * const system
 #endif
         }
 
+        Reset( system, control, data, workspace );
+
         verlet_part1_done = TRUE;
     }
 
     Reallocate_Part2( system, control, data, workspace, lists );
-
-    Reset( system, control, data, workspace, lists );
 
     if ( renbr == TRUE && gen_nbr_list == FALSE ) {
         ret = Generate_Neighbor_Lists( system, control, data, workspace, lists );
@@ -555,6 +591,9 @@ int32_t Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system * const system
 
     if ( ret == SUCCESS ) {
         /* velocity verlet, 2nd part */
+#if defined(_OPENMP)
+        #pragma omp parallel for schedule(dynamic,32) shared(system, dt) private(i, inv_m)
+#endif
         for ( i = 0; i < system->N; i++ ) {
             inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
             /* Compute v(t + dt) */
@@ -593,6 +632,9 @@ int32_t Velocity_Verlet_Berendsen_Semi_Isotropic_NPT( reax_system * const system
         }
 
         /* Scale velocities and positions at t+dt */
+#if defined(_OPENMP)
+        #pragma omp parallel for schedule(dynamic,32) shared(system, lambda, mu) private(i)
+#endif
         for ( i = 0; i < system->N; ++i ) {
             rvec_Scale( system->atoms[i].v, lambda, system->atoms[i].v );
 
@@ -637,6 +679,9 @@ int32_t Velocity_Verlet_Nose_Hoover_NVT( reax_system * const system,
     ret = SUCCESS;
     renbr = ((data->step - data->prev_steps) % control->reneighbor) == 0 ? TRUE : FALSE;
 
+#if defined(_OPENMP)
+        #pragma omp parallel for schedule(dynamic,32) shared(system, dt, dt_sqr) private(i, inv_m, dx)
+#endif
     for ( i = 0; i < system->N; i++ ) {
         inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
@@ -667,13 +712,13 @@ int32_t Velocity_Verlet_Nose_Hoover_NVT( reax_system * const system,
 #endif
     }
 
-    Reset( system, control, data, workspace );
-    fprintf(out_control->log, "reset-");
-    fflush( out_control->log );
-
     Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
     fprintf(out_control->log, "nbrs-");
+    fflush( out_control->log );
+
+    Reset( system, control, data, workspace );
+    fprintf(out_control->log, "reset-");
     fflush( out_control->log );
 
 //    Compute_Charges( system, control, workspace, out_control );
@@ -686,6 +731,9 @@ int32_t Velocity_Verlet_Nose_Hoover_NVT( reax_system * const system,
 
     Compute_Kinetic_Energy( system, data );
 
+#if defined(_OPENMP)
+        #pragma omp parallel for schedule(dynamic,32) shared(system, dt) private(i, inv_m)
+#endif
     for ( i = 0; i < system->N; i++ ) {
         inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
@@ -755,6 +803,10 @@ int32_t Velocity_Verlet_Isotropic_NPT( reax_system * const system,
     // Update positions and velocities
     // NOTE: v_old, v_xi_old, v_eps_old are meant to be the old values
     // in the iteration not the old values at time t or before!
+#if defined(_OPENMP)
+    #pragma omp parallel for schedule(dynamic,32) \
+        shared(system, workspace, data, iso_bar, therm, exp_deps, dt) private(i, inv_m, dx)
+#endif
     for ( i = 0; i < system->N; i++ ) {
         inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
@@ -785,10 +837,6 @@ int32_t Velocity_Verlet_Isotropic_NPT( reax_system * const system,
     }
 
     /* Calculate new forces, f(t + dt) */
-    Reset( system, control, data, workspace );
-    fprintf(out_control->log, "reset-");
-    fflush( out_control->log );
-
     Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
     fprintf( out_control->log, "nbrs-" );
@@ -798,13 +846,22 @@ int32_t Velocity_Verlet_Isotropic_NPT( reax_system * const system,
 //    fprintf( out_control->log, "qeq-" );
 //    fflush( out_control->log );
 
+    Reset( system, control, data, workspace );
+    fprintf(out_control->log, "reset-");
+    fflush( out_control->log );
+
     Compute_Forces( system, control, data, workspace, lists, out_control, FALSE );
     fprintf(out_control->log, "forces\n");
     fflush( out_control->log );
 
     // Compute iteration constants for each atom's velocity and for P_internal
     // Compute kinetic energy for initial velocities of the iteration
-    P_int_const = E_kin = 0;
+    P_int_const = 0.0;
+    E_kin = 0.0;
+#if defined(_OPENMP)
+    #pragma omp parallel for schedule(dynamic,32) \
+        shared(system, workspace, data, exp_deps, dt) private(i, inv_m, dv) reduction(+: E_kin, P_int_const)
+#endif
     for ( i = 0; i < system->N; ++i ) {
         inv_m = 1.0 / system->reax_param.sbp[system->atoms[i].type].mass;
 
@@ -833,6 +890,10 @@ int32_t Velocity_Verlet_Isotropic_NPT( reax_system * const system,
         v_xi_old = v_xi_new;
         v_eps_old = v_eps_new;
 
+#if defined(_OPENMP)
+        #pragma omp parallel for schedule(dynamic,32) \
+            shared(system, workspace, data, dt, exp_deps, v_eps_old, v_xi_old) private(i, coef_v)
+#endif
         for ( i = 0; i < system->N; ++i ) {
             coef_v = 1.0 / (1.0 + 0.5 * dt * exp_deps *
                             ( (2.0 + 3.0 / data->N_f) * v_eps_old + v_xi_old ) );
@@ -851,7 +912,11 @@ int32_t Velocity_Verlet_Isotropic_NPT( reax_system * const system,
                 - (data->N_f + 1) * K_B * control->T );
         v_xi_new = therm->v_xi + 0.5 * dt * ( therm->G_xi + G_xi_new );
 
-        E_kin = 0;
+        E_kin = 0.0;
+#if defined(_OPENMP)
+        #pragma omp parallel for schedule(dynamic,32) \
+            shared(system) private(i) reduction(+: E_kin)
+#endif
         for ( i = 0; i < system->N; ++i ) {
             E_kin += (0.5 * system->reax_param.sbp[system->atoms[i].type].mass *
                       rvec_Dot( system->atoms[i].v, system->atoms[i].v ) );

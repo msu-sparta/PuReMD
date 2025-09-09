@@ -27,8 +27,59 @@
 #include "vector.h"
 
 
-void Write_Binary_Restart( reax_system *system, control_params *control,
-        simulation_data *data, static_storage *workspace )
+/* fields:
+ * step, system->bigN, data->therm.T, data->therm.xi,
+ * data->therm.v_xi data->therm.v_xi_old data->therm.G_xi
+ * system->big_box.box[0][0], [0][1], [0][2]
+ * system->big_box.box[1][0], [1][1], [1][2]
+ * system->big_box.box[2][0], [2][1], [2][2] */
+#define RESTART_HEADER "%8u%12u%8.3f%8.3f%8.3f%8.3f%8.3f\n%15.5f%15.5f%15.5f\n%15.5f%15.5f%15.5f\n%15.5f%15.5f%15.5f\n"
+
+/* fields:
+ * id type name x y z vx vy vz */
+#define RESTART_LINE "%10u%4u%8s%24.12f%24.12f%24.12f%24.12f%24.12f%24.12f\n"
+
+#define READ_RESTART_HEADER " %u %u %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf"
+#define READ_RESTART_LINE " %u %u %s %lf %lf %lf %lf %lf %lf"
+
+
+typedef struct
+{
+    /* current simulation step number (0-based) */
+    uint32_t step;
+    /* number of local (non-periodic image) atoms for the current simulation */
+    uint32_t N;
+    /* current temperature (in K) */
+    real T;
+    /* for Nose-Hoover thermostat */
+    real xi;
+    /* for Nose-Hoover thermostat */
+    real v_xi;
+    /* for Nose-Hoover thermostat */
+    real v_xi_old;
+    /* for Nose-Hoover thermostat */
+    real G_xi;
+    /* 3D coordinate vectors defining the box dimensions */
+    rtensor box;
+} restart_header;
+
+typedef struct
+{
+    /* atom number in geometry input file (0-based) */
+    uint32_t orig_id;
+    /* integer representation of element type of this atom */
+    uint32_t type;
+    /* string representation of element type of this atom */
+    char name[9];
+    /* position of this atom (3D space), in Angstroms (1E-10 m) */
+    rvec x;
+    /* velocity of this atom, in Angstroms / ps */
+    rvec v;
+} restart_atom;
+
+
+static void Write_Binary_Restart( reax_system const * const system, control_params const * const control,
+        simulation_data const * const data, static_storage const * const workspace )
 {
     uint32_t i;
     char fname[MAX_STR];
@@ -70,9 +121,9 @@ void Write_Binary_Restart( reax_system *system, control_params *control,
 }
 
 
-void Read_Binary_Restart( const char * const fname, reax_system *system,
-        control_params *control, simulation_data *data,
-        static_storage *workspace )
+void Read_Binary_Restart( const char * const fname, reax_system * const system,
+        control_params * const control, simulation_data * const data,
+        static_storage * const workspace )
 {
     uint32_t i;
     FILE *fres;
@@ -152,8 +203,8 @@ void Read_Binary_Restart( const char * const fname, reax_system *system,
 }
 
 
-void Write_ASCII_Restart( reax_system *system, control_params *control,
-        simulation_data *data, static_storage *workspace )
+static void Write_ASCII_Restart( reax_system const * const system, control_params const * const control,
+        simulation_data const * const data, static_storage const * const workspace )
 {
     uint32_t i;
     char fname[MAX_STR];
@@ -187,9 +238,9 @@ void Write_ASCII_Restart( reax_system *system, control_params *control,
 }
 
 
-void Read_ASCII_Restart( const char * const fname, reax_system *system,
-        control_params *control, simulation_data *data,
-        static_storage *workspace )
+void Read_ASCII_Restart( const char * const fname, reax_system * const system,
+        control_params * const control, simulation_data * const data,
+        static_storage * const workspace )
 {
     uint32_t i, n;
     FILE *fres;
@@ -255,9 +306,9 @@ void Read_ASCII_Restart( const char * const fname, reax_system *system,
 }
 
 
-void Write_Restart( reax_system *system, control_params *control,
-        simulation_data *data, static_storage *workspace,
-        output_controls *out_control )
+void Write_Restart( reax_system const * const system, control_params const * const control,
+        simulation_data const * const data, static_storage const * const workspace,
+        output_controls const * const out_control )
 {
     switch ( out_control->restart_format ) {
     case WRITE_ASCII:

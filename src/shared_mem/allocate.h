@@ -28,7 +28,9 @@
 void PreAllocate_Space( reax_system * const, control_params  const * const,
         static_storage * const, uint32_t );
 
-void Allocate_Matrix( sparse_matrix * const, uint32_t, uint32_t, uint32_t );
+void Init_Matrix_Row_Indices( sparse_matrix * const, uint32_t const * const );
+
+void Allocate_Matrix( sparse_matrix * const, uint32_t, uint32_t, uint32_t, uint8_t );
 
 void Deallocate_Matrix( sparse_matrix * const  );
 

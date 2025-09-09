@@ -33,12 +33,12 @@ static bool ret_omp;
 static real ret2_omp;
 
 
-void Vector_Print( FILE * const, const char * const, const real * const, const uint32_t );
+void Vector_Print( FILE * const, const char * const, const real * const, uint32_t );
 
 void Print_rTensor( FILE * const, rtensor );
 
 
-static inline bool Vector_isZero( const real * const v, const uint32_t k )
+static inline bool Vector_isZero( const real * const v, uint32_t k )
 {
     uint32_t i;
 
@@ -60,7 +60,7 @@ static inline bool Vector_isZero( const real * const v, const uint32_t k )
 }
 
 
-static inline void Vector_MakeZero( real * const v, const uint32_t k )
+static inline void Vector_MakeZero( real * const v, uint32_t k )
 {
     uint32_t i;
 
@@ -75,7 +75,7 @@ static inline void Vector_MakeZero( real * const v, const uint32_t k )
 
 #if defined(QMMM)
 static inline void Vector_Mask_qmmm( real * const v, int32_t const * const mask,
-        const uint32_t k )
+        uint32_t k )
 {
     uint32_t i;
 
@@ -89,7 +89,7 @@ static inline void Vector_Mask_qmmm( real * const v, int32_t const * const mask,
 #endif
 
 
-static inline void Vector_Copy( real * const dest, const real * const v, const uint32_t k )
+static inline void Vector_Copy( real * const dest, const real * const v, uint32_t k )
 {
     uint32_t i;
 
@@ -102,8 +102,8 @@ static inline void Vector_Copy( real * const dest, const real * const v, const u
 }
 
 
-static inline void Vector_Scale( real * const dest, const real c, const real * const v,
-        const uint32_t k )
+static inline void Vector_Scale( real * const dest, real c, const real * const v,
+        uint32_t k )
 {
     uint32_t i;
 
@@ -116,8 +116,8 @@ static inline void Vector_Scale( real * const dest, const real c, const real * c
 }
 
 
-static inline void Vector_Sum( real * const dest, const real c, const real * const v,
-        const real d, const real * const y, const uint32_t k )
+static inline void Vector_Sum( real * const dest, real c, const real * const v,
+        real d, const real * const y, uint32_t k )
 {
     uint32_t i;
 
@@ -130,8 +130,8 @@ static inline void Vector_Sum( real * const dest, const real c, const real * con
 }
 
 
-static inline void Vector_Add( real * const dest, const real c, const real * const v,
-        const uint32_t k )
+static inline void Vector_Add( real * const dest, real c, const real * const v,
+        uint32_t k )
 {
     uint32_t i;
 
@@ -145,7 +145,7 @@ static inline void Vector_Add( real * const dest, const real c, const real * con
 
 
 static inline real Dot( const real * const v1, const real * const v2,
-        const uint32_t k )
+        uint32_t k )
 {
     uint32_t i;
 
@@ -165,7 +165,7 @@ static inline real Dot( const real * const v1, const real * const v2,
 }
 
 
-static inline real Norm( const real * const v1, const uint32_t k )
+static inline real Norm( const real * const v1, uint32_t k )
 {
     uint32_t i;
 
@@ -202,7 +202,7 @@ static inline void rvec_Copy( rvec dest, const rvec src )
     }
 }
 
-static inline void rvec_Scale( rvec ret, const real c, const rvec v )
+static inline void rvec_Scale( rvec ret, real c, const rvec v )
 {
     uint32_t i;
 
@@ -228,7 +228,7 @@ static inline void rvec_Add( rvec ret, const rvec v )
 }
 
 
-static inline void rvec_ScaledAdd( rvec ret, const real c, const rvec v )
+static inline void rvec_ScaledAdd( rvec ret, real c, const rvec v )
 {
     uint32_t i;
 
@@ -254,8 +254,8 @@ static inline void rvec_Sum( rvec ret, const rvec v1 , const rvec v2 )
 }
 
 
-static inline void rvec_ScaledSum( rvec ret, const real c1, const rvec v1,
-        const real c2, const rvec v2 )
+static inline void rvec_ScaledSum( rvec ret, real c1, const rvec v1,
+        real c2, const rvec v2 )
 {
     uint32_t i;
 
@@ -286,8 +286,8 @@ static inline real rvec_Dot( const rvec v1, const rvec v2 )
 }
 
 
-static inline real rvec_ScaledDot( const real c1, const rvec v1,
-        const real c2, const rvec v2 )
+static inline real rvec_ScaledDot( real c1, const rvec v1,
+        real c2, const rvec v2 )
 {
     uint32_t i;
     real ret;
@@ -486,7 +486,7 @@ static inline void rvec_Random( rvec v )
 }
 
 
-static inline void rtensor_Multiply( rtensor ret, rtensor m1, rtensor m2 )
+static inline void rtensor_Multiply( rtensor ret, const rtensor m1, const rtensor m2 )
 {
     uint32_t i, j, k;
     rtensor temp;
@@ -522,7 +522,7 @@ static inline void rtensor_Multiply( rtensor ret, rtensor m1, rtensor m2 )
 }
 
 
-static inline void rtensor_MatVec( rvec ret, rtensor m, const rvec v )
+static inline void rtensor_MatVec( rvec ret, const rtensor m, const rvec v )
 {
     uint32_t i;
     rvec temp;
@@ -545,7 +545,7 @@ static inline void rtensor_MatVec( rvec ret, rtensor m, const rvec v )
 }
 
 
-static inline void rtensor_Scale( rtensor ret, const real c, rtensor m )
+static inline void rtensor_Scale( rtensor ret, real c, const rtensor m )
 {
     uint32_t i, j;
 
@@ -557,7 +557,7 @@ static inline void rtensor_Scale( rtensor ret, const real c, rtensor m )
 }
 
 
-static inline void rtensor_Add( rtensor ret, rtensor t )
+static inline void rtensor_Add( rtensor ret, const rtensor t )
 {
     uint32_t i, j;
 
@@ -569,7 +569,7 @@ static inline void rtensor_Add( rtensor ret, rtensor t )
 }
 
 
-static inline void rtensor_ScaledAdd( rtensor ret, const real c, rtensor t )
+static inline void rtensor_ScaledAdd( rtensor ret, real c, const rtensor t )
 {
     uint32_t i, j;
 
@@ -581,7 +581,7 @@ static inline void rtensor_ScaledAdd( rtensor ret, const real c, rtensor t )
 }
 
 
-static inline void rtensor_Sum( rtensor ret, rtensor t1, rtensor t2 )
+static inline void rtensor_Sum( rtensor ret, const rtensor t1, const rtensor t2 )
 {
     uint32_t i, j;
 
@@ -593,8 +593,8 @@ static inline void rtensor_Sum( rtensor ret, rtensor t1, rtensor t2 )
 }
 
 
-static inline void rtensor_ScaledSum( rtensor ret, const real c1, rtensor t1,
-        const real c2, rtensor t2 )
+static inline void rtensor_ScaledSum( rtensor ret, real c1, const rtensor t1,
+        real c2, const rtensor t2 )
 {
     uint32_t i, j;
 
@@ -606,7 +606,7 @@ static inline void rtensor_ScaledSum( rtensor ret, const real c1, rtensor t1,
 }
 
 
-static inline void rtensor_Copy( rtensor ret, rtensor t )
+static inline void rtensor_Copy( rtensor ret, const rtensor t )
 {
     uint32_t i, j;
 
@@ -642,7 +642,7 @@ static inline void rtensor_MakeZero( rtensor t )
 }
 
 
-static inline void rtensor_Transpose( rtensor ret, rtensor t )
+static inline void rtensor_Transpose( rtensor ret, const rtensor t )
 {
     uint32_t i, j;
 
@@ -654,7 +654,7 @@ static inline void rtensor_Transpose( rtensor ret, rtensor t )
 }
 
 
-static inline real rtensor_Det( rtensor t )
+static inline real rtensor_Det( const rtensor t )
 {
     return t[0][0] * (t[1][1] * t[2][2] - t[1][2] * t[2][1])
         + t[0][1] * (t[1][2] * t[2][0] - t[1][0] * t[2][2])
@@ -662,7 +662,7 @@ static inline real rtensor_Det( rtensor t )
 }
 
 
-static inline real rtensor_Trace( rtensor t )
+static inline real rtensor_Trace( const rtensor t )
 {
     return t[0][0] + t[1][1] + t[2][2];
 }
@@ -707,7 +707,7 @@ static inline void uivec_Copy( uivec dest, const uivec src )
 }
 
 
-static inline void ivec_Scale( ivec dest, const int32_t C, const ivec src )
+static inline void ivec_Scale( ivec dest, int32_t C, const ivec src )
 {
     uint32_t i;
 
@@ -733,7 +733,7 @@ static inline void ivec_Add( ivec dest, const ivec src )
 }
 
 
-static inline void ivec_ScaledAdd( ivec dest, const int32_t c, const ivec src )
+static inline void ivec_ScaledAdd( ivec dest, int32_t c, const ivec src )
 {
     uint32_t i;
 
@@ -746,7 +746,7 @@ static inline void ivec_ScaledAdd( ivec dest, const int32_t c, const ivec src )
 }
 
 
-static inline void ivec_rScale( ivec dest, const real C, const rvec src )
+static inline void ivec_rScale( ivec dest, real C, const rvec src )
 {
     uint32_t i;
 
@@ -759,7 +759,7 @@ static inline void ivec_rScale( ivec dest, const real C, const rvec src )
 }
 
 
-static inline void uivec_rScale( uivec dest, const real C, const rvec src )
+static inline void uivec_rScale( uivec dest, real C, const rvec src )
 {
     uint32_t i;
 

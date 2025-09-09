@@ -47,6 +47,9 @@
   #define PMD_MEMORY_ALIGNMENT (64)
 #endif
 
+/* pad for AVX2 vector alignment */
+#define PMD_VEC_LEN (4)
+
 /* enables debugging code */
 //#define DEBUG_FOCUS
 /* enables test energy code */
@@ -230,8 +233,9 @@
 #define NO_BOND (1.0e-3)
 #define HB_THRESHOLD (1.0e-2)
 #define MAX_BONDS (40)
-#define MIN_BONDS (15)
-#define MIN_HBONDS (50)
+#define MIN_BONDS (8)
+#define MIN_HBONDS (16)
+#define MIN_CM_ENTRIES (8)
 #define SAFE_HBONDS (1.4)
 #define MIN_GCELL_POPL (50)
 #define SAFE_ZONE (1.2)
@@ -412,6 +416,17 @@ enum hydrogen_bonding_t
     NON_H_BONDING_ATOM = 0,
     H_ATOM = 1,
     H_BONDING_ATOM = 2,
+};
+
+/* sparse matrix (sparse_matrix) storage format */
+enum sparse_matrix_format
+{
+    /* store upper half of nonzeros in a symmetric matrix (a_{ij}, i >= j) */
+    SYM_HALF_MATRIX = 0,
+    /* store all nonzeros in a symmetric matrix */
+    SYM_FULL_MATRIX = 1,
+    /* store all nonzeros in a matrix */
+    FULL_MATRIX = 2,
 };
 
 
@@ -957,10 +972,16 @@ struct reax_system
     reax_atom *atoms;
     /* num. bonds per atom */
     uint32_t *bonds;
+    /* max. num. bonds per atom */
+    uint32_t *max_bonds;
     /* num. hydrogen bonds per atom */
     uint32_t *hbonds;
+    /* max. num. hydrogen bonds per atom */
+    uint32_t *max_hbonds;
     /* num. matrix entries per row */
     uint32_t *cm_entries;
+    /* max. num. matrix entries per row */
+    uint32_t *max_cm_entries;
 };
 
 
@@ -1480,6 +1501,8 @@ struct sparse_matrix
 {
     /* 0 if struct members are NOT allocated, 1 otherwise */
     bool allocated;
+    /* matrix storage format */
+    uint8_t format;
     /* active number of rows for this simulation */
     uint32_t n;
     /* max. number of rows across all simulations */
@@ -1488,6 +1511,8 @@ struct sparse_matrix
     uint32_t m;
     /* row pointer (last element contains ACTUAL NNZ) */
     uint32_t *start;
+    /* row end pointer */
+    uint32_t *end;
     /* column index for corresponding matrix entry */
     uint32_t *j;
     /* matrix entry */
@@ -1706,6 +1731,7 @@ struct static_storage
 
     /* storage space for bond restrictions */
     int32_t *map_serials;
+    /* atom number in geometry input file (0-based) */
     uint32_t *orig_id;
     int32_t *restricted;
     int32_t **restricted_list;

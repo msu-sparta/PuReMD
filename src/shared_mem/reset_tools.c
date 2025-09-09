@@ -25,7 +25,7 @@
 #include "vector.h"
 
 
-void Reset_Pressures( control_params *control, simulation_data *data )
+void Reset_Pressures( control_params const * const control, simulation_data * const data )
 {
 #if defined(_OPENMP)
     int32_t i;
@@ -46,46 +46,85 @@ void Reset_Pressures( control_params *control, simulation_data *data )
 
 
 #if defined(TEST_FORCES)
-static void Reset_Test_Forces( reax_system *system, static_storage *workspace )
+static void Reset_Test_Forces( reax_system const * const system, static_storage * const workspace )
 {
     uint32_t i;
 
+#if defined(_OPENMP)
+    #pragma omp parallel for schedule(dynamic,32) private(i) shared(system, workspace)
+#endif
     for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->dDelta[i] );
     }
+#if defined(_OPENMP)
+    #pragma omp parallel for schedule(dynamic,32) private(i) shared(system, workspace)
+#endif
     for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->f_ele[i] );
     }
+#if defined(_OPENMP)
+    #pragma omp parallel for schedule(dynamic,32) private(i) shared(system, workspace)
+#endif
     for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->f_vdw[i] );
     }
+#if defined(_OPENMP)
+    #pragma omp parallel for schedule(dynamic,32) private(i) shared(system, workspace)
+#endif
     for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->f_be[i] );
     }
+#if defined(_OPENMP)
+    #pragma omp parallel for schedule(dynamic,32) private(i) shared(system, workspace)
+#endif
     for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->f_lp[i] );
     }
+#if defined(_OPENMP)
+    #pragma omp parallel for schedule(dynamic,32) private(i) shared(system, workspace)
+#endif
     for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->f_ov[i] );
     }
+#if defined(_OPENMP)
+    #pragma omp parallel for schedule(dynamic,32) private(i) shared(system, workspace)
+#endif
     for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->f_un[i] );
     }
+#if defined(_OPENMP)
+    #pragma omp parallel for schedule(dynamic,32) private(i) shared(system, workspace)
+#endif
     for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->f_ang[i] );
     }
+#if defined(_OPENMP)
+    #pragma omp parallel for schedule(dynamic,32) private(i) shared(system, workspace)
+#endif
     for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->f_coa[i] );
     }
+#if defined(_OPENMP)
+    #pragma omp parallel for schedule(dynamic,32) private(i) shared(system, workspace)
+#endif
     for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->f_pen[i] );
     }
+#if defined(_OPENMP)
+    #pragma omp parallel for schedule(dynamic,32) private(i) shared(system, workspace)
+#endif
     for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->f_hb[i] );
     }
+#if defined(_OPENMP)
+    #pragma omp parallel for schedule(dynamic,32) private(i) shared(system, workspace)
+#endif
     for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->f_tor[i] );
     }
+#if defined(_OPENMP)
+    #pragma omp parallel for schedule(dynamic,32) private(i) shared(system, workspace)
+#endif
     for ( i = 0; i < system->N; i++ ) {
         rvec_MakeZero( workspace->f_con[i] );
     }
@@ -93,17 +132,36 @@ static void Reset_Test_Forces( reax_system *system, static_storage *workspace )
 #endif
 
 
-void Reset_Atomic_Forces( reax_system* system )
+void Reset_Atomic_Forces( reax_system * const system, static_storage * const workspace )
 {
-    uint32_t i;
+#if defined(_OPENMP)
+    #pragma omp parallel
+#endif
+    {
+        uint32_t i;
+#if defined(_OPENMP)
+        int32_t tid;
+#endif
 
-    for ( i = 0; i < system->N; ++i ) {
-        rvec_MakeZero( system->atoms[i].f );
+#if defined(_OPENMP)
+        #pragma omp for schedule(dynamic,32)
+#endif
+        for ( i = 0; i < system->N; ++i ) {
+            rvec_MakeZero( system->atoms[i].f );
+        }
+
+#if defined(_OPENMP)
+        tid = omp_get_thread_num( );
+
+        for ( i = 0; i < system->N; ++i ) {
+            rvec_MakeZero( workspace->f_local[(uint32_t) tid * system->N + i] );
+        }
+#endif
     }
 }
 
 
-void Reset_Energies( simulation_data* data )
+void Reset_Energies( simulation_data * const data )
 {
     data->E_Tot = 0.0;
     data->E_Kin = 0.0;
@@ -124,33 +182,35 @@ void Reset_Energies( simulation_data* data )
 }
 
 
-void Reset_Workspace( reax_system *system, static_storage *workspace )
+void Reset_Workspace( reax_system const * const system, static_storage * const workspace )
 {
-    uint32_t i;
 #if defined(_OPENMP)
-    int32_t tid;
+    #pragma omp parallel
 #endif
-
-    for ( i = 0; i < system->N; i++ ) {
-        workspace->total_bond_order[i] = 0.0;
-    }
-    for ( i = 0; i < system->N; i++ ) {
-        rvec_MakeZero( workspace->dDeltap_self[i] );
-    }
-    for ( i = 0; i < system->N; i++ ) {
-        workspace->CdDelta[i] = 0.0;
-    }
+    {
+        uint32_t i;
 
 #if defined(_OPENMP)
-    #pragma omp parallel private(i, tid)
-    {
-        tid = omp_get_thread_num( );
+        #pragma omp for schedule(dynamic,32)
+#endif
+        for ( i = 0; i < system->N; i++ ) {
+            workspace->total_bond_order[i] = 0.0;
+        }
 
-        for ( i = 0; i < system->N; ++i ) {
-            rvec_MakeZero( workspace->f_local[(uint32_t) tid * system->N + i] );
+#if defined(_OPENMP)
+        #pragma omp for schedule(dynamic,32)
+#endif
+        for ( i = 0; i < system->N; i++ ) {
+            rvec_MakeZero( workspace->dDeltap_self[i] );
+        }
+
+#if defined(_OPENMP)
+        #pragma omp for schedule(dynamic,32)
+#endif
+        for ( i = 0; i < system->N; i++ ) {
+            workspace->CdDelta[i] = 0.0;
         }
     }
-#endif
 
 #if defined(TEST_FORCES)
     Reset_Test_Forces( system, workspace );
@@ -158,10 +218,10 @@ void Reset_Workspace( reax_system *system, static_storage *workspace )
 }
 
 
-void Reset( reax_system *system, control_params *control,
-        simulation_data *data, static_storage *workspace, reax_list **lists  )
+void Reset( reax_system * const system, control_params const * const control,
+        simulation_data * const data, static_storage * const workspace )
 {
-    Reset_Atomic_Forces( system );
+    Reset_Atomic_Forces( system, workspace );
 
     Reset_Energies( data );
 
@@ -169,8 +229,6 @@ void Reset( reax_system *system, control_params *control,
             || control->ensemble == aNPT || control->compute_pressure == TRUE ) {
         Reset_Pressures( control, data );
     }
-
-    Reset_Workspace( system, workspace );
 }
 
 

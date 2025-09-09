@@ -56,6 +56,10 @@ static void Post_Evolve( reax_system * const system, control_params * const cont
         /* compute velocity of the center of mass */
         Compute_Center_of_Mass( system, data );
 
+#if defined(_OPENMP)
+        #pragma omp parallel for schedule(dynamic,32) \
+            private(i, diff, cross) shared(system, data)
+#endif
         for ( i = 0; i < system->N; i++ ) {
             /* remove translational */
             rvec_ScaledAdd( system->atoms[i].v, -1.0, data->vcm );
@@ -278,6 +282,9 @@ void * setup2( int32_t num_atoms, const int32_t * const atom_type,
         }
     }
 
+#if defined(_OPENMP)
+    #pragma omp parallel for schedule(dynamic,32) private(i, x) shared(pmd_handle, dx)
+#endif
     for ( i = 0; i < pmd_handle->system->N; ++i ) {
         assert( atom_type[i] >= 0
                 && atom_type[i] < pmd_handle->system->reax_param.num_atom_types );
@@ -368,7 +375,7 @@ int32_t simulate( const void * const handle )
         /* compute f_0 */
         //if( control.restart == FALSE ) {
         Reset( pmd_handle->system, pmd_handle->control, pmd_handle->data,
-                pmd_handle->workspace, pmd_handle->lists );
+                pmd_handle->workspace );
 
         ret_forces = Compute_Forces( pmd_handle->system, pmd_handle->control, pmd_handle->data,
                 pmd_handle->workspace, pmd_handle->lists, pmd_handle->out_control,
@@ -679,6 +686,9 @@ int32_t reset2( const void * const handle, int32_t num_atoms,
             }
         }
 
+#if defined(_OPENMP)
+        #pragma omp parallel for schedule(dynamic,32) private(i, x) shared(pmd_handle, dx)
+#endif
         for ( i = 0; i < pmd_handle->system->N; ++i ) {
             assert( atom_type[i] >= 0
                     && atom_type[i] < pmd_handle->system->reax_param.num_atom_types );
@@ -1231,6 +1241,9 @@ void * setup_qmmm( int32_t qm_num_atoms, const char * const qm_symbols,
 
     element[2] = '\0';
 
+#if defined(_OPENMP)
+    #pragma omp parallel for schedule(dynamic,32) private(i, x, element) shared(pmd_handle, dx)
+#endif
     for ( i = 0; i < pmd_handle->system->N_qm; ++i ) {
         x[0] = qm_pos[3 * i];
         x[1] = qm_pos[3 * i + 1];
@@ -1266,6 +1279,9 @@ void * setup_qmmm( int32_t qm_num_atoms, const char * const qm_symbols,
         }		
     }
 
+#if defined(_OPENMP)
+    #pragma omp parallel for schedule(dynamic,32) private(i, x) firstprivate(element) shared(pmd_handle, dx)
+#endif
     for ( i = pmd_handle->system->N_qm; i < pmd_handle->system->N; ++i ) {
         x[0] = mm_pos_q[4 * (i - pmd_handle->system->N_qm)];
         x[1] = mm_pos_q[4 * (i - pmd_handle->system->N_qm) + 1];
@@ -1401,6 +1417,9 @@ int32_t reset_qmmm( const void * const handle, int32_t qm_num_atoms,
 
         element[2] = '\0';
 
+#if defined(_OPENMP)
+        #pragma omp parallel for schedule(dynamic,32) private(i, x) firstprivate(element) shared(pmd_handle, dx)
+#endif
         for ( i = 0; i < pmd_handle->system->N_qm; ++i ) {
             x[0] = qm_pos[3 * i];
             x[1] = qm_pos[3 * i + 1];
@@ -1436,6 +1455,9 @@ int32_t reset_qmmm( const void * const handle, int32_t qm_num_atoms,
             }		
         }
 
+#if defined(_OPENMP)
+        #pragma omp parallel for schedule(dynamic,32) private(i, x) firstprivate(element) shared(pmd_handle, dx)
+#endif
         for ( i = pmd_handle->system->N_qm; i < pmd_handle->system->N; ++i ) {
             x[0] = mm_pos_q[4 * (i - pmd_handle->system->N_qm)];
             x[1] = mm_pos_q[4 * (i - pmd_handle->system->N_qm) + 1];

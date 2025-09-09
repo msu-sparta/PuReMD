@@ -96,6 +96,22 @@ static void Reallocate_Neighbor_List( reax_list * const far_nbr_list, uint32_t n
 }
 
 
+void Init_Matrix_Row_Indices( sparse_matrix * const H,
+        uint32_t const * const max_row_entries )
+{
+    uint32_t i;
+
+    /* exclusive prefix sum on max_row_entries replaces start,
+     * set end indices to the same as start indices for safety */
+    H->start[0] = 0;
+    H->end[0] = 0;
+    for ( i = 1; i < H->n_max; ++i ) {
+        H->start[i] = H->start[i - 1] + max_row_entries[i - 1];
+        H->end[i] = H->start[i];
+    }
+}
+
+
 /* Dynamic allocation of memory for matrix in CSR format
  *
  * pH (output): pointer to sparse matrix for which to allocate
@@ -103,15 +119,17 @@ static void Reallocate_Neighbor_List( reax_list * const far_nbr_list, uint32_t n
  * n_max: max. num. rows of the matrix
  * m: number of nonzeros to allocate space for in matrix
  * */
-void Allocate_Matrix( sparse_matrix * const H, uint32_t n, uint32_t n_max, uint32_t m )
+void Allocate_Matrix( sparse_matrix * const H, uint32_t n, uint32_t n_max, uint32_t m,
+       uint8_t format )
 {
     H->allocated = TRUE;
-
     H->n = n;
     H->n_max = n_max;
     H->m = m;
+    H->format = format;
 
-    H->start = smalloc( sizeof(uint32_t) * (n_max + 1), __FILE__, __LINE__ );
+    H->start = smalloc( sizeof(uint32_t) * n_max, __FILE__, __LINE__ );
+    H->end = smalloc( sizeof(uint32_t) * n_max, __FILE__, __LINE__ );
     H->j = smalloc( sizeof(uint32_t) * m, __FILE__, __LINE__ );
     H->val = smalloc( sizeof(real) * m, __FILE__, __LINE__ );
 }
@@ -124,8 +142,12 @@ void Allocate_Matrix( sparse_matrix * const H, uint32_t n, uint32_t n_max, uint3
 void Deallocate_Matrix( sparse_matrix * const H )
 {
     H->allocated = FALSE;
+    H->n = 0;
+    H->n_max = 0;
+    H->m = 0;
 
     sfree( H->start, __FILE__, __LINE__ );
+    sfree( H->end, __FILE__, __LINE__ );
     sfree( H->j, __FILE__, __LINE__ );
     sfree( H->val, __FILE__, __LINE__ );
 }
@@ -133,8 +155,12 @@ void Deallocate_Matrix( sparse_matrix * const H )
 
 static void Reallocate_Matrix( sparse_matrix *H, uint32_t n, uint32_t n_max, uint32_t m )
 {
+    uint8_t format;
+
+    format = H->format;
+
     Deallocate_Matrix( H );
-    Allocate_Matrix( H, n, n_max, m );
+    Allocate_Matrix( H, n, n_max, m, format );
 }
 
 

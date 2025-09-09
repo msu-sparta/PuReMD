@@ -25,16 +25,16 @@
 #include "reax_types.h"
 
 
-void Reset_Pressures( control_params *, simulation_data * );
+void Reset_Pressures( control_params const * const, simulation_data * const );
 
-void Reset_Atomic_Forces( reax_system* );
+void Reset_Atomic_Forces( reax_system * const, static_storage * const );
 
-void Reset_Energies( simulation_data* );
+void Reset_Energies( simulation_data * const );
 
-void Reset_Workspace( reax_system*, static_storage* );
+void Reset_Workspace( reax_system const * const, static_storage * const );
 
-void Reset( reax_system*, control_params*, simulation_data*,
-            static_storage*, reax_list** );
+void Reset( reax_system * const, control_params const * const,
+        simulation_data * const, static_storage * const );
 
 void Reset_Grid( grid* );
 

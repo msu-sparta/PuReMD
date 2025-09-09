@@ -43,8 +43,7 @@ int main( int argc, char* argv[] )
     int32_t i, ret;
     void *handle;
 
-    if ( argc < 4 || argc % 3 != 1 )
-    {
+    if ( argc < 4 || argc % 3 != 1 ) {
         usage( argv );
         exit( INVALID_INPUT );
     }
@@ -52,26 +51,21 @@ int main( int argc, char* argv[] )
     handle = setup( argv[1], argv[2], argv[3] );
     ret = PUREMD_FAILURE;
 
-    if ( handle != NULL )
-    {
+    if ( handle != NULL ) {
         ret = simulate( handle );
     }
 
-    for ( i = 1; i < argc / 3; ++i )
-    {
-        if ( ret == PUREMD_SUCCESS )
-        {
+    for ( i = 1; i < argc / 3; ++i ) {
+        if ( ret == PUREMD_SUCCESS ) {
             ret = reset( handle, argv[3 * i + 1], argv[3 * i + 2], argv[3 * i + 3] );
         }
 
-        if ( ret == PUREMD_SUCCESS )
-        {
+        if ( ret == PUREMD_SUCCESS ) {
             ret = simulate( handle );
         }
     }
 
-    if ( ret == PUREMD_SUCCESS )
-    {
+    if ( ret == PUREMD_SUCCESS ) {
         ret = cleanup( handle );
     }
 

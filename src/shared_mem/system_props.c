@@ -56,14 +56,19 @@ void Compute_Total_Mass( reax_system const * const system,
         simulation_data * const data )
 {
     uint32_t i;
+    real M;
 
-    data->M = 0.0;
+    M = 0.0;
 
+#if defined(_OPENMP)
+    #pragma omp parallel for schedule(dynamic,32) private(i) shared(system) reduction(+: M)
+#endif
     for ( i = 0; i < system->N; i++ ) {
-        data->M += system->reax_param.sbp[ system->atoms[i].type ].mass;
+        M += system->reax_param.sbp[ system->atoms[i].type ].mass;
     }
 
-    data->inv_M = 1.0 / data->M;
+    data->M = M;
+    data->inv_M = 1.0 / M;
 }
 
 
@@ -107,6 +112,10 @@ void Compute_Center_of_Mass( reax_system const * const system,
     yz = 0.0;
     zz = 0.0;
 
+#if defined(_OPENMP)
+    #pragma omp parallel for schedule(dynamic,32) private(i, m, diff) shared(system) \
+        reduction(+: xx, xy, xz, yy, yz, zz)
+#endif
     for ( i = 0; i < system->N; ++i ) {
         m = system->reax_param.sbp[ system->atoms[i].type ].mass;
 
@@ -174,18 +183,22 @@ void Compute_Kinetic_Energy( reax_system const * const  system,
         simulation_data * const data )
 {
     uint32_t i;
-    real m;
+    real m, e_kin;
     rvec p;
 
-    data->E_Kin = 0.0;
+    e_kin = 0.0;
 
+#if defined(_OPENMP)
+    #pragma omp parallel for schedule(dynamic,32) private(i, m, p) shared(system) \
+        reduction(+: e_kin)
+#endif
     for ( i = 0; i < system->N; i++ ) {
         m = system->reax_param.sbp[system->atoms[i].type].mass;
 
         rvec_Scale( p, m, system->atoms[i].v );
-        data->E_Kin += rvec_Dot( p, system->atoms[i].v );
+        e_kin += rvec_Dot( p, system->atoms[i].v );
     }
-    data->E_Kin *= 0.5 * E_CONV;
+    data->E_Kin = 0.5 * E_CONV * e_kin;
 
     /* temperature scalar */
     data->therm.T = (2.0 * data->E_Kin) / (data->N_f * K_B / F_CONV);
@@ -304,18 +317,23 @@ void Compute_Pressure_Isotropic( reax_system* system, control_params *control,
 void Compute_Pressure_Isotropic_Klein( reax_system* system, simulation_data* data )
 {
     uint32_t i;
+    real P;
     reax_atom *p_atom;
     rvec dx;
 
-    data->iso_bar.P = 2.0 * data->E_Kin;
+    P = 0.0;
 
+#if defined(_OPENMP)
+    #pragma omp parallel for schedule(dynamic,32) private(i, p_atom, dx) shared(system, data) \
+        reduction(+: P)
+#endif
     for ( i = 0; i < system->N; ++i ) {
         p_atom = &system->atoms[i];
         rvec_ScaledSum( dx, 1.0, p_atom->x, -1.0, data->xcm );
-        data->iso_bar.P += -F_CONV * rvec_Dot( p_atom->f, dx );
+        P += -F_CONV * rvec_Dot( p_atom->f, dx );
     }
 
-    data->iso_bar.P /= 3.0 * system->box.volume;
+    data->iso_bar.P = (2.0 * data->E_Kin + P) / 3.0 * system->box.volume;
 }
 
 

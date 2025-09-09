@@ -40,7 +40,7 @@ void Bonds( reax_system * system, control_params * control, simulation_data * da
     ebond_total = 0.0;
 
 #if defined(_OPENMP)
-//    #pragma omp parallel default(shared) reduction(+: ebond_total)
+    #pragma omp parallel default(shared) reduction(+: ebond_total)
 #endif
     { 
         int32_t j, pj;
@@ -55,7 +55,7 @@ void Bonds( reax_system * system, control_params * control, simulation_data * da
         bond_order_data *bo_ij;
 
 #if defined(_OPENMP)
-//        #pragma omp for schedule(guided)
+        #pragma omp for schedule(dynamic,32)
 #endif
         for ( i = 0; i < system->N; ++i ) {
 #if defined(QMMM)
@@ -143,6 +143,9 @@ void Bonds( reax_system * system, control_params * control, simulation_data * da
 
                             bo_ij->Cdbo += decobdbo;
                             CdDelta_i += decobdboua;
+#if defined(_OPENMP)
+                            #pragma omp atomic
+#endif
                             workspace->CdDelta[j] += decobdboub;
 
 #if defined(TEST_ENERGY)
@@ -166,6 +169,9 @@ void Bonds( reax_system * system, control_params * control, simulation_data * da
                 }
             }
 
+#if defined(_OPENMP)
+            #pragma omp atomic
+#endif
             workspace->CdDelta[i] += CdDelta_i;
 #if defined(QMMM)
             }
