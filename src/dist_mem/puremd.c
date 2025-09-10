@@ -438,7 +438,7 @@ int simulate( const void * const handle )
 
 //              Analysis( system, control, data, workspace, lists, out_control, mpi_data );
 
-                if ( out_control->restart_freq
+                if ( out_control->restart_freq > 0
                         && (data->step - data->prev_steps) % out_control->restart_freq == 0 )
                 {
                     if ( out_control->restart_format == WRITE_ASCII )

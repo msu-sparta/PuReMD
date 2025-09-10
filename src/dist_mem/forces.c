@@ -1933,7 +1933,9 @@ static int Init_Forces( reax_system *system, control_params *control,
     Update_Timing_Info( &time, &data->timing.init_dist );
 #endif
 
-    if ( cm_done == FALSE )
+    if ( (control->charge_freq > 0
+            && (data->step - data->prev_steps) % control->charge_freq == 0)
+            && cm_done == FALSE )
     {
         Init_Matrix_Row_Indices( &workspace->H, system->max_cm_entries );
 
@@ -2015,249 +2017,6 @@ static int Init_Forces( reax_system *system, control_params *control,
 }
 
 
-static int Init_Forces_No_Charges( reax_system * const system, control_params * const control,
-        simulation_data * const data, storage * const workspace, reax_list ** const lists,
-        output_controls * const out_control )
-{
-    int i, j, pj;
-    int start_i, end_i;
-    int type_i, type_j;
-    int btop_i;
-    int ihb, jhb, ihb_top;
-    int local, flag, renbr;
-    real cutoff;
-    reax_list *far_nbr_list, *bond_list, *hbond_list;
-    single_body_parameters *sbp_i, *sbp_j;
-    two_body_parameters *twbp;
-    reax_atom *atom_i, *atom_j;
-    int jhb_top;
-    int start_j, end_j;
-    int btop_j;
-
-    far_nbr_list = lists[FAR_NBRS];
-    bond_list = lists[BONDS];
-    hbond_list = lists[HBONDS];
-
-    for ( i = 0; i < system->n; ++i )
-    {
-        workspace->bond_mark[i] = 0;
-    }
-    for ( i = system->n; i < system->N; ++i )
-    {
-        /* put ghost atoms to an infinite distance */
-        workspace->bond_mark[i] = 1000;
-    }
-
-    renbr = (data->step - data->prev_steps) % control->reneighbor == 0 ? TRUE : FALSE;
-
-    for ( i = 0; i < system->N; ++i )
-    {
-        atom_i = &system->my_atoms[i];
-        type_i = atom_i->type;
-        start_i = Start_Index( i, far_nbr_list );
-        end_i = End_Index( i, far_nbr_list );
-        if ( far_nbr_list->format == HALF_LIST )
-        {
-            /* start at end because other atoms
-             * can add to this atom's list (half-list) */
-            btop_i = End_Index( i, bond_list );
-        }
-        else if ( far_nbr_list->format == FULL_LIST )
-        {
-            btop_i = Start_Index( i, bond_list );
-        }
-        else
-        {
-            btop_i = 0;
-        }
-        sbp_i = &system->reax_param.sbp[type_i];
-        ihb = NON_H_BONDING_ATOM;
-        ihb_top = -1;
-
-        if ( i < system->n )
-        {
-            local = TRUE;
-            cutoff = MAX( control->hbond_cut, control->bond_cut );
-        }
-        else
-        {
-            local = FALSE;
-            cutoff = control->bond_cut;
-        }
-
-        if ( local == TRUE && control->hbond_cut > 0.0 )
-        {
-            ihb = sbp_i->p_hbond;
-
-            if ( ihb == H_ATOM )
-            {
-                if ( far_nbr_list->format == HALF_LIST )
-                {
-                    /* start at end because other atoms
-                     * can add to this atom's list (half-list) */
-                    ihb_top = End_Index( atom_i->Hindex, hbond_list );
-                }
-                else if ( far_nbr_list->format == FULL_LIST )
-                {
-                    ihb_top = Start_Index( atom_i->Hindex, hbond_list );
-                }
-            }
-            else
-            {
-                ihb_top = -1;
-            }
-        }
-
-        /* update i-j distance - check if j is within cutoff */
-        for ( pj = start_i; pj < end_i; ++pj )
-        {
-            j = far_nbr_list->far_nbr_list.nbr[pj];
-            atom_j = &system->my_atoms[j];
-
-            if ( renbr == TRUE )
-            {
-                if ( far_nbr_list->far_nbr_list.d[pj] <= cutoff )
-                {
-                    flag = TRUE;
-                }
-                else
-                {
-                    flag = FALSE;
-                }
-            }
-            else
-            {
-                far_nbr_list->far_nbr_list.dvec[pj][0] = atom_j->x[0] - atom_i->x[0];
-                far_nbr_list->far_nbr_list.dvec[pj][1] = atom_j->x[1] - atom_i->x[1];
-                far_nbr_list->far_nbr_list.dvec[pj][2] = atom_j->x[2] - atom_i->x[2];
-                far_nbr_list->far_nbr_list.d[pj] = rvec_Norm_Sqr( far_nbr_list->far_nbr_list.dvec[pj] );
-
-                if ( far_nbr_list->far_nbr_list.d[pj] <= SQR(cutoff) )
-                {
-                    far_nbr_list->far_nbr_list.d[pj] = SQRT( far_nbr_list->far_nbr_list.d[pj] );
-                    flag = TRUE;
-                }
-                else
-                {
-                    flag = FALSE;
-                }
-            }
-
-            if ( flag == TRUE )
-            {
-                type_j = atom_j->type;
-                sbp_j = &system->reax_param.sbp[type_j];
-                twbp = &system->reax_param.tbp[
-                    index_tbp(type_i, type_j, system->reax_param.num_atom_types) ];
-
-                if ( local == TRUE )
-                {
-                    /* hydrogen bond lists */
-                    if ( control->hbond_cut > 0.0
-                            && (ihb == H_ATOM || ihb == H_BONDING_ATOM)
-                            && far_nbr_list->far_nbr_list.d[pj] <= control->hbond_cut )
-                    {
-                        jhb = sbp_j->p_hbond;
-
-                        if ( ihb == H_ATOM && jhb == H_BONDING_ATOM )
-                        {
-                            hbond_list->hbond_list.nbr[ihb_top] = j;
-                            hbond_list->hbond_list.scl[ihb_top] = 1;
-                            hbond_list->hbond_list.ptr[ihb_top] = pj;
-                            ++ihb_top;
-                        }
-                        /* only add to list for local j (far nbrs is half-list) */
-                        else if ( far_nbr_list->format == HALF_LIST
-                                && ihb == H_BONDING_ATOM && jhb == H_ATOM )
-                        {
-                            jhb_top = End_Index( atom_j->Hindex, hbond_list );
-                            hbond_list->hbond_list.nbr[jhb_top] = i;
-                            hbond_list->hbond_list.scl[jhb_top] = -1;
-                            hbond_list->hbond_list.ptr[jhb_top] = pj;
-                            Set_End_Index( atom_j->Hindex, jhb_top + 1, hbond_list );
-                        }
-                    }
-                }
-
-                /* uncorrected bond orders */
-                if ( //(workspace->bond_mark[i] < 3 || workspace->bond_mark[j] < 3) &&
-                    far_nbr_list->far_nbr_list.d[pj] <= control->bond_cut
-                    && BOp( workspace, bond_list, control->bo_cut,
-                         i, btop_i, far_nbr_list->far_nbr_list.nbr[pj],
-                         &far_nbr_list->far_nbr_list.rel_box[pj], far_nbr_list->far_nbr_list.d[pj],
-                         &far_nbr_list->far_nbr_list.dvec[pj], far_nbr_list->format,
-                         sbp_i, sbp_j, twbp ) == TRUE )
-                {
-                    ++btop_i;
-
-                    if ( workspace->bond_mark[j] > workspace->bond_mark[i] + 1 )
-                    {
-                        workspace->bond_mark[j] = workspace->bond_mark[i] + 1;
-                    }
-                    else if ( workspace->bond_mark[i] > workspace->bond_mark[j] + 1 )
-                    {
-                        workspace->bond_mark[i] = workspace->bond_mark[j] + 1;
-                    }
-                }
-            }
-        }
-
-        Set_End_Index( i, btop_i, bond_list );
-
-        if ( local == TRUE && ihb == H_ATOM )
-        {
-            Set_End_Index( atom_i->Hindex, ihb_top, hbond_list );
-        }
-    }
-
-    if ( far_nbr_list->format == FULL_LIST )
-    {
-        /* set sym_index for bonds list (far_nbrs full list) */
-        for ( i = 0; i < system->N; ++i )
-        {
-            start_i = Start_Index( i, bond_list );
-            end_i = End_Index( i, bond_list );
-
-            for ( btop_i = start_i; btop_i < end_i; ++btop_i )
-            {
-                j = bond_list->bond_list[btop_i].nbr;
-                start_j = Start_Index( j, bond_list );
-                end_j = End_Index( j, bond_list );
-
-                for ( btop_j = start_j; btop_j < end_j; ++btop_j )
-                {
-                    if ( bond_list->bond_list[btop_j].nbr == i )
-                    {
-                        bond_list->bond_list[btop_i].sym_index = btop_j;
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    /* reallocation checks */
-    for ( i = 0; i < system->N; ++i )
-    {
-        if ( Num_Entries( i, bond_list ) > system->max_bonds[i] )
-        {
-            workspace->realloc[RE_BONDS] = TRUE;
-        }
-
-        if ( i < system->n
-                && system->reax_param.sbp[ system->my_atoms[i].type ].p_hbond == H_ATOM
-                && Num_Entries( system->my_atoms[i].Hindex, hbond_list )
-                > system->max_hbonds[system->my_atoms[i].Hindex] )
-        {
-            workspace->realloc[RE_HBONDS] = TRUE;
-        }
-    }
-
-    return (workspace->realloc[RE_BONDS] == TRUE 
-            || workspace->realloc[RE_HBONDS] == TRUE) ? FAILURE : SUCCESS;
-}
-
-
 void Estimate_Storages( reax_system * const system, control_params * const control,
         reax_list ** const lists, storage *workspace, int realloc_cm,
         int realloc_bonds, int * const matrix_dim, int cm_format )
@@ -2279,7 +2038,7 @@ int Compute_Forces( reax_system * const system, control_params * const control,
         reax_list ** const lists, output_controls * const out_control,
         mpi_datatypes * const mpi_data )
 {
-    int charge_flag, matrix_dim, ret, ret_mpi;
+    int matrix_dim, ret, ret_mpi;
 #if defined(LOG_PERFORMANCE)
     real time;
 
@@ -2287,24 +2046,7 @@ int Compute_Forces( reax_system * const system, control_params * const control,
 #endif
 
     /********* init forces ************/
-    if ( control->charge_freq
-            && (data->step - data->prev_steps) % control->charge_freq == 0 )
-    {
-        charge_flag = TRUE;
-    }
-    else
-    {
-        charge_flag = FALSE;
-    }
-
-    if ( charge_flag == TRUE )
-    {
-        ret = Init_Forces( system, control, data, workspace, lists, out_control, mpi_data );
-    }
-    else
-    {
-        ret = Init_Forces_No_Charges( system, control, data, workspace, lists, out_control );
-    }
+    ret = Init_Forces( system, control, data, workspace, lists, out_control, mpi_data );
 
     if ( ret != SUCCESS )
     {
@@ -2330,7 +2072,8 @@ int Compute_Forces( reax_system * const system, control_params * const control,
 
     /**************** charges ************************/
 #if defined(PURE_REAX)
-        if ( charge_flag == TRUE )
+        if ( control->charge_freq > 0
+            && (data->step - data->prev_steps) % control->charge_freq == 0 )
         {
             Compute_Charges( system, control, data, workspace, out_control, mpi_data );
         }

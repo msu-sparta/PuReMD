@@ -27,6 +27,9 @@
 #include "tool_box.h"
 #include "vector.h"
 
+#include <limits.h>
+#include <errno.h>
+
 
 /********************* geo format routines ******************/
 static void Count_Geo_Atoms( FILE *geo, reax_system * const system )
@@ -139,7 +142,7 @@ void Read_Geo_File( const char * const geo_file, reax_system * const system,
             rvec_MakeZero( atom->v );
             rvec_MakeZero( atom->f );
             rvec_MakeZero( atom->f_old );
-            atom->q = 0;
+            atom->q = 0.0;
             rvec_MakeZero( atom->s );
             rvec_MakeZero( atom->t );
 
@@ -284,14 +287,15 @@ void Read_PDB_File( const char * const pdb_file, reax_system * const system,
     FILE *pdb;
     char **tmp;
     char *s, *s1;
+    char *endptr;
     char descriptor[9], serial[9];
     char atom_name[9], res_name[9], res_seq[9];
     char s_x[9], s_y[9], s_z[9];
     char occupancy[9], temp_factor[9];
     char seg_id[9], element[9], charge[9];
     char alt_loc, chain_id, icode;
-    char *endptr = NULL;
     int i, c, c1, pdb_serial, top;
+    real q;
     rvec x;
     reax_atom *atom;
 
@@ -432,11 +436,22 @@ void Read_PDB_File( const char * const pdb_file, reax_system * const system,
                 strncpy( atom->name, atom_name, sizeof(atom->name) - 1 );
                 atom->name[sizeof(atom->name) - 1] = '\0';
 
+                errno = 0;
+                q = strtod( charge, &endptr );
+
+                /* failure check to parse charge field as double */
+                if ( (errno == ERANGE && (q == LONG_MAX || q == LONG_MIN) )
+                        || (errno != 0 && q == 0)
+                        || endptr == charge
+                        || *endptr != '\0' ) {
+                    q = 0.0;
+                }
+
                 rvec_Copy( atom->x, x );
                 rvec_MakeZero( atom->v );
                 rvec_MakeZero( atom->f );
                 rvec_MakeZero( atom->f_old );
-                atom->q = 0;
+                atom->q = q;
                 rvec_MakeZero( atom->s );
                 rvec_MakeZero( atom->t );
 
@@ -656,18 +671,18 @@ void Read_BGF( const char * const bgf_file, reax_system * const system,
     FILE *bgf;
     char **tokens;
     char *line, *backup;
-    char descriptor[7], serial[6];
+    char *endptr;
+    char descriptor[9], serial[6];
     char atom_name[6], res_name[4], res_seq[6];
     char s_x[11], s_y[11], s_z[11];
     char occupancy[4], temp_factor[3];
     char element[6], charge[9];
     char chain_id;
     char s_a[12], s_b[12], s_c[12], s_alpha[12], s_beta[12], s_gamma[12];
-    char *endptr;
     int i, n, atom_cnt, token_cnt, bgf_serial, ratom;
+    real q;
     rvec x;
 
-    endptr = NULL;
     ratom = 0;
 
     bgf = sfopen( bgf_file, "r", __FILE__, __LINE__ );
@@ -797,10 +812,22 @@ void Read_BGF( const char * const bgf_file, reax_system * const system,
 //                workspace->map_serials[bgf_serial] = atom_cnt;
                 system->my_atoms[atom_cnt].orig_id = bgf_serial;
 
+                errno = 0;
+                q = strtod( charge, &endptr );
+
+                /* failure check to parse charge field as double */
+                if ( (errno == ERANGE && (q == LONG_MAX || q == LONG_MIN) )
+                        || (errno != 0 && q == 0)
+                        || endptr == charge
+                        || *endptr != '\0' ) {
+                    q = 0.0;
+                }
+
                 /* copy atomic positions */
                 system->my_atoms[atom_cnt].x[0] = x[0];
                 system->my_atoms[atom_cnt].x[1] = x[1];
                 system->my_atoms[atom_cnt].x[2] = x[2];
+                system->my_atoms[atom_cnt].q = q;
 
                 /* atom name and type */
                 strncpy( system->my_atoms[atom_cnt].name, atom_name,

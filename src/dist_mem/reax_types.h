@@ -848,6 +848,8 @@ struct mpi_atom
     rvec v;
     /* net force acting upon atom in previous time step, 3D */
     rvec f_old;
+    /* atomic charge, computed during coulombic interaction */
+    real q;
     /* atomic fictitious charge used during QEq to compute atomic charge,
      * multiple entries used to hold old values for extrapolation */
     rvec4 s;
@@ -874,6 +876,8 @@ struct boundary_atom
     int num_hbonds;
     /* atomic position, 3D */
     rvec x;
+    /* atomic charge, computed during coulombic interaction */
+    real q;
 };
 
 

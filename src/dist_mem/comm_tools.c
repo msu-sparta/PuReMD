@@ -308,6 +308,7 @@ static void Pack_MPI_Atom( mpi_atom * const matm, const reax_atom * const ratm, 
     rvec_Copy( matm->x, ratm->x );
     rvec_Copy( matm->v, ratm->v );
     rvec_Copy( matm->f_old, ratm->f_old );
+    matm->q = ratm->q;
     memcpy( matm->s, ratm->s, sizeof(rvec4) ); //rvec_Copy( matm->s, ratm->s );
     memcpy( matm->t, ratm->t, sizeof(rvec4) ); //rvec_Copy( matm->t, ratm->t );
 }
@@ -325,6 +326,7 @@ static void Unpack_MPI_Atom( reax_atom * const ratm, const mpi_atom * const matm
     rvec_Copy( ratm->x, matm->x );
     rvec_Copy( ratm->v, matm->v );
     rvec_Copy( ratm->f_old, matm->f_old );
+    ratm->q = matm->q;
     memcpy( ratm->s, matm->s, sizeof(rvec4) ); //rvec_Copy( ratm->s, matm->s );
     memcpy( ratm->t, matm->t, sizeof(rvec4) ); //rvec_Copy( ratm->t, matm->t );
 }
@@ -446,6 +448,7 @@ static void Pack_Boundary_Atom( boundary_atom * const matm,
     matm->num_bonds = ratm->num_bonds;
     matm->num_hbonds = ratm->num_hbonds;
     rvec_Copy( matm->x, ratm->x );
+    matm->q = ratm->q;
 }
 
 
@@ -459,6 +462,7 @@ static void Unpack_Boundary_Atom( reax_atom * const ratm,
     ratm->num_hbonds = matm->num_hbonds;
 //    ratm->renumber = offset + matm->imprt_id;
     rvec_Copy( ratm->x, matm->x );
+    ratm->q = matm->q;
 }
 
 

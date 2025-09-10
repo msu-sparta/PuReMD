@@ -476,12 +476,12 @@ void Init_Workspace( reax_system * const system, control_params * const control,
 void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
         mpi_datatypes * const mpi_data )
 {
-    int i, ret, block[11];
-    MPI_Aint disp[11], base;
-    MPI_Datatype type[11], temp_type;
-    mpi_atom m_sample[1];
-    boundary_atom b_sample[1];
-    restart_atom r_sample[1];
+    int i, ret, block[12];
+    MPI_Aint disp[12], base, lb, extent;
+    MPI_Datatype type[12], temp_type;
+    mpi_atom m_sample[1] = {};
+    boundary_atom b_sample[1] = {};
+    restart_atom r_sample[1] = {};
 
     /* mpi_atom */
     block[0] = 1;
@@ -493,8 +493,9 @@ void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
     block[6] = 3;
     block[7] = 3;
     block[8] = 3;
-    block[9] = 4;
+    block[9] = 1;
     block[10] = 4;
+    block[11] = 4;
 
     MPI_Get_address( &m_sample[0], &base );
     MPI_Get_address( &m_sample[0].orig_id, &disp[0] );
@@ -506,9 +507,10 @@ void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
     MPI_Get_address( &m_sample[0].x, &disp[6] );
     MPI_Get_address( &m_sample[0].v, &disp[7] );
     MPI_Get_address( &m_sample[0].f_old, &disp[8] );
-    MPI_Get_address( &m_sample[0].s, &disp[9] );
-    MPI_Get_address( &m_sample[0].t, &disp[10] );
-    for ( i = 0; i < 11; ++i )
+    MPI_Get_address( &m_sample[0].q, &disp[9] );
+    MPI_Get_address( &m_sample[0].s, &disp[10] );
+    MPI_Get_address( &m_sample[0].t, &disp[11] );
+    for ( i = 0; i < 12; ++i )
     {
         disp[i] = MPI_Aint_diff( disp[i], base );
     }
@@ -524,8 +526,9 @@ void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
     type[8] = MPI_DOUBLE;
     type[9] = MPI_DOUBLE;
     type[10] = MPI_DOUBLE;
+    type[11] = MPI_DOUBLE;
 
-    ret = MPI_Type_create_struct( 11, block, disp, type, &temp_type );
+    ret = MPI_Type_create_struct( 12, block, disp, type, &temp_type );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
     /* account for struct padding after members */
     ret = MPI_Type_create_resized( temp_type, 0, sizeof(mpi_atom),
@@ -543,6 +546,7 @@ void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
     block[3] = 1;
     block[4] = 1;
     block[5] = 3;
+    block[6] = 1;
 
     MPI_Get_address( &b_sample[0], &base );
     MPI_Get_address( &b_sample[0].orig_id, &disp[0] );
@@ -551,7 +555,8 @@ void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
     MPI_Get_address( &b_sample[0].num_bonds, &disp[3] );
     MPI_Get_address( &b_sample[0].num_hbonds, &disp[4] );
     MPI_Get_address( &b_sample[0].x, &disp[5] );
-    for ( i = 0; i < 6; ++i )
+    MPI_Get_address( &b_sample[0].q, &disp[6] );
+    for ( i = 0; i < 7; ++i )
     {
         disp[i] = MPI_Aint_diff( disp[i], base );
     }
@@ -562,8 +567,9 @@ void Init_MPI_Datatypes( reax_system * const system, storage * const workspace,
     type[3] = MPI_INT;
     type[4] = MPI_INT;
     type[5] = MPI_DOUBLE;
+    type[6] = MPI_DOUBLE;
 
-    ret = MPI_Type_create_struct( 6, block, disp, type, &temp_type );
+    ret = MPI_Type_create_struct( 7, block, disp, type, &temp_type );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
     /* account for struct padding after members */
     ret = MPI_Type_create_resized( temp_type, 0, sizeof(boundary_atom),
