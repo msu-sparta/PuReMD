@@ -2359,11 +2359,7 @@ static void permute_matrix( const static_storage * const workspace,
         workspace->color_top[i] += workspace->color_top[i - 1];
     }
 
-    LUtemp.start[0] = 0;
-    memcpy( LUtemp.end, workspace->color_top, sizeof(uint32_t) * LU->n );
-    for ( i = 1; i < LU->n; ++i ) {
-        LUtemp.start[i] = LUtemp.end[i - 1];
-    }
+    memcpy( LUtemp.start, workspace->color_top, sizeof(uint32_t) * LU->n );
 
     /* permute factor */
     if ( tri == LOWER ) {
@@ -2407,6 +2403,8 @@ static void permute_matrix( const static_storage * const workspace,
             }
         }
     }
+
+    memcpy( LUtemp.end, workspace->color_top, sizeof(uint32_t) * LU->n );
 
     memcpy( LU->start, LUtemp.start, sizeof(uint32_t) * LU->n );
     memcpy( LU->end, LUtemp.end, sizeof(uint32_t) * LU->n );
