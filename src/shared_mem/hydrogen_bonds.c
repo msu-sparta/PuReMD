@@ -22,6 +22,7 @@
 #include "hydrogen_bonds.h"
 
 #include "bond_orders.h"
+#include "ffield.h"
 #include "list.h"
 #include "lookup.h"
 #include "valence_angles.h"
@@ -150,11 +151,13 @@ void Hydrogen_Bonds( reax_system *system, control_params *control,
                         i = pbond_ij->nbr;
 
                         if ( i != k
-                                && system->reax_param.hbp[system->atoms[i].type][type_j][type_k].is_valid == TRUE ) {
+                                && system->reax_param.hbp[IDX_HBP(system->atoms[i].type,
+                                    type_j, type_k, system->reax_param.num_atom_types)].is_valid == TRUE ) {
                             bo_ij = &pbond_ij->bo_data;
                             type_i = system->atoms[i].type;
                             r_ij = pbond_ij->d;
-                            hbp = &system->reax_param.hbp[type_i][type_j][type_k];
+                            hbp = &system->reax_param.hbp[IDX_HBP(type_i, type_j,
+                                    type_k, system->reax_param.num_atom_types)];
 #if defined(_OPENMP)
                             f_i = &workspace->f_local[tid * system->N + i];
 #else

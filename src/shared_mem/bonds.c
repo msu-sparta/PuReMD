@@ -22,6 +22,7 @@
 #include "bonds.h"
 
 #include "bond_orders.h"
+#include "ffield.h"
 #include "list.h"
 
 
@@ -79,7 +80,8 @@ void Bonds( reax_system * system, control_params * control, simulation_data * da
                     type_j = system->atoms[j].type;
                     sbp_i = &system->reax_param.sbp[type_i];
                     sbp_j = &system->reax_param.sbp[type_j];
-                    twbp = &system->reax_param.tbp[type_i][type_j];
+                    twbp = &system->reax_param.tbp[IDX_TBP(type_i, type_j,
+                            system->reax_param.num_atom_types)];
                     bo_ij = &bonds->bond_list[pj].bo_data;
 
                     pow_BOs_be2 = POW( bo_ij->BO_s, twbp->p_be2 );

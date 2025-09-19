@@ -22,6 +22,7 @@
 #include "multi_body.h"
 
 #include "bond_orders.h"
+#include "ffield.h"
 #include "list.h"
 #include "lookup.h"
 #include "vector.h"
@@ -109,7 +110,8 @@ void Atom_Energy( reax_system *system, control_params *control,
 
                         if ( strncmp( system->reax_param.sbp[type_j].name, "C",
                                     sizeof(system->reax_param.sbp[type_j].name) ) == 0 ) {
-                            twbp = &system->reax_param.tbp[type_i][type_j];
+                            twbp = &system->reax_param.tbp[IDX_TBP(type_i, type_j,
+                                    system->reax_param.num_atom_types)];
                             bo_ij = &bonds->bond_list[pj].bo_data;
                             Di = workspace->Delta[i];
                             vov3 = bo_ij->BO - Di - 0.04 * FOURTH( Di );
@@ -167,7 +169,8 @@ void Atom_Energy( reax_system *system, control_params *control,
                 j = bonds->bond_list[pj].nbr;
                 type_j = system->atoms[j].type;
                 bo_ij = &bonds->bond_list[pj].bo_data;
-                twbp = &system->reax_param.tbp[ type_i ][ type_j ];
+                twbp = &system->reax_param.tbp[IDX_TBP(type_i, type_j,
+                        system->reax_param.num_atom_types )];
 
                 sum_ovun1 += twbp->p_ovun1 * twbp->De_s * bo_ij->BO;
                 sum_ovun2 += (workspace->Delta[j] - dfvl * workspace->Delta_lp_temp[j])
@@ -229,7 +232,8 @@ void Atom_Energy( reax_system *system, control_params *control,
                 j = pbond->nbr;
                 type_j = system->atoms[j].type;
                 bo_ij = &pbond->bo_data;
-                twbp = &system->reax_param.tbp[ type_i ][ type_j ];
+                twbp = &system->reax_param.tbp[IDX_TBP(type_i, type_j,
+                        system->reax_param.num_atom_types )];
 
                 // OvCoor - 1st
                 bo_ij->Cdbo += CEover1 * twbp->p_ovun1 * twbp->De_s;

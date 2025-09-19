@@ -191,9 +191,10 @@ void Reallocate_Part1( reax_system * const system, static_storage * const worksp
         for ( i = 0; i < g->ncell_max[0]; i++ ) {
             for ( j = 0; j < g->ncell_max[1]; j++ ) {
                 for ( k = 0; k < g->ncell_max[2]; k++ ) {
-                    sfree( g->atoms[i][j][k], __FILE__, __LINE__ );
-                    g->atoms[i][j][k] = scalloc( workspace->realloc.gcell_atoms,
-                            sizeof(int32_t), __FILE__, __LINE__ );
+                    sfree( g->cells[IDX_GRID_3D(i, j, k, g)].atoms, __FILE__, __LINE__ );
+
+                    g->cells[IDX_GRID_3D(i, j, k, g)].atoms = scalloc( workspace->realloc.gcell_atoms,
+                            sizeof(uint32_t), __FILE__, __LINE__ );
                 }
             }
         }

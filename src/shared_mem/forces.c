@@ -28,11 +28,13 @@
 #include "bond_orders.h"
 #include "bonds.h"
 #include "charges.h"
+#include "ffield.h"
 #include "hydrogen_bonds.h"
 #if defined(TEST_FORCES)
   #include "io_tools.h"
 #endif
 #include "list.h"
+#include "lookup.h"
 #include "multi_body.h"
 #include "nonbonded.h"
 #include "reset_tools.h"
@@ -242,7 +244,7 @@ static void Compute_Total_Force( reax_system *system, control_params *control,
 
 
 static inline real Init_Charge_Matrix_Entry_Tab( reax_system const * const system,
-        control_params const * const control, LR_lookup_table ** const LR, uint32_t i, uint32_t j,
+        control_params const * const control, LR_lookup_table * const LR, uint32_t i, uint32_t j,
         real r_ij, matrix_entry_t pos )
 {
     uint32_t r;
@@ -258,8 +260,9 @@ static inline real Init_Charge_Matrix_Entry_Tab( reax_system const * const syste
     case ACKS2_CM:
         switch ( pos ) {
             case OFF_DIAGONAL:
-                t = &LR[MIN( system->atoms[i].type, system->atoms[j].type )]
-                       [MAX( system->atoms[i].type, system->atoms[j].type )];
+                t = &LR[IDX_LR(MIN(system->atoms[i].type, system->atoms[j].type),
+                        MAX(system->atoms[i].type, system->atoms[j].type),
+                        system->reax_param.num_atom_types)];
 
                 /* cubic spline interpolation */
                 r = (uint32_t) (r_ij * t->inv_dx);
@@ -319,7 +322,8 @@ static inline real Init_Charge_Matrix_Entry( reax_system const * const system,
 
                 /* shielding */
                 dr3gamij_1 = r_ij * r_ij * r_ij
-                        + system->reax_param.tbp[system->atoms[i].type][system->atoms[j].type].gamma;
+                        + system->reax_param.tbp[IDX_TBP(system->atoms[i].type,
+                                system->atoms[j].type, system->reax_param.num_atom_types)].gamma;
                 dr3gamij_3 = CBRT( dr3gamij_1 );
 
                 /* i == j: periodic self-interaction term
@@ -1545,7 +1549,8 @@ static void Init_Bond_Full( reax_system const * const system,
                 if ( nbr_pj->d <= control->nonb_cut ) {
                     type_j = system->atoms[j].type;
                     sbp_j = &system->reax_param.sbp[type_j];
-                    twbp = &system->reax_param.tbp[type_i][type_j];
+                    twbp = &system->reax_param.tbp[IDX_TBP(type_i, type_j,
+                            system->reax_param.num_atom_types)];
                     r_ij = nbr_pj->d;
 
 #if defined(QMMM)
@@ -1989,7 +1994,8 @@ static void Estimate_Storages_Bonds( reax_system const * const system,
                     atom_j = &system->atoms[j];
                     type_j = atom_j->type;
                     sbp_j = &system->reax_param.sbp[type_j];
-                    twbp = &system->reax_param.tbp[type_i][type_j];
+                    twbp = &system->reax_param.tbp[IDX_TBP(type_i, type_j,
+                            system->reax_param.num_atom_types)];
 
                     /* hydrogen bond lists */
                     if ( control->hbond_cut > 0.0

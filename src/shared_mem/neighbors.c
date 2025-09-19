@@ -151,12 +151,12 @@ void Estimate_Num_Neighbors( reax_system const * const system,
     for ( i = 0; i < g->ncell[0]; i++ ) {
         for ( j = 0; j < g->ncell[1]; j++ ) {
             for ( k = 0; k < g->ncell[2]; k++ ) {
-                nbrs = g->nbrs[i][j][k];
-                nbrs_cp = g->nbrs_cp[i][j][k];
+                nbrs = &g->nbrs[IDX_GRID_NBRS(i, j, k, 0, g)];
+                nbrs_cp = &g->nbrs_cp[IDX_GRID_NBRS(i, j, k, 0, g)];
 
                 /* for each atom in the current cell */
-                for ( l = 0; l < g->top[i][j][k]; ++l ) {
-                    atom1 = g->atoms[i][j][k][l];
+                for ( l = 0; l < g->cells[IDX_GRID_3D(i, j, k, g)].top; ++l ) {
+                    atom1 = g->cells[IDX_GRID_3D(i, j, k, g)].atoms[l];
                     itr = 0;
 
                     /* for each of the neighboring grid cells within
@@ -169,8 +169,8 @@ void Estimate_Num_Neighbors( reax_system const * const system,
                             x = nbrs[itr][0];
                             y = nbrs[itr][1];
                             z = nbrs[itr][2];
-                            nbr_atoms = g->atoms[x][y][z];
-                            max = g->top[x][y][z];
+                            nbr_atoms = g->cells[IDX_GRID_3D(x, y, z, g)].atoms;
+                            max = g->cells[IDX_GRID_3D(x, y, z, g)].top;
 
                             /* pick up another atom from the neighbor cell;
                              * we have to compare atom1 with its own periodic images as well
@@ -239,12 +239,12 @@ int32_t Generate_Neighbor_Lists( reax_system * const system,
     for ( i = 0; i < g->ncell[0]; i++ ) {
         for ( j = 0; j < g->ncell[1]; j++ ) {
             for ( k = 0; k < g->ncell[2]; k++ ) {
-                nbrs = g->nbrs[i][j][k];
-                nbrs_cp = g->nbrs_cp[i][j][k];
+                nbrs = &g->nbrs[IDX_GRID_NBRS(i, j, k, 0, g)];
+                nbrs_cp = &g->nbrs_cp[IDX_GRID_NBRS(i, j, k, 0, g)];
 
                 /* for each atom in the current cell */
-                for ( l = 0; l < g->top[i][j][k]; ++l ) {
-                    atom1 = g->atoms[i][j][k][l];
+                for ( l = 0; l < g->cells[IDX_GRID_3D(i, j, k, g)].top; ++l ) {
+                    atom1 = g->cells[IDX_GRID_3D(i, j, k, g)].atoms[l];
                     Set_Start_Index( atom1, num_far, far_nbrs );
                     itr = 0;
 
@@ -258,8 +258,8 @@ int32_t Generate_Neighbor_Lists( reax_system * const system,
                             x = nbrs[itr][0];
                             y = nbrs[itr][1];
                             z = nbrs[itr][2];
-                            nbr_atoms = g->atoms[x][y][z];
-                            max = g->top[x][y][z];
+                            nbr_atoms = g->cells[IDX_GRID_3D(x, y, z, g)].atoms;
+                            max = g->cells[IDX_GRID_3D(x, y, z, g)].top;
 
                             /* pick up another atom from the neighbor cell;
                              * we have to compare atom1 with its own periodic images as well

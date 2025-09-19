@@ -25,6 +25,13 @@
 #include "reax_types.h"
 
 
+/* Indexing routines for two, three, hydrogen, and four body parameters */
+#define IDX_TBP(i, j, n) (((i) * (n)) + (j))
+#define IDX_THBP(i, j, k, n) (((i) * (n) * (n)) + ((j) * (n)) + (k))
+#define IDX_HBP(i, j, k, n) (((i) * (n) * (n)) + ((j) * (n)) + (k))
+#define IDX_FBP(i, j, k, l, n) (((i) * (n) * (n) * (n)) + ((j) * (n) * (n)) + ((k) * (n)) + (l))
+
+
 void Read_Force_Field( const char * const, reax_system * const,
         reax_interaction * const );
 

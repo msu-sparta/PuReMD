@@ -25,6 +25,12 @@
 #include "reax_types.h"
 
 
+/* indexing routines for grid cells */
+#define IDX_GRID_3D(i, j, k, g) (((i) * (g)->ncell_max[1] * (g)->ncell_max[2]) + ((j) * (g)->ncell_max[2]) + (k))
+#define IDX_GRID_3D_V(x, g) (((x)[0] * (g)->ncell_max[1] * (g)->ncell_max[2]) + ((x)[1] * (g)->ncell_max[2]) + (x)[2])
+#define IDX_GRID_NBRS(i, j, k, l, g) (((i) * (g)->ncell_max[1] * (g)->ncell_max[2] * (g)->max_nbrs) + ((j) * (g)->ncell_max[2] * (g)->max_nbrs) + ((k) * (g)->max_nbrs) + (l))
+
+
 void Setup_Grid( reax_system * const );
 
 void Update_Grid( reax_system * const );

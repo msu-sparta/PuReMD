@@ -21,6 +21,7 @@
 
 #include "bond_orders.h"
 
+#include "ffield.h"
 #include "list.h"
 #include "lookup.h"
 #include "vector.h"
@@ -739,7 +740,8 @@ void BO( reax_system *system, control_params *control,
                 bo_ij = &bond_list->bond_list[pj].bo_data;
 
                 if ( i < j ) {
-                    twbp = &system->reax_param.tbp[type_i][type_j];
+                    twbp = &system->reax_param.tbp[IDX_TBP(type_i, type_j,
+                            system->reax_param.num_atom_types)];
 
 #if defined(TEST_FORCES)
                     Set_Start_Index( pj, top_dbo, dBOs );

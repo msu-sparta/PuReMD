@@ -238,12 +238,8 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control,
 
     /* allocate Long-Range LookUp Table space based on
        number of atom types in the ffield file */
-    workspace->LR = smalloc( num_atom_types * sizeof(LR_lookup_table*),
+    workspace->LR = smalloc( sizeof(LR_lookup_table) * SQR(num_atom_types),
            __FILE__, __LINE__ );
-    for ( i = 0; i < num_atom_types; ++i ) {
-        workspace->LR[i] = smalloc( num_atom_types * sizeof(LR_lookup_table),
-                __FILE__, __LINE__ );
-    }
 
     /* most atom types in ffield file will not exist in the current
        simulation. to avoid unnecessary lookup table space, determine
@@ -261,58 +257,58 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control,
         if ( existing_types[i] ) {
             for ( j = i; j < num_atom_types; ++j ) {
                 if ( existing_types[j] ) {
-                    workspace->LR[i][j].xmin = 0;
-                    workspace->LR[i][j].xmax = control->nonb_cut;
-                    workspace->LR[i][j].n = control->tabulate + 1;
-                    workspace->LR[i][j].dx = dr;
-                    workspace->LR[i][j].inv_dx = control->tabulate / control->nonb_cut;
-                    workspace->LR[i][j].y = 
-                        smalloc( workspace->LR[i][j].n * sizeof(LR_data),
+                    workspace->LR[IDX_LR(i, j, num_atom_types)].xmin = 0;
+                    workspace->LR[IDX_LR(i, j, num_atom_types)].xmax = control->nonb_cut;
+                    workspace->LR[IDX_LR(i, j, num_atom_types)].n = control->tabulate + 1;
+                    workspace->LR[IDX_LR(i, j, num_atom_types)].dx = dr;
+                    workspace->LR[IDX_LR(i, j, num_atom_types)].inv_dx = control->tabulate / control->nonb_cut;
+                    workspace->LR[IDX_LR(i, j, num_atom_types)].y = 
+                        smalloc( workspace->LR[IDX_LR(i, j, num_atom_types)].n * sizeof(LR_data),
                               __FILE__, __LINE__ );
-                    workspace->LR[i][j].H = 
-                        smalloc( workspace->LR[i][j].n * sizeof(cubic_spline_coef),
+                    workspace->LR[IDX_LR(i, j, num_atom_types)].H = 
+                        smalloc( workspace->LR[IDX_LR(i, j, num_atom_types)].n * sizeof(cubic_spline_coef),
                               __FILE__, __LINE__ );
-                    workspace->LR[i][j].vdW = 
-                        smalloc( workspace->LR[i][j].n * sizeof(cubic_spline_coef),
+                    workspace->LR[IDX_LR(i, j, num_atom_types)].vdW = 
+                        smalloc( workspace->LR[IDX_LR(i, j, num_atom_types)].n * sizeof(cubic_spline_coef),
                               __FILE__, __LINE__ );
-                    workspace->LR[i][j].CEvd = 
-                        smalloc( workspace->LR[i][j].n * sizeof(cubic_spline_coef),
+                    workspace->LR[IDX_LR(i, j, num_atom_types)].CEvd = 
+                        smalloc( workspace->LR[IDX_LR(i, j, num_atom_types)].n * sizeof(cubic_spline_coef),
                               __FILE__, __LINE__ );
-                    workspace->LR[i][j].ele = 
-                        smalloc( workspace->LR[i][j].n * sizeof(cubic_spline_coef),
+                    workspace->LR[IDX_LR(i, j, num_atom_types)].ele = 
+                        smalloc( workspace->LR[IDX_LR(i, j, num_atom_types)].n * sizeof(cubic_spline_coef),
                               __FILE__, __LINE__ );
-                    workspace->LR[i][j].CEclmb = 
-                        smalloc( workspace->LR[i][j].n * sizeof(cubic_spline_coef),
+                    workspace->LR[IDX_LR(i, j, num_atom_types)].CEclmb = 
+                        smalloc( workspace->LR[IDX_LR(i, j, num_atom_types)].n * sizeof(cubic_spline_coef),
                               __FILE__, __LINE__ );
 
                     for ( r = 1; r <= control->tabulate; ++r ) {
                         LR_vdW_Coulomb( system, control, workspace,
-                                i, j, r * dr, &workspace->LR[i][j].y[r] );
-                        h[r] = workspace->LR[i][j].dx;
-                        fh[r] = workspace->LR[i][j].y[r].H;
-                        fvdw[r] = workspace->LR[i][j].y[r].e_vdW;
-                        fCEvd[r] = workspace->LR[i][j].y[r].CEvd;
-                        fele[r] = workspace->LR[i][j].y[r].e_ele;
-                        fCEclmb[r] = workspace->LR[i][j].y[r].CEclmb;
+                                i, j, r * dr, &workspace->LR[IDX_LR(i, j, num_atom_types)].y[r] );
+                        h[r] = workspace->LR[IDX_LR(i, j, num_atom_types)].dx;
+                        fh[r] = workspace->LR[IDX_LR(i, j, num_atom_types)].y[r].H;
+                        fvdw[r] = workspace->LR[IDX_LR(i, j, num_atom_types)].y[r].e_vdW;
+                        fCEvd[r] = workspace->LR[IDX_LR(i, j, num_atom_types)].y[r].CEvd;
+                        fele[r] = workspace->LR[IDX_LR(i, j, num_atom_types)].y[r].e_ele;
+                        fCEclmb[r] = workspace->LR[IDX_LR(i, j, num_atom_types)].y[r].CEclmb;
 
                         if ( r == 1 ) {
-                            v0_vdw = workspace->LR[i][j].y[r].CEvd;
-                            v0_ele = workspace->LR[i][j].y[r].CEclmb;
+                            v0_vdw = workspace->LR[IDX_LR(i, j, num_atom_types)].y[r].CEvd;
+                            v0_ele = workspace->LR[IDX_LR(i, j, num_atom_types)].y[r].CEclmb;
                         } else if ( r == control->tabulate ) {
-                            vlast_vdw = workspace->LR[i][j].y[r].CEvd;
-                            vlast_ele = workspace->LR[i][j].y[r].CEclmb;
+                            vlast_vdw = workspace->LR[IDX_LR(i, j, num_atom_types)].y[r].CEvd;
+                            vlast_ele = workspace->LR[IDX_LR(i, j, num_atom_types)].y[r].CEclmb;
                         }
                     }
 
                     Natural_Cubic_Spline( &h[1], &fh[1],
-                            &workspace->LR[i][j].H[1], control->tabulate + 1 );
+                            &workspace->LR[IDX_LR(i, j, num_atom_types)].H[1], control->tabulate + 1 );
 
 //                    fprintf( stderr, "%-6s  %-6s  %-6s\n", "r", "h", "fh" );
 //                    for( r = 1; r <= control->tabulate; ++r )
 //                        fprintf( stderr, "%f  %f  %f\n", r * dr, h[r], fh[r] );
 
                     Complete_Cubic_Spline( &h[1], &fvdw[1], v0_vdw, vlast_vdw,
-                            &workspace->LR[i][j].vdW[1], control->tabulate + 1 );
+                            &workspace->LR[IDX_LR(i, j, num_atom_types)].vdW[1], control->tabulate + 1 );
 
 //                    fprintf( stderr, "%-6s  %-6s  %-6s\n", "r", "h", "fvdw" );
 //                    for( r = 1; r <= control->tabulate; ++r )
@@ -320,7 +316,7 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control,
 //                    fprintf( stderr, "v0_vdw: %f, vlast_vdw: %f\n", v0_vdw, vlast_vdw );
 
                     Natural_Cubic_Spline( &h[1], &fCEvd[1],
-                            &workspace->LR[i][j].CEvd[1], control->tabulate + 1 );
+                            &workspace->LR[IDX_LR(i, j, num_atom_types)].CEvd[1], control->tabulate + 1 );
 
 //                    fprintf( stderr, "%-6s  %-6s  %-6s\n", "r", "h", "fele" );
 //                    for( r = 1; r <= control->tabulate; ++r )
@@ -328,7 +324,7 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control,
 //                    fprintf( stderr, "v0_ele: %f, vlast_ele: %f\n", v0_ele, vlast_ele );
 
                     Complete_Cubic_Spline( &h[1], &fele[1], v0_ele, vlast_ele,
-                            &workspace->LR[i][j].ele[1], control->tabulate + 1 );
+                            &workspace->LR[IDX_LR(i, j, num_atom_types)].ele[1], control->tabulate + 1 );
 
 //                    fprintf( stderr, "%-6s  %-6s  %-6s\n", "r", "h", "fele" );
 //                    for( r = 1; r <= control->tabulate; ++r )
@@ -336,7 +332,7 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control,
 //                    fprintf( stderr, "v0_ele: %f, vlast_ele: %f\n", v0_ele, vlast_ele );
 
                     Natural_Cubic_Spline( &h[1], &fCEclmb[1],
-                            &workspace->LR[i][j].CEclmb[1], control->tabulate + 1 );
+                            &workspace->LR[IDX_LR(i, j, num_atom_types)].CEclmb[1], control->tabulate + 1 );
                 }
             }
         }
@@ -352,7 +348,7 @@ void Make_LR_Lookup_Table( reax_system *system, control_params *control,
      for( r = 1; r <= 100; ++r ) {
      rand_dist = (real)rand()/RAND_MAX * control->r_cut;
      LR_vdW_Coulomb( system, control, workspace, i, j, rand_dist, &y );
-     LR_Lookup( &(workspace->LR[i][j]), rand_dist, &y_spline );
+     LR_Lookup( &(workspace->LR[IDX_LR(i, j, num_atom_types)]), rand_dist, &y_spline );
 
      evdw_abserr = FABS(y.e_vdW - y_spline.e_vdW);
      evdw_relerr = FABS(evdw_abserr / y.e_vdW);
@@ -419,17 +415,15 @@ void Finalize_LR_Lookup_Table( reax_system *system, control_params *control,
         if ( existing_types[i] ) {
             for ( j = i; j < num_atom_types; ++j ) {
                 if ( existing_types[j] ) {
-                    sfree( workspace->LR[i][j].y, __FILE__, __LINE__ );
-                    sfree( workspace->LR[i][j].H, __FILE__, __LINE__ );
-                    sfree( workspace->LR[i][j].vdW, __FILE__, __LINE__ );
-                    sfree( workspace->LR[i][j].CEvd, __FILE__, __LINE__ );
-                    sfree( workspace->LR[i][j].ele, __FILE__, __LINE__ );
-                    sfree( workspace->LR[i][j].CEclmb, __FILE__, __LINE__ );
+                    sfree( workspace->LR[IDX_LR(i, j, num_atom_types)].y, __FILE__, __LINE__ );
+                    sfree( workspace->LR[IDX_LR(i, j, num_atom_types)].H, __FILE__, __LINE__ );
+                    sfree( workspace->LR[IDX_LR(i, j, num_atom_types)].vdW, __FILE__, __LINE__ );
+                    sfree( workspace->LR[IDX_LR(i, j, num_atom_types)].CEvd, __FILE__, __LINE__ );
+                    sfree( workspace->LR[IDX_LR(i, j, num_atom_types)].ele, __FILE__, __LINE__ );
+                    sfree( workspace->LR[IDX_LR(i, j, num_atom_types)].CEclmb, __FILE__, __LINE__ );
                 }
             }
         }
-
-        sfree( workspace->LR[i], __FILE__, __LINE__ );
     }
 
     sfree( workspace->LR, __FILE__, __LINE__ );

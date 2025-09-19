@@ -31,7 +31,7 @@ void Read_Force_Field( const char * const ffield_file,
 {
     char *s;
     char **tmp;
-    char ****tor_flag;
+    bool *tor_flag;
     uint32_t i, j, k, l, m, n, o, p, cnt;
     int32_t jj, kk, mm, nn;
     real val, *gamma;
@@ -114,97 +114,30 @@ void Read_Force_Field( const char * const ffield_file,
         if ( system->ffield_params_allocated == FALSE ) {
             system->ffield_params_allocated = TRUE;
 
-            /* Allocating structures in reax_interaction */
             reax->sbp = scalloc( n, sizeof(single_body_parameters), __FILE__, __LINE__ );
-            reax->tbp = scalloc( n, sizeof(two_body_parameters*), __FILE__, __LINE__ );
-            reax->thbp = scalloc( n, sizeof(three_body_header**), __FILE__, __LINE__ );
-            reax->hbp = scalloc( n, sizeof(hbond_parameters**), __FILE__, __LINE__ );
-            reax->fbp = scalloc( n, sizeof(four_body_header***), __FILE__, __LINE__ );
-
-            for ( i = 0; i < n; i++ ) {
-                reax->tbp[i] = scalloc( n, sizeof(two_body_parameters), __FILE__, __LINE__ );
-                reax->thbp[i] = scalloc( n, sizeof(three_body_header*), __FILE__, __LINE__ );
-                reax->hbp[i] = scalloc( n, sizeof(hbond_parameters*), __FILE__, __LINE__ );
-                reax->fbp[i] = scalloc( n, sizeof(four_body_header**), __FILE__, __LINE__ );
-
-                for ( j = 0; j < n; j++ ) {
-                    reax->thbp[i][j] = scalloc( n, sizeof(three_body_header), __FILE__, __LINE__ );
-                    reax->hbp[i][j] = scalloc( n, sizeof(hbond_parameters), __FILE__, __LINE__ );
-                    reax->fbp[i][j] = scalloc( n, sizeof(four_body_header*), __FILE__, __LINE__ );
-
-                    for ( k = 0; k < n; k++ ) {
-                        reax->fbp[i][j][k] = scalloc( n, sizeof(four_body_header), __FILE__, __LINE__ );
-                    }
-                }
-            }
+            reax->tbp = scalloc( SQR(n), sizeof(two_body_parameters), __FILE__, __LINE__ );
+            reax->thbp = scalloc( CUBE(n), sizeof(three_body_header), __FILE__, __LINE__ );
+            reax->hbp = scalloc( CUBE(n), sizeof(hbond_parameters), __FILE__, __LINE__ );
+            reax->fbp = scalloc( FOURTH(n), sizeof(four_body_header), __FILE__, __LINE__ );
 
             reax->max_num_atom_types = n;
         } else if ( reax->max_num_atom_types < n ) {
-            for ( i = 0; i < reax->max_num_atom_types; i++ )
-                for ( j = 0; j < reax->max_num_atom_types; j++ )
-                    for ( k = 0; k < reax->max_num_atom_types; k++ )
-                        sfree( reax->fbp[i][j][k], __FILE__, __LINE__ );
-
-            for ( i = 0; i < reax->max_num_atom_types; i++ )
-                for ( j = 0; j < reax->max_num_atom_types; j++ ) {
-                    sfree( reax->thbp[i][j], __FILE__, __LINE__ );
-                    sfree( reax->hbp[i][j], __FILE__, __LINE__ );
-                    sfree( reax->fbp[i][j], __FILE__, __LINE__ );
-                }
-
-            for ( i = 0; i < reax->max_num_atom_types; i++ ) {
-                sfree( reax->tbp[i], __FILE__, __LINE__ );
-                sfree( reax->thbp[i], __FILE__, __LINE__ );
-                sfree( reax->hbp[i], __FILE__, __LINE__ );
-                sfree( reax->fbp[i], __FILE__, __LINE__ );
-            }
-
             sfree( reax->sbp, __FILE__, __LINE__ );
             sfree( reax->tbp, __FILE__, __LINE__ );
             sfree( reax->thbp, __FILE__, __LINE__ );
             sfree( reax->hbp, __FILE__, __LINE__ );
             sfree( reax->fbp, __FILE__, __LINE__ );
 
-            /* Allocating structures in reax_interaction */
             reax->sbp = scalloc( n, sizeof(single_body_parameters), __FILE__, __LINE__ );
-            reax->tbp = scalloc( n, sizeof(two_body_parameters*), __FILE__, __LINE__ );
-            reax->thbp = scalloc( n, sizeof(three_body_header**), __FILE__, __LINE__ );
-            reax->hbp = scalloc( n, sizeof(hbond_parameters**), __FILE__, __LINE__ );
-            reax->fbp = scalloc( n, sizeof(four_body_header***), __FILE__, __LINE__ );
-
-            for ( i = 0; i < n; i++ ) {
-                reax->tbp[i] = scalloc( n, sizeof(two_body_parameters), __FILE__, __LINE__ );
-                reax->thbp[i] = scalloc( n, sizeof(three_body_header*), __FILE__, __LINE__ );
-                reax->hbp[i] = scalloc( n, sizeof(hbond_parameters*), __FILE__, __LINE__ );
-                reax->fbp[i] = scalloc( n, sizeof(four_body_header**), __FILE__, __LINE__ );
-
-                for ( j = 0; j < n; j++ ) {
-                    reax->thbp[i][j] = scalloc( n, sizeof(three_body_header), __FILE__, __LINE__ );
-                    reax->hbp[i][j] = scalloc( n, sizeof(hbond_parameters), __FILE__, __LINE__ );
-                    reax->fbp[i][j] = scalloc( n, sizeof(four_body_header*), __FILE__, __LINE__ );
-
-                    for ( k = 0; k < n; k++ ) {
-                        reax->fbp[i][j][k] = scalloc( n, sizeof(four_body_header), __FILE__, __LINE__ );
-                    }
-                }
-            }
+            reax->tbp = scalloc( SQR(n), sizeof(two_body_parameters), __FILE__, __LINE__ );
+            reax->thbp = scalloc( CUBE(n), sizeof(three_body_header), __FILE__, __LINE__ );
+            reax->hbp = scalloc( CUBE(n), sizeof(hbond_parameters), __FILE__, __LINE__ );
+            reax->fbp = scalloc( FOURTH(n), sizeof(four_body_header), __FILE__, __LINE__ );
 
             reax->max_num_atom_types = n;
         }
 
-        tor_flag = smalloc( n * sizeof(char***), __FILE__, __LINE__ );
-
-        for ( i = 0; i < n; i++ ) {
-            tor_flag[i] = smalloc( n * sizeof(char**), __FILE__, __LINE__ );
-
-            for ( j = 0; j < n; j++ ) {
-                tor_flag[i][j] = smalloc( n * sizeof(char*), __FILE__, __LINE__ );
-
-                for ( k = 0; k < n; k++ ) {
-                    tor_flag[i][j][k] = smalloc( n * sizeof(char), __FILE__, __LINE__ );
-                }
-            }
-        }
+        tor_flag = smalloc( FOURTH(n) * sizeof(bool), __FILE__, __LINE__ );
 
         reax->num_atom_types = n;
         gamma = smalloc( n * sizeof(real), __FILE__, __LINE__ );
@@ -448,30 +381,30 @@ void Read_Force_Field( const char * const ffield_file,
 
             if ( j < reax->num_atom_types && k < reax->num_atom_types ) {
                 val = sstrtod( tmp[2], __FILE__, __LINE__ );
-                reax->tbp[j][k].De_s = val;
-                reax->tbp[k][j].De_s = val;
+                reax->tbp[IDX_TBP(j, k, n)].De_s = val;
+                reax->tbp[IDX_TBP(k, j, n)].De_s = val;
                 val = sstrtod( tmp[3], __FILE__, __LINE__ );
-                reax->tbp[j][k].De_p = val;
-                reax->tbp[k][j].De_p = val;
+                reax->tbp[IDX_TBP(j, k, n)].De_p = val;
+                reax->tbp[IDX_TBP(k, j, n)].De_p = val;
                 val = sstrtod( tmp[4], __FILE__, __LINE__ );
-                reax->tbp[j][k].De_pp = val;
-                reax->tbp[k][j].De_pp = val;
+                reax->tbp[IDX_TBP(j, k, n)].De_pp = val;
+                reax->tbp[IDX_TBP(k, j, n)].De_pp = val;
                 val = sstrtod( tmp[5], __FILE__, __LINE__ );
-                reax->tbp[j][k].p_be1 = val;
-                reax->tbp[k][j].p_be1 = val;
+                reax->tbp[IDX_TBP(j, k, n)].p_be1 = val;
+                reax->tbp[IDX_TBP(k, j, n)].p_be1 = val;
                 val = sstrtod( tmp[6], __FILE__, __LINE__ );
-                reax->tbp[j][k].p_bo5 = val;
-                reax->tbp[k][j].p_bo5 = val;
+                reax->tbp[IDX_TBP(j, k, n)].p_bo5 = val;
+                reax->tbp[IDX_TBP(k, j, n)].p_bo5 = val;
                 val = sstrtod( tmp[7], __FILE__, __LINE__ );
-                reax->tbp[j][k].v13cor = val;
-                reax->tbp[k][j].v13cor = val;
+                reax->tbp[IDX_TBP(j, k, n)].v13cor = val;
+                reax->tbp[IDX_TBP(k, j, n)].v13cor = val;
 
                 val = sstrtod( tmp[8], __FILE__, __LINE__ );
-                reax->tbp[j][k].p_bo6 = val;
-                reax->tbp[k][j].p_bo6 = val;
+                reax->tbp[IDX_TBP(j, k, n)].p_bo6 = val;
+                reax->tbp[IDX_TBP(k, j, n)].p_bo6 = val;
                 val = sstrtod( tmp[9], __FILE__, __LINE__ );
-                reax->tbp[j][k].p_ovun1 = val;
-                reax->tbp[k][j].p_ovun1 = val;
+                reax->tbp[IDX_TBP(j, k, n)].p_ovun1 = val;
+                reax->tbp[IDX_TBP(k, j, n)].p_ovun1 = val;
 
                 /* line 2 */
                 if ( fgets( s, MAX_LINE, fp ) == NULL ) {
@@ -482,25 +415,25 @@ void Read_Force_Field( const char * const ffield_file,
                 Tokenize( s, &tmp, MAX_TOKEN_LEN );
 
                 val = sstrtod( tmp[0], __FILE__, __LINE__ );
-                reax->tbp[j][k].p_be2 = val;
-                reax->tbp[k][j].p_be2 = val;
+                reax->tbp[IDX_TBP(j, k, n)].p_be2 = val;
+                reax->tbp[IDX_TBP(k, j, n)].p_be2 = val;
                 val = sstrtod( tmp[1], __FILE__, __LINE__ );
-                reax->tbp[j][k].p_bo3 = val;
-                reax->tbp[k][j].p_bo3 = val;
+                reax->tbp[IDX_TBP(j, k, n)].p_bo3 = val;
+                reax->tbp[IDX_TBP(k, j, n)].p_bo3 = val;
                 val = sstrtod( tmp[2], __FILE__, __LINE__ );
-                reax->tbp[j][k].p_bo4 = val;
-                reax->tbp[k][j].p_bo4 = val;
+                reax->tbp[IDX_TBP(j, k, n)].p_bo4 = val;
+                reax->tbp[IDX_TBP(k, j, n)].p_bo4 = val;
                 val = sstrtod( tmp[3], __FILE__, __LINE__ );
 
                 val = sstrtod( tmp[4], __FILE__, __LINE__ );
-                reax->tbp[j][k].p_bo1 = val;
-                reax->tbp[k][j].p_bo1 = val;
+                reax->tbp[IDX_TBP(j, k, n)].p_bo1 = val;
+                reax->tbp[IDX_TBP(k, j, n)].p_bo1 = val;
                 val = sstrtod( tmp[5], __FILE__, __LINE__ );
-                reax->tbp[j][k].p_bo2 = val;
-                reax->tbp[k][j].p_bo2 = val;
+                reax->tbp[IDX_TBP(j, k, n)].p_bo2 = val;
+                reax->tbp[IDX_TBP(k, j, n)].p_bo2 = val;
                 val = sstrtod( tmp[6], __FILE__, __LINE__ );
-                reax->tbp[j][k].ovc = val;
-                reax->tbp[k][j].ovc = val;
+                reax->tbp[IDX_TBP(j, k, n)].ovc = val;
+                reax->tbp[IDX_TBP(k, j, n)].ovc = val;
 
                 val = sstrtod( tmp[7], __FILE__, __LINE__ );
             }
@@ -511,54 +444,54 @@ void Read_Force_Field( const char * const ffield_file,
             for ( j = i; j < reax->num_atom_types; j++ ) {
                 val = gamma[i] * gamma[j];
 
-                reax->tbp[i][j].r_s = 0.5 * (reax->sbp[i].r_s + reax->sbp[j].r_s);
-                reax->tbp[j][i].r_s = 0.5 * (reax->sbp[j].r_s + reax->sbp[i].r_s);
+                reax->tbp[IDX_TBP(i, j, n)].r_s = 0.5 * (reax->sbp[i].r_s + reax->sbp[j].r_s);
+                reax->tbp[IDX_TBP(j, i, n)].r_s = 0.5 * (reax->sbp[j].r_s + reax->sbp[i].r_s);
 
-                reax->tbp[i][j].r_p = 0.5 * (reax->sbp[i].r_pi + reax->sbp[j].r_pi);
-                reax->tbp[j][i].r_p = 0.5 * (reax->sbp[j].r_pi + reax->sbp[i].r_pi);
+                reax->tbp[IDX_TBP(i, j, n)].r_p = 0.5 * (reax->sbp[i].r_pi + reax->sbp[j].r_pi);
+                reax->tbp[IDX_TBP(j, i, n)].r_p = 0.5 * (reax->sbp[j].r_pi + reax->sbp[i].r_pi);
 
-                reax->tbp[i][j].r_pp = 0.5 * (reax->sbp[i].r_pi_pi + reax->sbp[j].r_pi_pi);
-                reax->tbp[j][i].r_pp = 0.5 * (reax->sbp[j].r_pi_pi + reax->sbp[i].r_pi_pi);
+                reax->tbp[IDX_TBP(i, j, n)].r_pp = 0.5 * (reax->sbp[i].r_pi_pi + reax->sbp[j].r_pi_pi);
+                reax->tbp[IDX_TBP(j, i, n)].r_pp = 0.5 * (reax->sbp[j].r_pi_pi + reax->sbp[i].r_pi_pi);
 
-                reax->tbp[i][j].p_boc3 = SQRT( reax->sbp[i].b_o_132 * reax->sbp[j].b_o_132);
-                reax->tbp[j][i].p_boc3 = SQRT( reax->sbp[j].b_o_132 * reax->sbp[i].b_o_132 );
+                reax->tbp[IDX_TBP(i, j, n)].p_boc3 = SQRT( reax->sbp[i].b_o_132 * reax->sbp[j].b_o_132);
+                reax->tbp[IDX_TBP(j, i, n)].p_boc3 = SQRT( reax->sbp[j].b_o_132 * reax->sbp[i].b_o_132 );
 
-                reax->tbp[i][j].p_boc4 = SQRT( reax->sbp[i].b_o_131 * reax->sbp[j].b_o_131 );
-                reax->tbp[j][i].p_boc4 = SQRT( reax->sbp[j].b_o_131 * reax->sbp[i].b_o_131 );
+                reax->tbp[IDX_TBP(i, j, n)].p_boc4 = SQRT( reax->sbp[i].b_o_131 * reax->sbp[j].b_o_131 );
+                reax->tbp[IDX_TBP(j, i, n)].p_boc4 = SQRT( reax->sbp[j].b_o_131 * reax->sbp[i].b_o_131 );
 
-                reax->tbp[i][j].p_boc5 = SQRT( reax->sbp[i].b_o_133 * reax->sbp[j].b_o_133 );
-                reax->tbp[j][i].p_boc5 = SQRT( reax->sbp[j].b_o_133 * reax->sbp[i].b_o_133 );
+                reax->tbp[IDX_TBP(i, j, n)].p_boc5 = SQRT( reax->sbp[i].b_o_133 * reax->sbp[j].b_o_133 );
+                reax->tbp[IDX_TBP(j, i, n)].p_boc5 = SQRT( reax->sbp[j].b_o_133 * reax->sbp[i].b_o_133 );
 
-                reax->tbp[i][j].D = SQRT( reax->sbp[i].epsilon * reax->sbp[j].epsilon );
-                reax->tbp[j][i].D = SQRT( reax->sbp[j].epsilon * reax->sbp[i].epsilon );
+                reax->tbp[IDX_TBP(i, j, n)].D = SQRT( reax->sbp[i].epsilon * reax->sbp[j].epsilon );
+                reax->tbp[IDX_TBP(j, i, n)].D = SQRT( reax->sbp[j].epsilon * reax->sbp[i].epsilon );
 
-                reax->tbp[i][j].alpha = SQRT( reax->sbp[i].alpha * reax->sbp[j].alpha );
-                reax->tbp[j][i].alpha = SQRT( reax->sbp[j].alpha * reax->sbp[i].alpha );
+                reax->tbp[IDX_TBP(i, j, n)].alpha = SQRT( reax->sbp[i].alpha * reax->sbp[j].alpha );
+                reax->tbp[IDX_TBP(j, i, n)].alpha = SQRT( reax->sbp[j].alpha * reax->sbp[i].alpha );
 
-                reax->tbp[i][j].r_vdW = 2.0 * SQRT( reax->sbp[i].r_vdw * reax->sbp[j].r_vdw );
-                reax->tbp[j][i].r_vdW = 2.0 * SQRT( reax->sbp[j].r_vdw * reax->sbp[i].r_vdw );
+                reax->tbp[IDX_TBP(i, j, n)].r_vdW = 2.0 * SQRT( reax->sbp[i].r_vdw * reax->sbp[j].r_vdw );
+                reax->tbp[IDX_TBP(j, i, n)].r_vdW = 2.0 * SQRT( reax->sbp[j].r_vdw * reax->sbp[i].r_vdw );
 
-                reax->tbp[i][j].gamma_w = SQRT( reax->sbp[i].gamma_w * reax->sbp[j].gamma_w );
-                reax->tbp[j][i].gamma_w = SQRT( reax->sbp[j].gamma_w * reax->sbp[i].gamma_w );
+                reax->tbp[IDX_TBP(i, j, n)].gamma_w = SQRT( reax->sbp[i].gamma_w * reax->sbp[j].gamma_w );
+                reax->tbp[IDX_TBP(j, i, n)].gamma_w = SQRT( reax->sbp[j].gamma_w * reax->sbp[i].gamma_w );
 
                 /* avoid division-by-zero when gamma_{i,j} is 0.0,
                  * which implies that electrostatic shielding is disabled */
                 if ( FABS( val ) >= 1.0e-10 ) {
-                    reax->tbp[i][j].gamma = 1.0 / CUBE(SQRT(val));
-                    reax->tbp[j][i].gamma = 1.0 / CUBE(SQRT(val));
+                    reax->tbp[IDX_TBP(i, j, n)].gamma = 1.0 / CUBE(SQRT(val));
+                    reax->tbp[IDX_TBP(j, i, n)].gamma = 1.0 / CUBE(SQRT(val));
                 } else {
-                    reax->tbp[i][j].gamma = 0.0;
-                    reax->tbp[j][i].gamma = 0.0;
+                    reax->tbp[IDX_TBP(i, j, n)].gamma = 0.0;
+                    reax->tbp[IDX_TBP(j, i, n)].gamma = 0.0;
                 }
 
-                reax->tbp[i][j].acore = SQRT( reax->sbp[i].acore2 * reax->sbp[j].acore2 );
-                reax->tbp[j][i].acore = SQRT( reax->sbp[j].acore2 * reax->sbp[i].acore2 );
+                reax->tbp[IDX_TBP(i, j, n)].acore = SQRT( reax->sbp[i].acore2 * reax->sbp[j].acore2 );
+                reax->tbp[IDX_TBP(j, i, n)].acore = SQRT( reax->sbp[j].acore2 * reax->sbp[i].acore2 );
 
-                reax->tbp[i][j].ecore = SQRT( reax->sbp[i].ecore2 * reax->sbp[j].ecore2 );
-                reax->tbp[j][i].ecore = SQRT( reax->sbp[j].ecore2 * reax->sbp[i].ecore2 );
+                reax->tbp[IDX_TBP(i, j, n)].ecore = SQRT( reax->sbp[i].ecore2 * reax->sbp[j].ecore2 );
+                reax->tbp[IDX_TBP(j, i, n)].ecore = SQRT( reax->sbp[j].ecore2 * reax->sbp[i].ecore2 );
 
-                reax->tbp[i][j].rcore = SQRT( reax->sbp[i].rcore2 * reax->sbp[j].rcore2 );
-                reax->tbp[j][i].rcore = SQRT( reax->sbp[j].rcore2 * reax->sbp[i].rcore2 );
+                reax->tbp[IDX_TBP(i, j, n)].rcore = SQRT( reax->sbp[i].rcore2 * reax->sbp[j].rcore2 );
+                reax->tbp[IDX_TBP(j, i, n)].rcore = SQRT( reax->sbp[j].rcore2 * reax->sbp[i].rcore2 );
             }
         }
 
@@ -587,38 +520,38 @@ void Read_Force_Field( const char * const ffield_file,
             if ( j < reax->num_atom_types && k < reax->num_atom_types ) {
                 val = sstrtod( tmp[2], __FILE__, __LINE__ );
                 if ( val > 0.0 ) {
-                    reax->tbp[j][k].D = val;
-                    reax->tbp[k][j].D = val;
+                    reax->tbp[IDX_TBP(j, k, n)].D = val;
+                    reax->tbp[IDX_TBP(k, j, n)].D = val;
                 }
 
                 val = sstrtod( tmp[3], __FILE__, __LINE__ );
                 if ( val > 0.0 ) {
-                    reax->tbp[j][k].r_vdW = 2.0 * val;
-                    reax->tbp[k][j].r_vdW = 2.0 * val;
+                    reax->tbp[IDX_TBP(j, k, n)].r_vdW = 2.0 * val;
+                    reax->tbp[IDX_TBP(k, j, n)].r_vdW = 2.0 * val;
                 }
 
                 val = sstrtod( tmp[4], __FILE__, __LINE__ );
                 if ( val > 0.0 ) {
-                    reax->tbp[j][k].alpha = val;
-                    reax->tbp[k][j].alpha = val;
+                    reax->tbp[IDX_TBP(j, k, n)].alpha = val;
+                    reax->tbp[IDX_TBP(k, j, n)].alpha = val;
                 }
 
                 val = sstrtod( tmp[5], __FILE__, __LINE__ );
                 if ( val > 0.0 ) {
-                    reax->tbp[j][k].r_s = val;
-                    reax->tbp[k][j].r_s = val;
+                    reax->tbp[IDX_TBP(j, k, n)].r_s = val;
+                    reax->tbp[IDX_TBP(k, j, n)].r_s = val;
                 }
 
                 val = sstrtod( tmp[6], __FILE__, __LINE__ );
                 if ( val > 0.0 ) {
-                    reax->tbp[j][k].r_p = val;
-                    reax->tbp[k][j].r_p = val;
+                    reax->tbp[IDX_TBP(j, k, n)].r_p = val;
+                    reax->tbp[IDX_TBP(k, j, n)].r_p = val;
                 }
 
                 val = sstrtod( tmp[7], __FILE__, __LINE__ );
                 if ( val > 0.0 ) {
-                    reax->tbp[j][k].r_pp = val;
-                    reax->tbp[k][j].r_pp = val;
+                    reax->tbp[IDX_TBP(j, k, n)].r_pp = val;
+                    reax->tbp[IDX_TBP(k, j, n)].r_pp = val;
                 }
             }
         }
@@ -629,7 +562,7 @@ void Read_Force_Field( const char * const ffield_file,
         for ( i = 0; i < reax->num_atom_types; ++i ) {
             for ( j = 0; j < reax->num_atom_types; ++j ) {
                 for ( k = 0; k < reax->num_atom_types; ++k ) {
-                    reax->thbp[i][j][k].cnt = 0;
+                    reax->thbp[IDX_THBP(i, j, k, n)].cnt = 0;
                 }
             }
         }
@@ -658,37 +591,37 @@ void Read_Force_Field( const char * const ffield_file,
             if ( j < reax->num_atom_types
                     && k < reax->num_atom_types
                     && m < reax->num_atom_types ) {
-                cnt = reax->thbp[j][k][m].cnt;
-                reax->thbp[j][k][m].cnt++;
-                reax->thbp[m][k][j].cnt++;
+                cnt = reax->thbp[IDX_THBP(j, k, m, n)].cnt;
+                reax->thbp[IDX_THBP(j, k, m, n)].cnt++;
+                reax->thbp[IDX_THBP(m, k, j, n)].cnt++;
 
                 val = sstrtod( tmp[3], __FILE__, __LINE__ );
-                reax->thbp[j][k][m].prm[cnt].theta_00 = val;
-                reax->thbp[m][k][j].prm[cnt].theta_00 = val;
+                reax->thbp[IDX_THBP(j, k, m, n)].prm[cnt].theta_00 = val;
+                reax->thbp[IDX_THBP(m, k, j, n)].prm[cnt].theta_00 = val;
 
                 val = sstrtod( tmp[4], __FILE__, __LINE__ );
-                reax->thbp[j][k][m].prm[cnt].p_val1 = val;
-                reax->thbp[m][k][j].prm[cnt].p_val1 = val;
+                reax->thbp[IDX_THBP(j, k, m, n)].prm[cnt].p_val1 = val;
+                reax->thbp[IDX_THBP(m, k, j, n)].prm[cnt].p_val1 = val;
 
                 val = sstrtod( tmp[5], __FILE__, __LINE__ );
-                reax->thbp[j][k][m].prm[cnt].p_val2 = val;
-                reax->thbp[m][k][j].prm[cnt].p_val2 = val;
+                reax->thbp[IDX_THBP(j, k, m, n)].prm[cnt].p_val2 = val;
+                reax->thbp[IDX_THBP(m, k, j, n)].prm[cnt].p_val2 = val;
 
                 val = sstrtod( tmp[6], __FILE__, __LINE__ );
-                reax->thbp[j][k][m].prm[cnt].p_coa1 = val;
-                reax->thbp[m][k][j].prm[cnt].p_coa1 = val;
+                reax->thbp[IDX_THBP(j, k, m, n)].prm[cnt].p_coa1 = val;
+                reax->thbp[IDX_THBP(m, k, j, n)].prm[cnt].p_coa1 = val;
 
                 val = sstrtod( tmp[7], __FILE__, __LINE__ );
-                reax->thbp[j][k][m].prm[cnt].p_val7 = val;
-                reax->thbp[m][k][j].prm[cnt].p_val7 = val;
+                reax->thbp[IDX_THBP(j, k, m, n)].prm[cnt].p_val7 = val;
+                reax->thbp[IDX_THBP(m, k, j, n)].prm[cnt].p_val7 = val;
 
                 val = sstrtod( tmp[8], __FILE__, __LINE__ );
-                reax->thbp[j][k][m].prm[cnt].p_pen1 = val;
-                reax->thbp[m][k][j].prm[cnt].p_pen1 = val;
+                reax->thbp[IDX_THBP(j, k, m, n)].prm[cnt].p_pen1 = val;
+                reax->thbp[IDX_THBP(m, k, j, n)].prm[cnt].p_pen1 = val;
 
                 val = sstrtod( tmp[9], __FILE__, __LINE__ );
-                reax->thbp[j][k][m].prm[cnt].p_val4 = val;
-                reax->thbp[m][k][j].prm[cnt].p_val4 = val;
+                reax->thbp[IDX_THBP(j, k, m, n)].prm[cnt].p_val4 = val;
+                reax->thbp[IDX_THBP(m, k, j, n)].prm[cnt].p_val4 = val;
             }
         }
 
@@ -705,8 +638,8 @@ void Read_Force_Field( const char * const ffield_file,
             for ( j = 0; j < reax->num_atom_types; ++j ) {
                 for ( k = 0; k < reax->num_atom_types; ++k ) {
                     for ( m = 0; m < reax->num_atom_types; ++m ) {
-                        reax->fbp[i][j][k][m].cnt = 0;
-                        tor_flag[i][j][k][m] = 0;
+                        reax->fbp[IDX_FBP(i, j, k, m, n)].cnt = 0;
+                        tor_flag[IDX_FBP(i, j, k, m, n)] = FALSE;
                     }
                 }
             }
@@ -742,35 +675,35 @@ void Read_Force_Field( const char * const ffield_file,
                         && (uint32_t) nn < reax->num_atom_types ) {
                     /* these flags ensure that this entry take precedence
                      * over the compact form entries */
-                    tor_flag[jj][kk][mm][nn] = 1;
-                    tor_flag[nn][mm][kk][jj] = 1;
+                    tor_flag[IDX_FBP(jj, kk, mm, nn, n)] = TRUE;
+                    tor_flag[IDX_FBP(nn, mm, kk, jj, n)] = TRUE;
 
-                    reax->fbp[jj][kk][mm][nn].cnt = 1;
-                    reax->fbp[nn][mm][kk][jj].cnt = 1;
+                    reax->fbp[IDX_FBP(jj, kk, mm, nn, n)].cnt = 1;
+                    reax->fbp[IDX_FBP(nn, mm, kk, jj, n)].cnt = 1;
 
-//                    cnt = reax->fbp[jj][kk][mm][nn].cnt;
-//                    reax->fbp[jj][kk][mm][nn].cnt++;
-//                    reax->fbp[nn][mm][kk][jj].cnt++;
+//                    cnt = reax->fbp[IDX_FBP(jj, kk, mm, nn, n)].cnt;
+//                    reax->fbp[IDX_FBP(jj, kk, mm, nn, n)].cnt++;
+//                    reax->fbp[IDX_FBP(nn, mm, kk, jj, n)].cnt++;
 
                     val = sstrtod( tmp[4], __FILE__, __LINE__ );
-                    reax->fbp[jj][kk][mm][nn].prm[0].V1 = val;
-                    reax->fbp[nn][mm][kk][jj].prm[0].V1 = val;
+                    reax->fbp[IDX_FBP(jj, kk, mm, nn, n)].prm[0].V1 = val;
+                    reax->fbp[IDX_FBP(nn, mm, kk, jj, n)].prm[0].V1 = val;
 
                     val = sstrtod( tmp[5], __FILE__, __LINE__ );
-                    reax->fbp[jj][kk][mm][nn].prm[0].V2 = val;
-                    reax->fbp[nn][mm][kk][jj].prm[0].V2 = val;
+                    reax->fbp[IDX_FBP(jj, kk, mm, nn, n)].prm[0].V2 = val;
+                    reax->fbp[IDX_FBP(nn, mm, kk, jj, n)].prm[0].V2 = val;
 
                     val = sstrtod( tmp[6], __FILE__, __LINE__ );
-                    reax->fbp[jj][kk][mm][nn].prm[0].V3 = val;
-                    reax->fbp[nn][mm][kk][jj].prm[0].V3 = val;
+                    reax->fbp[IDX_FBP(jj, kk, mm, nn, n)].prm[0].V3 = val;
+                    reax->fbp[IDX_FBP(nn, mm, kk, jj, n)].prm[0].V3 = val;
 
                     val = sstrtod( tmp[7], __FILE__, __LINE__ );
-                    reax->fbp[jj][kk][mm][nn].prm[0].p_tor1 = val;
-                    reax->fbp[nn][mm][kk][jj].prm[0].p_tor1 = val;
+                    reax->fbp[IDX_FBP(jj, kk, mm, nn, n)].prm[0].p_tor1 = val;
+                    reax->fbp[IDX_FBP(nn, mm, kk, jj, n)].prm[0].p_tor1 = val;
 
                     val = sstrtod( tmp[8], __FILE__, __LINE__ );
-                    reax->fbp[jj][kk][mm][nn].prm[0].p_cot1 = val;
-                    reax->fbp[nn][mm][kk][jj].prm[0].p_cot1 = val;
+                    reax->fbp[IDX_FBP(jj, kk, mm, nn, n)].prm[0].p_cot1 = val;
+                    reax->fbp[IDX_FBP(nn, mm, kk, jj, n)].prm[0].p_cot1 = val;
                 }
             }
             /* This means the entry is of the form 0-X-Y-0 */
@@ -778,27 +711,27 @@ void Read_Force_Field( const char * const ffield_file,
                 if ( (uint32_t) kk < reax->num_atom_types && (uint32_t) mm < reax->num_atom_types ) {
                     for ( p = 0; p < reax->num_atom_types; p++ ) {
                         for ( o = 0; o < reax->num_atom_types; o++ ) {
-                            reax->fbp[p][kk][mm][o].cnt = 1;
-                            reax->fbp[o][mm][kk][p].cnt = 1;
+                            reax->fbp[IDX_FBP(p, kk, mm, o, n)].cnt = 1;
+                            reax->fbp[IDX_FBP(o, mm, kk, p, n)].cnt = 1;
 
-//                            cnt = reax->fbp[p][kk][mm][o].cnt;
-//                            reax->fbp[p][kk][mm][o].cnt++;
-//                            reax->fbp[o][mm][kk][p].cnt++;
+//                            cnt = reax->fbp[IDX_FBP(p, kk, mm, o, n)].cnt;
+//                            reax->fbp[IDX_FBP(p, kk, mm, o, n)].cnt++;
+//                            reax->fbp[IDX_FBP(o, mm, kk, p, n)].cnt++;
 
-                            if ( tor_flag[p][kk][mm][o] == 0 ) {
-                                reax->fbp[p][kk][mm][o].prm[0].V1 = sstrtod( tmp[4], __FILE__, __LINE__ );
-                                reax->fbp[p][kk][mm][o].prm[0].V2 = sstrtod( tmp[5], __FILE__, __LINE__ );
-                                reax->fbp[p][kk][mm][o].prm[0].V3 = sstrtod( tmp[6], __FILE__, __LINE__ );
-                                reax->fbp[p][kk][mm][o].prm[0].p_tor1 = sstrtod( tmp[7], __FILE__, __LINE__ );
-                                reax->fbp[p][kk][mm][o].prm[0].p_cot1 = sstrtod( tmp[8], __FILE__, __LINE__ );
+                            if ( tor_flag[IDX_FBP(p, kk, mm, o, n)] == FALSE ) {
+                                reax->fbp[IDX_FBP(p, kk, mm, o, n)].prm[0].V1 = sstrtod( tmp[4], __FILE__, __LINE__ );
+                                reax->fbp[IDX_FBP(p, kk, mm, o, n)].prm[0].V2 = sstrtod( tmp[5], __FILE__, __LINE__ );
+                                reax->fbp[IDX_FBP(p, kk, mm, o, n)].prm[0].V3 = sstrtod( tmp[6], __FILE__, __LINE__ );
+                                reax->fbp[IDX_FBP(p, kk, mm, o, n)].prm[0].p_tor1 = sstrtod( tmp[7], __FILE__, __LINE__ );
+                                reax->fbp[IDX_FBP(p, kk, mm, o, n)].prm[0].p_cot1 = sstrtod( tmp[8], __FILE__, __LINE__ );
                             }
 
-                            if ( tor_flag[o][mm][kk][p] == 0 ) {
-                                reax->fbp[o][mm][kk][p].prm[0].V1 = sstrtod( tmp[4], __FILE__, __LINE__ );
-                                reax->fbp[o][mm][kk][p].prm[0].V2 = sstrtod( tmp[5], __FILE__, __LINE__ );
-                                reax->fbp[o][mm][kk][p].prm[0].V3 = sstrtod( tmp[6], __FILE__, __LINE__ );
-                                reax->fbp[o][mm][kk][p].prm[0].p_tor1 = sstrtod( tmp[7], __FILE__, __LINE__ );
-                                reax->fbp[o][mm][kk][p].prm[0].p_cot1 = sstrtod( tmp[8], __FILE__, __LINE__ );
+                            if ( tor_flag[IDX_FBP(o, mm, kk, p, n)] == FALSE ) {
+                                reax->fbp[IDX_FBP(o, mm, kk, p, n)].prm[0].V1 = sstrtod( tmp[4], __FILE__, __LINE__ );
+                                reax->fbp[IDX_FBP(o, mm, kk, p, n)].prm[0].V2 = sstrtod( tmp[5], __FILE__, __LINE__ );
+                                reax->fbp[IDX_FBP(o, mm, kk, p, n)].prm[0].V3 = sstrtod( tmp[6], __FILE__, __LINE__ );
+                                reax->fbp[IDX_FBP(o, mm, kk, p, n)].prm[0].p_tor1 = sstrtod( tmp[7], __FILE__, __LINE__ );
+                                reax->fbp[IDX_FBP(o, mm, kk, p, n)].prm[0].p_cot1 = sstrtod( tmp[8], __FILE__, __LINE__ );
                             }
                         }
                     }
@@ -818,7 +751,7 @@ void Read_Force_Field( const char * const ffield_file,
         for ( i = 0; i < reax->max_num_atom_types; ++i ) {
             for ( j = 0; j < reax->max_num_atom_types; ++j ) {
                 for ( k = 0; k < reax->max_num_atom_types; ++k ) {
-                    reax->hbp[i][j][k].is_valid = FALSE;
+                    reax->hbp[IDX_HBP(i, j, k, n)].is_valid = FALSE;
                 }
             }
         }
@@ -837,18 +770,18 @@ void Read_Force_Field( const char * const ffield_file,
 
             if ( j < reax->num_atom_types && m < reax->num_atom_types ) {
                 val = sstrtod( tmp[3], __FILE__, __LINE__ );
-                reax->hbp[j][k][m].r0_hb = val;
+                reax->hbp[IDX_HBP(j, k, m, n)].r0_hb = val;
 
                 val = sstrtod( tmp[4], __FILE__, __LINE__ );
-                reax->hbp[j][k][m].p_hb1 = val;
+                reax->hbp[IDX_HBP(j, k, m, n)].p_hb1 = val;
 
                 val = sstrtod( tmp[5], __FILE__, __LINE__ );
-                reax->hbp[j][k][m].p_hb2 = val;
+                reax->hbp[IDX_HBP(j, k, m, n)].p_hb2 = val;
 
                 val = sstrtod( tmp[6], __FILE__, __LINE__ );
-                reax->hbp[j][k][m].p_hb3 = val;
+                reax->hbp[IDX_HBP(j, k, m, n)].p_hb3 = val;
 
-                reax->hbp[j][k][m].is_valid = TRUE;
+                reax->hbp[IDX_HBP(j, k, m, n)].is_valid = TRUE;
             }
         }
 
@@ -858,19 +791,6 @@ void Read_Force_Field( const char * const ffield_file,
         }
         sfree( tmp, __FILE__, __LINE__ );
         sfree( s, __FILE__, __LINE__ );
-
-        /* deallocate tor_flag */
-        for ( i = 0; i < reax->num_atom_types; i++ ) {
-            for ( j = 0; j < reax->num_atom_types; j++ ) {
-                for ( k = 0; k < reax->num_atom_types; k++ ) {
-                    sfree( tor_flag[i][j][k], __FILE__, __LINE__ );
-                }
-
-                sfree( tor_flag[i][j], __FILE__, __LINE__ );
-            }
-
-            sfree( tor_flag[i], __FILE__, __LINE__ );
-        }
 
         sfree( tor_flag, __FILE__, __LINE__ );
         sfree( gamma, __FILE__, __LINE__ );

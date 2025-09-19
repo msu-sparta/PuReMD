@@ -23,6 +23,7 @@
 
 #include "allocate.h"
 #include "box.h"
+#include "ffield.h"
 #include "forces.h"
 #include "grid.h"
 #include "integrate.h"
@@ -1246,7 +1247,6 @@ void Initialize( reax_system * const system, control_params * const control,
 static void Finalize_System( reax_system *system, control_params *control,
         simulation_data *data, bool reset )
 {
-    uint32_t i, j, k;
     reax_interaction *reax;
 
     system->prealloc_allocated = FALSE;
@@ -1281,24 +1281,6 @@ static void Finalize_System( reax_system *system, control_params *control,
 
     if ( reset == FALSE ) {
         sfree( reax->gp.l, __FILE__, __LINE__ );
-
-        for ( i = 0; i < reax->max_num_atom_types; i++ ) {
-            for ( j = 0; j < reax->max_num_atom_types; j++ ) {
-                for ( k = 0; k < reax->max_num_atom_types; k++ ) {
-                    sfree( reax->fbp[i][j][k], __FILE__, __LINE__ );
-                }
-
-                sfree( reax->thbp[i][j], __FILE__, __LINE__ );
-                sfree( reax->hbp[i][j], __FILE__, __LINE__ );
-                sfree( reax->fbp[i][j], __FILE__, __LINE__ );
-            }
-
-            sfree( reax->tbp[i], __FILE__, __LINE__ );
-            sfree( reax->thbp[i], __FILE__, __LINE__ );
-            sfree( reax->hbp[i], __FILE__, __LINE__ );
-            sfree( reax->fbp[i], __FILE__, __LINE__ );
-        }
-
         sfree( reax->sbp, __FILE__, __LINE__ );
         sfree( reax->tbp, __FILE__, __LINE__ );
         sfree( reax->thbp, __FILE__, __LINE__ );

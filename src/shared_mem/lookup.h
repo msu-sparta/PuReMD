@@ -25,6 +25,10 @@
 #include "reax_types.h"
 
 
+/* Indexing routine for LR lookup table */
+#define IDX_LR(i, j, n) (((i) * (n)) + (j))
+
+
 void Make_LR_Lookup_Table( reax_system*, control_params*,
        static_storage* );
 

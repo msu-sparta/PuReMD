@@ -21,6 +21,7 @@
 
 #include "reset_tools.h"
 
+#include "grid.h"
 #include "list.h"
 #include "vector.h"
 
@@ -239,7 +240,7 @@ void Reset_Grid( grid *g )
     for ( i = 0; i < g->ncell[0]; i++ ) {
         for ( j = 0; j < g->ncell[1]; j++ ) {
             for ( k = 0; k < g->ncell[2]; k++ ) {
-                g->top[i][j][k] = 0;
+                g->cells[IDX_GRID_3D(i, j, k, g)].top = 0;
             }
         }
     }
@@ -251,6 +252,6 @@ void Reset_Marks( grid *g, ivec *grid_stack, uint32_t grid_top )
     uint32_t i;
 
     for ( i = 0; i < grid_top; ++i ) {
-        g->mark[grid_stack[i][0]][grid_stack[i][1]][grid_stack[i][2]] = FALSE;
+        g->cells[IDX_GRID_3D(grid_stack[i][0], grid_stack[i][1], grid_stack[i][2], g)].mark = FALSE;
     }
 }

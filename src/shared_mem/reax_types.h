@@ -449,6 +449,7 @@ typedef struct four_body_header four_body_header;
 typedef struct reax_interaction reax_interaction;
 typedef struct reax_atom reax_atom;
 typedef struct simulation_box simulation_box;
+typedef struct grid_cell grid_cell;
 typedef struct grid grid;
 typedef struct reax_system reax_system;
 typedef struct control_params control_params;
@@ -795,13 +796,13 @@ struct reax_interaction
     /* */
     single_body_parameters *sbp;
     /* */
-    two_body_parameters **tbp;
+    two_body_parameters *tbp;
     /* */
-    three_body_header ***thbp;
+    three_body_header *thbp;
     /* */
-    hbond_parameters ***hbp;
+    hbond_parameters *hbp;
     /* */
-    four_body_header ****fbp;
+    four_body_header *fbp;
 };
 
 
@@ -869,6 +870,17 @@ struct simulation_box
 };
 
 
+struct grid_cell
+{
+    /**/
+    bool mark;
+    /* count of num. of atoms currently within this grid cell */
+    uint32_t top;
+    /* IDs of atoms binned within this grid cell */
+    uint32_t *atoms;
+};
+
+
 struct grid
 {
     /* 0 if struct members are NOT allocated, 1 otherwise */
@@ -891,23 +903,18 @@ struct grid
     rvec len;
     /* multiplicative inverse of length of each dimesion of a grid cell */
     rvec inv_len;
-    /* binned atom list, where first 3 dimensions are indexed using 0-based grid cell
-     * coordinates */
-    uint32_t **** atoms;
-    /**/
-    uint32_t *** top;
-    /**/
-    bool *** mark;
-    /**/
-    uint32_t *** start;
-    /**/
-    uint32_t *** end;
+    /* grid cells within the grid */
+    grid_cell *cells;
+    /* starting index for atom indices recorded for a grid cell */
+    uint32_t *start;
+    /* ending index for atom indices recorded for a grid cell */
+    uint32_t *end;
     /* list of neighboring grid cell positions for a specific grid cell, where the first
      * 3 dimensions are indexed using the 0-based grid cell coordinates */
-    ivec **** nbrs;
+    ivec *nbrs;
     /* list of distances between the closest points of neighboring grid cells for a specific grid cell,
      * where the first 3 dimensions are indexed using the 0-based grid cell coordinates */
-    rvec **** nbrs_cp;
+    rvec *nbrs_cp;
 };
 
 
@@ -1745,7 +1752,7 @@ struct static_storage
 
     reallocate_data realloc;
 
-    LR_lookup_table **LR;
+    LR_lookup_table *LR;
 
 #if defined(TEST_FORCES)
     /* Calculated on the fly in bond_orders.c */

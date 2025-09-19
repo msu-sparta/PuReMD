@@ -23,6 +23,7 @@
 
 #include "bond_orders.h"
 #include "box.h"
+#include "ffield.h"
 #include "list.h"
 #include "lookup.h"
 #include "vector.h"
@@ -321,9 +322,10 @@ void Torsion_Angles( reax_system *system, control_params *control,
                                     pbond_kl = &bonds->bond_list[plk];
                                     bo_kl = &pbond_kl->bo_data;
                                     type_l = system->atoms[l].type;
-                                    fbh = &system->reax_param.fbp[type_i][type_j][type_k][type_l];
-                                    fbp = &system->reax_param.fbp[type_i][type_j]
-                                            [type_k][type_l].prm[0];
+                                    fbh = &system->reax_param.fbp[IDX_FBP(type_i, type_j,
+                                            type_k, type_l, system->reax_param.num_atom_types)];
+                                    fbp = &system->reax_param.fbp[IDX_FBP(type_i, type_j,
+                                            type_k, type_l, system->reax_param.num_atom_types)].prm[0];
 
                                     if ( i != l && fbh->cnt > 0
                                             && bo_kl->BO > control->thb_cut

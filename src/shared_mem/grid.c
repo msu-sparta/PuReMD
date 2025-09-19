@@ -48,7 +48,7 @@ static uint32_t Estimate_GCell_Population( reax_system * const system )
         i = (uint32_t) (system->atoms[l].x[0] * g->inv_len[0]);
         j = (uint32_t) (system->atoms[l].x[1] * g->inv_len[1]);
         k = (uint32_t) (system->atoms[l].x[2] * g->inv_len[2]);
-        g->top[i][j][k]++;
+        g->cells[IDX_GRID_3D(i, j, k, g)].top++;
 
 //        fprintf( stderr, "\tatom%-6u (%8.3f%8.3f%8.3f) --> (%3u%3u%3u)\n",
 //                l, system->atoms[l].x[0], system->atoms[l].x[1], system->atoms[l].x[2],
@@ -59,8 +59,8 @@ static uint32_t Estimate_GCell_Population( reax_system * const system )
     for ( i = 0; i < g->ncell[0]; i++ ) {
         for ( j = 0; j < g->ncell[1]; j++ ) {
             for ( k = 0; k < g->ncell[2]; k++ ) {
-                if ( max_atoms < g->top[i][j][k] ) {
-                    max_atoms = g->top[i][j][k];
+                if ( max_atoms < g->cells[IDX_GRID_3D(i, j, k, g)].top ) {
+                    max_atoms = g->cells[IDX_GRID_3D(i, j, k, g)].top;
                 }
             }
         }
@@ -72,149 +72,41 @@ static uint32_t Estimate_GCell_Population( reax_system * const system )
 
 static void Allocate_Space_for_Grid( reax_system * const system, bool alloc )
 {
-    uint32_t i, j, k, l, max_atoms;
+    uint32_t i, j, k, l, max_atoms, total;
     grid *g;
 
     g = &system->g;
     g->allocated = TRUE;
     g->max_nbrs = (uint32_t) ((2 * g->spread[0] + 1)
         * (2 * g->spread[1] + 1) * (2 * g->spread[2] + 1) + 3);
+    total = g->ncell_max[0] * g->ncell_max[1] * g->ncell_max[2];
 
     if ( alloc == TRUE ) {
         /* allocate space for the new grid */
-        g->atoms = scalloc( g->ncell_max[0], sizeof( uint32_t*** ),
-                __FILE__, __LINE__ );
-
-        for ( i = 0; i < g->ncell_max[0]; i++ )
-            g->atoms[i] = scalloc( g->ncell_max[1], sizeof( uint32_t** ),
-                    __FILE__, __LINE__ );
-
-        for ( i = 0; i < g->ncell_max[0]; i++ )
-            for ( j = 0; j < g->ncell_max[1]; j++ )
-                g->atoms[i][j] = scalloc( g->ncell_max[2], sizeof( uint32_t* ),
-                        __FILE__, __LINE__ );
-
-        g->top = scalloc( g->ncell_max[0], sizeof( uint32_t** ),
-                __FILE__, __LINE__ );
-
-        for ( i = 0; i < g->ncell_max[0]; i++ )
-            g->top[i] = scalloc( g->ncell_max[1], sizeof( uint32_t* ),
-                    __FILE__, __LINE__ );
-
-        for ( i = 0; i < g->ncell_max[0]; i++ )
-            for ( j = 0; j < g->ncell_max[1]; j++ )
-                g->top[i][j] = scalloc( g->ncell_max[2], sizeof( uint32_t ),
-                        __FILE__, __LINE__ );
-
-        g->mark = scalloc( g->ncell_max[0], sizeof( bool** ),
-                __FILE__, __LINE__ );
-
-        for ( i = 0; i < g->ncell_max[0]; i++ )
-            g->mark[i] = scalloc( g->ncell_max[1], sizeof( bool* ),
-                    __FILE__, __LINE__ );
-
-        for ( i = 0; i < g->ncell_max[0]; i++ )
-            for ( j = 0; j < g->ncell_max[1]; j++ )
-                g->mark[i][j] = scalloc( g->ncell_max[2], sizeof( bool ),
-                        __FILE__, __LINE__ );
-
-        g->start = scalloc( g->ncell_max[0], sizeof( uint32_t** ),
-                __FILE__, __LINE__ );
-
-        for ( i = 0; i < g->ncell_max[0]; i++ )
-            g->start[i] = scalloc( g->ncell_max[1], sizeof( uint32_t* ),
-                    __FILE__, __LINE__ );
-
-        for ( i = 0; i < g->ncell_max[0]; i++ )
-            for ( j = 0; j < g->ncell_max[1]; j++ )
-                g->start[i][j] = scalloc( g->ncell_max[2], sizeof( uint32_t ),
-                        __FILE__, __LINE__ );
-
-        g->end = scalloc( g->ncell_max[0], sizeof( uint32_t** ),
-                __FILE__, __LINE__ );
-
-        for ( i = 0; i < g->ncell_max[0]; i++ )
-            g->end[i] = scalloc( g->ncell_max[1], sizeof( uint32_t* ),
-                    __FILE__, __LINE__ );
-
-        for ( i = 0; i < g->ncell_max[0]; i++ )
-            for ( j = 0; j < g->ncell_max[1]; j++ )
-                g->end[i][j] = scalloc( g->ncell_max[2], sizeof( uint32_t ),
-                        __FILE__, __LINE__ );
-
-        g->nbrs = scalloc( g->ncell_max[0], sizeof( ivec*** ),
-                __FILE__, __LINE__ );
-
-        for ( i = 0; i < g->ncell_max[0]; i++ )
-            g->nbrs[i] = scalloc( g->ncell_max[1], sizeof( ivec** ),
-                    __FILE__, __LINE__ );
-
-        for ( i = 0; i < g->ncell_max[0]; i++ )
-            for ( j = 0; j < g->ncell_max[1]; j++ )
-                g->nbrs[i][j] = scalloc( g->ncell_max[2], sizeof( ivec* ),
-                        __FILE__, __LINE__ );
-
-        for ( i = 0; i < g->ncell_max[0]; i++ )
-            for ( j = 0; j < g->ncell_max[1]; j++ )
-                for ( k = 0; k < g->ncell_max[2]; k++ )
-                    g->nbrs[i][j][k] = smalloc( g->max_nbrs * sizeof( ivec ),
-                           __FILE__, __LINE__ );
-
-        g->nbrs_cp = scalloc( g->ncell_max[0], sizeof( rvec*** ),
-                __FILE__, __LINE__ );
-
-        for ( i = 0; i < g->ncell_max[0]; i++ )
-            g->nbrs_cp[i] = scalloc( g->ncell_max[1], sizeof( rvec** ),
-                    __FILE__, __LINE__ );
-
-        for ( i = 0; i < g->ncell_max[0]; i++ )
-            for ( j = 0; j < g->ncell_max[1]; j++ )
-                g->nbrs_cp[i][j] = scalloc( g->ncell_max[2], sizeof( rvec* ),
-                        __FILE__, __LINE__ );
-
-        for ( i = 0; i < g->ncell_max[0]; i++ )
-            for ( j = 0; j < g->ncell_max[1]; j++ )
-                for ( k = 0; k < g->ncell_max[2]; k++ )
-                    g->nbrs_cp[i][j][k] = smalloc( g->max_nbrs * sizeof( rvec ),
-                           __FILE__, __LINE__ );
+        g->cells = smalloc( sizeof(grid_cell) * total, __FILE__, __LINE__ );
+        g->start = smalloc( sizeof(uint32_t) * total, __FILE__, __LINE__ );
+        g->end = smalloc( sizeof(uint32_t) * total, __FILE__, __LINE__ );
+        g->nbrs = smalloc( sizeof(ivec) * total * g->max_nbrs, __FILE__, __LINE__ );
+        g->nbrs_cp = smalloc( sizeof(rvec) * total * g->max_nbrs, __FILE__, __LINE__ );
     }
 
     for ( i = 0; i < g->ncell[0]; i++ )
         for ( j = 0; j < g->ncell[1]; j++ )
             for ( k = 0; k < g->ncell[2]; k++ )
-                g->top[i][j][k] = 0;
+                g->start[IDX_GRID_3D(i, j, k, g)] = 0;
 
     for ( i = 0; i < g->ncell[0]; i++ )
         for ( j = 0; j < g->ncell[1]; j++ )
             for ( k = 0; k < g->ncell[2]; k++ )
-                g->mark[i][j][k] = FALSE;
+                g->end[IDX_GRID_3D(i, j, k, g)] = 0;
 
     for ( i = 0; i < g->ncell[0]; i++ )
         for ( j = 0; j < g->ncell[1]; j++ )
             for ( k = 0; k < g->ncell[2]; k++ )
-                g->start[i][j][k] = 0;
-
-    for ( i = 0; i < g->ncell[0]; i++ )
-        for ( j = 0; j < g->ncell[1]; j++ )
-            for ( k = 0; k < g->ncell[2]; k++ )
-                g->end[i][j][k] = 0;
-
-    for ( i = 0; i < g->ncell[0]; i++ )
-        for ( j = 0; j < g->ncell[1]; j++ )
-            for ( k = 0; k < g->ncell[2]; k++ )
-                for ( l = 0; l < g->max_nbrs; ++l ) {
-                    g->nbrs[i][j][k][l][0] = -1;
-                    g->nbrs[i][j][k][l][1] = -1;
-                    g->nbrs[i][j][k][l][2] = -1;
-                }
-
-    for ( i = 0; i < g->ncell[0]; i++ )
-        for ( j = 0; j < g->ncell[1]; j++ )
-            for ( k = 0; k < g->ncell[2]; k++ )
-                for ( l = 0; l < g->max_nbrs; ++l ) {
-                    g->nbrs_cp[i][j][k][l][0] = -1.0;
-                    g->nbrs_cp[i][j][k][l][1] = -1.0;
-                    g->nbrs_cp[i][j][k][l][2] = -1.0;
+                for ( l = 0; l < g->max_nbrs; l++ ) {
+                    g->nbrs[IDX_GRID_NBRS(i, j, k, l, g)][0] = -1;
+                    g->nbrs[IDX_GRID_NBRS(i, j, k, l, g)][1] = -1;
+                    g->nbrs[IDX_GRID_NBRS(i, j, k, l, g)][2] = -1;
                 }
 
     max_atoms = Estimate_GCell_Population( system );
@@ -225,8 +117,8 @@ static void Allocate_Space_for_Grid( reax_system * const system, bool alloc )
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
                 for ( k = 0; k < g->ncell_max[2]; k++ )
-                    g->atoms[i][j][k] = smalloc( g->max_atoms * sizeof( uint32_t ),
-                           __FILE__, __LINE__ );
+                    g->cells[IDX_GRID_3D(i, j, k, g)].atoms
+                        = smalloc( sizeof(uint32_t) * g->max_atoms, __FILE__, __LINE__ );
     }
     /* case: grid large enough but max. atoms per grid cells insufficient */
     else if ( g->max_atoms > 0 && g->max_atoms < max_atoms ) {
@@ -235,20 +127,24 @@ static void Allocate_Space_for_Grid( reax_system * const system, bool alloc )
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
                 for ( k = 0; k < g->ncell_max[2]; k++ )
-                    sfree( g->atoms[i][j][k], __FILE__, __LINE__ );
+                    sfree( g->cells[IDX_GRID_3D(i, j, k, g)].atoms, __FILE__, __LINE__ );
 
         for ( i = 0; i < g->ncell_max[0]; i++ )
             for ( j = 0; j < g->ncell_max[1]; j++ )
                 for ( k = 0; k < g->ncell_max[2]; k++ )
-                    g->atoms[i][j][k] = smalloc( g->max_atoms * sizeof( uint32_t ),
-                           __FILE__, __LINE__ );
+                    g->cells[IDX_GRID_3D(i, j, k, g)].atoms
+                        = smalloc( sizeof(uint32_t) * g->max_atoms, __FILE__, __LINE__ );
     }
 
     for ( i = 0; i < g->ncell[0]; i++ )
         for ( j = 0; j < g->ncell[1]; j++ )
             for ( k = 0; k < g->ncell[2]; k++ )
-                for ( l = 0; l < g->max_atoms; ++l )
-                    g->atoms[i][j][k][l] = -1;
+                g->cells[IDX_GRID_3D(i, j, k, g)].top = 0;
+
+    for ( i = 0; i < g->ncell[0]; i++ )
+        for ( j = 0; j < g->ncell[1]; j++ )
+            for ( k = 0; k < g->ncell[2]; k++ )
+                g->cells[IDX_GRID_3D(i, j, k, g)].mark = FALSE;
 }
 
 
@@ -261,36 +157,10 @@ static void Deallocate_Grid_Space( grid * const g )
     /* deallocate the old grid */
     for ( i = 0; i < g->ncell_max[0]; i++ )
         for ( j = 0; j < g->ncell_max[1]; j++ )
-            for ( k = 0; k < g->ncell_max[2]; k++ ) {
-                sfree( g->atoms[i][j][k], __FILE__, __LINE__ );
-                sfree( g->nbrs[i][j][k], __FILE__, __LINE__ );
-                sfree( g->nbrs_cp[i][j][k], __FILE__, __LINE__ );
-            }
+            for ( k = 0; k < g->ncell_max[2]; k++ )
+                sfree( g->cells[IDX_GRID_3D(i, j, k, g)].atoms, __FILE__, __LINE__ );
 
-    for ( i = 0; i < g->ncell_max[0]; i++ )
-        for ( j = 0; j < g->ncell_max[1]; j++ ) {
-            sfree( g->atoms[i][j], __FILE__, __LINE__ );
-            sfree( g->top[i][j], __FILE__, __LINE__ );
-            sfree( g->mark[i][j], __FILE__, __LINE__ );
-            sfree( g->start[i][j], __FILE__, __LINE__ );
-            sfree( g->end[i][j], __FILE__, __LINE__ );
-            sfree( g->nbrs[i][j], __FILE__, __LINE__ );
-            sfree( g->nbrs_cp[i][j], __FILE__, __LINE__ );
-        }
-
-    for ( i = 0; i < g->ncell_max[0]; i++ ) {
-        sfree( g->atoms[i], __FILE__, __LINE__ );
-        sfree( g->top[i], __FILE__, __LINE__ );
-        sfree( g->mark[i], __FILE__, __LINE__ );
-        sfree( g->start[i], __FILE__, __LINE__ );
-        sfree( g->end[i], __FILE__, __LINE__ );
-        sfree( g->nbrs[i], __FILE__, __LINE__ );
-        sfree( g->nbrs_cp[i], __FILE__, __LINE__ );
-    }
-
-    sfree( g->atoms, __FILE__, __LINE__ );
-    sfree( g->top, __FILE__, __LINE__ );
-    sfree( g->mark, __FILE__, __LINE__ );
+    sfree( g->cells, __FILE__, __LINE__ );
     sfree( g->start, __FILE__, __LINE__ );
     sfree( g->end, __FILE__, __LINE__ );
     sfree( g->nbrs, __FILE__, __LINE__ );
@@ -374,8 +244,8 @@ static void Find_Neighbor_Grid_Cells( grid * const g )
     for ( i = 0; i < (int32_t) g->ncell[0]; i++ ) {
         for ( j = 0; j < (int32_t) g->ncell[1]; j++ ) {
             for ( k = 0; k < (int32_t) g->ncell[2]; k++ ) {
-                nbrs_stack = g->nbrs[i][j][k];
-                cp_stack = g->nbrs_cp[i][j][k];
+                nbrs_stack = &g->nbrs[IDX_GRID_NBRS(i, j, k, 0, g)];
+                cp_stack = &g->nbrs_cp[IDX_GRID_NBRS(i, j, k, 0, g)];
                 stack_top = 0;
 
                 /* choose an unmarked neighbor cell */
@@ -388,7 +258,7 @@ static void Find_Neighbor_Grid_Cells( grid * const g )
                         for ( dk = -1 * g->spread[2]; dk <= g->spread[2]; dk++ ) {
                             z = Shift( k, dk, 2, g );
 
-                            if ( g->mark[x][y][z] == FALSE ) {
+                            if ( g->cells[IDX_GRID_3D(x, y, z, g)].mark == FALSE ) {
                                 /*(di < 0 || // 9 combinations
                                  (di == 0 && dj < 0) || // 3 combinations
                                  (di == 0 && dj == 0 && dk < 0) ) )*/
@@ -397,7 +267,7 @@ static void Find_Neighbor_Grid_Cells( grid * const g )
                                 nbrs_stack[stack_top][0] = x;
                                 nbrs_stack[stack_top][1] = y;
                                 nbrs_stack[stack_top][2] = z;
-                                g->mark[x][y][z] = TRUE;
+                                g->cells[IDX_GRID_3D(x, y, z, g)].mark = TRUE;
 
                                 Find_Closest_Point( g, i, j, k, x, y, z, cp_stack[stack_top] );
                                 stack_top++;
@@ -523,8 +393,8 @@ void Update_Grid( reax_system * const system )
         for ( i = 0; i < (int32_t) g->ncell[0]; i++ ) {
             for ( j = 0; j < (int32_t) g->ncell[1]; j++ ) {
                 for ( k = 0; k < (int32_t) g->ncell[2]; k++ ) {
-                    nbrs = g->nbrs[i][j][k];
-                    nbrs_cp = g->nbrs_cp[i][j][k];
+                    nbrs = &g->nbrs[IDX_GRID_NBRS(i, j, k, 0, g)];
+                    nbrs_cp = &g->nbrs_cp[IDX_GRID_NBRS(i, j, k, 0, g)];
 
                     itr = 0;
                     while ( nbrs[itr][0] >= 0 ) {
@@ -590,9 +460,9 @@ void Bin_Atoms( reax_system * const system, static_storage * const workspace )
         j = (uint32_t) (system->atoms[l].x[1] * g->inv_len[1]);
         k = (uint32_t) (system->atoms[l].x[2] * g->inv_len[2]);
         /* atom index in grid cell => atom number */
-        g->atoms[i][j][k][g->top[i][j][k]] = l;
+        g->cells[IDX_GRID_3D(i, j, k, g)].atoms[g->cells[IDX_GRID_3D(i, j, k, g)].top] = l;
         /* count of current atoms in this grid cell */
-        g->top[i][j][k]++;
+        g->cells[IDX_GRID_3D(i, j, k, g)].top++;
 
 #if defined(DEBUG_FOCUS)
         fprintf( stderr, "[INFO] Bin_Atoms: atom id = %-6u, x = (%8.3f, %8.3f, %8.3f), bin = (%3u, %3u, %3u)\n",
@@ -606,15 +476,15 @@ void Bin_Atoms( reax_system * const system, static_storage * const workspace )
     for ( i = 0; i < g->ncell[0]; i++ ) {
         for ( j = 0; j < g->ncell[1]; j++ ) {
             for ( k = 0; k < g->ncell[2]; k++ ) {
-                if ( max_atoms < g->top[i][j][k] ) {
-                    max_atoms = g->top[i][j][k];
+                if ( max_atoms < g->cells[IDX_GRID_3D(i, j, k, g)].top ) {
+                    max_atoms = g->cells[IDX_GRID_3D(i, j, k, g)].top;
                 }
             }
         }
     }
 
     /* reallocation check */
-    if ( max_atoms >= (uint32_t) CEIL( g->max_atoms * SAFE_ZONE ) ) {
+    if ( max_atoms >= g->max_atoms ) {
         workspace->realloc.gcell_atoms = MAX( (uint32_t) CEIL( max_atoms * SAFE_ZONE ),
                 MIN_GCELL_POPL );
     }
@@ -744,10 +614,10 @@ void Reorder_Atoms( reax_system * const system, static_storage * const workspace
     for ( i = 0; i < g->ncell[0]; i++ ) {
         for ( j = 0; j < g->ncell[1]; j++ ) {
             for ( k = 0; k < g->ncell[2]; k++ ) {
-                g->start[i][j][k] = top;
+                g->start[IDX_GRID_3D(i, j, k, g)] = top;
 
-                for ( l = 0; l < g->top[i][j][k]; ++l ) {
-                    old_id = g->atoms[i][j][k][l];
+                for ( l = 0; l < g->cells[IDX_GRID_3D(i, j, k, g)].top; ++l ) {
+                    old_id = g->cells[IDX_GRID_3D(i, j, k, g)].atoms[l];
                     old_atom = &system->atoms[old_id];
 
                     reax_atom_Copy( &new_atoms[top], old_atom );
@@ -757,7 +627,7 @@ void Reorder_Atoms( reax_system * const system, static_storage * const workspace
                     ++top;
                 }
 
-                g->end[i][j][k] = top;
+                g->end[IDX_GRID_3D(i, j, k, g)] = top;
             }
         }
     }

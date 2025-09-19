@@ -22,6 +22,7 @@
 #include "nonbonded.h"
 
 #include "bond_orders.h"
+#include "ffield.h"
 #include "list.h"
 #include "lookup.h"
 #include "vector.h"
@@ -142,8 +143,8 @@ void vdW_Coulomb_Energy_Type1( reax_system *system, control_params *control,
                     j = nbr_pj->nbr;
 
                     r_ij = nbr_pj->d;
-                    twbp = &system->reax_param.tbp[ system->atoms[i].type ]
-                             [ system->atoms[j].type ];
+                    twbp = &system->reax_param.tbp[IDX_TBP(system->atoms[i].type, system->atoms[j].type,
+                            system->reax_param.num_atom_types)];
                     /* i == j: self-interaction from periodic image,
                      * important for supporting small boxes! */
                     self_coef = (i == j) ? 0.5 : 1.0;
@@ -340,8 +341,8 @@ void vdW_Coulomb_Energy_Type2( reax_system *system, control_params *control,
                     j = nbr_pj->nbr;
 
                     r_ij = nbr_pj->d;
-                    twbp = &system->reax_param.tbp[ system->atoms[i].type ]
-                             [ system->atoms[j].type ];
+                    twbp = &system->reax_param.tbp[IDX_TBP(system->atoms[i].type, system->atoms[j].type,
+                            system->reax_param.num_atom_types)];
                     /* i == j: self-interaction from periodic image,
                      * important for supporting small boxes! */
                     self_coef = (i == j) ? 0.5 : 1.0;
@@ -540,8 +541,8 @@ void vdW_Coulomb_Energy_Type3( reax_system *system, control_params *control,
                     j = nbr_pj->nbr;
 
                     r_ij = nbr_pj->d;
-                    twbp = &system->reax_param.tbp[ system->atoms[i].type ]
-                             [ system->atoms[j].type ];
+                    twbp = &system->reax_param.tbp[IDX_TBP(system->atoms[i].type, system->atoms[j].type,
+                            system->reax_param.num_atom_types)];
                     /* i == j: self-interaction from periodic image,
                      * important for supporting small boxes! */
                     self_coef = (i == j) ? 0.5 : 1.0;
@@ -737,7 +738,8 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                     type_j = system->atoms[j].type;
                     r_ij = nbr_pj->d;
                     self_coef = (i == j) ? 0.5 : 1.0;
-                    t = &workspace->LR[MIN( type_i, type_j )][MAX( type_i, type_j )];
+                    t = &workspace->LR[IDX_LR(MIN(type_i, type_j), MAX(type_i, type_j),
+                            system->reax_param.num_atom_types)];
 
                     /* Cubic Spline Interpolation */
                     r = (int32_t) (r_ij * t->inv_dx);
@@ -921,7 +923,8 @@ void LR_vdW_Coulomb( reax_system *system, control_params *control,
 
     p_vdW1 = system->reax_param.gp.l[28];
     p_vdW1i = 1.0 / p_vdW1;
-    twbp = &system->reax_param.tbp[i][j];
+    twbp = &system->reax_param.tbp[IDX_TBP(i, j,
+            system->reax_param.num_atom_types)];
 
     /* Calculate Taper and its derivative */
     tap = workspace->tap_coef[7] * r_ij

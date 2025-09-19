@@ -22,6 +22,7 @@
 #include "valence_angles.h"
 
 #include "bond_orders.h"
+#include "ffield.h"
 #include "list.h"
 #include "lookup.h"
 #include "vector.h"
@@ -320,7 +321,8 @@ void Valence_Angles( reax_system *system, control_params *control,
                             continue;
                         }
 
-                        thbh = &system->reax_param.thbp[type_i][type_j][type_k];
+                        thbh = &system->reax_param.thbp[IDX_THBP(type_i, type_j, type_k,
+                                system->reax_param.num_atom_types)];
 
                         for ( cnt = 0; cnt < thbh->cnt; ++cnt ) {
                             /* valence angle does not exist in the force field */
