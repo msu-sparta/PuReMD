@@ -526,8 +526,8 @@ real jacobi( const sparse_matrix * const H, real * const Hdia_inv,
             default(none) private(i) firstprivate(H, Hdia_inv)
 #endif
             for ( i = 0; i < H->n; ++i ) {
-                if ( FABS( H->val[H->start[i + 1] - 1] ) > 1.0e-15 ) {
-                    Hdia_inv[i] = 1.0 / H->val[H->start[i + 1] - 1];
+                if ( FABS( H->val[H->end[i] - 1] ) > 1.0e-15 ) {
+                    Hdia_inv[i] = 1.0 / H->val[H->end[i] - 1];
                 } else {
                     Hdia_inv[i] = 1.0;
                 }
@@ -2555,15 +2555,29 @@ static void apply_preconditioner( const static_storage * const workspace,
         if ( x != y ) {
             Vector_Copy( x, y, workspace->H.n );
         }
+    } else if ( control->cm_solver_pre_comp_type == JACOBI_PC ) {
+        switch ( side ) {
+        case LEFT:
+            jacobi_app( workspace->Hdia_inv, y, x, workspace->H.n );
+            break;
+
+        case RIGHT:
+            if ( x != y ) {
+                Vector_Copy( x, y, workspace->H.n );
+            }
+            break;
+
+        default:
+            fprintf( stderr, "[ERROR] Unrecognized preconditioner application side. Terminating...\n" );
+            exit( INVALID_INPUT );
+            break;
+        }
     } else {
         switch ( side ) {
         case LEFT:
             switch ( control->cm_solver_pre_app_type ) {
             case TRI_SOLVE_PA:
                 switch ( control->cm_solver_pre_comp_type ) {
-                case JACOBI_PC:
-                    jacobi_app( workspace->Hdia_inv, y, x, workspace->H.n );
-                    break;
                 case ICHOLT_PC:
                 case ILUT_PC:
                 case FG_ILUT_PC:
@@ -2584,9 +2598,6 @@ static void apply_preconditioner( const static_storage * const workspace,
                 break;
             case TRI_SOLVE_LEVEL_SCHED_PA:
                 switch ( control->cm_solver_pre_comp_type ) {
-                case JACOBI_PC:
-                    jacobi_app( workspace->Hdia_inv, y, x, workspace->H.n );
-                    break;
                 case ICHOLT_PC:
                 case ILUT_PC:
                 case FG_ILUT_PC:
@@ -2609,7 +2620,6 @@ static void apply_preconditioner( const static_storage * const workspace,
                 break;
             case TRI_SOLVE_GC_PA:
                 switch ( control->cm_solver_pre_comp_type ) {
-                case JACOBI_PC:
                 case SAI_PC:
                     fprintf( stderr, "[ERROR] Unsupported preconditioner computation/application method combination. Terminating...\n" );
                     exit( INVALID_INPUT );
@@ -2635,7 +2645,6 @@ static void apply_preconditioner( const static_storage * const workspace,
                 break;
             case JACOBI_ITER_PA:
                 switch ( control->cm_solver_pre_comp_type ) {
-                case JACOBI_PC:
                 case SAI_PC:
                     fprintf( stderr, "[ERROR] Unsupported preconditioner computation/application method combination. Terminating...\n" );
                     exit( INVALID_INPUT );
@@ -2692,7 +2701,6 @@ static void apply_preconditioner( const static_storage * const workspace,
             switch ( control->cm_solver_pre_app_type ) {
             case TRI_SOLVE_PA:
                 switch ( control->cm_solver_pre_comp_type ) {
-                case JACOBI_PC:
                 case SAI_PC:
                     if ( x != y ) {
                         Vector_Copy( x, y, workspace->H.n );
@@ -2712,7 +2720,6 @@ static void apply_preconditioner( const static_storage * const workspace,
                 break;
             case TRI_SOLVE_LEVEL_SCHED_PA:
                 switch ( control->cm_solver_pre_comp_type ) {
-                case JACOBI_PC:
                 case SAI_PC:
                     if ( x != y ) {
                         Vector_Copy( x, y, workspace->H.n );
@@ -2733,7 +2740,6 @@ static void apply_preconditioner( const static_storage * const workspace,
                 break;
             case TRI_SOLVE_GC_PA:
                 switch ( control->cm_solver_pre_comp_type ) {
-                case JACOBI_PC:
                 case SAI_PC:
                     fprintf( stderr, "[ERROR] Unsupported preconditioner computation/application method combination. Terminating...\n" );
                     exit( INVALID_INPUT );
@@ -2755,7 +2761,6 @@ static void apply_preconditioner( const static_storage * const workspace,
                 break;
             case JACOBI_ITER_PA:
                 switch ( control->cm_solver_pre_comp_type ) {
-                case JACOBI_PC:
                 case SAI_PC:
                     fprintf( stderr, "[ERROR] Unsupported preconditioner computation/application method combination. Terminating...\n" );
                     exit( INVALID_INPUT );
