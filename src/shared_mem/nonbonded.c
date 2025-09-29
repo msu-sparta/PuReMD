@@ -713,7 +713,6 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
         uint32_t type_i, type_j;
         uint32_t start_i, end_i;
         real r_ij, self_coef, base, dif;
-        real e_vdW, e_ele;
         real CEvd, CEclmb;
         rvec force;
         rtensor press;
@@ -742,7 +741,7 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
                             system->reax_param.num_atom_types)];
 
                     /* Cubic Spline Interpolation */
-                    r = (int32_t) (r_ij * t->inv_dx);
+                    r = (uint32_t) (r_ij * t->inv_dx);
                     if ( r == 0 ) {
                         ++r;
                     }
@@ -827,8 +826,8 @@ void Tabulated_vdW_Coulomb_Energy( reax_system *system, control_params *control,
         }
     }
 
-    data->E_vdW += e_vdW;
-    data->E_Ele += e_ele;
+    data->E_vdW = e_vdW;
+    data->E_Ele = e_ele;
 }
 
 
@@ -906,7 +905,7 @@ void Coulomb_Energy_ACKS2( reax_system *system, control_params *control,
         }
     }
 
-    data->E_Ele += e_ele;
+    data->E_Ele = e_ele;
 }
 
 
@@ -956,8 +955,6 @@ void LR_vdW_Coulomb( reax_system *system, control_params *control,
         exp2 = EXP( 0.5 * twbp->alpha * (1.0 - fn13 / twbp->r_vdW) );
         e_base = twbp->D * (exp1 - 2.0 * exp2);
 
-        lr->e_vdW = e_base * tap;
-
         dfn13 = POW( r_ij, p_vdW1 - 1.0 )
             * POW( powr_vdW1 + powgi_vdW1, p_vdW1i - 1.0 );
         de_base = (twbp->D * twbp->alpha / twbp->r_vdW) * (exp2 - exp1) * dfn13;
@@ -968,15 +965,12 @@ void LR_vdW_Coulomb( reax_system *system, control_params *control,
         exp2 = EXP( 0.5 * twbp->alpha * (1.0 - r_ij / twbp->r_vdW) );
         e_base = twbp->D * (exp1 - 2.0 * exp2);
 
-        lr->e_vdW = e_base * tap;
-
         de_base = (twbp->D * twbp->alpha / twbp->r_vdW) * (exp2 - exp1);
     }
 
     /* calculate inner core repulsion */
     if ( system->reax_param.gp.vdw_type == 2 || system->reax_param.gp.vdw_type == 3 ) {
         e_core = twbp->ecore * EXP( twbp->acore * (1.0 - (r_ij / twbp->rcore)) );
-        lr->e_vdW += e_core * tap;
 
         de_core = -(twbp->acore / twbp->rcore) * e_core;
     } else {
@@ -984,29 +978,16 @@ void LR_vdW_Coulomb( reax_system *system, control_params *control,
         de_core = 0.0;
     }
 
-    lr->CEvd = (de_base + de_core) * tap
-            + (e_base + e_core) * dtap;
+    lr->e_vdW = (e_base + e_core) * tap;
+    lr->CEvd = (de_base + de_core) * tap + (e_base + e_core) * dtap;
 
     /* Coulomb calculations */
     dr3gamij_1 = r_ij * r_ij * r_ij + twbp->gamma;
     dr3gamij_3 = CBRT( dr3gamij_1 );
-
     tmp = tap / dr3gamij_3;
     lr->H = EV_to_KCALpMOL * tmp;
     lr->e_ele = C_ELE * tmp;
 
-    /* fprintf( stderr,"i:%d(%d), j:%d(%d), gamma:%f,\
-       Tap:%f, dr3gamij_3:%f, qi: %f, qj: %f\n",
-       i, system->atoms[i].type, j, system->atoms[j].type,
-       twbp->gamma, tap, dr3gamij_3,
-       system->atoms[i].q, system->atoms[j].q ); */
-
-    lr->CEclmb = C_ELE * (dtap - tap * r_ij / dr3gamij_1) / dr3gamij_3;
-
-    /* fprintf( stdout, "%d %d\t%g\t%g  %g\t%g  %g\t%g  %g\n",
-       i+1, j+1, r_ij, e_vdW, CEvd * r_ij,
-       system->atoms[i].q, system->atoms[j].q, e_ele, CEclmb * r_ij ); */
-
-    /* fprintf( stderr,"LR_Lookup:%3d%3d%5.3f-%8.5f,%8.5f%8.5f,%8.5f%8.5f\n",
-       i, j, r_ij, lr->H, lr->e_vdW, lr->CEvd, lr->e_ele, lr->CEclmb ); */
+    lr->CEclmb = (-C_ELE * (r_ij * r_ij) / POW( dr3gamij_1, 4.0 / 3.0 )) * tap
+        + (C_ELE / dr3gamij_3) * dtap;
 }

@@ -637,9 +637,11 @@ void Output_Results( reax_system *system, control_params *control,
         data->timing.cm_solver_orthog = 0.0;
         data->timing.cm_solver_tri_solve = 0.0;
 
+#if defined(DEBUG) || defined(DEBUG_FOCUS)
         fflush( out_control->out );
         fflush( out_control->pot );
         fflush( out_control->log );
+#endif
 
         /* output pressure */
         if ( control->ensemble == sNPT || control->ensemble == iNPT ||
@@ -658,7 +660,10 @@ void Output_Results( reax_system *system, control_params *control,
                      system->box.box_norms[2],
                      data->tot_press[0], data->tot_press[1], data->tot_press[2],
                      (data->tot_press[0] + data->tot_press[1] + data->tot_press[2]) / 3.0, system->box.volume );
+
+#if defined(DEBUG) || defined(DEBUG_FOCUS)
             fflush( out_control->prs );
+#endif
         }
     }
 

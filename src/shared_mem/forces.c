@@ -271,10 +271,10 @@ static inline real Init_Charge_Matrix_Entry_Tab( reax_system const * const syste
                 }
                 base = (real) (r + 1) * t->dx;
                 dif = r_ij - base;
-                val = ((t->ele[r].d * dif + t->ele[r].c) * dif + t->ele[r].b)
-                    * dif + t->ele[r].a;
+                val = ((t->H[r].d * dif + t->H[r].c) * dif + t->H[r].b) * dif
+                    + t->H[r].a;
 
-                ret = ((i == j) ? 0.5 : 1.0) * val * EV_to_KCALpMOL / C_ELE;
+                ret = ((i == j) ? 0.5 : 1.0) * val;
             break;
 
             case DIAGONAL:
