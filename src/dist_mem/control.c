@@ -70,7 +70,7 @@ void Read_Control_File( const char * const control_file, control_params * const 
     control->restrict_bonds = 0;
     control->remove_CoM_vel = 25;
     out_control->debug_level = 0;
-    out_control->energy_update_freq = 0;
+    out_control->energy_update_freq = 1;
 
     control->reneighbor = 1;
     control->bond_cut = 5.0;

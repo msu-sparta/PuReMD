@@ -290,9 +290,9 @@ void Tabulated_vdW_Coulomb_Energy( reax_system const * const system,
     far_nbr_list = lists[FAR_NBRS];
     steps = data->step - data->prev_steps;
     update_freq = out_control->energy_update_freq;
-    update_energies = update_freq > 0 && steps % update_freq == 0;
-    e_ele = 0.0;
+    update_energies = (update_freq > 0 && steps % update_freq == 0) ? TRUE : FALSE;
     e_vdW = 0.0;
+    e_ele = 0.0;
 
     for ( i = 0; i < system->n; ++i )
     {
@@ -321,23 +321,15 @@ void Tabulated_vdW_Coulomb_Energy( reax_system const * const system,
                 tmax = MAX( type_i, type_j );
                 t = &workspace->LR[ index_lr(tmin, tmax, system->reax_param.num_atom_types) ];
 
-                if ( update_energies )
-                {
-                    e_vdW = LR_Lookup_Entry( t, r_ij, LR_E_VDW );
-                    e_vdW *= self_coef;
-
-                    e_ele = LR_Lookup_Entry( t, r_ij, LR_E_CLMB );
-                    e_ele *= self_coef * system->my_atoms[i].q * system->my_atoms[j].q;
-
-                    data->my_en[E_VDW] += e_vdW;
-                    data->my_en[E_ELE] += e_ele;
+                if ( update_energies == TRUE ) {
+                    e_vdW += LR_Lookup_Entry(t, r_ij, LR_E_VDW) * self_coef;
+                    e_ele += LR_Lookup_Entry(t, r_ij, LR_E_CLMB) * self_coef
+                        * system->my_atoms[i].q * system->my_atoms[j].q;
                 }
 
-                CEvd = LR_Lookup_Entry( t, r_ij, LR_CE_VDW );
-                CEvd *= self_coef;
-
-                CEclmb = LR_Lookup_Entry( t, r_ij, LR_CE_CLMB );
-                CEclmb *= self_coef * system->my_atoms[i].q * system->my_atoms[j].q;
+                CEvd = LR_Lookup_Entry(t, r_ij, LR_CE_VDW) * self_coef;
+                CEclmb = LR_Lookup_Entry( t, r_ij, LR_CE_CLMB ) * self_coef
+                    * system->my_atoms[i].q * system->my_atoms[j].q;
 
                 if ( control->virial == 0 )
                 {
@@ -386,6 +378,9 @@ void Tabulated_vdW_Coulomb_Energy( reax_system const * const system,
             }
         }
     }
+
+    data->my_en[E_VDW] = e_vdW;
+    data->my_en[E_ELE] = e_ele;
 
     if ( control->polarization_energy_enabled == TRUE )
     {

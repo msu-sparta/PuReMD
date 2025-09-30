@@ -275,16 +275,16 @@ void Make_LR_Lookup_Table( reax_system * const system, control_params * const co
     num_atom_types = system->reax_param.num_atom_types;
     dr = control->nonb_cut / control->tabulate;
 
-    h = scalloc( (control->tabulate + 2), sizeof(real), __FILE__, __LINE__ );
-    fh = scalloc( (control->tabulate + 2), sizeof(real), __FILE__, __LINE__ );
-    fvdw = scalloc( (control->tabulate + 2), sizeof(real), __FILE__, __LINE__ );
-    fCEvd = scalloc( (control->tabulate + 2), sizeof(real), __FILE__, __LINE__ );
-    fele = scalloc( (control->tabulate + 2), sizeof(real), __FILE__, __LINE__ );
-    fCEclmb = scalloc( (control->tabulate + 2), sizeof(real), __FILE__, __LINE__ );
+    h = scalloc( control->tabulate + 2, sizeof(real), __FILE__, __LINE__ );
+    fh = scalloc( control->tabulate + 2, sizeof(real), __FILE__, __LINE__ );
+    fvdw = scalloc( control->tabulate + 2, sizeof(real), __FILE__, __LINE__ );
+    fCEvd = scalloc( control->tabulate + 2, sizeof(real), __FILE__, __LINE__ );
+    fele = scalloc( control->tabulate + 2, sizeof(real), __FILE__, __LINE__ );
+    fCEclmb = scalloc( control->tabulate + 2, sizeof(real), __FILE__, __LINE__ );
 
     /* allocate Long-Range LookUp Table space based on
      * number of atom types in the ffield file */
-    workspace->LR = smalloc( sizeof(LR_lookup_table) * num_atom_types * num_atom_types,
+    workspace->LR = smalloc( sizeof(LR_lookup_table) * SQR(num_atom_types),
             __FILE__, __LINE__ );
 
     /* most atom types in ffield file will not exist in the current

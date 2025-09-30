@@ -922,8 +922,8 @@ void LR_vdW_Coulomb( reax_system *system, control_params *control,
 
     p_vdW1 = system->reax_param.gp.l[28];
     p_vdW1i = 1.0 / p_vdW1;
-    twbp = &system->reax_param.tbp[IDX_TBP(i, j,
-            system->reax_param.num_atom_types)];
+    twbp = &system->reax_param.tbp[IDX_TBP(system->atoms[i].type,
+            system->atoms[j].type, system->reax_param.num_atom_types)];
 
     /* Calculate Taper and its derivative */
     tap = workspace->tap_coef[7] * r_ij
