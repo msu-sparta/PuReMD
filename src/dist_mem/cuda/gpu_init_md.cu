@@ -343,7 +343,7 @@ extern "C" void GPU_Initialize( reax_system * const system, control_params * con
 
     if ( control->tabulate > 0 )
     {
-        Make_LR_Lookup_Table( system, control, workspace->d_workspace, mpi_data );
+        Make_LR_Lookup_Table( system, control, workspace, mpi_data );
     }
 
 #if defined(DEBUG_FOCUS)
