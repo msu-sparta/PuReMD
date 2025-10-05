@@ -51,11 +51,9 @@ int Velocity_Verlet_NVE( reax_system * const system, control_params * const cont
     scalar1 = -0.5 * control->dt * F_CONV;
     scalar2 = -0.5 * SQR( control->dt ) * F_CONV;
 
-    if ( verlet_part1_done == FALSE )
-    {
+    if ( verlet_part1_done == FALSE ) {
         /* velocity verlet, 1st part */
-        for ( i = 0; i < system->n; i++ )
-        {
+        for ( i = 0; i < system->n; i++ ) {
             atom = &system->my_atoms[i];
             inv_m = 1.0 / system->reax_param.sbp[atom->type].mass;
 
@@ -71,37 +69,30 @@ int Velocity_Verlet_NVE( reax_system * const system, control_params * const cont
 
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
 
+        Reset( system, control, data, workspace, lists, renbr );
+
         verlet_part1_done = TRUE;
     }
 
     Reallocate_Part2( system, control, data, workspace, lists, mpi_data );
-        
-    Reset( system, control, data, workspace, lists );
 
-    if ( renbr == TRUE && gen_nbr_list == FALSE )
-    {
+    if ( renbr == TRUE && gen_nbr_list == FALSE ) {
         ret = Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
-        if ( ret == SUCCESS )
-        {
+        if ( ret == SUCCESS ) {
             gen_nbr_list = TRUE;
-        }
-        else
-        {
+        } else {
             Estimate_Num_Neighbors( system, control, data, lists[FAR_NBRS]->format );
         }
     }
 
-    if ( ret == SUCCESS )
-    {
+    if ( ret == SUCCESS ) {
         ret = Compute_Forces( system, control, data, workspace,
                 lists, out_control, mpi_data );
     }
 
-    if ( ret == SUCCESS )
-    {
-        for ( i = 0; i < system->n; i++ )
-        {
+    if ( ret == SUCCESS ) {
+        for ( i = 0; i < system->n; i++ ) {
             atom = &system->my_atoms[i];
             inv_m = 1.0 / system->reax_param.sbp[ atom->type ].mass;
 
@@ -138,11 +129,9 @@ int Velocity_Verlet_Berendsen_NVT( reax_system * const system, control_params * 
     scalar1 = -0.5 * control->dt * F_CONV;
     scalar2 = -0.5 * SQR( control->dt ) * F_CONV;
 
-    if ( verlet_part1_done == FALSE )
-    {
+    if ( verlet_part1_done == FALSE ) {
         /* velocity verlet, 1st part */
-        for ( i = 0; i < system->n; i++ )
-        {
+        for ( i = 0; i < system->n; i++ ) {
             atom = &system->my_atoms[i];
             inv_m = 1.0 / system->reax_param.sbp[atom->type].mass;
 
@@ -156,45 +145,37 @@ int Velocity_Verlet_Berendsen_NVT( reax_system * const system, control_params * 
 
         Reallocate_Part1( system, control, data, workspace, lists, mpi_data );
 
-        if ( renbr == TRUE )
-        {
+        if ( renbr == TRUE ) {
             Update_Grid( system, control, MPI_COMM_WORLD );
         }
 
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
+        
+        Reset( system, control, data, workspace, lists, renbr );
 
         verlet_part1_done = TRUE;
     }
 
     Reallocate_Part2( system, control, data, workspace, lists, mpi_data );
-        
-    Reset( system, control, data, workspace, lists );
 
-    if ( renbr == TRUE && gen_nbr_list == FALSE )
-    {
+    if ( renbr == TRUE && gen_nbr_list == FALSE ) {
         ret = Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
-        if ( ret == SUCCESS )
-        {
+        if ( ret == SUCCESS ) {
             gen_nbr_list = TRUE;
-        }
-        else
-        {
+        } else {
             Estimate_Num_Neighbors( system, control, data, lists[FAR_NBRS]->format );
         }
     }
 
-    if ( ret == SUCCESS )
-    {
+    if ( ret == SUCCESS ) {
         ret = Compute_Forces( system, control, data, workspace,
                 lists, out_control, mpi_data );
     }
 
-    if ( ret == SUCCESS )
-    {
+    if ( ret == SUCCESS ) {
         /* velocity verlet, 2nd part */
-        for ( i = 0; i < system->n; i++ )
-        {
+        for ( i = 0; i < system->n; i++ ) {
             atom = &system->my_atoms[i];
             inv_m = 1.0 / system->reax_param.sbp[atom->type].mass;
 
@@ -208,21 +189,18 @@ int Velocity_Verlet_Berendsen_NVT( reax_system * const system, control_params * 
         lambda = 1.0 + ((control->dt * 1.0e-12) / control->Tau_T)
             * (control->T / data->therm.T - 1.0);
 
-        if ( lambda < MIN_dT )
-        {
+        if ( lambda < MIN_dT ) {
             lambda = MIN_dT;
         }
 
         lambda = SQRT( lambda );
 
-        if ( lambda > MAX_dT )
-        {
+        if ( lambda > MAX_dT ) {
             lambda = MAX_dT;
         }
 
         /* Scale velocities and positions at t+dt */
-        for ( i = 0; i < system->n; ++i )
-        {
+        for ( i = 0; i < system->n; ++i ) {
             atom = &system->my_atoms[i];
 
             rvec_Scale( atom->v, lambda, atom->v );
@@ -264,13 +242,11 @@ int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
     steps = data->step - data->prev_steps;
     renbr = steps % control->reneighbor == 0 ? TRUE : FALSE;
 
-    if ( verlet_part1_done == FALSE )
-    {
+    if ( verlet_part1_done == FALSE ) {
         dt_sqr = SQR(dt);
 
         /* velocity verlet, 1st part */
-        for ( i = 0; i < system->n; i++ )
-        {
+        for ( i = 0; i < system->n; i++ ) {
             atom = &system->my_atoms[i];
             inv_m = 1.0 / system->reax_param.sbp[atom->type].mass;
             rvec_ScaledSum( dx, dt, atom->v, -0.5 * dt_sqr * F_CONV * inv_m, atom->f );
@@ -285,38 +261,31 @@ int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
 
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
 
+        Reset( system, control, data, workspace, lists, renbr );
+
         verlet_part1_done = TRUE;
     }
 
     Reallocate_Part2( system, control, data, workspace, lists, mpi_data );
 
-    Reset( system, control, data, workspace, lists );
-
-    if ( renbr == TRUE && gen_nbr_list == FALSE )
-    {
+    if ( renbr == TRUE && gen_nbr_list == FALSE ) {
         ret = Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
-        if ( ret == SUCCESS )
-        {
+        if ( ret == SUCCESS ) {
             gen_nbr_list = TRUE;
-        }
-        else
-        {
+        } else {
             Estimate_Num_Neighbors( system, control, data, lists[FAR_NBRS]->format );
         }
     }
 
-    if ( ret == SUCCESS )
-    {
+    if ( ret == SUCCESS ) {
         ret = Compute_Forces( system, control, data, workspace,
                 lists, out_control, mpi_data );
     }
 
-    if ( ret == SUCCESS )
-    {
+    if ( ret == SUCCESS ) {
         /* Compute iteration constants for each atom's velocity */
-        for ( i = 0; i < system->n; ++i )
-        {
+        for ( i = 0; i < system->n; ++i ) {
             atom = &system->my_atoms[i];
             inv_m = 1.0 / system->reax_param.sbp[atom->type].mass;
             rvec_Scale( workspace->v_const[i], 1.0 - 0.5 * dt * therm->v_xi, atom->v );
@@ -327,16 +296,14 @@ int Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system * const system,
         v_xi_new = therm->v_xi_old + 2.0 * dt * therm->G_xi;
         my_ekin = G_xi_new = v_xi_old = 0;
         itr = 0;
-        do
-        {
+        do {
             itr++;
     
             /* new values become old in this iteration */
             v_xi_old = v_xi_new;
     
             my_ekin = 0;
-            for ( i = 0; i < system->n; ++i )
-            {
+            for ( i = 0; i < system->n; ++i ) {
                 atom = &system->my_atoms[i];
                 coef_v = 1.0 / (1.0 + 0.5 * dt * v_xi_old);
                 rvec_Scale( atom->v, coef_v, workspace->v_const[i] );
@@ -383,11 +350,9 @@ int Velocity_Verlet_Berendsen_NPT( reax_system * const system, control_params * 
     steps = data->step - data->prev_steps;
     renbr = steps % control->reneighbor == 0 ? TRUE : FALSE;
 
-    if ( verlet_part1_done == FALSE )
-    {
+    if ( verlet_part1_done == FALSE ) {
         /* velocity verlet, 1st part */
-        for ( i = 0; i < system->n; i++ )
-        {
+        for ( i = 0; i < system->n; i++ ) {
             atom = &system->my_atoms[i];
             inv_m = 1.0 / system->reax_param.sbp[atom->type].mass;
 
@@ -399,45 +364,37 @@ int Velocity_Verlet_Berendsen_NPT( reax_system * const system, control_params * 
             rvec_ScaledAdd( atom->v, -0.5 * F_CONV * inv_m * dt, atom->f );
         }
 
-        if ( renbr == TRUE )
-        {
+        if ( renbr == TRUE ) {
             Update_Grid( system, control, MPI_COMM_WORLD );
         }
 
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
+
+        Reset( system, control, data, workspace, lists, renbr );
 
         verlet_part1_done = TRUE;
     }
 
     Reallocate_Part2( system, control, data, workspace, lists, mpi_data );
 
-    Reset( system, control, data, workspace, lists );
-
-    if ( renbr == TRUE && gen_nbr_list == FALSE )
-    {
+    if ( renbr == TRUE && gen_nbr_list == FALSE ) {
         ret = Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
-        if ( ret == SUCCESS )
-        {
+        if ( ret == SUCCESS ) {
             gen_nbr_list = TRUE;
-        }
-        else
-        {
+        } else {
             Estimate_Num_Neighbors( system, control, data, lists[FAR_NBRS]->format );
         }
     }
 
-    if ( ret == SUCCESS )
-    {
+    if ( ret == SUCCESS ) {
         ret = Compute_Forces( system, control, data, workspace,
                 lists, out_control, mpi_data );
     }
 
-    if ( ret == SUCCESS )
-    {
+    if ( ret == SUCCESS ) {
         /* velocity verlet, 2nd part */
-        for ( i = 0; i < system->n; i++ )
-        {
+        for ( i = 0; i < system->n; i++ ) {
             atom = &system->my_atoms[i];
             inv_m = 1.0 / system->reax_param.sbp[atom->type].mass;
 

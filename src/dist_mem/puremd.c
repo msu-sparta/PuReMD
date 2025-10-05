@@ -295,7 +295,7 @@ int simulate( const void * const handle )
         GPU_Copy_Atoms_Host_to_Device( system, control );
         GPU_Copy_Grid_Host_to_Device( control, &system->my_grid, &system->d_my_grid );
 
-        GPU_Reset( system, control, data, workspace, lists );
+        GPU_Reset( system, control, data, workspace, lists, TRUE );
 
         GPU_Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
@@ -388,7 +388,7 @@ int simulate( const void * const handle )
         /* compute f_0 */
         Comm_Atoms( system, control, data, workspace, mpi_data, TRUE );
 
-        Reset( system, control, data, workspace, lists );
+        Reset( system, control, data, workspace, lists, TRUE );
 
         ret = Generate_Neighbor_Lists( system, control, data, workspace, lists );
 

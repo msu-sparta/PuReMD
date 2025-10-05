@@ -65,8 +65,8 @@ static void GPU_Init_System( reax_system * const system, control_params * const 
 //    Reposition_Atoms( system, control, data, mpi_data );
 
     /* initialize velocities so that desired init T can be attained */
-    if ( !control->restart || (control->restart && control->random_vel) )
-    {
+    if ( control->restart == FALSE
+            || (control->restart == TRUE && control->random_vel == TRUE) ) {
         GPU_Generate_Initial_Velocities( system, control, control->T_init );
     }
 
@@ -197,7 +197,7 @@ void GPU_Init_Workspace( reax_system const * const system, control_params * cons
         workspace->d_workspace->H_app_inv.allocated = FALSE;
     }
 
-    GPU_Reset_Workspace( system, control, workspace );
+    GPU_Reset_Workspace( system, control, workspace, control->gpu_streams[0] );
 
     Init_Taper( control, workspace, mpi_data );
 

@@ -419,13 +419,12 @@ GPU_GLOBAL void k_compute_kinetic_energy( single_body_parameters const * const s
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ( i >= n )
-    {
+    if ( i >= n ) {
         return;
     }
 
     rvec_Scale( p, sbp[ my_atoms[i].type ].mass, my_atoms[i].v );
-    e_kin_g[i] = 0.5 * rvec_Dot( p, my_atoms[i].v );
+    e_kin_g[i] = rvec_Dot( p, my_atoms[i].v );
 }
 
 
@@ -436,8 +435,7 @@ GPU_GLOBAL void k_atom_velocities_zero( reax_atom * const my_atoms, int n )
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ( i >= n )
-    {
+    if ( i >= n ) {
         return;
     }
 
@@ -455,8 +453,7 @@ GPU_GLOBAL void k_atom_velocities_random( single_body_parameters const * const s
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ( i >= n )
-    {
+    if ( i >= n ) {
         return;
     }
 
@@ -632,18 +629,14 @@ static void GPU_Compute_Inertial_Tensor( reax_system * const system,
 void GPU_Generate_Initial_Velocities( reax_system * const system,
         control_params const * const control, real T )
 {
-    if ( T <= 0.1 || control->random_vel == FALSE )
-    {
+    if ( T <= 0.1 || control->random_vel == FALSE ) {
         /* warnings if conflicts between initial temperature and control file parameter */
-        if ( control->random_vel == TRUE )
-        {
+        if ( control->random_vel == TRUE ) {
             fprintf( stderr, "[ERROR] conflicting control file parameters\n" );
             fprintf( stderr, "[INFO] random_vel = 1 and small initial temperature (t_init = %f)\n", T );
             fprintf( stderr, "[INFO] set random_vel = 0 to resolve this (atom initial velocites set to zero)\n" );
             MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
-        }
-        else if ( T > 0.1 )
-        {
+        } else if ( T > 0.1 ) {
             fprintf( stderr, "[ERROR] conflicting control file paramters\n" );
             fprintf( stderr, "[INFO] random_vel = 0 and large initial temperature (t_init = %f)\n", T );
             fprintf( stderr, "[INFO] set random_vel = 1 to resolve this (random atom initial velocites according to t_init)\n" );
@@ -653,11 +646,8 @@ void GPU_Generate_Initial_Velocities( reax_system * const system,
         k_atom_velocities_zero <<< control->blocks_n, control->gpu_block_size,
                                0, control->gpu_streams[0] >>>
             ( system->d_my_atoms, system->n );
-    }
-    else
-    {
-        if ( T <= 0.0 )
-        {
+    } else {
+        if ( T <= 0.0 ) {
             fprintf( stderr, "[ERROR] random atom initial velocities specified with invalid temperature (%f). Terminating...\n",
                   T );
             MPI_Abort( MPI_COMM_WORLD,  INVALID_INPUT );
@@ -689,8 +679,6 @@ extern "C" void GPU_Compute_Kinetic_Energy( reax_system * const system,
         ( system->reax_param.d_sbp, system->d_my_atoms, kinetic_energy, system->n );
     hipCheckError( );
 
-    /* note: above kernel sums the kinetic energy contribution within blocks,
-     * and this call finishes the global reduction across all blocks */
     GPU_Reduction_Sum( kinetic_energy, &kinetic_energy[system->n], system->n,
             0, control->gpu_streams[0] );
 
@@ -699,15 +687,16 @@ extern "C" void GPU_Compute_Kinetic_Energy( reax_system * const system,
             __FILE__, __LINE__ );
     hipStreamSynchronize( control->gpu_streams[0] );
 
+    data->my_en[E_KIN] *= 0.5 * E_CONV;
+
     ret = MPI_Allreduce( &data->my_en[E_KIN], &data->sys_en[E_KIN],
             1, MPI_DOUBLE, MPI_SUM, comm );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-    data->therm.T = (2.0 * data->sys_en[E_KIN]) / (data->N_f * K_B);
+    data->therm.T = (2.0 * data->sys_en[E_KIN]) / (data->N_f * K_B / F_CONV);
 
     /* avoid T being an absolute zero, might cause F.P.E! */
-    if ( FABS(data->therm.T) < ALMOST_ZERO )
-    {
+    if ( FABS(data->therm.T) < ALMOST_ZERO ) {
         data->therm.T = ALMOST_ZERO;
     }
 }

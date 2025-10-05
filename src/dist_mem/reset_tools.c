@@ -50,19 +50,25 @@ static void Reset_Atoms_HBond_Indices( reax_system * const system, control_param
 
     system->num_H_atoms = 0;
 
-    for ( i = 0; i < system->N; ++i )
-    {
+    for ( i = 0; i < system->N; ++i ) {
         atom = &system->my_atoms[i];
 
-        if ( system->reax_param.sbp[atom->type].p_hbond == H_ATOM )
-        {
+        if ( system->reax_param.sbp[atom->type].p_hbond == H_ATOM ) {
             atom->Hindex = system->num_H_atoms;
             ++(system->num_H_atoms);
-        }
-        else
-        {
+        } else {
             atom->Hindex = -1;
         }
+    }
+}
+
+
+static void Reset_Atomic_Forces( reax_system * const system, storage * const workspace )
+{
+    int i;
+
+    for ( i = 0; i < system->total_cap; ++i ) {
+        rvec_MakeZero( workspace->f[i] );
     }
 }
 
@@ -176,20 +182,23 @@ void Reset_Workspace( reax_system * const system, storage * const workspace )
 {
     int i;
 
-    for ( i = 0; i < system->total_cap; ++i )
-    {
-        workspace->CdDelta[i] = 0.0;
+    for ( i = 0; i < system->total_cap; ++i ) {
+        workspace->total_bond_order[i] = 0.0;
     }
-    for ( i = 0; i < system->total_cap; ++i )
-    {
-        rvec_MakeZero( workspace->f[i] );
+
+    for ( i = 0; i < system->total_cap; ++i ) {
+        rvec_MakeZero( workspace->dDeltap_self[i] );
+    }
+
+    for ( i = 0; i < system->total_cap; ++i ) {
+        workspace->CdDelta[i] = 0.0;
     }
 
 #ifdef TEST_FORCES
-    for ( i = 0; i < system->total_cap; ++i )
-    {
+    for ( i = 0; i < system->total_cap; ++i ) {
         rvec_MakeZero( workspace->dDelta[i] );
     }
+
     Reset_Test_Forces( system, workspace );
 #endif
 }
@@ -199,12 +208,9 @@ void Reset_Grid( grid * const g )
 {
     int i, j, k;
 
-    for ( i = 0; i < g->ncells[0]; i++ )
-    {
-        for ( j = 0; j < g->ncells[1]; j++ )
-        {
-            for ( k = 0; k < g->ncells[2]; k++ )
-            {
+    for ( i = 0; i < g->ncells[0]; i++ ) {
+        for ( j = 0; j < g->ncells[1]; j++ ) {
+            for ( k = 0; k < g->ncells[2]; k++ ) {
                 g->cells[ index_grid_3d(i, j, k, g) ].top = 0;
                 g->str[ index_grid_3d(i, j, k, g) ] = 0;
                 g->end[ index_grid_3d(i, j, k, g) ] = 0;
@@ -218,8 +224,7 @@ void Reset_Out_Buffers( mpi_out_data * const out_buf, int n )
 {
     int i;
 
-    for ( i = 0; i < n; ++i )
-    {
+    for ( i = 0; i < n; ++i ) {
         out_buf[i].cnt = 0;
     }
 }
@@ -227,19 +232,17 @@ void Reset_Out_Buffers( mpi_out_data * const out_buf, int n )
 
 void Reset( reax_system * const system, control_params * const control,
         simulation_data * const data, storage * const workspace,
-        reax_list ** const lists )
+        reax_list ** const lists, int renbr )
 {
-    if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 )
-    {
+    if ( system->total_H_atoms > 0 && control->hbond_cut > 0.0 && renbr == TRUE ) {
         Reset_Atoms_HBond_Indices( system, control );
     }
 
+    Reset_Atomic_Forces( system, workspace );
+
     Reset_Simulation_Data( data );
 
-    if ( control->virial )
-    {
+    if ( control->virial ) {
         Reset_Pressures( data );
     }
-
-    Reset_Workspace( system, workspace );
 }

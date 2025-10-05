@@ -22,7 +22,7 @@
 
 
 GPU_GLOBAL void k_velocity_verlet_part1( reax_atom * const my_atoms, 
-        single_body_parameters const * const sbp, real dt, int n )
+        single_body_parameters const * const sbp, real scalar1, real scalar2, real dt, int n )
 {
     int i;
     real inv_m;
@@ -31,8 +31,7 @@ GPU_GLOBAL void k_velocity_verlet_part1( reax_atom * const my_atoms,
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ( i >= n )
-    {
+    if ( i >= n ) {
         return;
     }
 
@@ -41,16 +40,16 @@ GPU_GLOBAL void k_velocity_verlet_part1( reax_atom * const my_atoms,
     inv_m = 1.0 / sbp[atom->type].mass;
 
     /* Compute x(t + dt) */
-    rvec_ScaledSum( dx, dt, atom->v, -0.5 * F_CONV * inv_m * SQR(dt), atom->f );
+    rvec_ScaledSum( dx, dt, atom->v, scalar2 * inv_m, atom->f );
     rvec_Add( atom->x, dx );
 
     /* Compute v(t + dt/2) */
-    rvec_ScaledAdd( atom->v, -0.5 * F_CONV * inv_m * dt, atom->f );
+    rvec_ScaledAdd( atom->v, scalar1 * inv_m, atom->f );
 }
 
 
 GPU_GLOBAL void k_velocity_verlet_part2( reax_atom * const my_atoms, 
-        single_body_parameters const * const sbp, real dt, int n )
+        single_body_parameters const * const sbp, real scalar1, int n )
 {
     int i;
     reax_atom *atom;
@@ -58,8 +57,7 @@ GPU_GLOBAL void k_velocity_verlet_part2( reax_atom * const my_atoms,
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ( i >= n )
-    {
+    if ( i >= n ) {
         return;
     }
 
@@ -68,12 +66,12 @@ GPU_GLOBAL void k_velocity_verlet_part2( reax_atom * const my_atoms,
     inv_m = 1.0 / sbp[atom->type].mass;
 
     /* Compute v(t + dt) */
-    rvec_ScaledAdd( atom->v, -0.5 * dt * F_CONV * inv_m, atom->f );
+    rvec_ScaledAdd( atom->v, scalar1 * inv_m, atom->f );
 }
 
 
 GPU_GLOBAL void k_velocity_verlet_nose_hoover_nvt( reax_atom * const my_atoms, 
-        single_body_parameters const * const sbp, real dt, int n )
+        single_body_parameters const * const sbp, real scalar2, real dt, int n )
 {
     int i;
     real inv_m;
@@ -82,8 +80,7 @@ GPU_GLOBAL void k_velocity_verlet_nose_hoover_nvt( reax_atom * const my_atoms,
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ( i >= n )
-    {
+    if ( i >= n ) {
         return;
     }
 
@@ -91,14 +88,14 @@ GPU_GLOBAL void k_velocity_verlet_nose_hoover_nvt( reax_atom * const my_atoms,
     atom = &my_atoms[i];
     inv_m = 1.0 / sbp[atom->type].mass;
 
-    rvec_ScaledSum( dx, dt, atom->v, -0.5 * F_CONV * inv_m * SQR(dt), atom->f );
+    rvec_ScaledSum( dx, dt, atom->v, scalar2 * inv_m, atom->f );
     rvec_Add( atom->x, dx );
     rvec_Copy( atom->f_old, atom->f );
 }
 
-GPU_GLOBAL void k_velocity_verlet_nose_hoover_nvt( reax_atom * const my_atoms,
+GPU_GLOBAL void k_velocity_verlet_nose_hoover_nvt_part2( reax_atom * const my_atoms,
         rvec * const v_const, single_body_parameters const * const sbp,
-        real dt, real v_xi, int n )
+        real scalar1, real dt, real v_xi, int n )
 {
     reax_atom *atom;
     real inv_m;
@@ -106,8 +103,7 @@ GPU_GLOBAL void k_velocity_verlet_nose_hoover_nvt( reax_atom * const my_atoms,
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ( i >= n )
-    {
+    if ( i >= n ) {
         return;
     }
 
@@ -117,8 +113,8 @@ GPU_GLOBAL void k_velocity_verlet_nose_hoover_nvt( reax_atom * const my_atoms,
 
     /* Compute v(t + dt) */
     rvec_Scale( v_const[i], 1.0 - 0.5 * dt * v_xi, atom->v );
-    rvec_ScaledAdd( v_const[i], 0.5 * dt * inv_m * -F_CONV, atom->f_old );
-    rvec_ScaledAdd( v_const[i], 0.5 * dt * inv_m * -F_CONV, atom->f );
+    rvec_ScaledAdd( v_const[i], scalar1 * inv_m, atom->f_old );
+    rvec_ScaledAdd( v_const[i], scalar1 * inv_m, atom->f );
 }
 
 
@@ -132,8 +128,7 @@ GPU_GLOBAL void k_velocity_verlet_nose_hoover_nvt_part3( reax_atom * const my_at
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ( i >= n )
-    {
+    if ( i >= n ) {
         return;
     }
 
@@ -148,11 +143,12 @@ GPU_GLOBAL void k_velocity_verlet_nose_hoover_nvt_part3( reax_atom * const my_at
 GPU_GLOBAL void k_scale_velocites_berendsen_nvt( reax_atom * const my_atoms,
         real lambda, int n )
 {
+    int i;
     reax_atom *atom;
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ( i >= n )
-    {
+    i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if ( i >= n ) {
         return;
     }
 
@@ -170,8 +166,7 @@ GPU_GLOBAL void k_scale_velocities_npt( reax_atom * const my_atoms, real lambda,
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ( i >= n )
-    {
+    if ( i >= n ) {
         return;
     }
 
@@ -191,7 +186,8 @@ static void Velocity_Verlet_Part1( reax_system * const system,
 {
     k_velocity_verlet_part1 <<< control->blocks_n, control->gpu_block_size,
                             0, control->gpu_streams[0] >>>
-        ( system->d_my_atoms, system->reax_param.d_sbp, dt, system->n );
+        ( system->d_my_atoms, system->reax_param.d_sbp,
+          -0.5 * dt * F_CONV, -0.5 * SQR(dt) * F_CONV, dt, system->n );
     cudaCheckError( );
 }
 
@@ -201,7 +197,8 @@ static void Velocity_Verlet_Part2( reax_system * const system,
 {
     k_velocity_verlet_part2 <<< control->blocks_n, control->gpu_block_size,
                             0, control->gpu_streams[0] >>>
-        ( system->d_my_atoms, system->reax_param.d_sbp, dt, system->n );
+        ( system->d_my_atoms, system->reax_param.d_sbp,
+          -0.5 * dt * F_CONV, system->n );
     cudaCheckError( );
 }
 
@@ -211,7 +208,8 @@ static void Velocity_Verlet_Nose_Hoover_NVT_Part1( reax_system *system,
 {
     k_velocity_verlet_nose_hoover_nvt <<< control->blocks_n, control->gpu_block_size,
                                       0, control->gpu_streams[0] >>>
-        ( system->d_my_atoms, system->reax_param.d_sbp, dt, system->n );
+        ( system->d_my_atoms, system->reax_param.d_sbp,
+          -0.5 * SQR(dt) * F_CONV, dt, system->n );
     cudaCheckError( );
 }
 
@@ -220,10 +218,10 @@ static void Velocity_Verlet_Nose_Hoover_NVT_Part2( reax_system * const system,
         control_params const * const control, storage * const workspace,
         real dt, real v_xi )
 {
-    k_velocity_verlet_nose_hoover_nvt <<< control->blocks_n, control->gpu_block_size,
+    k_velocity_verlet_nose_hoover_nvt_part2 <<< control->blocks_n, control->gpu_block_size,
                                       0, control->gpu_streams[0] >>>
-        ( system->d_my_atoms, workspace->v_const,
-          system->reax_param.d_sbp, dt, v_xi, system->n );
+        ( system->d_my_atoms, workspace->v_const, system->reax_param.d_sbp,
+          -0.5 * dt * F_CONV, dt, v_xi, system->n );
     cudaCheckError( );
 }
 
@@ -283,8 +281,7 @@ int GPU_Velocity_Verlet_NVE( reax_system *system, control_params *control,
     steps = data->step - data->prev_steps;
     renbr = steps % control->reneighbor == 0 ? TRUE : FALSE;
 
-    if ( verlet_part1_done == FALSE )
-    {
+    if ( verlet_part1_done == FALSE ) {
         Velocity_Verlet_Part1( system, control, dt );
 
         GPU_Reallocate_Part1( system, control, data, workspace, lists, mpi_data );
@@ -293,8 +290,7 @@ int GPU_Velocity_Verlet_NVE( reax_system *system, control_params *control,
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
 
 #if defined(GPU_DEVICE_PACK)
-        if ( renbr == TRUE )
-        {
+        if ( renbr == TRUE ) {
             //TODO: remove once Comm_Atoms ported
             GPU_Copy_MPI_Data_Host_to_Device( control, mpi_data );
         }
@@ -307,42 +303,34 @@ int GPU_Velocity_Verlet_NVE( reax_system *system, control_params *control,
 
     GPU_Reallocate_Part2( system, control, data, workspace, lists, mpi_data );
 
-    if ( gpu_copy == FALSE )
-    {
+    if ( gpu_copy == FALSE ) {
         GPU_Copy_Atoms_Host_to_Device( system, control );
 
-        if ( renbr == TRUE )
-        {
+        if ( renbr == TRUE ) {
             GPU_Copy_Grid_Host_to_Device( control, &system->my_grid, &system->d_my_grid );
         }
 
-        GPU_Reset( system, control, data, workspace, lists );
+        GPU_Reset( system, control, data, workspace, lists, renbr );
 
         gpu_copy = TRUE;
     }
 
-    if ( renbr == TRUE && gen_nbr_list == FALSE )
-    {
+    if ( renbr == TRUE && gen_nbr_list == FALSE ) {
         ret = GPU_Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
-        if ( ret == SUCCESS )
-        {
+        if ( ret == SUCCESS ) {
             gen_nbr_list = TRUE;
-        }
-        else
-        {
+        } else {
             GPU_Estimate_Num_Neighbors( system, control, data );
         }
     }
 
-    if ( ret == SUCCESS )
-    {
+    if ( ret == SUCCESS ) {
         ret = GPU_Compute_Forces( system, control, data, workspace,
                 lists, out_control, mpi_data );
     }
 
-    if ( ret == SUCCESS )
-    {
+    if ( ret == SUCCESS ) {
         Velocity_Verlet_Part2( system, control, dt );
 
         verlet_part1_done = FALSE;
@@ -373,8 +361,7 @@ int GPU_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
     steps = data->step - data->prev_steps;
     renbr = steps % control->reneighbor == 0 ? TRUE : FALSE;
 
-    if ( verlet_part1_done == FALSE )
-    {
+    if ( verlet_part1_done == FALSE ) {
         Velocity_Verlet_Nose_Hoover_NVT_Part1( system, control, dt );
     
         /* Compute xi(t + dt) */
@@ -382,8 +369,7 @@ int GPU_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
 
         GPU_Reallocate_Part1( system, control, data, workspace, lists, mpi_data );
 
-        if ( renbr == TRUE )
-        {
+        if ( renbr == TRUE ) {
             Update_Grid( system, control, MPI_COMM_WORLD );
         }
 
@@ -391,8 +377,7 @@ int GPU_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
 
 #if defined(GPU_DEVICE_PACK)
-        if ( renbr == TRUE )
-        {
+        if ( renbr == TRUE ) {
             //TODO: remove once Comm_Atoms ported
             GPU_Copy_MPI_Data_Host_to_Device( control, mpi_data );
         }
@@ -405,42 +390,34 @@ int GPU_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
 
     GPU_Reallocate_Part2( system, control, data, workspace, lists, mpi_data );
 
-    if ( gpu_copy == FALSE )
-    {
+    if ( gpu_copy == FALSE ) {
         GPU_Copy_Atoms_Host_to_Device( system, control );
 
-        if ( renbr == TRUE )
-        {
+        if ( renbr == TRUE ) {
             GPU_Copy_Grid_Host_to_Device( control, &system->my_grid, &system->d_my_grid );
         }
 
-        GPU_Reset( system, control, data, workspace, lists );
+        GPU_Reset( system, control, data, workspace, lists, renbr );
 
         gpu_copy = TRUE;
     }
 
-    if ( renbr == TRUE && gen_nbr_list == FALSE )
-    {
+    if ( renbr == TRUE && gen_nbr_list == FALSE ) {
         ret = GPU_Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
-        if ( ret == SUCCESS )
-        {
+        if ( ret == SUCCESS ) {
             gen_nbr_list = TRUE;
-        }
-        else
-        {
+        } else {
             GPU_Estimate_Num_Neighbors( system, control, data );
         }
     }
 
-    if ( ret == SUCCESS )
-    {
+    if ( ret == SUCCESS ) {
         ret = GPU_Compute_Forces( system, control, data, workspace,
                 lists, out_control, mpi_data );
     }
 
-    if ( ret == SUCCESS )
-    {
+    if ( ret == SUCCESS ) {
         /* Compute iteration constants for each atom's velocity */
         Velocity_Verlet_Nose_Hoover_NVT_Part2( system, control,
                 workspace->d_workspace, dt, therm->v_xi );
@@ -454,8 +431,7 @@ int GPU_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
         sCudaMalloc( (void **) &d_total_my_ekin, sizeof(real),
                 __FILE__, __LINE__ );
 
-        do
-        {
+        do {
             itr++;
     
             /* new values become old in this iteration */
@@ -471,8 +447,7 @@ int GPU_Velocity_Verlet_Nose_Hoover_NVT_Klein( reax_system* system,
     
             G_xi_new = control->Tau_T * ( 2.0 * new_ekin - data->N_f * K_B * control->T );
             v_xi_new = therm->v_xi + 0.5 * dt * ( therm->G_xi + G_xi_new );
-        }
-        while ( FABS(v_xi_new - v_xi_old) > 1e-5 );
+        } while ( FABS(v_xi_new - v_xi_old) > 1e-5 );
         therm->v_xi_old = therm->v_xi;
         therm->v_xi = v_xi_new;
         therm->G_xi = G_xi_new;
@@ -505,14 +480,12 @@ int GPU_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* cont
     steps = data->step - data->prev_steps;
     renbr = steps % control->reneighbor == 0 ? TRUE : FALSE;
 
-    if ( verlet_part1_done == FALSE )
-    {
+    if ( verlet_part1_done == FALSE ) {
         Velocity_Verlet_Part1( system, control, dt );
 
         GPU_Reallocate_Part1( system, control, data, workspace, lists, mpi_data );
 
-        if ( renbr == TRUE )
-        {
+        if ( renbr == TRUE ) {
             Update_Grid( system, control, MPI_COMM_WORLD );
         }
 
@@ -520,8 +493,7 @@ int GPU_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* cont
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
 
 #if defined(GPU_DEVICE_PACK)
-        if ( renbr == TRUE )
-        {
+        if ( renbr == TRUE ) {
             //TODO: remove once Comm_Atoms ported
             GPU_Copy_MPI_Data_Host_to_Device( control, mpi_data );
         }
@@ -534,58 +506,52 @@ int GPU_Velocity_Verlet_Berendsen_NVT( reax_system* system, control_params* cont
 
     GPU_Reallocate_Part2( system, control, data, workspace, lists, mpi_data );
 
-    if ( gpu_copy == FALSE )
-    {
+    if ( gpu_copy == FALSE ) {
         GPU_Copy_Atoms_Host_to_Device( system, control );
 
-        if ( renbr == TRUE )
-        {
+        if ( renbr == TRUE ) {
             GPU_Copy_Grid_Host_to_Device( control, &system->my_grid, &system->d_my_grid );
         }
 
-        GPU_Reset( system, control, data, workspace, lists );
+        GPU_Reset( system, control, data, workspace, lists, renbr );
 
         gpu_copy = TRUE;
     }
 
-    if ( renbr == TRUE && gen_nbr_list == FALSE )
-    {
+    if ( renbr == TRUE && gen_nbr_list == FALSE ) {
         ret = GPU_Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
-        if ( ret == SUCCESS )
-        {
+        if ( ret == SUCCESS ) {
             gen_nbr_list = TRUE;
-        }
-        else
-        {
+        } else {
             GPU_Estimate_Num_Neighbors( system, control, data );
         }
     }
 
-    if ( ret == SUCCESS )
-    {
+    if ( ret == SUCCESS ) {
         ret = GPU_Compute_Forces( system, control, data, workspace,
                 lists, out_control, mpi_data );
     }
 
-    if ( ret == SUCCESS )
-    {
+    if ( ret == SUCCESS ) {
         Velocity_Verlet_Part2( system, control, dt );
 
         /* temperature scaler */
         GPU_Compute_Kinetic_Energy( system, control, workspace,
                 data, mpi_data->comm_mesh3D );
 
-        lambda = 1.0 + (dt / control->Tau_T) * (control->T / data->therm.T - 1.0);
-        if ( lambda < MIN_dT )
-        {
+        lambda = 1.0 + ((dt * 1.0e-12) / control->Tau_T)
+            * (control->T / data->therm.T - 1.0);
+        
+        if ( lambda < MIN_dT ) {
             lambda = MIN_dT;
         }
-        else if ( lambda > MAX_dT )
-        {
+
+        lambda = SQRT( lambda );
+
+        if ( lambda > MAX_dT ) {
             lambda = MAX_dT;
         }
-        lambda = SQRT( lambda );
 
         /* Scale velocities and positions at t+dt */
         GPU_Scale_Velocities_Berendsen_NVT( system, control, lambda );
@@ -618,14 +584,12 @@ int GPU_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* cont
     steps = data->step - data->prev_steps;
     renbr = steps % control->reneighbor == 0 ? TRUE : FALSE;
 
-    if ( verlet_part1_done == FALSE )
-    {
+    if ( verlet_part1_done == FALSE ) {
         Velocity_Verlet_Part1( system, control, dt );
 
         GPU_Reallocate_Part1( system, control, data, workspace, lists, mpi_data );
 
-        if ( renbr == TRUE )
-        {
+        if ( renbr == TRUE ) {
             Update_Grid( system, control, MPI_COMM_WORLD );
         }
 
@@ -633,8 +597,7 @@ int GPU_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* cont
         Comm_Atoms( system, control, data, workspace, mpi_data, renbr );
 
 #if defined(GPU_DEVICE_PACK)
-        if ( renbr == TRUE )
-        {
+        if ( renbr == TRUE ) {
             //TODO: remove once Comm_Atoms ported
             GPU_Copy_MPI_Data_Host_to_Device( control, mpi_data );
         }
@@ -647,42 +610,34 @@ int GPU_Velocity_Verlet_Berendsen_NPT( reax_system* system, control_params* cont
 
     GPU_Reallocate_Part2( system, control, data, workspace, lists, mpi_data );
 
-    if ( gpu_copy == FALSE )
-    {
+    if ( gpu_copy == FALSE ) {
         GPU_Copy_Atoms_Host_to_Device( system, control );
 
-        if ( renbr == TRUE )
-        {
+        if ( renbr == TRUE ) {
             GPU_Copy_Grid_Host_to_Device( control, &system->my_grid, &system->d_my_grid );
         }
 
-        GPU_Reset( system, control, data, workspace, lists );
+        GPU_Reset( system, control, data, workspace, lists, renbr );
 
         gpu_copy = TRUE;
     }
 
-    if ( renbr == TRUE && gen_nbr_list == FALSE )
-    {
+    if ( renbr == TRUE && gen_nbr_list == FALSE ) {
         ret = GPU_Generate_Neighbor_Lists( system, control, data, workspace, lists );
 
-        if ( ret == SUCCESS )
-        {
+        if ( ret == SUCCESS ) {
             gen_nbr_list = TRUE;
-        }
-        else
-        {
+        } else {
             GPU_Estimate_Num_Neighbors( system, control, data );
         }
     }
 
-    if ( ret == SUCCESS )
-    {
+    if ( ret == SUCCESS ) {
         ret = GPU_Compute_Forces( system, control, data, workspace,
                 lists, out_control, mpi_data );
     }
 
-    if ( ret == SUCCESS )
-    {
+    if ( ret == SUCCESS ) {
         Velocity_Verlet_Part2( system, control, dt );
 
         GPU_Compute_Kinetic_Energy( system, control,

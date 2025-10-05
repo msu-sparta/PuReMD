@@ -1256,7 +1256,7 @@ void Output_Results( reax_system *system, control_params *control,
                 fprintf( out_control->out,
                          "%-6d%14.2f%14.2f%14.2f%11.2f%13.2f%13.5f\n",
                          data->step, data->sys_en[E_TOT], data->sys_en[E_POT],
-                         E_CONV * data->sys_en[E_KIN], data->therm.T,
+                         data->sys_en[E_KIN], data->therm.T,
                          system->big_box.V, data->iso_bar.P );
 
                 fprintf( out_control->pot,
@@ -1272,7 +1272,7 @@ void Output_Results( reax_system *system, control_params *control,
                 fprintf( out_control->out,
                         "%-6d%24.15f%24.15f%24.15f%13.5f%16.5f%13.5f\n",
                         data->step, data->sys_en[E_TOT], data->sys_en[E_POT],
-                        E_CONV * data->sys_en[E_KIN], data->therm.T,
+                        data->sys_en[E_KIN], data->therm.T,
                         system->big_box.V, data->iso_bar.P );
 
                 fprintf( out_control->pot,

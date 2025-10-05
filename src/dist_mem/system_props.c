@@ -81,29 +81,29 @@ void Compute_Kinetic_Energy( reax_system* system, simulation_data* data,
         MPI_Comm comm )
 {
     int i, ret;
+    real m, e_kin;
     rvec p;
-    real m;
 
     data->my_en[E_KIN] = 0.0;
 
-    for ( i = 0; i < system->n; i++ )
-    {
+    e_kin = 0.0;
+
+    for ( i = 0; i < system->n; i++ ) {
         m = system->reax_param.sbp[system->my_atoms[i].type].mass;
 
         rvec_Scale( p, m, system->my_atoms[i].v );
-        data->my_en[E_KIN] += rvec_Dot( p, system->my_atoms[i].v );
+        e_kin += rvec_Dot( p, system->my_atoms[i].v );
     }
-    data->my_en[E_KIN] *= 0.5;
+    data->my_en[E_KIN] = 0.5 * E_CONV * e_kin;
 
     ret = MPI_Allreduce( &data->my_en[E_KIN], &data->sys_en[E_KIN], 1, MPI_DOUBLE,
             MPI_SUM, comm );
     Check_MPI_Error( ret, __FILE__, __LINE__ );
 
-    data->therm.T = (2.0 * data->sys_en[E_KIN]) / (data->N_f * K_B);
+    data->therm.T = (2.0 * data->sys_en[E_KIN]) / (data->N_f * K_B / F_CONV);
 
     /* avoid T being an absolute zero, might cause F.P.E! */
-    if ( FABS(data->therm.T) < ALMOST_ZERO )
-    {
+    if ( FABS(data->therm.T) < ALMOST_ZERO ) {
         data->therm.T = ALMOST_ZERO;
     }
 }
@@ -146,10 +146,9 @@ void Compute_Total_Energy( reax_system const * const system,
         + data->my_en[E_HB] + data->my_en[E_TOR] + data->my_en[E_CON]
         + data->my_en[E_VDW] + data->my_en[E_ELE] + data->my_en[E_POL];
 
-    data->my_en[E_TOT] = data->my_en[E_POT] + E_CONV * data->my_en[E_KIN];
+    data->my_en[E_TOT] = data->my_en[E_POT] + data->my_en[E_KIN];
 
-    if ( system->my_rank == MASTER_NODE )
-    {
+    if ( system->my_rank == MASTER_NODE ) {
         data->sys_en[E_BOND] = sys_en[0];
         data->sys_en[E_OV] = sys_en[1];
         data->sys_en[E_UN] = sys_en[2];
@@ -171,7 +170,7 @@ void Compute_Total_Energy( reax_system const * const system,
             + data->sys_en[E_HB] + data->sys_en[E_TOR] + data->sys_en[E_CON]
             + data->sys_en[E_VDW] + data->sys_en[E_ELE] + data->sys_en[E_POL];
 
-        data->sys_en[E_TOT] = data->sys_en[E_POT] + E_CONV * data->sys_en[E_KIN];
+        data->sys_en[E_TOT] = data->sys_en[E_POT] + data->sys_en[E_KIN];
     }
 }
 

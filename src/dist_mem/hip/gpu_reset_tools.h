@@ -6,7 +6,7 @@
 
 
 void GPU_Reset_Workspace( reax_system const * const, control_params const * const,
-        storage * const );
+        storage * const, hipStream_t );
 
 void GPU_Reset_Atoms_HBond_Indices( reax_system * const, control_params const * const,
         storage * const );
@@ -16,7 +16,7 @@ extern "C"  {
 #endif
 
 void GPU_Reset( reax_system * const, control_params const * const, simulation_data * const,
-        storage * const, reax_list ** const );
+        storage * const, reax_list ** const, int );
 
 #ifdef __cplusplus
 }

@@ -42,7 +42,7 @@ void Reset_Grid( grid * const );
 void Reset_Out_Buffers( mpi_out_data * const, int );
 
 void Reset( reax_system * const, control_params * const,
-        simulation_data * const, storage * const, reax_list** const );
+        simulation_data * const, storage * const, reax_list** const, int );
 
 #ifdef TEST_FORCES
 void Reset_Test_Forces( reax_system * const, storage * const );

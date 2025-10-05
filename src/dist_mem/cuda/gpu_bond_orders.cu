@@ -51,8 +51,7 @@ GPU_DEVICE void GPU_Add_dBond_to_Forces_NPT( int i, int pj,
     * forces related to atom i          *
     * first neighbors of atom i         *
     ************************************/
-    for ( pk = Start_Index(i, bond_list); pk < End_Index(i, bond_list); ++pk )
-    {
+    for ( pk = Start_Index(i, bond_list); pk < End_Index(i, bond_list); ++pk ) {
         /* 2nd, dBO; 2nd, dDelta; 3rd, dBOpi; 3rd, dBOpi2 */
         rvec_Scale( temp, -(C2dbo + C2dDelta + C3dbopi + C3dbopi2), BL.dBOp[pk] );
 
@@ -90,8 +89,7 @@ GPU_DEVICE void GPU_Add_dBond_to_Forces_NPT( int i, int pj,
      * forces and pressure related to atom j               *
      * first neighbors of atom j                           *
      ******************************************************/
-    for ( pk = Start_Index(j, bond_list); pk < End_Index(j, bond_list); ++pk )
-    {
+    for ( pk = Start_Index(j, bond_list); pk < End_Index(j, bond_list); ++pk ) {
         k = BL.nbr[pk];
 
         /* 3rd, dBO; 3rd, dDelta; 4th, dBOpi; 4th, dBOpi2 */
@@ -105,8 +103,7 @@ GPU_DEVICE void GPU_Add_dBond_to_Forces_NPT( int i, int pj,
 #endif
 
         /* pressure */
-        if ( k != i )
-        {
+        if ( k != i ) {
             ivec_Sum( rel_box, BL.rel_box[pk], BL.rel_box[pj] ); //rel_box(k, i)
             rvec_iMultiply( ext_press, rel_box, temp );
             rvec_Add( data_ext_press, ext_press );
@@ -176,8 +173,7 @@ GPU_DEVICE void GPU_Add_dBond_to_Forces( int i, int pj,
     C2dDelta = BL.C2dbo[pj] * (CdDelta[i] + CdDelta[j]);
     C3dDelta = BL.C3dbo[pj] * (CdDelta[i] + CdDelta[j]);
 
-    for ( pk = Start_Index(i, bond_list); pk < End_Index(i, bond_list); ++pk )
-    {
+    for ( pk = Start_Index(i, bond_list); pk < End_Index(i, bond_list); ++pk ) {
         /* 2nd, dBO, dDelta, dBOpi, dBOpi2 */
         rvec_Scale( temp, -(C2dbo + C2dDelta + C3dbopi + C3dbopi2), BL.dBOp[pk] );
 
@@ -203,8 +199,7 @@ GPU_DEVICE void GPU_Add_dBond_to_Forces( int i, int pj,
 
     rvec_Add( *f_i, temp );
 
-    for ( pk = Start_Index(j, bond_list); pk < End_Index(j, bond_list); ++pk )
-    {
+    for ( pk = Start_Index(j, bond_list); pk < End_Index(j, bond_list); ++pk ) {
         /* 3rd, dBO; 3rd, dDelta; 4th, dBOpi; 4th, dBOpi2 */
         rvec_Scale( temp, -(C3dbo + C3dDelta + C4dbopi + C4dbopi2), BL.dBOp[pk] );
 
@@ -248,8 +243,7 @@ GPU_GLOBAL void k_bond_order_part1( reax_atom const * const my_atoms,
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ( i >= N )
-    {
+    if ( i >= N ) {
         return;
     }
 
@@ -279,8 +273,7 @@ GPU_GLOBAL void k_bond_order_part2( reax_atom const * const my_atoms, real const
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ( i >= N )
-    {
+    if ( i >= N ) {
         return;
     }
 
@@ -296,18 +289,15 @@ GPU_GLOBAL void k_bond_order_part2( reax_atom const * const my_atoms, real const
     end_i = End_Index( i, &bond_list );
     total_bond_order_i = 0.0;
 
-    for ( pj = start_i; pj < end_i; ++pj )
-    {
+    for ( pj = start_i; pj < end_i; ++pj ) {
         j = BL.nbr[pj];
         type_j = my_atoms[j].type;
 
         //if ( i < j || bond_mark[j] > 3 )
-        if ( i < j )
-        {
+        if ( i < j ) {
             tbp_ij = index_tbp(type_i, type_j, num_atom_types);
 
-            if ( tbp[tbp_ij].ovc < 0.001 && tbp[tbp_ij].v13cor < 0.001 )
-            {
+            if ( tbp[tbp_ij].ovc < 0.001 && tbp[tbp_ij].v13cor < 0.001 ) {
                 /* There is no correction to bond orders nor to derivatives of
                  * bond order prime! So we leave bond orders unchanged and
                  * set derivative of bond order coefficients s.t.
@@ -325,14 +315,11 @@ GPU_GLOBAL void k_bond_order_part2( reax_atom const * const my_atoms, real const
                 BL.C2dbopi2[pj] = 0.0;
                 BL.C3dbopi2[pj] = 0.0;
                 BL.C4dbopi2[pj] = 0.0;
-            }
-            else
-            {
+            } else {
                 const real val_j = sbp[type_j].valency;
 
                 /* on page 1 */
-                if ( tbp[tbp_ij].ovc >= 0.001 )
-                {
+                if ( tbp[tbp_ij].ovc >= 0.001 ) {
                     /* Correction for overcoordination */
                     exp_p1i = EXP( -p_boc1 * Deltap_i );
                     exp_p2i = EXP( -p_boc2 * Deltap_i );
@@ -363,17 +350,14 @@ GPU_GLOBAL void k_bond_order_part2( reax_atom const * const my_atoms, real const
 
                     Cf1_ji = -Cf1A_ij * p_boc1 * exp_p1j
                         + Cf1B_ij * exp_p2j / ( exp_p2i + exp_p2j );
-                }
-                else
-                {
+                } else {
                     /* No overcoordination correction! */
                     f1 = 1.0;
                     Cf1_ij = 0.0;
                     Cf1_ji = 0.0;
                 }
 
-                if ( tbp[tbp_ij].v13cor >= 0.001 )
-                {
+                if ( tbp[tbp_ij].v13cor >= 0.001 ) {
                     /* Correction for 1-3 bond orders */
                     exp_f4 = EXP( -tbp[tbp_ij].p_boc3 * (tbp[tbp_ij].p_boc4 * SQR( BL.BO[pj] ) - Deltap_boc_i)
                             + tbp[tbp_ij].p_boc5 );
@@ -393,9 +377,7 @@ GPU_GLOBAL void k_bond_order_part2( reax_atom const * const my_atoms, real const
 //                    Cf45_ji = Cf45( u_ji, u_ij ) / f4f5;
                     Cf45_ij = -f4 * exp_f4;
                     Cf45_ji = -f5 * exp_f5;
-                }
-                else
-                {
+                } else {
                     f4 = 1.0;
                     f5 = 1.0;
                     f4f5 = 1.0;
@@ -434,20 +416,16 @@ GPU_GLOBAL void k_bond_order_part2( reax_atom const * const my_atoms, real const
             }
 
             /* neglect weak bonds */
-            if ( BL.BO[pj] < 1.0e-10 )
-            {
+            if ( BL.BO[pj] < 1.0e-10 ) {
                 BL.BO[pj] = 0.0;
             }
-            if ( BL.BO_s[pj] < 1.0e-10 )
-            {
+            if ( BL.BO_s[pj] < 1.0e-10 ) {
                 BL.BO_s[pj] = 0.0;
             }
-            if ( BL.BO_pi[pj] < 1.0e-10 )
-            {
+            if ( BL.BO_pi[pj] < 1.0e-10 ) {
                 BL.BO_pi[pj] = 0.0;
             }
-            if ( BL.BO_pi2[pj] < 1.0e-10 )
-            {
+            if ( BL.BO_pi2[pj] < 1.0e-10 ) {
                 BL.BO_pi2[pj] = 0.0;
             }
 
@@ -486,8 +464,7 @@ GPU_GLOBAL void k_bond_order_part2_opt( reax_atom const * const my_atoms, real c
      * for a unique atom */
     i = thread_id / warpSize;
 
-    if ( i >= N )
-    {
+    if ( i >= N ) {
         return;
     }
 
@@ -506,20 +483,16 @@ GPU_GLOBAL void k_bond_order_part2_opt( reax_atom const * const my_atoms, real c
     end_i = End_Index( i, &bond_list );
     total_bond_order_i = 0.0;
 
-    for ( itr = 0, pj = start_i + lane_id; itr < (end_i - start_i + warpSize - 1) / warpSize; ++itr )
-    {
-        if ( pj < end_i )
-        {
+    for ( itr = 0, pj = start_i + lane_id; itr < (end_i - start_i + warpSize - 1) / warpSize; ++itr ) {
+        if ( pj < end_i ) {
             j = BL.nbr[pj];
             type_j = my_atoms[j].type;
 
             //if ( i < j || bond_mark[j] > 3 )
-            if ( i < j )
-            {
+            if ( i < j ) {
                 tbp_ij = index_tbp(type_i, type_j, num_atom_types);
 
-                if ( tbp[tbp_ij].ovc < 0.001 && tbp[tbp_ij].v13cor < 0.001 )
-                {
+                if ( tbp[tbp_ij].ovc < 0.001 && tbp[tbp_ij].v13cor < 0.001 ) {
                     /* There is no correction to bond orders nor to derivatives of
                      * bond order prime! So we leave bond orders unchanged and
                      * set derivative of bond order coefficients s.t.
@@ -537,14 +510,11 @@ GPU_GLOBAL void k_bond_order_part2_opt( reax_atom const * const my_atoms, real c
                     BL.C2dbopi2[pj] = 0.0;
                     BL.C3dbopi2[pj] = 0.0;
                     BL.C4dbopi2[pj] = 0.0;
-                }
-                else
-                {
+                } else {
                     const real val_j = sbp[type_j].valency;
 
                     /* on page 1 */
-                    if ( tbp[tbp_ij].ovc >= 0.001 )
-                    {
+                    if ( tbp[tbp_ij].ovc >= 0.001 ) {
                         /* Correction for overcoordination */
                         exp_p1i = EXP( -p_boc1 * Deltap_i );
                         exp_p2i = EXP( -p_boc2 * Deltap_i );
@@ -575,17 +545,14 @@ GPU_GLOBAL void k_bond_order_part2_opt( reax_atom const * const my_atoms, real c
 
                         Cf1_ji = -Cf1A_ij * p_boc1 * exp_p1j
                             + Cf1B_ij * exp_p2j / ( exp_p2i + exp_p2j );
-                    }
-                    else
-                    {
+                    } else {
                         /* No overcoordination correction! */
                         f1 = 1.0;
                         Cf1_ij = 0.0;
                         Cf1_ji = 0.0;
                     }
 
-                    if ( tbp[tbp_ij].v13cor >= 0.001 )
-                    {
+                    if ( tbp[tbp_ij].v13cor >= 0.001 ) {
                         /* Correction for 1-3 bond orders */
                         exp_f4 = EXP( -tbp[tbp_ij].p_boc3 * (tbp[tbp_ij].p_boc4 * SQR( BL.BO[pj] ) - Deltap_boc_i)
                                 + tbp[tbp_ij].p_boc5 );
@@ -605,9 +572,7 @@ GPU_GLOBAL void k_bond_order_part2_opt( reax_atom const * const my_atoms, real c
 //                        Cf45_ji = Cf45( u_ji, u_ij ) / f4f5;
                         Cf45_ij = -f4 * exp_f4;
                         Cf45_ji = -f5 * exp_f5;
-                    }
-                    else
-                    {
+                    } else {
                         f4 = 1.0;
                         f5 = 1.0;
                         f4f5 = 1.0;
@@ -646,20 +611,16 @@ GPU_GLOBAL void k_bond_order_part2_opt( reax_atom const * const my_atoms, real c
                 }
 
                 /* neglect weak bonds */
-                if ( BL.BO[pj] < 1.0e-10 )
-                {
+                if ( BL.BO[pj] < 1.0e-10 ) {
                     BL.BO[pj] = 0.0;
                 }
-                if ( BL.BO_s[pj] < 1.0e-10 )
-                {
+                if ( BL.BO_s[pj] < 1.0e-10 ) {
                     BL.BO_s[pj] = 0.0;
                 }
-                if ( BL.BO_pi[pj] < 1.0e-10 )
-                {
+                if ( BL.BO_pi[pj] < 1.0e-10 ) {
                     BL.BO_pi[pj] = 0.0;
                 }
-                if ( BL.BO_pi2[pj] < 1.0e-10 )
-                {
+                if ( BL.BO_pi2[pj] < 1.0e-10 ) {
                     BL.BO_pi2[pj] = 0.0;
                 }
 
@@ -675,8 +636,7 @@ GPU_GLOBAL void k_bond_order_part2_opt( reax_atom const * const my_atoms, real c
 
     total_bond_order_i = cub::WarpReduce<double>(temp2[warp_id]).Sum(total_bond_order_i);
 
-    if ( lane_id == 0 )
-    {
+    if ( lane_id == 0 ) {
         total_bond_order[i] += total_bond_order_i;
     }
 
@@ -692,21 +652,18 @@ GPU_GLOBAL void k_bond_order_part3( real * const total_bond_order, reax_list bon
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ( i >= N )
-    {
+    if ( i >= N ) {
         return;
     }
 
     start_i = Start_Index( i, &bond_list );
     end_i = End_Index( i, &bond_list );
 
-    for ( pj = start_i; pj < end_i; ++pj )
-    {
+    for ( pj = start_i; pj < end_i; ++pj ) {
         j = BL.nbr[pj];
 
         //if ( i >= j && bond_mark[i] <= 3 )
-        if ( i >= j )
-        {
+        if ( i >= j ) {
             /* We only need to update bond orders from bo_ji
              * everything else is set in uncorrected_bo calculations */
             sym_index = BL.sym_index[pj];
@@ -739,8 +696,7 @@ GPU_GLOBAL void k_bond_order_part4( reax_atom const * const my_atoms,
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ( i >= N )
-    {
+    if ( i >= N ) {
         return;
     }
 
@@ -764,14 +720,11 @@ GPU_GLOBAL void k_bond_order_part4( reax_atom const * const my_atoms,
 //    dDelta_lp[i] = Clp[i] + (0.5 - Clp[i]) * ((FABS(Delta_e[i] / 2.0
 //                    - (int) (Delta_e[i] / 2.0)) < 0.1) ? 1 : 0 );
 
-    if ( sbp[type_i].mass > 21.0 )
-    {
+    if ( sbp[type_i].mass > 21.0 ) {
         nlp_temp[i] = 0.5 * (sbp[type_i].valency_e - sbp[type_i].valency);
         Delta_lp_temp[i] = sbp[type_i].nlp_opt - nlp_temp[i];
         dDelta_lp_temp[i] = 0.0;
-    }
-    else
-    {
+    } else {
         nlp_temp[i] = nlp[i];
         Delta_lp_temp[i] = sbp[type_i].nlp_opt - nlp_temp[i];
         dDelta_lp_temp[i] = Clp[i];
@@ -789,17 +742,14 @@ GPU_GLOBAL void k_total_forces_part1( rvec const * const dDeltap_self,
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ( i >= N )
-    {
+    if ( i >= N ) {
         return;
     }
 
     rvec_MakeZero( f_i );
 
-    for ( pj = Start_Index( i, &bond_list ); pj < End_Index( i, &bond_list ); ++pj )
-    {
-        if ( i < BL.nbr[pj] )
-        {
+    for ( pj = Start_Index( i, &bond_list ); pj < End_Index( i, &bond_list ); ++pj ) {
+        if ( i < BL.nbr[pj] ) {
             GPU_Add_dBond_to_Forces( i, pj, dDeltap_self, CdDelta, f, &bond_list, &f_i );
         }
     }
@@ -824,8 +774,7 @@ GPU_GLOBAL void k_total_forces_part1_opt( rvec const * const dDeltap_self,
      * for a unique atom */
     i = thread_id / warpSize;
 
-    if ( i >= N )
-    {
+    if ( i >= N ) {
         return;
     }
 
@@ -835,10 +784,8 @@ GPU_GLOBAL void k_total_forces_part1_opt( rvec const * const dDeltap_self,
     end_i = End_Index( i, &bond_list );
     rvec_MakeZero( f_i );
 
-    for ( itr = 0, pj = start_i + lane_id; itr < (end_i - start_i + warpSize - 1) / warpSize; ++itr )
-    {
-        if ( pj < end_i && i < BL.nbr[pj] )
-        {
+    for ( itr = 0, pj = start_i + lane_id; itr < (end_i - start_i + warpSize - 1) / warpSize; ++itr ) {
+        if ( pj < end_i && i < BL.nbr[pj] ) {
             GPU_Add_dBond_to_Forces( i, pj, dDeltap_self, CdDelta, f, &bond_list, &f_i );
         }
 
@@ -849,8 +796,7 @@ GPU_GLOBAL void k_total_forces_part1_opt( rvec const * const dDeltap_self,
     f_i[1] = cub::WarpReduce<double>(temp1[warp_id]).Sum(f_i[1]);
     f_i[2] = cub::WarpReduce<double>(temp1[warp_id]).Sum(f_i[2]);
 
-    if ( lane_id == 0 )
-    {
+    if ( lane_id == 0 ) {
         atomic_rvecAdd( f[i], f_i );
     }
 
@@ -868,17 +814,14 @@ GPU_GLOBAL void k_total_forces_virial_part1( rvec const * const dDeltap_self,
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ( i >= N )
-    {
+    if ( i >= N ) {
         return;
     }
 
     rvec_MakeZero( f_i );
 
-    for ( pj = Start_Index( i, &bond_list ); pj < End_Index( i, &bond_list ); ++pj )
-    {
-        if ( i < BL.nbr[pj] )
-        {
+    for ( pj = Start_Index( i, &bond_list ); pj < End_Index( i, &bond_list ); ++pj ) {
+        if ( i < BL.nbr[pj] ) {
             GPU_Add_dBond_to_Forces_NPT( i, pj, dDeltap_self, CdDelta,
                     f, &bond_list, &f_i, data_ext_press[i] );
         }
@@ -899,15 +842,13 @@ GPU_GLOBAL void k_total_forces_part1_2( reax_list bond_list, rvec * const f, int
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ( i >= N )
-    {
+    if ( i >= N ) {
         return;
     }
 
     rvec_MakeZero( f_i );
 
-    for ( pk = Start_Index( i, &bond_list ); pk < End_Index( i, &bond_list ); ++pk )
-    {
+    for ( pk = Start_Index( i, &bond_list ); pk < End_Index( i, &bond_list ); ++pk ) {
         rvec_Add( f_i, BL.f_bo[BL.sym_index[pk]] );
     }
 
@@ -925,8 +866,7 @@ GPU_GLOBAL void k_total_forces_part2( reax_atom * const my_atoms, int n,
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ( i >= n )
-    {
+    if ( i >= n ) {
         return;
     }
 
@@ -949,8 +889,7 @@ GPU_GLOBAL void k_reduction_stream_part1( real const * const CdDelta_bonds,
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ( i >= N )
-    {
+    if ( i >= N ) {
         return;
     }
 
@@ -975,13 +914,11 @@ GPU_GLOBAL void k_reduction_stream_part2( reax_list bond_list, int N )
 
     i = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if ( i >= N )
-    {
+    if ( i >= N ) {
         return;
     }
 
-    for ( pj = Start_Index( i, &bond_list ); pj < End_Index( i, &bond_list ); ++pj )
-    {
+    for ( pj = Start_Index( i, &bond_list ); pj < End_Index( i, &bond_list ); ++pj ) {
         BL.Cdbo[pj] += BL.Cdbo_bonds[pj] + BL.Cdbo_multi[pj]
             + BL.Cdbo_hbonds[pj] + BL.Cdbo_tor[pj];
         BL.Cdbopi[pj] += BL.Cdbopi_bonds[pj] + BL.Cdbopi_multi[pj]
@@ -1001,8 +938,7 @@ GPU_GLOBAL void k_reduction_stream_part2_opt( reax_list bond_list, int N )
     thread_id = blockIdx.x * blockDim.x + threadIdx.x;
     i = thread_id / warpSize;
 
-    if ( i >= N )
-    {
+    if ( i >= N ) {
         return;
     }
 
@@ -1010,10 +946,8 @@ GPU_GLOBAL void k_reduction_stream_part2_opt( reax_list bond_list, int N )
     start_i = Start_Index( i, &bond_list );
     end_i = End_Index( i, &bond_list );
 
-    for ( itr = 0, pj = start_i + lane_id; itr < (end_i - start_i + warpSize - 1) / warpSize; ++itr )
-    {
-        if ( pj < end_i )
-        {
+    for ( itr = 0, pj = start_i + lane_id; itr < (end_i - start_i + warpSize - 1) / warpSize; ++itr ) {
+        if ( pj < end_i ) {
             BL.Cdbo[pj] += BL.Cdbo_bonds[pj] + BL.Cdbo_multi[pj]
                 + BL.Cdbo_hbonds[pj] + BL.Cdbo_tor[pj];
             BL.Cdbopi[pj] += BL.Cdbopi_bonds[pj] + BL.Cdbopi_multi[pj]
@@ -1121,8 +1055,7 @@ void GPU_Total_Forces_Part1( reax_system const * const system,
     cudaCheckError( );
 #endif
 
-    if ( control->virial == 0 )
-    {
+    if ( control->virial == 0 ) {
 //        k_total_forces_part1 <<< control->blocks_N, control->gpu_block_size,
 //                             0, control->gpu_streams[0] >>>
 //            ( workspace->d_workspace->dDeltap_self, workspace->d_workspace->CdDelta,
@@ -1135,9 +1068,7 @@ void GPU_Total_Forces_Part1( reax_system const * const system,
             ( workspace->d_workspace->dDeltap_self, workspace->d_workspace->CdDelta,
               workspace->d_workspace->f, *(lists[BONDS]), system->N );
         cudaCheckError( );
-    }
-    else
-    {
+    } else {
         sCudaCheckMalloc( &workspace->d_workspace->scratch[0],
                 &workspace->d_workspace->scratch_size[0],
                 sizeof(rvec) * 2 * system->N, __FILE__, __LINE__ );
